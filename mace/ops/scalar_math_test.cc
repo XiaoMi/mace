@@ -79,30 +79,6 @@ TEST_F(ScalarMathOpTest, SimpleCPU) {
       ops::EltwiseType::EQUAL, 3, 3, 1, 1);
 }
 
-TEST_F(ScalarMathOpTest, SimpleGPU) {
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::SUM, 1, 2, 1, 3);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::SUB, 1, 2, 1, -1);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::PROD, 3, -2, 1, -6);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::DIV, 3, -2, 1, -1.5);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::MIN, 3, -2, 1, -2);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::MAX, 3, -2, 1, 3);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::NEG, 3, -2, 1, -3);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::ABS, 3, -2, 1, 3);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::SQR_DIFF, 3, -2, 1, 25);
-  ScalarMathTest<DeviceType::GPU, float, float>(
-      ops::EltwiseType::POW, 3, 1, 1, 3);
-  ScalarMathTest<DeviceType::GPU, float, int32_t>(
-      ops::EltwiseType::EQUAL, 3, 3, 1, 1);
-}
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

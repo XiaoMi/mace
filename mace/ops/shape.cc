@@ -21,11 +21,7 @@ template <DeviceType D, typename T>
 class ShapeOp : public Operation {
  public:
   explicit ShapeOp(OpConstructContext *context)
-      : Operation(context) {
-    if (D == DeviceType::GPU) {
-      context->set_output_mem_type(MemoryType::GPU_BUFFER);
-    }
-  }
+      : Operation(context) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -66,12 +62,6 @@ class ShapeOp : public Operation {
 void RegisterShape(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Shape", ShapeOp,
                    DeviceType::CPU, float);
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Shape", ShapeOp,
-                   DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "Shape", ShapeOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

@@ -24,6 +24,57 @@ namespace mace {
 OpConstructContext::OpConstructContext(Workspace *ws)
     : operator_def_(nullptr), ws_(ws), device_(nullptr) {}
 
+void OpConstructContext::set_operator_def(
+    std::shared_ptr<mace::OperatorDef> operator_def) {
+  operator_def_ = operator_def;
+  input_data_types_.clear();
+}
+
+void OpConstructContext::set_output_mem_type(mace::MemoryType type) {
+  MACE_CHECK(operator_def_ != nullptr);
+  output_mem_type_ = type;
+  input_mem_types_.clear();
+}
+
+void OpConstructContext::SetInputInfo(size_t idx,
+                                      mace::MemoryType mem_type,
+                                      mace::DataType dt) {
+  if (input_mem_types_.empty()) {
+    // the default inputs' memory types are same as output memory type.
+    input_mem_types_.resize(operator_def_->input_size(), output_mem_type_);
+  }
+  if (input_data_types_.empty()) {
+    // the default inputs' data types are same as operation's data type.
+    DataType op_dt = static_cast<DataType>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            *operator_def_, "T", static_cast<int>(DataType::DT_FLOAT)));
+    input_data_types_.resize(operator_def_->input_size(), op_dt);
+  }
+  MACE_CHECK(idx < input_mem_types_.size() && idx < input_data_types_.size());
+  input_mem_types_[idx] = mem_type;
+  input_data_types_[idx] = dt;
+}
+
+MemoryType OpConstructContext::GetInputMemType(size_t idx) const {
+  if (input_mem_types_.empty()) {
+    return output_mem_type_;
+  }
+  MACE_CHECK(idx < input_mem_types_.size(),
+             idx, " < ", input_mem_types_.size());
+  return input_mem_types_[idx];
+}
+
+DataType OpConstructContext::GetInputDataType(size_t idx) const {
+  if (input_data_types_.empty()) {
+    // the default inputs' data types are same as operation's data type.
+    return static_cast<DataType>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            *operator_def_, "T", static_cast<int>(DataType::DT_FLOAT)));
+  }
+  MACE_CHECK(idx < input_data_types_.size());
+  return input_data_types_[idx];
+}
+
 OpInitContext::OpInitContext(Workspace *ws, Device *device)
     : ws_(ws), device_(device) {}
 

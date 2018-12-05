@@ -612,11 +612,9 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
                                const std::vector<int> &dilations,
                                const int wino_blk_size = 0) {
   testing::internal::LogToStderr();
-  srand(time(NULL));
 
   auto func = [&](index_t batch, int stride_h, int stride_w, Padding padding) {
     // generate random input
-    static unsigned int seed = time(NULL);
     index_t height = input_shape[0];
     index_t width = input_shape[1];
     index_t kernel_h = filter_shape[0];

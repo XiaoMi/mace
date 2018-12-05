@@ -35,9 +35,7 @@ class OpConstructContext {
   explicit OpConstructContext(Workspace *ws);
   ~OpConstructContext() = default;
 
-  inline void set_operator_def(std::shared_ptr<OperatorDef> operator_def) {
-    operator_def_ = operator_def;
-  }
+  void set_operator_def(std::shared_ptr<OperatorDef> operator_def);
 
   inline std::shared_ptr<OperatorDef> operator_def() const {
     return operator_def_;
@@ -55,19 +53,26 @@ class OpConstructContext {
     return device_;
   }
 
-  inline void set_output_mem_type(MemoryType type) {
-    output_mem_type_ = type;
-  }
+  void set_output_mem_type(MemoryType type);
 
   inline MemoryType output_mem_type() const {
     return output_mem_type_;
   }
 
+  void SetInputInfo(size_t idx, MemoryType mem_type, DataType dt);
+
+  MemoryType GetInputMemType(size_t idx) const;
+
+  DataType GetInputDataType(size_t idx) const;
+
  private:
   std::shared_ptr<OperatorDef> operator_def_;
   Workspace *ws_;
   Device *device_;
-  MemoryType output_mem_type_;  // used for transform memory
+  // used for memory transform
+  std::vector<MemoryType> input_mem_types_;
+  std::vector<DataType> input_data_types_;
+  MemoryType output_mem_type_;  // there is only one output memory type now.
 };
 
 // memory_optimizer, device
@@ -93,6 +98,12 @@ class OpInitContext {
   Device *device_;
 };
 
+// Conventions
+// * If there exist format, NHWC is the default format
+// * The input/output format of CPU ops with float data type is NCHW
+// * The input/output format of GPU ops and CPU Quantization ops is NHWC
+// * Inputs' data type is same as the operation data type by default.
+// * The outputs' data type is same as the operation data type by default.
 class Operation {
  public:
   explicit Operation(OpConstructContext *context);

@@ -21,6 +21,7 @@
 namespace mace {
 namespace ops {
 
+namespace {
 template <typename T, typename DstType>
 void ScalarEltwise(const T* in0,
                    const T* in1,
@@ -81,6 +82,7 @@ void ScalarEltwise(const T* in0,
       LOG(FATAL) << "Eltwise op not support type " << type;
   }
 }
+}  // namespace
 
 
 template <DeviceType D, typename T>
@@ -156,12 +158,6 @@ void RegisterScalarMath(OpRegistryBase *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,
                    DeviceType::CPU, int32_t);
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,
-                   DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,
-                   DeviceType::GPU, int32_t);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

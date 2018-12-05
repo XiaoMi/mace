@@ -217,12 +217,6 @@ void RegisterStridedSlice(OpRegistryBase *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
                    DeviceType::CPU, int32_t);
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
-                   DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
-                   DeviceType::GPU, int32_t);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

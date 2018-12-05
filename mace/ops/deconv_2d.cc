@@ -375,10 +375,16 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
             context, operator_def_.get(), 2,
             OpenCLBufferType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
       }
-    } else if (operator_def_->input_size() >= 4) {
-      MACE_CHECK(TransformFilter<T>(
-          context, operator_def_.get(), 3, OpenCLBufferType::ARGUMENT, mem_type)
-                     == MaceStatus::MACE_SUCCESS);
+    } else {
+      if (operator_def_->input_size() >= 4) {
+        MACE_CHECK(TransformFilter<T>(
+            context,
+            operator_def_.get(),
+            3,
+            OpenCLBufferType::ARGUMENT,
+            mem_type) == MaceStatus::MACE_SUCCESS);
+      }
+      context->SetInputInfo(2, MemoryType::CPU_BUFFER, DataType::DT_INT32);
     }
   }
   MaceStatus Run(OpContext *context) override {
