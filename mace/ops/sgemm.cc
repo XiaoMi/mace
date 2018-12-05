@@ -30,7 +30,7 @@
 namespace {
 
 inline void AdviseFree(void *addr, size_t length) {
-  int page_size = getpagesize();
+  int page_size = sysconf(_SC_PAGESIZE);
   void *addr_aligned =
       reinterpret_cast<void *>(
           (reinterpret_cast<uintptr_t>(addr) + page_size - 1)
