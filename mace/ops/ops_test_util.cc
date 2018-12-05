@@ -166,10 +166,15 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
       }
     }
 
-    for (auto output : op_def_.output()) {
-      ws_.RemoveTensor(output);
+    for (int i = 0; i < op_def_.output_size(); ++i) {
+      ws_.RemoveTensor(op_def_.output(i));
       auto output_info = net_def.add_output_info();
-      output_info->set_name(output);
+      output_info->set_name(op_def_.output(i));
+      if (op_def_.output_type_size() == op_def_.output_size()) {
+        output_info->set_data_type(op_def_.output_type(i));
+      } else {
+        output_info->set_data_type(DataType::DT_FLOAT);
+      }
     }
   }
   MemoryOptimizer mem_optimizer;

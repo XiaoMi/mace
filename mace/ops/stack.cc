@@ -25,11 +25,7 @@ class StackOp : public Operation {
  public:
   explicit StackOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 0)) {
-    if (D == DeviceType::GPU) {
-      context->set_output_mem_type(MemoryType::GPU_BUFFER);
-    }
-  }
+        axis_(Operation::GetOptionalArg<int>("axis", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -54,6 +50,7 @@ class StackOp : public Operation {
     }
 
     // Output is on host, no need to map data
+    Tensor::MappingGuard output_guard(output);
     auto *output_data = output->mutable_data<T>();
     std::vector<const T *> input_data(inputs.size());
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -83,10 +80,6 @@ class StackOp : public Operation {
 void RegisterStack(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, int32_t);
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::GPU, int32_t);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

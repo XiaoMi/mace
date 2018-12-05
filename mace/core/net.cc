@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <utility>
 #include <algorithm>
 #include <limits>
+#include <unordered_set>
+#include <utility>
 
 #include "mace/core/future.h"
 #include "mace/core/macros.h"
@@ -53,6 +54,13 @@ std::string TransformedName(const std::string &input_name,
   ss << input_name << "_mem_type_" << mem_type;
   return ss.str();
 }
+
+bool TransformRequiredOp(const std::string &op_type) {
+  static const std::unordered_set<std::string> kNoTransformOp = {
+      "Shape", "InferConv2dShape"
+  };
+  return kNoTransformOp.count(op_type) == 0;
+}
 #endif  // MACE_ENABLE_OPENCL
 
 }  // namespace
@@ -72,6 +80,7 @@ std::unique_ptr<Operation> SerialNet::CreateOperation(
   // otherwise, fallback to CPU device.
   DeviceType device_type = DeviceType::CPU;
   construct_context->set_device(cpu_device_);
+  construct_context->set_operator_def(op_def);
   construct_context->set_output_mem_type(MemoryType::CPU_BUFFER);
   for (auto device : available_devices) {
     if (device == target_device_type) {
@@ -103,7 +112,6 @@ std::unique_ptr<Operation> SerialNet::CreateOperation(
       }
     }
   }
-  construct_context->set_operator_def(op_def);
   std::unique_ptr<Operation> op(
       op_registry->CreateOperation(construct_context, device_type));
   return std::move(op);
@@ -126,7 +134,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
   std::unordered_map<std::string, InternalOutputInfo> output_map;
   // used for memory optimization
   std::unordered_map<std::string, MemoryType> output_mem_map;
-  std::unordered_map<std::string, std::string> transformed_map;
+  std::unordered_set<std::string> transformed_set;
   // add input information
   MemoryType target_mem_type;
   // quantize model flag
@@ -180,71 +188,80 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
 #ifdef MACE_ENABLE_OPENCL
     // Add input transform operation if necessary
     if (target_device_->device_type() == DeviceType::GPU) {
-      const DataType dt =
-          static_cast<DataType>(
-              ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                  *op_def, "T", static_cast<int>(DataType::DT_FLOAT)));
       // the outputs' memory type of the operation
       MemoryType out_mem_type = construct_context.output_mem_type();
       int input_size = op_def->input_size();
-      for (int i = 0; i < input_size; ++i) {
-        if (output_map.count(op_def->input(i)) == 1) {
-          // if op is memory-reuse op, no transformation
-          if (MemoryOptimizer::IsMemoryReuseOp(op_def->type())) {
-            out_mem_type = output_map.at(op_def->input(i)).mem_type;
-            break;
-          }
-          // check whether is the output tensor of other operation
-          if (output_map.at(op_def->input(i)).mem_type != out_mem_type ||
-              output_map.at(op_def->input(i)).dtype != dt) {
-            auto key = TransformedName(op_def->input(i), out_mem_type);
-            auto &output_info = output_map.at(op_def->input(i));
-            // check whether the tensor has been transformed
-            if (transformed_map.count(key) == 0) {
-              VLOG(1) << "Add Transform operation to transform tensor '"
-                      << op_def->input(i) << "', from memory type "
-                      << output_info.mem_type << " to " << out_mem_type
-                      << ", from Data Type " << output_info.dtype << " to "
-                      << dt;
-              std::string input_name = op_def->input(i);
-              std::string t_input_name =
-                  TransformedName(input_name,
-                                  out_mem_type);
-              op_def->set_input(i, t_input_name);
-              auto input_shape = output_info.shape;
-              if (output_info.mem_type == MemoryType::CPU_BUFFER &&
-                  input_shape.size() == 4) {
-                // NCHW -> NHWC
-                input_shape =
-                    TransposeShape<index_t, index_t>(input_shape,
-                                                     {0, 2, 3, 1});
-              }
-              auto transform_op_def = OpenCLUtil::CreateTransformOpDef(
-                  input_name, input_shape, t_input_name,
-                  dt, out_mem_type);
-              auto transform_op = CreateOperation(
-                  op_registry,
-                  &construct_context,
-                  transform_op_def,
-                  data_format_flag);
-              operators_.emplace_back(std::move(transform_op));
-              transformed_map.emplace(key, t_input_name);
-              output_mem_map[t_input_name] = out_mem_type;
-              // where to do graph reference count.
-              mem_optimizer->UpdateTensorRef(transform_op_def.get());
-            } else {
-              op_def->set_input(i, transformed_map[key]);
+      // if op is memory-unused op, no transformation
+      if (TransformRequiredOp(op_def->type())) {
+        for (int i = 0; i < input_size; ++i) {
+          if (output_map.count(op_def->input(i)) == 1) {
+            // if op is memory-reuse op, no transformation
+            if (MemoryOptimizer::IsMemoryReuseOp(op_def->type())) {
+              out_mem_type = output_map.at(op_def->input(i)).mem_type;
+              break;
             }
+            // check whether to do transform
+            MemoryType wanted_in_mem_type =
+                construct_context.GetInputMemType(i);
+            DataType wanted_in_dt = construct_context.GetInputDataType(i);
+            if (output_map.at(op_def->input(i)).mem_type != wanted_in_mem_type
+                || output_map.at(op_def->input(i)).dtype != wanted_in_dt) {
+              auto t_input_name = TransformedName(op_def->input(i),
+                                                  wanted_in_mem_type);
+              auto &output_info = output_map.at(op_def->input(i));
+              // check whether the tensor has been transformed
+              if (transformed_set.count(t_input_name) == 0) {
+                VLOG(1) << "Add Transform operation to transform tensor '"
+                        << op_def->input(i) << "', from memory type "
+                        << output_info.mem_type << " to "
+                        << wanted_in_mem_type
+                        << ", from Data Type " << output_info.dtype << " to "
+                        << wanted_in_dt;
+                std::string input_name = op_def->input(i);
+                op_def->set_input(i, t_input_name);
+                auto input_shape = output_info.shape;
+                if (output_info.mem_type == MemoryType::CPU_BUFFER &&
+                    input_shape.size() == 4) {
+                  // NCHW -> NHWC
+                  input_shape =
+                      TransposeShape<index_t, index_t>(input_shape,
+                                                       {0, 2, 3, 1});
+                }
+                auto transform_op_def = OpenCLUtil::CreateTransformOpDef(
+                    input_name, input_shape, t_input_name,
+                    wanted_in_dt, wanted_in_mem_type);
+                auto transform_op = CreateOperation(
+                    op_registry,
+                    &construct_context,
+                    transform_op_def,
+                    data_format_flag);
+                operators_.emplace_back(std::move(transform_op));
+                transformed_set.insert(t_input_name);
+                output_mem_map[t_input_name] = wanted_in_mem_type;
+                // where to do graph reference count.
+                mem_optimizer->UpdateTensorRef(transform_op_def.get());
+              } else {
+                op_def->set_input(i, t_input_name);
+              }
+            }
+          } else {
+            MACE_CHECK(ws_->GetTensor(op_def->input(i)) != nullptr
+                           && ws_->GetTensor(op_def->input(i))->is_weight(),
+                       "Tensor ", op_def->input(i), " of ",
+                       op_def->name(), " not allocated");
           }
-        } else {
-          MACE_CHECK(ws_->GetTensor(op_def->input(i)) != nullptr
-                         && ws_->GetTensor(op_def->input(i))->is_weight(),
-                     "Tensor ", op_def->input(i), " of ",
-                     op_def->name(), " not allocated");
         }
       }
       // update the map : output_tensor -> Operation
       for (int out_idx = 0; out_idx < op_def->output_size(); ++out_idx) {
+        DataType dt;
+        if (op_def->output_type_size() == op_def->output_size()) {
+          dt = op_def->output_type(out_idx);
+        } else {
+          dt = static_cast<DataType>(
+              ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                  *op_def, "T", static_cast<int>(DataType::DT_FLOAT)));
+        }
         output_mem_map[op_def->output(out_idx)] = out_mem_type;
         output_map.emplace(
             op_def->output(out_idx),
@@ -272,13 +289,13 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
       auto &internal_output_info = output_map.at(output_info.name());
       if ((internal_output_info.mem_type != target_mem_type &&
           internal_output_info.mem_type != MemoryType::CPU_BUFFER) ||
-          internal_output_info.dtype != DataType::DT_FLOAT) {
+          internal_output_info.dtype != output_info.data_type()) {
         VLOG(1) << "Add Transform operation to transform output tensor '"
                 << output_info.name() << "', from memory type "
                 << internal_output_info.mem_type
                 << " to " << target_mem_type
                 << ", from Data Type " << internal_output_info.dtype
-                << " to " << DataType::DT_FLOAT;
+                << " to " << output_info.data_type();
         std::string t_output_name = TransformedName(output_info.name(),
             target_mem_type);
         auto output_op_def =
@@ -298,7 +315,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
             t_output_name,
             internal_output_info.shape,
             output_info.name(),
-            DataType::DT_FLOAT,
+            output_info.data_type(),
             target_mem_type);
         auto transform_op = CreateOperation(
             op_registry,
