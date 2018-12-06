@@ -67,10 +67,10 @@ cc_library(
         "//mace/codegen:generated_version",
         "//mace/proto:mace_cc",
         "//mace/utils",
+        "@half//:half",
     ] + if_opencl_enabled([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
-        "@half//:half",
     ]) + if_quantize_enabled([
         "@gemmlowp",
     ]) + if_hexagon_enabled([

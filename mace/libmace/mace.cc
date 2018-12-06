@@ -502,8 +502,10 @@ MaceStatus MaceEngine::Impl::Init(
 
   MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes, model_data_));
 
-  if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON) {
+  if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
+      (device_type_ == DeviceType::CPU && ws_->diffused_buffer())) {
     UnloadModelData(model_data_, model_data_size_);
+    model_data_ = nullptr;
   }
   return MaceStatus::MACE_SUCCESS;
 }
