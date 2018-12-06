@@ -48,6 +48,7 @@ class ShapeInference(object):
             MaceOp.FullyConnected.name: self.infer_shape_fully_connected,
             MaceOp.Crop.name: self.infer_shape_crop,
             MaceOp.BiasAdd.name: self.infer_shape_general,
+            MaceOp.ChannelShuffle.name: self.infer_shape_channel_shuffle,
         }
 
         self._net = net
@@ -219,4 +220,8 @@ class ShapeInference(object):
     def infer_shape_crop(self, op):
         mace_check(len(op.input) == 2, "crop layer needs two inputs")
         output_shape = self._output_shape_cache[op.input[1]]
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_channel_shuffle(self, op):
+        output_shape = self._output_shape_cache[op.input[0]]
         self.add_output_shape(op, [output_shape])
