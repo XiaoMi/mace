@@ -48,7 +48,7 @@ MaceStatus Conv2dGeneral(OpContext *context,
   const index_t filter_height = filter->dim(2);
   const index_t filter_width = filter->dim(3);
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {

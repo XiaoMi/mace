@@ -43,7 +43,7 @@ MaceStatus Conv2d1x1(OpContext *context,
   const index_t in_height = padded_input->dim(1);
   const index_t in_width = padded_input->dim(2);
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {

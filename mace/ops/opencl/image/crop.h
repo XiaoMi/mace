@@ -141,7 +141,7 @@ MaceStatus CropKernel<T>::Compute(
       static_cast<uint32_t>(output->dim(0) * output->dim(1))
   };
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {

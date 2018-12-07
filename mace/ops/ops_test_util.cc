@@ -206,7 +206,7 @@ MaceStatus OpsTestNet::RunOp(mace::DeviceType device) {
     auto opencl_mem_types = OpTestContext::Get()->opencl_mem_types();
     for (auto type : opencl_mem_types) {
       OpTestContext::Get()->GetDevice(device)
-          ->opencl_runtime()->set_mem_type(type);
+          ->gpu_runtime()->set_mem_type(type);
       Setup(device);
       MACE_RETURN_IF_ERROR(Run());
     }
@@ -242,8 +242,8 @@ MaceStatus OpsTestNet::RunNet(const mace::NetDef &net_def,
 void OpsTestNet::Sync() {
 #ifdef MACE_ENABLE_OPENCL
   if (net_ && device_type_ == DeviceType::GPU) {
-      OpTestContext::Get()->GetDevice(DeviceType::GPU)->opencl_runtime()
-          ->command_queue().finish();
+      OpTestContext::Get()->GetDevice(DeviceType::GPU)->gpu_runtime()
+      ->opencl_runtime()->command_queue().finish();
     }
 #endif
 }

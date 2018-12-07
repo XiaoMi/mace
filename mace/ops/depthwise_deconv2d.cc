@@ -410,7 +410,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::DepthwiseDeconv2dKernel<T>);
     } else {
       MACE_NOT_IMPLEMENTED;

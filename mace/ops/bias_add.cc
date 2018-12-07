@@ -101,7 +101,7 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
         data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
             "data_format", NHWC))) {
     MemoryType mem_type;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::BiasAddKernel<T>);
     } else {

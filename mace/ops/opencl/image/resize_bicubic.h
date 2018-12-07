@@ -102,7 +102,7 @@ MaceStatus ResizeBicubicKernel<T>::Compute(
                            static_cast<uint32_t>(out_width),
                            static_cast<uint32_t>(out_height * batch)};
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {

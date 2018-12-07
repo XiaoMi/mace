@@ -246,7 +246,7 @@ class ReduceMeanOp<DeviceType::GPU, T> : public ReduceMeanOpBase {
  public:
   explicit ReduceMeanOp(OpConstructContext *context)
       : ReduceMeanOpBase(context) {
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::ReduceMeanKernel<T>(axis_, keep_dims_));
     } else {
       MACE_NOT_IMPLEMENTED;

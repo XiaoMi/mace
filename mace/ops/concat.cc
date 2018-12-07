@@ -196,7 +196,7 @@ class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::ConcatKernel<T>(axis_));
     } else {
       MACE_NOT_IMPLEMENTED;

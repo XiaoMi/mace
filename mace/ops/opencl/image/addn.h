@@ -57,7 +57,7 @@ MaceStatus AddNKernel<T>::Compute(
   const index_t width = input_tensors[0]->dim(2);
   const index_t channels = input_tensors[0]->dim(3);
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   for (size_t i = 1; i < size; ++i) {

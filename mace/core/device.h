@@ -21,7 +21,7 @@
 #include "mace/core/allocator.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/core/runtime/opencl/gpu_runtime.h"
 #endif
 
 namespace mace {
@@ -33,7 +33,7 @@ class Device {
   virtual ~Device() {}
 
 #ifdef MACE_ENABLE_OPENCL
-  virtual OpenCLRuntime *opencl_runtime() = 0;
+  virtual GPURuntime *gpu_runtime() = 0;
 #endif  // MACE_ENABLE_OPENCL
   virtual CPURuntime *cpu_runtime() = 0;
 
@@ -50,7 +50,7 @@ class CPUDevice : public Device {
   virtual ~CPUDevice();
 
 #ifdef MACE_ENABLE_OPENCL
-  OpenCLRuntime *opencl_runtime() override;
+  GPURuntime *gpu_runtime() override;
 #endif
   CPURuntime *cpu_runtime() override;
 

@@ -149,7 +149,7 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
         Operation::GetOptionalArg<std::string>("activation", "NOOP"));
     float relux_max_limit = Operation::GetOptionalArg<float>("max_limit", 0.0f);
     MemoryType mem_type;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::BatchNormKernel<T>(
           epsilon, activation, relux_max_limit));

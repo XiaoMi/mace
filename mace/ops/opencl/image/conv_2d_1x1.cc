@@ -95,7 +95,7 @@ extern MaceStatus Conv2dK1x1(OpContext *context,
   const index_t width_blocks = RoundUpDiv4(width);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {

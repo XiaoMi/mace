@@ -81,7 +81,7 @@ class ActivationOp<DeviceType::GPU, T> : public Operation {
     auto relux_max_limit = static_cast<T>(
         Operation::GetOptionalArg<float>("max_limit", 0.0f));
     MemoryType mem_type;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(
           new opencl::image::ActivationKernel<T>(type, relux_max_limit));

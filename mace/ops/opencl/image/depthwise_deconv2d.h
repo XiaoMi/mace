@@ -98,7 +98,7 @@ MaceStatus DepthwiseDeconv2dKernel<T>::Compute(
   const int align_w = stride_w - 1 - padding_w;
   const int kernel_size = filter->dim(2) * filter->dim(3);
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
