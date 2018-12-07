@@ -34,6 +34,7 @@ from mace.python.tools.converter_tool.base_converter import ConverterUtil
 from mace.python.tools.convert_util import mace_check
 
 from tensorflow.core.framework import tensor_shape_pb2
+from tensorflow.tools.graph_transforms import TransformGraph
 
 tf_padding_str = 'padding'
 tf_strides_str = 'strides'
@@ -113,6 +114,40 @@ TFSupportedOps = [
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
 
 TFSupportedOps = [six.b(op) for op in TFSupportedOps]
+
+TFTransformGraphOptions = {
+    base_converter.DeviceType.CPU.value: [
+        'strip_unused_nodes',
+        'remove_nodes(op=Identity, op=CheckNumerics)',
+        'fold_constants(ignore_errors=true)',
+        'fold_batch_norms',
+        'fold_old_batch_norms',
+        'remove_control_dependencies',
+        'strip_unused_nodes',
+        'sort_by_execution_order'
+    ],
+    base_converter.DeviceType.GPU.value: [
+        'strip_unused_nodes',
+        'remove_nodes(op=Identity, op=CheckNumerics)',
+        'fold_constants(ignore_errors=true)',
+        'flatten_atrous_conv',
+        'fold_batch_norms',
+        'fold_old_batch_norms',
+        'remove_control_dependencies',
+        'strip_unused_nodes',
+        'sort_by_execution_order'
+    ],
+    base_converter.DeviceType.HEXAGON.value: [
+        'strip_unused_nodes',
+        'remove_nodes(op=Identity, op=CheckNumerics)',
+        'fold_constants(ignore_errors=true)',
+        'fold_batch_norms',
+        'fold_old_batch_norms',
+        'remove_control_dependencies',
+        'strip_unused_nodes',
+        'sort_by_execution_order'
+    ]
+}
 
 
 class TensorflowConverter(base_converter.ConverterInterface):
@@ -233,13 +268,20 @@ class TensorflowConverter(base_converter.ConverterInterface):
         self._placeholders = {}
         self.add_shape_info(tf_graph_def)
 
+        print("Run transform_graph: %s" % TFTransformGraphOptions[
+            option.device])
+        transformed_graph_def = TransformGraph(tf_graph_def,
+                                               option.input_nodes.keys(),
+                                               option.output_nodes.keys(),
+                                               TFTransformGraphOptions[
+                                                   option.device])
+
         with tf.Session() as session:
             with session.graph.as_default() as graph:
-                tf.import_graph_def(tf_graph_def, name='')
+                tf.import_graph_def(transformed_graph_def, name='')
                 self._tf_graph = graph
 
         self._skip_tensor = set()
-
         self._output_shape_list = []
         self._output_shape_op_list = []
 

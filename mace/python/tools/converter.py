@@ -118,6 +118,8 @@ def main(unused_args):
     option.quantize_range_file = FLAGS.quantize_range_file
     option.change_concat_ranges = FLAGS.change_concat_ranges
     option.cl_mem_type = FLAGS.cl_mem_type
+    option.device = device_type_map[FLAGS.runtime]
+    option.data_type = parse_data_type(FLAGS.data_type, option.device)
 
     input_node_names = FLAGS.input_node.split(',')
     input_node_shapes = FLAGS.input_shape.split(':')
@@ -192,10 +194,6 @@ def main(unused_args):
             exit(1)
 
         output_graph_def = converter.run()
-
-        option.device = device_type_map[FLAGS.runtime]
-        option.data_type = parse_data_type(
-            FLAGS.data_type, option.device)
         mace_transformer = transformer.Transformer(
             option, output_graph_def)
         output_graph_def, quantize_activation_info = mace_transformer.run()

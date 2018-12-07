@@ -1182,43 +1182,34 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if op.type == MaceOp.Softmax.name:
                 # see if possible to fold
-                # Reshape(xd->2d) + Softmax(2d) + Reshape(xd) to Softmax(xd)
+                # Reshape(xd->2d) + Softmax(2d) [+ Reshape(xd)] to Softmax(xd)
                 should_fold = False
                 if op.input[0] in self._producer \
                         and self._producer[op.input[0]].type \
                         == MaceOp.Reshape.name \
-                        and len(op.output_shape[0].dims) == 2 \
-                        and self.consumer_count(op.output[0]) == 1:
-                    producer = self._producer[op.input[0]]
-                    consumer = self._consumers[op.output[0]][0]
-
-                    if (consumer.type == MaceOp.Reshape.name
-                        and op.output_shape[0].dims[-1]
-                            == consumer.output_shape[0].dims[-1]
-                        and op.output_shape[0].dims[-1] != -1
-                        and self.get_tensor_shape(producer.input[0])
-                            == consumer.output_shape[0].dims):
-                            should_fold = True
+                        and len(op.output_shape[0].dims) == 2:
+                    should_fold = True
 
                 if should_fold:
                     print(
                         "Fold reshape and softmax: %s(%s)"
                         % (op.name, op.type))
                     producer = self._producer[op.input[0]]
-                    consumer = self._consumers[op.output[0]][0]
                     op.output_shape[0].dims[:] = self.get_tensor_shape(
                         producer.input[0])
 
-                    # if there is a shape op, remove it too
-                    if (consumer.input[1] in self._producer
-                        and self._producer[consumer.input[1]].type
-                            == 'Shape'):
-                        self.safe_remove_node(
-                            self._producer[consumer.input[1]], None,
-                            remove_input_tensor=True)
-                    # remove consumer reshape
-                    self.safe_remove_node(consumer, op,
-                                          remove_input_tensor=True)
+                    if op.output[0] in self._consumers:
+                        consumer = self._consumers[op.output[0]][0]
+                        # if there is a shape op, remove it too
+                        if (consumer.input[1] in self._producer
+                            and self._producer[consumer.input[1]].type
+                                == 'Shape'):
+                            self.safe_remove_node(
+                                self._producer[consumer.input[1]], None,
+                                remove_input_tensor=True)
+                        # remove consumer reshape
+                        self.safe_remove_node(consumer, op,
+                                              remove_input_tensor=True)
                     # remove producer reshape
                     self.safe_remove_node(producer,
                                           self._producer.get(producer.input[0],
