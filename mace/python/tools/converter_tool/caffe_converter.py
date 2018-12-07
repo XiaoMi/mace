@@ -187,6 +187,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'BatchNorm': self.convert_folded_batchnorm,
             'Crop': self.convert_crop,
             'Scale': self.convert_scale,
+            'ShuffleChannel': self.convert_channel_shuffle,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -656,3 +657,14 @@ class CaffeConverter(base_converter.ConverterInterface):
 
             ConverterUtil.add_data_format_arg(biasadd_op,
                                               DataFormat.NCHW)
+
+    def convert_channel_shuffle(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.shuffle_channel_param
+        op.type = MaceOp.ChannelShuffle.name
+
+        group_arg = op.arg.add()
+        group_arg.name = MaceKeyword.mace_group_str
+        group_arg.i = 1
+        if param.HasField('group'):
+            group_arg.i = param.group
