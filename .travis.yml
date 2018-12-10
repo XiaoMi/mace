@@ -80,6 +80,26 @@ jobs:
       env: TYPE=Ops-Benchmark
       os: osx
       osx_image: xcode7.2
+    - stage: Unit Test
+      script:
+        - DYNAMIC_LIB_PATH="bazel-bin/mace/libmace/libmace.so"
+        - bazel build -s --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define openmp=true --define opencl=false --define quantize=false --cpu=armeabi-v7a
+        - CURRENT_LIBMACE_SO_SIZE=`ls -l $DYNAMIC_LIB_PATH --block-size=K -s | cut -f 1 -d "K"`
+        - TARGET_MACE_WORK_DIR=`mktemp -d`
+        - pushd $TARGET_MACE_WORK_DIR
+        - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone https://github.com/XiaoMi/mace.git
+        - pushd mace
+        - bazel build -s --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define openmp=true --define opencl=false --define quantize=false --cpu=armeabi-v7a
+        - TARGET_LIBMACE_SO_SIZE=`ls -l $DYNAMIC_LIB_PATH --block-size=K -s | cut -f 1 -d "K"`
+        - popd
+        - popd
+        - rm -rf $TARGET_MACE_WORK_DIR
+        - echo "The libmace.so size grows from $TARGET_LIBMACE_SO_SIZE(KB) to $CURRENT_LIBMACE_SO_SIZE(KB)"
+        - if [ $TARGET_LIBMACE_SO_SIZE -lt `expr \( $CURRENT_LIBMACE_SO_SIZE - $TARGET_LIBMACE_SO_SIZE \) \* 10` ]; then echo "The libmace.so size grows larger than 10%"; exit 1; fi
+      env: TYPE=Libs-Size-Check
+      os: linux
+      dist: xenial
+      sudo: required
     - stage: Extra Test
       script:
         - bazel build mace/libmace:libmace_static --config optimization --define openmp=true || exit 1
