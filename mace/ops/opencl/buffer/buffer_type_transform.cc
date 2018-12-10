@@ -31,7 +31,7 @@ MaceStatus BufferTypeTransform(
     Tensor *output) {
   MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION
 
   const uint32_t gws =

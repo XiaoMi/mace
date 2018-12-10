@@ -97,7 +97,7 @@ class PadOp<DeviceType::GPU, T> : public Operation {
     std::vector<int> paddings = Operation::GetRepeatedArgs<int>("paddings");
     float constant_value = Operation::GetOptionalArg<float>(
         "constant_value", 0.0);
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::PadKernel<T>(paddings, constant_value));
     } else {
       MACE_NOT_IMPLEMENTED;

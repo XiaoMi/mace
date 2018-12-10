@@ -284,9 +284,7 @@ OpenCLRuntime::OpenCLRuntime(
     is_opencl_avaliable_(false),
     is_profiling_enabled_(false),
     opencl_version_(CL_VER_UNKNOWN),
-    gpu_type_(UNKNOWN),
-    mem_type_(MemoryType::GPU_IMAGE),
-    scratch_image_manager_(new ScratchImageManager) {
+    gpu_type_(UNKNOWN) {
   std::vector<cl::Platform> all_platforms;
   cl::Platform::get(&all_platforms);
   if (all_platforms.size() == 0) {
@@ -469,14 +467,6 @@ uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
 
 uint32_t OpenCLRuntime::device_compute_units() const {
   return device_compute_units_;
-}
-
-bool OpenCLRuntime::UseImageMemory() {
-  return this->mem_type_ == MemoryType::GPU_IMAGE;
-}
-
-void OpenCLRuntime::set_mem_type(MemoryType type) {
-  this->mem_type_ = type;
 }
 
 bool OpenCLRuntime::BuildProgramFromCache(
@@ -790,10 +780,6 @@ bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
 
 bool OpenCLRuntime::is_profiling_enabled() const {
   return is_profiling_enabled_;
-}
-
-ScratchImageManager* OpenCLRuntime::scratch_image_manager() const {
-  return scratch_image_manager_.get();
 }
 
 }  // namespace mace

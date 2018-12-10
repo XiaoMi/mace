@@ -109,7 +109,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
             (!is_quantize_model && HasQuantizedTensor(net_def))));
 #ifdef MACE_ENABLE_OPENCL
     diffused_buffer_ = diffused_buffer_ || (device_type == DeviceType::GPU &&
-        device->opencl_runtime()->GetDeviceMaxMemAllocSize() <=
+        device->gpu_runtime()->opencl_runtime()->GetDeviceMaxMemAllocSize() <=
             static_cast<uint64_t>(model_data_size));
 #endif
     if (diffused_buffer_) {

@@ -113,7 +113,7 @@ class CropOp<DeviceType::GPU, T> : public Operation {
   explicit CropOp(OpConstructContext *context)
       : Operation(context) {
     const int axis = Operation::GetOptionalArg<int>("axis", 2);
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::CropKernel<T>(
           axis, Operation::GetRepeatedArgs<int>("offset")));
     } else {

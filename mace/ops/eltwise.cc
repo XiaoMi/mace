@@ -1088,7 +1088,7 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     int32_t scalar_input_index = Operation::GetOptionalArg<int32_t>(
             "scalar_input_index", 1);
     MemoryType mem_type;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::EltwiseKernel<T>(
           type, coeff, scalar_input, scalar_input_index));

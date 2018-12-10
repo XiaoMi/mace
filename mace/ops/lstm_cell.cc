@@ -34,7 +34,7 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
         Operation::GetOptionalArg<float>("scalar_input",
                                          0.0));
     MemoryType mem_type = MemoryType::GPU_IMAGE;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::LSTMCellKernel<T>(forget_bias));
     } else {
       MACE_NOT_IMPLEMENTED;

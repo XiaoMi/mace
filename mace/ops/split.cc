@@ -105,7 +105,7 @@ class SplitOp<DeviceType::GPU, T> : public Operation {
   explicit SplitOp(OpConstructContext *context)
       : Operation(context) {
     int32_t axis = Operation::GetOptionalArg<int>("axis", 3);
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::SplitKernel<T>(axis));
     } else {
       MACE_NOT_IMPLEMENTED;

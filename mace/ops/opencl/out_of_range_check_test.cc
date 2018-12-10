@@ -35,7 +35,7 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
 
   std::string kernel_name = "in_out_buffer_to_image";
   std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);

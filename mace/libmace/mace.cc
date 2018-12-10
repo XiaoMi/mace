@@ -69,8 +69,8 @@ void UnloadModelData(const unsigned char *model_data,
 #ifdef MACE_ENABLE_OPENCL
 MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
   // Check OpenCL avaliable
-  auto runtime = device->opencl_runtime();
-  if (!runtime->is_opencl_avaliable()) {
+  auto runtime = device->gpu_runtime();
+  if (!runtime->opencl_runtime()->is_opencl_avaliable()) {
     LOG(WARNING) << "The device does not support OpenCL";
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   }
@@ -678,8 +678,8 @@ MaceStatus MaceEngine::Impl::Run(
 
 #ifdef MACE_ENABLE_OPENCL
   if (device_type_ == GPU) {
-    device_->opencl_runtime()->command_queue().finish();
-    device_->opencl_runtime()->SaveBuiltCLProgram();
+    device_->gpu_runtime()->opencl_runtime()->command_queue().finish();
+    device_->gpu_runtime()->opencl_runtime()->SaveBuiltCLProgram();
   }
 #endif
   for (auto &output : *outputs) {

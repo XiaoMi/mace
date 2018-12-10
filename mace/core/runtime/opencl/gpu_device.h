@@ -19,6 +19,7 @@
 
 #include "mace/core/device_context.h"
 #include "mace/core/device.h"
+#include "mace/core/runtime/opencl/gpu_runtime.h"
 #include "mace/core/runtime/opencl/opencl_allocator.h"
 
 namespace mace {
@@ -34,7 +35,7 @@ class GPUDevice : public CPUDevice {
             CPUAffinityPolicy cpu_affinity_policy = AFFINITY_NONE,
             bool use_gemmlowp = false);
   ~GPUDevice();
-  OpenCLRuntime *opencl_runtime() override;
+  GPURuntime *gpu_runtime() override;
   Allocator *allocator() override;
   DeviceType device_type() const override;
   ScratchBuffer *scratch_buffer() override;
@@ -42,6 +43,7 @@ class GPUDevice : public CPUDevice {
   std::unique_ptr<OpenCLRuntime> runtime_;
   std::unique_ptr<OpenCLAllocator> allocator_;
   std::unique_ptr<ScratchBuffer> scratch_buffer_;
+  std::unique_ptr<GPURuntime> gpu_runtime_;
 };
 
 }  // namespace mace

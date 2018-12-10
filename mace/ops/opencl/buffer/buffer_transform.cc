@@ -47,7 +47,7 @@ MaceStatus TransformConv2DFilter(
   MACE_RETURN_IF_ERROR(output->Resize(transformed_shape));
   output->Reshape(input->shape());
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
@@ -116,7 +116,7 @@ MaceStatus TransformDWConv2DFilter(
   MACE_RETURN_IF_ERROR(output->Resize(transformed_shape));
   output->Reshape(input->shape());
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
@@ -173,7 +173,7 @@ MaceStatus TransformArgument(
   MACE_RETURN_IF_ERROR(output->Resize(transformed_shape));
   output->Reshape(input->shape());
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;

@@ -71,7 +71,7 @@ MaceStatus LSTMCellKernel<T>::Compute(
   const index_t hidden_units = pre_output->dim(1);
   const index_t w_blocks = hidden_units >> 2;
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {

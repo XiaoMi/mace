@@ -429,7 +429,7 @@ class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::PoolingKernel<T>);
     } else {
       context->set_output_mem_type(MemoryType::GPU_BUFFER);

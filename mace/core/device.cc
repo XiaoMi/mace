@@ -33,8 +33,8 @@ CPURuntime *CPUDevice::cpu_runtime() {
 }
 
 #ifdef MACE_ENABLE_OPENCL
-OpenCLRuntime *CPUDevice::opencl_runtime() {
-  LOG(FATAL) << "CPU device should not call OpenCL Runtime";
+GPURuntime *CPUDevice::gpu_runtime() {
+  LOG(FATAL) << "CPU device should not call GPU Runtime";
   return nullptr;
 }
 #endif

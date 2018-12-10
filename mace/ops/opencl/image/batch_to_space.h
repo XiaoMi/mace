@@ -68,7 +68,7 @@ MaceStatus BatchToSpaceKernel<T>::Compute(
       chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
       static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {

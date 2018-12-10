@@ -37,7 +37,7 @@ MaceStatus WinogradInputTransform(OpContext *context,
                                   Tensor *output_tensor,
                                   uint32_t *kwg_size,
                                   StatsFuture *future) {
-  OpenCLRuntime *runtime = context->device()->opencl_runtime();
+  OpenCLRuntime *runtime = context->device()->gpu_runtime()->opencl_runtime();
   const index_t out_width = output_tensor->dim(2);
 
   MACE_OUT_OF_RANGE_DEFINITION;
@@ -119,7 +119,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
                                    Tensor *output_tensor,
                                    uint32_t *kwg_size,
                                    StatsFuture *future) {
-  OpenCLRuntime *runtime = context->device()->opencl_runtime();
+  OpenCLRuntime *runtime = context->device()->gpu_runtime()->opencl_runtime();
   auto &output_shape = output_tensor->shape();
 
   MACE_OUT_OF_RANGE_DEFINITION;
@@ -227,8 +227,9 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                                        std::vector<index_t> *prev_input_shape,
                                        Tensor *output,
                                        uint32_t *kwg_size[3]) {
-  OpenCLRuntime *runtime = context->device()->opencl_runtime();
-  ScratchImageManager *scratch_manager = runtime->scratch_image_manager();
+  OpenCLRuntime *runtime = context->device()->gpu_runtime()->opencl_runtime();
+  ScratchImageManager *scratch_manager =
+      context->device()->gpu_runtime()->scratch_image_manager();
   StatsFuture t_input_future, mm_future, t_output_future;
   bool input_changed = !IsVecEqual(*prev_input_shape, input->shape());
   *prev_input_shape = input->shape();

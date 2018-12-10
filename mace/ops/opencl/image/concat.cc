@@ -65,7 +65,7 @@ MaceStatus Concat2(OpContext *context,
       static_cast<uint32_t>(batch * height),
   };
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -126,7 +126,7 @@ MaceStatus ConcatN(OpContext *context,
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {

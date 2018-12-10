@@ -84,7 +84,7 @@ class ChannelShuffleOp<DeviceType::GPU, T> : public Operation {
   explicit ChannelShuffleOp(OpConstructContext *context)
       : Operation(context) {
     const int groups = Operation::GetOptionalArg<int>("group", 1);
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::ChannelShuffleKernel<T>(groups));
     } else {
       MACE_NOT_IMPLEMENTED;

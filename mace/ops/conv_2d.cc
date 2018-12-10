@@ -963,7 +963,7 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
         wino_block_size_(Operation::GetOptionalArg<int>("wino_block_size", 0)) {
     MemoryType mem_type;
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::Conv2dKernel<T>);
     } else {
@@ -974,7 +974,7 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
     // Transform filter tensor to target format
     if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
         (kernel_->CheckUseWinograd(
-          context->device()->opencl_runtime(),
+          context->device()->gpu_runtime()->opencl_runtime(),
           context->workspace()->GetTensor(
               operator_def_->input(1))->shape(),
           std::vector<index_t>(operator_def_->output_shape(0).dims().begin(),

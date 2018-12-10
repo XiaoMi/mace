@@ -92,7 +92,7 @@ MaceStatus PoolingKernel<T>::Compute(
   bool input_changed = !IsVecEqual(input_shape_, input->shape());
   input_shape_ = input->shape();
 
-  auto runtime = context->device()->opencl_runtime();
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
 
   // pad input
   std::vector<index_t> padded_input_shape = input->shape();
