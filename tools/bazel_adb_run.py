@@ -26,9 +26,9 @@ import sys
 
 import sh_commands
 
+from common import *
 
-def stdout_processor(stdout, device_properties, abi):
-    pass
+from device import DeviceWrapper, DeviceManager
 
 
 def unittest_stdout_processor(stdout, device_properties, abi):
@@ -39,7 +39,7 @@ def unittest_stdout_processor(stdout, device_properties, abi):
             raise Exception("Command failed")
 
 
-def ops_benchmark_stdout_processor(stdout, device_properties, abi):
+def ops_benchmark_stdout_processor(stdout, dev, abi):
     stdout_lines = stdout.split("\n")
     metrics = {}
     for line in stdout_lines:
@@ -52,13 +52,13 @@ def ops_benchmark_stdout_processor(stdout, device_properties, abi):
             metrics["%s.input_mb_per_sec" % parts[0]] = parts[3]
             metrics["%s.gmacc_per_sec" % parts[0]] = parts[4]
 
-    platform = device_properties["ro.board.platform"].replace(" ", "-")
-    model = device_properties["ro.product.model"].replace(" ", "-")
-    tags = {
-        "ro.board.platform": platform,
-        "ro.product.model": model,
-        "abi": abi
-    }
+    # platform = dev[YAMLKeyword.target_socs]
+    # model = dev[YAMLKeyword.device_name]
+    # tags = {
+    #     "ro.board.platform": platform,
+    #     "ro.product.model": model,
+    #     "abi": abi
+    # }
     # sh_commands.falcon_push_metrics(server,
     #    metrics, tags=tags, endpoint="mace_ops_benchmark")
 
@@ -87,7 +87,7 @@ def parse_args():
         type=str,
         default="all",
         help="SoCs (ro.board.platform from getprop) to build, "
-        "comma seperated list or all/random")
+             "comma seperated list or all/random")
     parser.add_argument(
         "--target", type=str, default="//...", help="Bazel target to build")
     parser.add_argument(
@@ -99,7 +99,7 @@ def parse_args():
     parser.add_argument(
         "--stdout_processor",
         type=str,
-        default="stdout_processor",
+        default="unittest_stdout_processor",
         help="Stdout processing function, default: stdout_processor")
     parser.add_argument(
         "--enable_neon",
@@ -115,14 +115,22 @@ def parse_args():
         type=str2bool,
         default=False,
         help="Whether to use simpleperf stat")
+    parser.add_argument(
+        '--device_yml',
+        type=str,
+        default='',
+        help='embedded linux device config yml file'
+    )
     return parser.parse_known_args()
 
 
 def main(unused_args):
     target_socs = None
+    target_devices = DeviceManager.list_devices(FLAGS.device_yml)
     if FLAGS.target_socs != "all" and FLAGS.target_socs != "random":
         target_socs = set(FLAGS.target_socs.split(','))
-    target_devices = sh_commands.get_target_socs_serialnos(target_socs)
+        target_devices = [dev for dev in target_devices
+                          if dev[YAMLKeyword.target_socs] in target_socs]
     if FLAGS.target_socs == "random":
         unlocked_devices = \
             [d for d in target_devices if not sh_commands.is_device_locked(d)]
@@ -136,31 +144,29 @@ def main(unused_args):
     target_abis = FLAGS.target_abis.split(',')
 
     for target_abi in target_abis:
+        toolchain = infer_toolchain(target_abi)
         sh_commands.bazel_build(target, abi=target_abi,
+                                toolchain=toolchain,
                                 enable_neon=FLAGS.enable_neon,
                                 address_sanitizer=FLAGS.address_sanitizer)
         if FLAGS.run_target:
-            for serialno in target_devices:
-                if target_abi not in set(
-                        sh_commands.adb_supported_abis(serialno)):
+            for dev in target_devices:
+                if target_abi not in dev[YAMLKeyword.target_abis]:
                     print("Skip device %s which does not support ABI %s" %
-                          (serialno, target_abi))
+                          (dev, target_abi))
                     continue
-                stdouts = sh_commands.adb_run(
+                device_wrapper = DeviceWrapper(dev)
+                stdouts = device_wrapper.run(
                     target_abi,
-                    serialno,
                     host_bin_path,
                     bin_name,
                     args=FLAGS.args,
                     opencl_profiling=True,
                     vlog_level=0,
-                    device_bin_path="/data/local/tmp/mace",
                     out_of_range_check=True,
                     address_sanitizer=FLAGS.address_sanitizer,
                     simpleperf=FLAGS.simpleperf)
-                device_properties = sh_commands.adb_getprop_by_serialno(
-                    serialno)
-                globals()[FLAGS.stdout_processor](stdouts, device_properties,
+                globals()[FLAGS.stdout_processor](stdouts, dev,
                                                   target_abi)
 
 

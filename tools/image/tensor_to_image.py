@@ -1,6 +1,9 @@
 import argparse
 import os
 import sys
+
+import six
+
 import numpy as np
 import tensorflow as tf
 
@@ -53,7 +56,7 @@ def tensors_to_images(input_files, image_shape):
 
 def main(unused_args):
     if not os.path.exists(FLAGS.input):
-        print ("input does not exist: %s" % FLAGS.input)
+        print("input does not exist: %s" % FLAGS.input)
         sys.exit(-1)
 
     input_files = []

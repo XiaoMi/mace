@@ -24,6 +24,18 @@ def if_android_arm64(a):
       "//conditions:default": [],
   })
 
+def if_arm_linux_aarch64(a):
+  return select({
+      "//mace:arm_linux_aarch64": a,
+      "//conditions:default": [],
+  })
+
+def if_arm_linux_armhf(a):
+  return select({
+      "//mace:arm_linux_armhf": a,
+      "//conditions:default": []
+  })
+
 def if_neon_enabled(a):
   return select({
       "//mace:neon_enabled": a,
@@ -81,4 +93,3 @@ def encrypt_opencl_kernel_genrule():
       outs = ["opencl/encrypt_opencl_kernel.cc"],
       cmd = "cat $(SRCS) > $@;"
   )
-

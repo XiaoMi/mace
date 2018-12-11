@@ -1,6 +1,9 @@
 import argparse
 import os
 import sys
+
+import six
+
 import tensorflow as tf
 
 # TODO(liyin): use dataset api and estimator with distributed strategy
@@ -70,7 +73,7 @@ def images_to_tensors(input_files, image_shape, mean_values=None):
 
 def main(unused_args):
     if not os.path.exists(FLAGS.input):
-        print ("input does not exist: %s" % FLAGS.input)
+        print("input does not exist: %s" % FLAGS.input)
         sys.exit(-1)
 
     input_files = []

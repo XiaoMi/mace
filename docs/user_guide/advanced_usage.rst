@@ -109,12 +109,65 @@ in one deployment file.
         sha256sum /path/to/your/file
 
 
+
 Advanced usage
 --------------
 
-There are two common advanced use cases:
+There are three common advanced use cases:
+  - run your model on the embedded device(ARM LINUX)
   - converting model to C++ code.
   - tuning GPU kernels for a specific SoC.
+
+Run you model on the embedded device(ARM Linux)
+-----------------------------------------------
+
+The way to run your model on the ARM Linux is nearly same as with android, except you need specify a device config file.
+
+.. code:: bash
+
+    python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --device_yml=/path/to/devices.yml
+
+There are two steps to do before run:
+
+1. configure login without password
+
+    MACE use ssh to connect embedded device, you should copy your public key to embedded device with the blow command.
+
+    .. code:: bash
+
+      cat ~/.ssh/id_rsa.pub | ssh -q {user}@{ip} "cat >> ~/.ssh/authorized_keys"
+
+2. write your own device yaml configuration file.
+
+    * **Example**
+
+        Here is an device yaml config demo.
+
+        .. literalinclude:: devices/demo_device_nanopi.yml
+            :language: yaml
+
+    * **Configuration**
+        The detailed explanation is listed in the blow table.
+
+        .. list-table::
+            :header-rows: 1
+
+            * - Options
+              - Usage
+            * - target_abis
+              - Device supported abis, you can get it via ``dpkg --print-architecture`` and
+                ``dpkg --print-foreign-architectures`` command, if more than one abi is supported,
+                separate them by commas.
+            * - target_socs
+              - device soc, you can get it from device manual, we haven't found a way to get it in shell.
+            * - models
+              - device models full name, you can get via get ``lshw`` command (third party package, install it via your package manager).
+                see it's product value.
+            * - address
+              - Since we use ssh to connect device, ip address is required.
+            * - username
+              - login username, required.
+
 
 Convert model(s) to C++ code
 --------------------------------
@@ -403,6 +456,7 @@ Reduce Library Size
         - It is recommended to use ``version script`` and ``strip`` feature when linking mace static library. The effect is remarkable.
 
 * Remove the unused ops.
+
 Remove the registration of the ops unused for your models in the ``mace/ops/ops_register.cc``,
 which will reduce the library size significantly. the final binary just link the registered ops' code.
 

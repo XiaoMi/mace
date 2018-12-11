@@ -42,7 +42,7 @@ struct CPUFreq {
 };
 
 namespace {
-#if defined(__ANDROID__)
+
 int GetCPUCount() {
   int cpu_count = 0;
   std::string cpu_sys_conf = "/proc/cpuinfo";
@@ -69,10 +69,8 @@ int GetCPUCount() {
   VLOG(2) << "CPU cores: " << cpu_count;
   return cpu_count;
 }
-#endif
 
 int GetCPUMaxFreq(std::vector<float> *max_freqs) {
-#if defined(__ANDROID__)
   int cpu_count = GetCPUCount();
   for (int cpu_id = 0; cpu_id < cpu_count; ++cpu_id) {
     std::string cpuinfo_max_freq_sys_conf = MakeString(
@@ -94,34 +92,6 @@ int GetCPUMaxFreq(std::vector<float> *max_freqs) {
     }
     f.close();
   }
-#else
-  std::string cpu_sys_conf = "/proc/cpuinfo";
-  std::ifstream f(cpu_sys_conf);
-  if (!f.is_open()) {
-    LOG(ERROR) << "failed to open " << cpu_sys_conf;
-    return -1;
-  }
-  std::string line;
-  const std::string freq_key = "cpu MHz";
-  while (std::getline(f, line)) {
-    if (line.size() >= freq_key.size()
-        && line.compare(0, freq_key.size(), freq_key) == 0) {
-      size_t pos = line.find(":");
-      if (pos != std::string::npos) {
-        std::string freq_str = line.substr(pos + 1);
-        float freq = atof(freq_str.c_str());
-        max_freqs->push_back(freq);
-      }
-    }
-  }
-  if (f.bad()) {
-    LOG(ERROR) << "failed to read " << cpu_sys_conf;
-  }
-  if (!f.eof()) {
-    LOG(ERROR) << "failed to read end of " << cpu_sys_conf;
-  }
-  f.close();
-#endif
 
   for (float freq : *max_freqs) {
     VLOG(2) << "CPU freq: " << freq;

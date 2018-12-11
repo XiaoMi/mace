@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import enum
+import hashlib
 import re
+import os
 
 import six
 
@@ -135,3 +137,340 @@ def formatted_file_name(input_file_name, input_name):
     for c in input_name:
         res += c if c.isalnum() else '_'
     return res
+
+
+def md5sum(s):
+    md5 = hashlib.md5()
+    md5.update(s.encode('utf-8'))
+    return md5.hexdigest()
+
+
+def get_build_binary_dir(library_name, target_abi):
+    return "%s/%s/%s/%s" % (
+        BUILD_OUTPUT_DIR, library_name, BUILD_TMP_DIR_NAME, target_abi)
+
+
+def get_model_lib_output_path(library_name, abi):
+    lib_output_path = os.path.join(BUILD_OUTPUT_DIR, library_name,
+                                   MODEL_OUTPUT_DIR_NAME, abi,
+                                   "%s.a" % library_name)
+    return lib_output_path
+
+
+def check_model_converted(library_name, model_name,
+                          model_graph_format, model_data_format,
+                          abi):
+    model_output_dir = \
+        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
+    if model_graph_format == ModelFormat.file:
+        mace_check(os.path.exists("%s/%s.pb" % (model_output_dir, model_name)),
+                   ModuleName.RUN,
+                   "You should convert model first.")
+    else:
+        model_lib_path = get_model_lib_output_path(library_name, abi)
+        mace_check(os.path.exists(model_lib_path),
+                   ModuleName.RUN,
+                   "You should convert model first.")
+    if model_data_format == ModelFormat.file:
+        mace_check(os.path.exists("%s/%s.data" %
+                                  (model_output_dir, model_name)),
+                   ModuleName.RUN,
+                   "You should convert model first.")
+
+
+def parse_device_type(runtime):
+    device_type = ""
+
+    if runtime == RuntimeType.dsp:
+        device_type = DeviceType.HEXAGON
+    elif runtime == RuntimeType.gpu:
+        device_type = DeviceType.GPU
+    elif runtime == RuntimeType.cpu:
+        device_type = DeviceType.CPU
+
+    return device_type
+
+
+def sha256_checksum(fname):
+    hash_func = hashlib.sha256()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_func.update(chunk)
+    return hash_func.hexdigest()
+
+
+def get_model_files(model_file_path,
+                    model_sha256_checksum,
+                    model_output_dir,
+                    weight_file_path="",
+                    weight_sha256_checksum=""):
+    model_file = model_file_path
+    weight_file = weight_file_path
+
+    if model_file_path.startswith("http://") or \
+            model_file_path.startswith("https://"):
+        model_file = model_output_dir + "/" + md5sum(model_file_path) + ".pb"
+        if not os.path.exists(model_file) or \
+                sha256_checksum(model_file) != model_sha256_checksum:
+            MaceLogger.info("Downloading model, please wait ...")
+            six.moves.urllib.request.urlretrieve(model_file_path, model_file)
+            MaceLogger.info("Model downloaded successfully.")
+
+    if sha256_checksum(model_file) != model_sha256_checksum:
+        MaceLogger.error(ModuleName.MODEL_CONVERTER,
+                         "model file sha256checksum not match")
+
+    if weight_file_path.startswith("http://") or \
+            weight_file_path.startswith("https://"):
+        weight_file = \
+            model_output_dir + "/" + md5sum(weight_file_path) + ".caffemodel"
+        if not os.path.exists(weight_file) or \
+                sha256_checksum(weight_file) != weight_sha256_checksum:
+            MaceLogger.info("Downloading model weight, please wait ...")
+            six.moves.urllib.request.urlretrieve(weight_file_path, weight_file)
+            MaceLogger.info("Model weight downloaded successfully.")
+
+    if weight_file:
+        if sha256_checksum(weight_file) != weight_sha256_checksum:
+            MaceLogger.error(ModuleName.MODEL_CONVERTER,
+                             "weight file sha256checksum not match")
+
+    return model_file, weight_file
+
+
+def get_opencl_binary_output_path(library_name, target_abi, device):
+    target_soc = device.target_socs
+    device_name = device.device_name
+    return '%s/%s/%s/%s/%s_%s.%s.%s.bin' % \
+           (BUILD_OUTPUT_DIR,
+            library_name,
+            OUTPUT_OPENCL_BINARY_DIR_NAME,
+            target_abi,
+            library_name,
+            OUTPUT_OPENCL_BINARY_FILE_NAME,
+            device_name,
+            target_soc)
+
+
+def get_opencl_parameter_output_path(library_name, target_abi, device):
+    target_soc = device.target_socs
+    device_name = device.device_name
+    return '%s/%s/%s/%s/%s_%s.%s.%s.bin' % \
+           (BUILD_OUTPUT_DIR,
+            library_name,
+            OUTPUT_OPENCL_BINARY_DIR_NAME,
+            target_abi,
+            library_name,
+            OUTPUT_OPENCL_PARAMETER_FILE_NAME,
+            device_name,
+            target_soc)
+
+
+def get_build_model_dirs(library_name,
+                         model_name,
+                         target_abi,
+                         device,
+                         model_file_path):
+    device_name = device.device_name
+    target_socs = device.target_socs
+    model_path_digest = md5sum(model_file_path)
+    model_output_base_dir = '{}/{}/{}/{}/{}'.format(
+        BUILD_OUTPUT_DIR, library_name, BUILD_TMP_DIR_NAME,
+        model_name, model_path_digest)
+
+    if target_abi == ABIType.host:
+        model_output_dir = '%s/%s' % (model_output_base_dir, target_abi)
+    elif not target_socs or not device.address:
+        model_output_dir = '%s/%s/%s' % (model_output_base_dir,
+                                         BUILD_TMP_GENERAL_OUTPUT_DIR_NAME,
+                                         target_abi)
+    else:
+        model_output_dir = '{}/{}_{}/{}'.format(
+            model_output_base_dir,
+            device_name,
+            target_socs,
+            target_abi
+        )
+
+    mace_model_dir = '{}/{}/{}'.format(
+        BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME
+    )
+
+    return model_output_base_dir, model_output_dir, mace_model_dir
+
+
+def abi_to_internal(abi):
+    if abi in [ABIType.armeabi_v7a, ABIType.arm64_v8a]:
+        return abi
+    if abi == ABIType.arm64:
+        return ABIType.aarch64
+    if abi == ABIType.armhf:
+        return ABIType.armeabi_v7a
+
+
+def infer_toolchain(abi):
+    if abi in [ABIType.armeabi_v7a, ABIType.arm64_v8a]:
+        return ToolchainType.android
+    if abi == ABIType.armhf:
+        return ToolchainType.arm_linux_gnueabihf
+    if abi == ABIType.arm64:
+        return ToolchainType.aarch64_linux_gnu
+    return ''
+
+
+################################
+# YAML key word
+################################
+class YAMLKeyword(object):
+    library_name = 'library_name'
+    target_abis = 'target_abis'
+    target_socs = 'target_socs'
+    model_graph_format = 'model_graph_format'
+    model_data_format = 'model_data_format'
+    models = 'models'
+    platform = 'platform'
+    device_name = 'device_name'
+    system = 'system'
+    address = 'address'
+    username = 'username'
+    password = 'password'
+    model_file_path = 'model_file_path'
+    model_sha256_checksum = 'model_sha256_checksum'
+    weight_file_path = 'weight_file_path'
+    weight_sha256_checksum = 'weight_sha256_checksum'
+    subgraphs = 'subgraphs'
+    input_tensors = 'input_tensors'
+    input_shapes = 'input_shapes'
+    input_ranges = 'input_ranges'
+    output_tensors = 'output_tensors'
+    output_shapes = 'output_shapes'
+    check_tensors = 'check_tensors'
+    check_shapes = 'check_shapes'
+    runtime = 'runtime'
+    data_type = 'data_type'
+    input_data_types = 'input_data_types'
+    input_data_formats = 'input_data_formats'
+    output_data_formats = 'output_data_formats'
+    limit_opencl_kernel_time = 'limit_opencl_kernel_time'
+    nnlib_graph_mode = 'nnlib_graph_mode'
+    obfuscate = 'obfuscate'
+    winograd = 'winograd'
+    quantize = 'quantize'
+    quantize_range_file = 'quantize_range_file'
+    change_concat_ranges = 'change_concat_ranges'
+    validation_inputs_data = 'validation_inputs_data'
+    validation_threshold = 'validation_threshold'
+    graph_optimize_options = 'graph_optimize_options'  # internal use for now
+    cl_mem_type = 'cl_mem_type'
+
+
+################################
+# SystemType
+################################
+class SystemType:
+    host = 'host'
+    android = 'android'
+    arm_linux = 'arm_linux'
+
+
+################################
+# common device str
+################################
+
+PHONE_DATA_DIR = '/data/local/tmp/mace_run'
+DEVICE_DATA_DIR = '/tmp/data/mace_run'
+DEVICE_INTERIOR_DIR = PHONE_DATA_DIR + "/interior"
+BUILD_OUTPUT_DIR = 'builds'
+BUILD_TMP_DIR_NAME = '_tmp'
+BUILD_DOWNLOADS_DIR = BUILD_OUTPUT_DIR + '/downloads'
+BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
+MODEL_OUTPUT_DIR_NAME = 'model'
+EXAMPLE_STATIC_NAME = "example_static"
+EXAMPLE_DYNAMIC_NAME = "example_dynamic"
+EXAMPLE_STATIC_TARGET = "//mace/examples/cli:" + EXAMPLE_STATIC_NAME
+EXAMPLE_DYNAMIC_TARGET = "//mace/examples/cli:" + EXAMPLE_DYNAMIC_NAME
+MACE_RUN_STATIC_NAME = "mace_run_static"
+MACE_RUN_DYNAMIC_NAME = "mace_run_dynamic"
+MACE_RUN_STATIC_TARGET = "//mace/tools/validation:" + MACE_RUN_STATIC_NAME
+MACE_RUN_DYNAMIC_TARGET = "//mace/tools/validation:" + MACE_RUN_DYNAMIC_NAME
+CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
+BUILD_TMP_OPENCL_BIN_DIR = 'opencl_bin'
+LIBMACE_DYNAMIC_PATH = "bazel-bin/mace/libmace/libmace.so"
+CL_TUNED_PARAMETER_FILE_NAME = "mace_run.config"
+MODEL_HEADER_DIR_PATH = 'include/mace/public'
+OUTPUT_LIBRARY_DIR_NAME = 'lib'
+OUTPUT_OPENCL_BINARY_DIR_NAME = 'opencl'
+OUTPUT_OPENCL_BINARY_FILE_NAME = 'compiled_opencl_kernel'
+OUTPUT_OPENCL_PARAMETER_FILE_NAME = 'tuned_opencl_parameter'
+CODEGEN_BASE_DIR = 'mace/codegen'
+MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
+ENGINE_CODEGEN_DIR = CODEGEN_BASE_DIR + '/engine'
+LIB_CODEGEN_DIR = CODEGEN_BASE_DIR + '/lib'
+LIBMACE_SO_TARGET = "//mace/libmace:libmace.so"
+LIBMACE_STATIC_TARGET = "//mace/libmace:libmace_static"
+LIBMACE_STATIC_PATH = "bazel-genfiles/mace/libmace/libmace.a"
+MODEL_LIB_TARGET = "//mace/codegen:generated_models"
+MODEL_LIB_PATH = "bazel-genfiles/mace/codegen/libgenerated_models.a"
+QUANTIZE_STAT_TARGET = "//mace/tools/quantization:quantize_stat"
+BM_MODEL_STATIC_NAME = "benchmark_model_static"
+BM_MODEL_DYNAMIC_NAME = "benchmark_model_dynamic"
+BM_MODEL_STATIC_TARGET = "//mace/benchmark:" + BM_MODEL_STATIC_NAME
+BM_MODEL_DYNAMIC_TARGET = "//mace/benchmark:" + BM_MODEL_DYNAMIC_NAME
+ALL_SOC_TAG = 'all'
+
+
+################################
+# Model File Format
+################################
+class ModelFormat(object):
+    file = 'file'
+    code = 'code'
+
+
+################################
+# ABI Type
+################################
+class ABIType(object):
+    armeabi_v7a = 'armeabi-v7a'
+    arm64_v8a = 'arm64-v8a'
+    arm64 = 'arm64'
+    aarch64 = 'aarch64'
+    armhf = 'armhf'
+    host = 'host'
+
+
+################################
+# Module name
+################################
+class ModuleName(object):
+    YAML_CONFIG = 'YAML CONFIG'
+    MODEL_CONVERTER = 'Model Converter'
+    RUN = 'RUN'
+    BENCHMARK = 'Benchmark'
+
+
+#################################
+# mace lib type
+#################################
+class MACELibType(object):
+    static = 0
+    dynamic = 1
+
+
+#################################
+# Run time type
+#################################
+class RuntimeType(object):
+    cpu = 'cpu'
+    gpu = 'gpu'
+    dsp = 'dsp'
+    cpu_gpu = 'cpu+gpu'
+
+
+#################################
+# Tool chain Type
+#################################
+class ToolchainType:
+    android = 'android'
+    arm_linux_gnueabihf = 'arm_linux_gnueabihf'
+    aarch64_linux_gnu = 'aarch64_linux_gnu'

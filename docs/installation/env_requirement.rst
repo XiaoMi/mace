@@ -35,7 +35,7 @@ Required dependencies
       - Required by model validation
     * - six
       - pip install -I six==1.11.0
-      - Required for Python 2 and 3 compatibility (TODO)
+      - Required for Python 2 and 3 compatibility
 
 Optional dependencies
 ---------------------

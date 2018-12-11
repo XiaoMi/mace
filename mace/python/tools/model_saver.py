@@ -14,6 +14,7 @@
 
 import datetime
 import os
+import six
 import uuid
 import numpy as np
 import hashlib
@@ -34,8 +35,8 @@ class ModelFormat(object):
 
 def generate_obfuscated_name(namespace, name):
     md5 = hashlib.md5()
-    md5.update(namespace)
-    md5.update(name)
+    md5.update(six.b(namespace))
+    md5.update(six.b(name))
     md5_digest = md5.hexdigest()
 
     name = md5_digest[:8]

@@ -12,12 +12,9 @@ devices:
     address: 10.0.0.0
   # login username
     username: user
-  # login password, is required when you can login into device without password
-    password: 1234567
   raspberry:
     target_abis: [armv7l]
     target_socs: BCM2837
     models: Raspberry Pi 3 Model B Plus Rev 1.3
     address: 10.0.0.1
     username: user
-    password: 123456

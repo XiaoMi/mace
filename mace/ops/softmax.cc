@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <vector>
@@ -106,7 +107,7 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
         float sum = 0;
         for (index_t c = 0; c < class_count; ++c) {
-          float exp_value = ::exp(input_ptr[c] - max_val);
+          float exp_value = std::exp(input_ptr[c] - max_val);
           sum += exp_value;
           output_ptr[c] = exp_value;
         }

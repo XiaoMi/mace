@@ -68,7 +68,8 @@ Here we use the mobilenet-v2 model as an example.
 
     .. note::
 
-        If you want to run on device/phone, please plug in at least one device/phone.
+        If you want to run on phone, please plug in at least one phone.
+        Or if you want to run on embedded device, please give a :doc:`advanced_usage`.
 
     .. code:: sh
 
@@ -245,9 +246,13 @@ to run and validate your model.
     	# Test model run time
         python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --round=100
 
-    	# Validate the correctness by comparing the results against the
+        # Validate the correctness by comparing the results against the
     	# original model and framework, measured with cosine distance for similarity.
     	python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --validate
+
+        # If you want to run model on specified arm linux device, you should put device config file in the working directory or run with flag `--device_yml`
+        python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --device_yml=/path/to/devices.yml
+
 
 * **benchmark**
 
