@@ -37,8 +37,8 @@ class DeviceWrapper:
         :type device_dict: Device
         :param device_dict: a key-value dict that holds the device information,
                        which attribute has:
-                       target_abis, target_socs, models, system, address
-                       password, username
+                       device_name, target_abis, target_socs, system,
+                        address, username
         """
         diff = set(device_dict.keys()) - set(YAMLKeyword.__dict__.keys())
         if len(diff) > 0:
@@ -111,6 +111,7 @@ class DeviceWrapper:
     def push(self, src_path, dst_path):
         mace_check(os.path.exists(src_path), "Device",
                    '{} not found'.format(src_path))
+        six.print_("Push %s to %s" % (src_path, dst_path))
         if self.system == SystemType.android:
             sh_commands.adb_push(src_path, dst_path, self.address)
         elif self.system == SystemType.arm_linux:
@@ -129,6 +130,7 @@ class DeviceWrapper:
         dst_file = "%s/%s" % (dst_path, file_name)
         if os.path.exists(dst_file):
             sh.rm('-f', dst_file)
+        six.print_("Pull %s to %s" % (src_path, dst_path))
         if self.system == SystemType.android:
             sh_commands.adb_pull(
                 src_file, dst_file, self.address)
@@ -138,7 +140,6 @@ class DeviceWrapper:
                                            self.address,
                                            src_file),
                        dst_file)
-                print("pull file ", src_path, dst_path)
             except sh.ErrorReturnCode_1 as e:
                 six.print_("Pull Failed !", file=sys.stderr)
                 raise e
@@ -256,10 +257,13 @@ class DeviceWrapper:
             if model_graph_format == ModelFormat.file:
                 mace_model_phone_path = "%s/%s.pb" % (self.data_dir,
                                                       model_tag)
-                self.push(mace_model_path,
-                          mace_model_phone_path)
+                self.push(mace_model_path, mace_model_phone_path)
             if link_dynamic:
                 self.push(libmace_dynamic_library_path, self.data_dir)
+                if self.system == SystemType.android:
+                    sh_commands.push_depended_so_libs(
+                        libmace_dynamic_library_path, abi, self.data_dir,
+                        self.address)
             self.push("%s/%s" % (target_dir, target_name), self.data_dir)
 
             stdout_buff = []
@@ -430,14 +434,11 @@ class DeviceWrapper:
                                   configs[YAMLKeyword.model_graph_format],
                                   configs[YAMLKeyword.model_data_format],
                                   target_abi)
-            if target_abi == ABIType.host:
-                device_model = ABIType.host
-            else:
-                device_model = self.models
+            if target_abi != ABIType.host:
                 self.clear_data_dir()
             MaceLogger.header(
                 StringFormatter.block(
-                    'Run model {} on {}'.format(model_name, device_model)))
+                    'Run model {} on {}'.format(model_name, self.device_name)))
 
             model_config = configs[YAMLKeyword.models][model_name]
             model_runtime = model_config[YAMLKeyword.runtime]
@@ -631,7 +632,7 @@ class DeviceWrapper:
         data_str = '{model_name},{device_name},{soc},{abi},{device_type},' \
                    '{init},{warmup},{run_avg},{tuned}\n'.format(
                     model_name=model_name,
-                    device_name=self.models,
+                    device_name=self.device_name,
                     soc=self.target_socs,
                     abi=target_abi,
                     device_type=device_type,
@@ -671,7 +672,7 @@ class DeviceWrapper:
         mace_model_path = ''
         if model_graph_format == ModelFormat.file:
             mace_model_path = '%s/%s.pb' % (mace_model_dir, model_tag)
-        if abi == 'host':
+        if abi == ABIType.host:
             libmace_dynamic_lib_dir_path = \
                 os.path.dirname(libmace_dynamic_library_path)
             p = subprocess.Popen(
@@ -719,6 +720,10 @@ class DeviceWrapper:
                 self.push(mace_model_path, mace_model_device_path)
             if link_dynamic:
                 self.push(libmace_dynamic_library_path, self.data_dir)
+                if self.system == SystemType.android:
+                    sh_commands.push_depended_so_libs(
+                        libmace_dynamic_library_path, abi, self.data_dir,
+                        self.address)
             self.rm('%s/%s' % (self.data_dir, benchmark_binary_name))
             self.push('%s/%s' % (benchmark_binary_dir, benchmark_binary_name),
                       self.data_dir)
@@ -761,19 +766,11 @@ class DeviceWrapper:
             os.remove(tmp_cmd_file)
 
             if self.system == SystemType.android:
-                sh.adb(
-                    '-s',
-                    self.address,
-                    'shell',
-                    'sh',
-                    cmd_file_path,
-                    _fg=True
-                )
+                sh.adb('-s', self.address, 'shell', 'sh', cmd_file_path,
+                       _fg=True)
             elif self.system == SystemType.arm_linux:
                 sh.ssh('%s@%s' % (self.username, self.address),
-                       'sh',
-                       cmd_file_path,
-                       _fg=True)
+                       'sh', cmd_file_path, _fg=True)
             self.rm(cmd_file_path)
             six.print_('Benchmark done! \n')
 
@@ -804,13 +801,10 @@ class DeviceWrapper:
                                   configs[YAMLKeyword.model_graph_format],
                                   configs[YAMLKeyword.model_data_format],
                                   target_abi)
-            if target_abi == ABIType.host:
-                device_name = ABIType.host
-            else:
-                device_name = self.models
             MaceLogger.header(
                 StringFormatter.block(
-                    'Benchmark model %s on %s' % (model_name, device_name)))
+                    'Benchmark model %s on %s' % (model_name,
+                                                  self.device_name)))
             model_config = configs[YAMLKeyword.models][model_name]
             model_runtime = model_config[YAMLKeyword.runtime]
             subgraphs = model_config[YAMLKeyword.subgraphs]
@@ -885,7 +879,7 @@ class DeviceWrapper:
         print('Trying to lock device %s' % self.address)
         with self.lock():
             print('Run on device: %s, %s, %s' %
-                  (self.address, self.target_socs, self.models))
+                  (self.address, self.target_socs, self.device_name))
             self.rm(self.data_dir)
             self.exec_command('mkdir -p %s' % self.data_dir)
             self.push(host_bin_full_path, device_bin_full_path)
@@ -949,11 +943,11 @@ class DeviceManager:
         for adb in adb_list:
             prop = sh_commands.adb_getprop_by_serialno(adb[0])
             android = {
-                YAMLKeyword.device_name: adb[1],
+                YAMLKeyword.device_name:
+                    prop['ro.product.model'].replace(' ', ''),
                 YAMLKeyword.target_abis:
                     prop['ro.product.cpu.abilist'].split(','),
                 YAMLKeyword.target_socs: prop['ro.board.platform'],
-                YAMLKeyword.models: prop['ro.product.model'].replace(' ', '_'),
                 YAMLKeyword.system: SystemType.android,
                 YAMLKeyword.address: adb[0],
                 YAMLKeyword.username: '',
@@ -968,9 +962,9 @@ class DeviceManager:
         devices = devices['devices']
         device_list = []
         for name, dev in six.iteritems(devices):
-            dev[YAMLKeyword.device_name] = name
+            dev[YAMLKeyword.device_name] = \
+                dev[YAMLKeyword.models].replace(' ', '')
             dev[YAMLKeyword.system] = SystemType.arm_linux
-            dev[YAMLKeyword.models] = dev[YAMLKeyword.models].replace(' ', '_')
             device_list.append(dev)
         return device_list
 
@@ -992,7 +986,6 @@ class DeviceManager:
             YAMLKeyword.target_abis: [ABIType.host],
             YAMLKeyword.target_socs: '',
             YAMLKeyword.system: SystemType.host,
-            YAMLKeyword.models: None,
             YAMLKeyword.address: None,
 
         }

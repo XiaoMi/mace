@@ -111,6 +111,13 @@ class DefaultValues(object):
     gpu_priority_hint = 3,
 
 
+class ValidationThreshold(object):
+    cpu_threshold = 0.999,
+    gpu_threshold = 0.995,
+    hexagon_threshold = 0.930,
+    cpu_quantize_threshold = 0.980,
+
+
 CPP_KEYWORDS = [
     'alignas', 'alignof', 'and', 'and_eq', 'asm', 'atomic_cancel',
     'atomic_commit', 'atomic_noexcept', 'auto', 'bitand', 'bitor',
@@ -435,10 +442,11 @@ def format_model_config(flags):
                     'similarity threshold must be a dict.')
 
             threshold_dict = {
-                DeviceType.CPU: 0.999,
-                DeviceType.GPU: 0.995,
-                DeviceType.HEXAGON: 0.930,
-                DeviceType.CPU + "_QUANTIZE": 0.980,
+                DeviceType.CPU: ValidationThreshold.cpu_threshold,
+                DeviceType.GPU: ValidationThreshold.gpu_threshold,
+                DeviceType.HEXAGON: ValidationThreshold.hexagon_threshold,
+                DeviceType.CPU + "_QUANTIZE":
+                    ValidationThreshold.cpu_quantize_threshold,
             }
             for k, v in six.iteritems(validation_threshold):
                 if k.upper() == 'DSP':
@@ -838,39 +846,6 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
                                        mace_lib_type == MACELibType.dynamic)
 
 
-def build_quantize_stat(configs):
-    library_name = configs[YAMLKeyword.library_name]
-
-    build_tmp_binary_dir = get_build_binary_dir(library_name, ABIType.host)
-    if os.path.exists(build_tmp_binary_dir):
-        sh.rm("-rf", build_tmp_binary_dir)
-    os.makedirs(build_tmp_binary_dir)
-
-    quantize_stat_target = QUANTIZE_STAT_TARGET
-    build_arg = ""
-    six.print_(configs[YAMLKeyword.model_graph_format])
-    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
-                   ModuleName.RUN,
-                   "You should convert model first.")
-        build_arg = "--per_file_copt=mace/tools/quantization/quantize_stat.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
-
-    sh_commands.bazel_build(
-        quantize_stat_target,
-        abi=ABIType.host,
-        toolchain=flags.toolchain,
-        enable_openmp=True,
-        symbol_hidden=True,
-        extra_args=build_arg
-    )
-
-    quantize_stat_filepath = build_tmp_binary_dir + "/quantize_stat"
-    if os.path.exists(quantize_stat_filepath):
-        sh.rm("-rf", quantize_stat_filepath)
-    sh.cp("-f", "bazel-bin/mace/tools/quantization/quantize_stat",
-          build_tmp_binary_dir)
-
-
 def build_example(configs, target_abi, toolchain,
                   enable_openmp, mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
@@ -951,10 +926,8 @@ def run_mace(flags):
     clear_build_dirs(configs[YAMLKeyword.library_name])
 
     target_socs = configs[YAMLKeyword.target_socs]
-    if not target_socs or ALL_SOC_TAG in target_socs:
-        device_list = DeviceManager.list_devices(flags.device_yml)
-    else:
-        device_list = DeviceManager.list_devices(flags.device_yml)
+    device_list = DeviceManager.list_devices(flags.device_yml)
+    if target_socs and ALL_SOC_TAG not in target_socs:
         device_list = [dev for dev in device_list
                        if dev[YAMLKeyword.target_socs].lower() in target_socs]
     for target_abi in configs[YAMLKeyword.target_abis]:
@@ -1042,13 +1015,10 @@ def benchmark_model(flags):
     clear_build_dirs(configs[YAMLKeyword.library_name])
 
     target_socs = configs[YAMLKeyword.target_socs]
-    if not target_socs or ALL_SOC_TAG in target_socs:
-        device_list = DeviceManager.list_devices(flags.device_yml)
-        # target_socs = sh_commands.adb_get_all_socs()
-    else:
-        device_list = DeviceManager.list_devices(flags.device_yml)
+    device_list = DeviceManager.list_devices(flags.device_yml)
+    if target_socs and ALL_SOC_TAG not in target_socs:
         device_list = [dev for dev in device_list
-                       if dev[YAMLKeyword.target_socs] in target_socs]
+                       if dev[YAMLKeyword.target_socs].lower() in target_socs]
 
     for target_abi in configs[YAMLKeyword.target_abis]:
         # build benchmark_model binary

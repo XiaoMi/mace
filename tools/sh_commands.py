@@ -20,7 +20,6 @@ import os
 import re
 import sh
 import struct
-import subprocess
 import sys
 import time
 import platform
@@ -28,10 +27,6 @@ import platform
 import six
 
 import common
-from common import ModelFormat
-from common import ABIType
-from common import SystemType
-from common import YAMLKeyword
 from common import abi_to_internal
 
 sys.path.insert(0, "mace/python/tools")
@@ -179,97 +174,14 @@ def adb_get_all_socs():
 
 
 def adb_push(src_path, dst_path, serialno):
-    six.print_("Push %s to %s" % (src_path, dst_path))
     sh.adb("-s", serialno, "push", src_path, dst_path)
 
 
 def adb_pull(src_path, dst_path, serialno):
-    six.print_("Pull %s to %s" % (src_path, dst_path))
     try:
         sh.adb("-s", serialno, "pull", src_path, dst_path)
     except Exception as e:
         six.print_("Error msg: %s" % e, file=sys.stderr)
-
-
-def adb_run(abi,
-            serialno,
-            host_bin_path,
-            bin_name,
-            args="",
-            opencl_profiling=True,
-            vlog_level=0,
-            device_bin_path="/data/local/tmp/mace",
-            out_of_range_check=True,
-            address_sanitizer=False,
-            simpleperf=False):
-    host_bin_full_path = "%s/%s" % (host_bin_path, bin_name)
-    device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
-    props = adb_getprop_by_serialno(serialno)
-    six.print_(
-        "====================================================================="
-    )
-    six.print_("Trying to lock device %s" % serialno)
-    with device_lock(serialno):
-        six.print_("Run on device: %s, %s, %s" %
-                   (serialno, props["ro.board.platform"],
-                    props["ro.product.model"]))
-        sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
-        sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
-        adb_push(host_bin_full_path, device_bin_full_path, serialno)
-        ld_preload = ""
-        if address_sanitizer:
-            adb_push(find_asan_rt_library(abi), device_bin_path, serialno)
-            ld_preload = "LD_PRELOAD=%s/%s" % (device_bin_path,
-                                               asan_rt_library_names(abi)),
-
-        opencl_profiling = 1 if opencl_profiling else 0
-        out_of_range_check = 1 if out_of_range_check else 0
-        six.print_("Run %s" % device_bin_full_path)
-
-        stdout_buff = []
-        process_output = make_output_processor(stdout_buff)
-
-        if simpleperf:
-            adb_push(find_simpleperf_library(abi), device_bin_path, serialno)
-            simpleperf_cmd = "%s/simpleperf" % device_bin_path
-            sh.adb(
-                "-s",
-                serialno,
-                "shell",
-                ld_preload,
-                "MACE_OUT_OF_RANGE_CHECK=%d" % out_of_range_check,
-                "MACE_OPENCL_PROFILING=%d" % opencl_profiling,
-                "MACE_CPP_MIN_VLOG_LEVEL=%d" % vlog_level,
-                simpleperf_cmd,
-                "stat",
-                "--group",
-                "raw-l1-dcache,raw-l1-dcache-refill",
-                "--group",
-                "raw-l2-dcache,raw-l2-dcache-refill",
-                "--group",
-                "raw-l1-dtlb,raw-l1-dtlb-refill",
-                "--group",
-                "raw-l2-dtlb,raw-l2-dtlb-refill",
-                device_bin_full_path,
-                args,
-                _tty_in=True,
-                _out=process_output,
-                _err_to_out=True)
-        else:
-            sh.adb(
-                "-s",
-                serialno,
-                "shell",
-                ld_preload,
-                "MACE_OUT_OF_RANGE_CHECK=%d" % out_of_range_check,
-                "MACE_OPENCL_PROFILING=%d" % opencl_profiling,
-                "MACE_CPP_MIN_VLOG_LEVEL=%d" % vlog_level,
-                device_bin_full_path,
-                args,
-                _tty_in=True,
-                _out=process_output,
-                _err_to_out=True)
-        return "".join(stdout_buff)
 
 
 ################################
@@ -431,15 +343,6 @@ def gen_mace_engine_factory_source(model_tags,
         embed_model_data,
         codegen_tools_dir)
     six.print_("Generate mace engine creator source done!\n")
-
-
-def pull_file_from_device(serial_num, file_path, file_name, output_dir):
-    if not os.path.exists(output_dir):
-        sh.mkdir("-p", output_dir)
-    output_path = "%s/%s" % (output_dir, file_path)
-    if os.path.exists(output_path):
-        sh.rm('-rf', output_path)
-    adb_pull(file_path + '/' + file_name, output_dir, serial_num)
 
 
 def merge_opencl_binaries(binaries_dirs,
@@ -690,19 +593,17 @@ def push_depended_so_libs(libmace_dynamic_library_path,
                           abi, phone_data_dir, serialno):
     dep_so_libs = sh.bash(os.environ["ANDROID_NDK_HOME"] + "/ndk-depends",
                           libmace_dynamic_library_path)
+    src_file = ""
     for dep in split_stdout(dep_so_libs):
         if dep == "libgnustl_shared.so":
-            adb_push(
-                "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so"  # noqa
-                % (os.environ["ANDROID_NDK_HOME"], abi),
-                phone_data_dir,
-                serialno)
+            src_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
+                "%s/libgnustl_shared.so"\
+                       % (os.environ["ANDROID_NDK_HOME"], abi)
         elif dep == "libc++_shared.so":
-            adb_push(
-                "%s/sources/cxx-stl/llvm-libc++/libs/%s/libc++_shared.so"  # noqa
-                % (os.environ["ANDROID_NDK_HOME"], abi),
-                phone_data_dir,
-                serialno)
+            src_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
+                 "%s/libc++_shared.so" % (os.environ["ANDROID_NDK_HOME"], abi)
+    print("push %s to %s" % (src_file, phone_data_dir))
+    adb_push(src_file, phone_data_dir, serialno)
 
 
 def validate_model(abi,
@@ -861,149 +762,6 @@ def packaging_lib(libmace_output_dir, project_name):
 ################################
 # benchmark
 ################################
-def benchmark_model(abi,
-                    serialno,
-                    benchmark_binary_dir,
-                    benchmark_binary_name,
-                    vlog_level,
-                    embed_model_data,
-                    model_output_dir,
-                    mace_model_dir,
-                    input_nodes,
-                    output_nodes,
-                    input_shapes,
-                    output_shapes,
-                    model_tag,
-                    device_type,
-                    phone_data_dir,
-                    model_graph_format,
-                    opencl_binary_file,
-                    opencl_parameter_file,
-                    libmace_dynamic_library_path,
-                    omp_num_threads=-1,
-                    cpu_affinity_policy=1,
-                    gpu_perf_hint=3,
-                    gpu_priority_hint=3,
-                    input_file_name="model_input",
-                    link_dynamic=False):
-    six.print_("* Benchmark for %s" % model_tag)
-
-    mace_model_path = ""
-    if model_graph_format == ModelFormat.file:
-        mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
-    if abi == "host":
-        libmace_dynamic_lib_dir_path = \
-            os.path.dirname(libmace_dynamic_library_path)
-        p = subprocess.Popen(
-            [
-                "env",
-                "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_dir_path,
-                "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-                "%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
-                "--model_name=%s" % model_tag,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
-                "--input_shape=%s" % ":".join(input_shapes),
-                "--output_shape=%s" % ":".join(output_shapes),
-                "--input_file=%s/%s" % (model_output_dir, input_file_name),
-                "--model_data_file=%s/%s.data" % (mace_model_dir, model_tag),
-                "--device=%s" % device_type,
-                "--omp_num_threads=%s" % omp_num_threads,
-                "--cpu_affinity_policy=%s" % cpu_affinity_policy,
-                "--gpu_perf_hint=%s" % gpu_perf_hint,
-                "--gpu_priority_hint=%s" % gpu_priority_hint,
-                "--model_file=%s" % mace_model_path,
-            ])
-        p.wait()
-    else:
-        sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
-        internal_storage_dir = create_internal_storage_dir(
-            serialno, phone_data_dir)
-
-        for input_name in input_nodes:
-            formatted_name = common.formatted_file_name(input_file_name,
-                                                        input_name)
-            adb_push("%s/%s" % (model_output_dir, formatted_name),
-                     phone_data_dir, serialno)
-        if not embed_model_data:
-            adb_push("%s/%s.data" % (mace_model_dir, model_tag),
-                     phone_data_dir, serialno)
-        if device_type == common.DeviceType.GPU:
-            if os.path.exists(opencl_binary_file):
-                adb_push(opencl_binary_file, phone_data_dir, serialno)
-            if os.path.exists(opencl_parameter_file):
-                adb_push(opencl_parameter_file, phone_data_dir, serialno)
-        mace_model_phone_path = ""
-        if model_graph_format == ModelFormat.file:
-            mace_model_phone_path = "%s/%s.pb" % (phone_data_dir, model_tag)
-            adb_push(mace_model_path,
-                     mace_model_phone_path,
-                     serialno)
-
-        if link_dynamic:
-            adb_push(libmace_dynamic_library_path, phone_data_dir,
-                     serialno)
-            push_depended_so_libs(libmace_dynamic_library_path, abi,
-                                  phone_data_dir, serialno)
-
-        adb_push("%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
-                 phone_data_dir,
-                 serialno)
-
-        adb_cmd = [
-            "LD_LIBRARY_PATH=%s" % phone_data_dir,
-            "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-            "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
-            phone_data_dir,
-            "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
-            "MACE_OPENCL_PROFILING=1",
-            "%s/%s" % (phone_data_dir, benchmark_binary_name),
-            "--model_name=%s" % model_tag,
-            "--input_node=%s" % ",".join(input_nodes),
-            "--output_node=%s" % ",".join(output_nodes),
-            "--input_shape=%s" % ":".join(input_shapes),
-            "--output_shape=%s" % ":".join(output_shapes),
-            "--input_file=%s/%s" % (phone_data_dir, input_file_name),
-            "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
-            "--device=%s" % device_type,
-            "--omp_num_threads=%s" % omp_num_threads,
-            "--cpu_affinity_policy=%s" % cpu_affinity_policy,
-            "--gpu_perf_hint=%s" % gpu_perf_hint,
-            "--gpu_priority_hint=%s" % gpu_priority_hint,
-            "--model_file=%s" % mace_model_phone_path,
-            "--opencl_binary_file=%s/%s" %
-            (phone_data_dir, os.path.basename(opencl_binary_file)),
-            "--opencl_parameter_file=%s/%s" %
-            (phone_data_dir, os.path.basename(opencl_parameter_file)),
-        ]
-        adb_cmd = ' '.join(adb_cmd)
-        cmd_file_name = "%s-%s-%s" % ('cmd_file', model_tag, str(time.time()))
-        adb_cmd_file = "%s/%s" % (phone_data_dir, cmd_file_name)
-        tmp_cmd_file = "%s/%s" % ('/tmp', cmd_file_name)
-        with open(tmp_cmd_file, 'w') as cmd_file:
-            cmd_file.write(adb_cmd)
-        adb_push(tmp_cmd_file, adb_cmd_file, serialno)
-        os.remove(tmp_cmd_file)
-
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
-            "sh",
-            adb_cmd_file,
-            _fg=True)
-
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
-            "rm",
-            adb_cmd_file,
-            _fg=True)
-
-    six.print_("Benchmark done!\n")
-
-
 def build_run_throughput_test(abi,
                               serialno,
                               vlog_level,

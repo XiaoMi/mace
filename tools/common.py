@@ -240,7 +240,7 @@ def get_model_files(model_file_path,
 
 def get_opencl_binary_output_path(library_name, target_abi, device):
     target_soc = device.target_socs
-    device_model = device.models
+    device_name = device.device_name
     return '%s/%s/%s/%s/%s_%s.%s.%s.bin' % \
            (BUILD_OUTPUT_DIR,
             library_name,
@@ -248,13 +248,13 @@ def get_opencl_binary_output_path(library_name, target_abi, device):
             target_abi,
             library_name,
             OUTPUT_OPENCL_BINARY_FILE_NAME,
-            device_model,
+            device_name,
             target_soc)
 
 
 def get_opencl_parameter_output_path(library_name, target_abi, device):
     target_soc = device.target_socs
-    device_model = device.models
+    device_name = device.device_name
     return '%s/%s/%s/%s/%s_%s.%s.%s.bin' % \
            (BUILD_OUTPUT_DIR,
             library_name,
@@ -262,7 +262,7 @@ def get_opencl_parameter_output_path(library_name, target_abi, device):
             target_abi,
             library_name,
             OUTPUT_OPENCL_PARAMETER_FILE_NAME,
-            device_model,
+            device_name,
             target_soc)
 
 
@@ -271,7 +271,7 @@ def get_build_model_dirs(library_name,
                          target_abi,
                          device,
                          model_file_path):
-    models = device.models
+    device_name = device.device_name
     target_socs = device.target_socs
     model_path_digest = md5sum(model_file_path)
     model_output_base_dir = '{}/{}/{}/{}/{}'.format(
@@ -287,7 +287,7 @@ def get_build_model_dirs(library_name,
     else:
         model_output_dir = '{}/{}_{}/{}'.format(
             model_output_base_dir,
-            models,
+            device_name,
             target_socs,
             target_abi
         )

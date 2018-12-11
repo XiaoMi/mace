@@ -246,12 +246,13 @@ to run and validate your model.
     	# Test model run time
         python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --round=100
 
-        # If you want to run model on specified arm linux device, you should put device config file in the working directory or run with flag `--device_yml`
-        python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --device_yml=/path/to/devices.yml --example
-
         # Validate the correctness by comparing the results against the
     	# original model and framework, measured with cosine distance for similarity.
     	python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --validate
+
+        # If you want to run model on specified arm linux device, you should put device config file in the working directory or run with flag `--device_yml`
+        python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --device_yml=/path/to/devices.yml
+
 
 * **benchmark**
 

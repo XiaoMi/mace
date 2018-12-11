@@ -1,9 +1,7 @@
 # Partially borrowed from tensorflow tools/bazel.rc
 
 # By default, we don't distinct target and host platfroms.
-# When doing cross compilation, use --config=cross_compile to distinct them.
 build --distinct_host_configuration=false
-build:cross_compile --distinct_host_configuration=true
 
 build --verbose_failures
 build --copt=-std=c++11
@@ -17,12 +15,12 @@ build --copt=-DMACE_USE_NNLIB_CAF
 build:symbol_hidden --copt=-fvisibility=hidden
 
 # Usage example: bazel build --config android
-build:android --config=cross_compile
+build:android --distinct_host_configuration=true
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 
 # Usage example: bazel build --config arm_linux_gnueabihf
-build:arm_linux_gnueabihf --config=cross_compile
+build:arm_linux_gnueabihf --distinct_host_configuration=true
 build:arm_linux_gnueabihf --crosstool_top=//tools/arm_compiler:toolchain
 build:arm_linux_gnueabihf --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build:arm_linux_gnueabihf --cpu=armeabi-v7a
@@ -34,7 +32,7 @@ build:arm_linux_gnueabihf --copt -Wno-sequence-point
 build:arm_linux_gnueabihf --copt -Wno-implicit-fallthrough
 
 # Usage example: bazel build --config aarch64_linux_gnu
-build:aarch64_linux_gnu --config=cross_compile
+build:aarch64_linux_gnu --distinct_host_configuration=true
 build:aarch64_linux_gnu --crosstool_top=//tools/aarch64_compiler:toolchain
 build:aarch64_linux_gnu --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build:aarch64_linux_gnu --cpu=aarch64

@@ -52,13 +52,13 @@ def ops_benchmark_stdout_processor(stdout, dev, abi):
             metrics["%s.input_mb_per_sec" % parts[0]] = parts[3]
             metrics["%s.gmacc_per_sec" % parts[0]] = parts[4]
 
-    platform = dev[YAMLKeyword.target_socs]
-    model = dev[YAMLKeyword.models]
-    tags = {
-        "ro.board.platform": platform,
-        "ro.product.model": model,
-        "abi": abi
-    }
+    # platform = dev[YAMLKeyword.target_socs]
+    # model = dev[YAMLKeyword.device_name]
+    # tags = {
+    #     "ro.board.platform": platform,
+    #     "ro.product.model": model,
+    #     "abi": abi
+    # }
     # sh_commands.falcon_push_metrics(server,
     #    metrics, tags=tags, endpoint="mace_ops_benchmark")
 
@@ -99,7 +99,7 @@ def parse_args():
     parser.add_argument(
         "--stdout_processor",
         type=str,
-        default="stdout_processor",
+        default="unittest_stdout_processor",
         help="Stdout processing function, default: stdout_processor")
     parser.add_argument(
         "--enable_neon",
