@@ -885,10 +885,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.output_type.extend([mace_pb2.DT_INT32])
 
     def convert_split(self, tf_op):
-        axis = tf_op.inputs[0].eval().astype(np.int32)
-        axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Split.name
+        axis = tf_op.inputs[0].eval().astype(np.int32)
+        axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
         del op.input[0]
 
         axis_arg = op.arg.add()
