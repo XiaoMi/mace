@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <functional>
 #include <set>
 
 #include "mace/benchmark/statistics.h"
@@ -53,7 +54,6 @@ std::string ShapeToString(
   if (output_shape.empty()) {
     return "";
   }
-
   std::stringstream stream;
   stream << "[";
   for (size_t i = 0; i < output_shape.size(); ++i) {
@@ -94,6 +94,46 @@ std::string VectorToString(const std::vector<T> &vec) {
 
 }  // namespace
 
+
+int64_t StatMACs(const std::string &op_type,
+                 const std::vector<int64_t> &filter_shape,
+                 const std::vector<int64_t> &output_shape) {
+  int64_t macs = 0;
+  if (op_type == "Conv2D" || op_type == "Deconv2D") {
+    macs = output_shape[0] * output_shape[1] * output_shape[2]
+        * output_shape[3]
+        * filter_shape[2] * filter_shape[3] * filter_shape[1];
+  } else if (op_type == "MatMul") {
+    macs = std::accumulate(output_shape.begin(),
+                           output_shape.end(),
+                           1,
+                           std::multiplies<int64_t>())
+        * filter_shape.back();
+  } else if (op_type == "DepthwiseConv2d") {
+    macs = output_shape[0] * output_shape[1] * output_shape[2]
+        * output_shape[3] * filter_shape[0] * filter_shape[2] * filter_shape[3];
+  } else if (op_type == "DepthwiseDeconv2d") {
+    macs = output_shape[0] * output_shape[1] * output_shape[2]
+        * output_shape[3] * filter_shape[2] * filter_shape[3];
+  } else if (op_type == "FullyConnected") {
+    macs = output_shape[0] * std::accumulate(filter_shape.begin(),
+                                             filter_shape.end(),
+                                             1,
+                                             std::multiplies<int64_t>());
+  } else if (op_type == "BatchNorm") {
+    macs = std::accumulate(output_shape.begin(),
+                           output_shape.end(),
+                           1,
+                           std::multiplies<int64_t>());
+  } else if (op_type == "ResizeBilinear" || op_type == "ResizeBicubic") {
+    macs = 3 * std::accumulate(output_shape.begin(),
+                               output_shape.end(),
+                               1,
+                               std::multiplies<int64_t>());
+  }
+  return macs;
+}
+
 void OpStat::StatMetadata(const RunMetadata &meta_data) {
   if (meta_data.op_stats.empty()) {
     LOG(FATAL) << "Op metadata should not be empty";
@@ -112,6 +152,8 @@ void OpStat::StatMetadata(const RunMetadata &meta_data) {
       record->type = op_stat.type;
       record->args = op_stat.args;
       record->output_shape = op_stat.output_shape;
+      record->macs =
+          StatMACs(op_stat.type, op_stat.args.kernels, op_stat.output_shape[0]);
       record->order = order_idx;
       order_idx += 1;
     }
@@ -148,7 +190,7 @@ std::string OpStat::StatByMetric(const Metric metric,
   // generate string
   std::string title = "Sort by " + MetricToString(metric);
   const std::vector<std::string> header = {
-      "Node Type", "Start", "First", "Avg(ms)", "%", "cdf%",
+      "Op Type", "Start", "First", "Avg(ms)", "%", "cdf%", "GMACPS",
       "Stride", "Pad", "Filter Shape", "Output Shape", "Dilation", "name"
   };
   std::vector<std::vector<std::string>> data;
@@ -169,6 +211,9 @@ std::string OpStat::StatByMetric(const Metric metric,
         FloatToString(record.rel_end.sum() * 100.f / total_time_.sum(), 3));
     tuple.push_back(
         FloatToString(accumulate_time * 100.f / total_time_.sum(), 3));
+    tuple.push_back(FloatToString(
+        record.macs < 1e-6 ? record.macs :
+        (record.macs * 1e-3) / record.rel_end.avg(), 3));
     tuple.push_back(VectorToString<int>(record.args.strides));
     if (record.args.padding_type != -1) {
       tuple.push_back(PaddingTypeToString(record.args.padding_type));
@@ -184,40 +229,43 @@ std::string OpStat::StatByMetric(const Metric metric,
   return mace::string_util::StringFormatter::Table(title, header, data);
 }
 
-std::string OpStat::StatByNodeType() const {
+std::string OpStat::StatByOpType() const {
   if (records_.empty()) {
     return "";
   }
   const int64_t round = total_time_.round();
   int64_t total_time = 0;
   std::map<std::string, int64_t> type_time_map;
+  std::map<std::string, int64_t> type_macs_map;
   std::map<std::string, int64_t> type_count_map;
   std::map<std::string, int64_t> type_called_times_map;
-  std::set<std::string> node_types_set;
+  std::set<std::string> op_types_set;
   for (auto &record : records_) {
-    std::string node_type = record.second.type;
-    node_types_set.insert(node_type);
+    std::string op_type = record.second.type;
+    op_types_set.insert(op_type);
 
-    type_time_map[node_type] += record.second.rel_end.sum() / round;
+    type_time_map[op_type] += record.second.rel_end.sum() / round;
+    type_macs_map[op_type] += record.second.macs;
     total_time += record.second.rel_end.sum() / round;
-    type_count_map[node_type] += 1;
-    type_called_times_map[node_type] += record.second.called_times / round;
+    type_count_map[op_type] += 1;
+    type_called_times_map[op_type] += record.second.called_times / round;
   }
-  std::vector<std::string> node_types(node_types_set.begin(),
-                                      node_types_set.end());
-  std::sort(node_types.begin(), node_types.end(),
+  std::vector<std::string> op_types(op_types_set.begin(),
+                                    op_types_set.end());
+  std::sort(op_types.begin(), op_types.end(),
             [&](const std::string &lhs, const std::string &rhs) {
               return type_time_map[lhs] > type_time_map[rhs];
             });
 
-  std::string title = "Stat by node type";
+  std::string title = "Stat by Op Type";
   const std::vector<std::string> header = {
-      "Node Type", "Count", "Avg(ms)", "%", "cdf%", "Called times"
+      "Op Type", "Count", "Avg(ms)", "%", "cdf%", "MACs",
+      "GMACPS", "Called times"
   };
 
   float cdf = 0.0f;
   std::vector<std::vector<std::string>> data;
-  for (auto type : node_types) {
+  for (auto type : op_types) {
     const float avg_time = type_time_map[type] / 1000.0f;
     const float percentage = type_time_map[type] * 100.0f / total_time;
     cdf += percentage;
@@ -228,9 +276,40 @@ std::string OpStat::StatByNodeType() const {
     tuple.push_back(FloatToString(avg_time, 3));
     tuple.push_back(FloatToString(percentage, 3));
     tuple.push_back(FloatToString(cdf, 3));
+    tuple.push_back(IntToString(type_macs_map[type]));
+    tuple.push_back(FloatToString(
+        type_macs_map[type] < 1e-6 ? type_macs_map[type] :
+        (type_macs_map[type] * 1e-3) / type_time_map[type], 3));
     tuple.push_back(IntToString(type_called_times_map[type]));
     data.emplace_back(tuple);
   }
+  return mace::string_util::StringFormatter::Table(title, header, data);
+}
+
+
+std::string OpStat::StatByMACs() const {
+  if (records_.empty()) {
+    return "";
+  }
+  const int64_t round = total_time_.round();
+  int64_t count = 0;
+  for (auto &record : records_) {
+    count += record.second.macs;
+  }
+
+  std::string title = "Stat by MACs(Multiply-Accumulation)";
+  const std::vector<std::string> header = {
+      "total", "round", "first(G/s)", "avg(G/s)", "std"
+  };
+
+  std::vector<std::vector<std::string>> data;
+  std::vector<std::string> tuple;
+  tuple.push_back(IntToString(count));
+  tuple.push_back(IntToString(round));
+  tuple.push_back(FloatToString((count * 1e-3) / total_time_.first(), 3));
+  tuple.push_back(FloatToString((count * 1e-3) / total_time_.avg(), 3));
+  tuple.push_back(FloatToString(total_time_.std_deviation(), 3));
+  data.emplace_back(tuple);
   return mace::string_util::StringFormatter::Table(title, header, data);
 }
 
@@ -252,9 +331,11 @@ void OpStat::PrintStat() const {
     stream << StatByMetric(Metric::RUN_ORDER, 0) << std::endl;
     // top-10 op stat by time
     stream << StatByMetric(Metric::COMPUTATION_TIME, 10) << std::endl;
-    // op stat by node type
-    stream << StatByNodeType() << std::endl;
+    // op stat by op type
+    stream << StatByOpType() << std::endl;
   }
+  // print MACs statistics
+  stream << StatByMACs();
   // Print summary
   stream << Summary();
 

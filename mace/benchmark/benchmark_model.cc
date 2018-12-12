@@ -48,23 +48,6 @@ std::vector<std::string> Split(const std::string &str, char delims) {
   return result;
 }
 
-bool SplitAndParseToInts(const std::string &str,
-                         char delims,
-                         std::vector<int64_t> *result) {
-  std::string tmp = str;
-  while (!tmp.empty()) {
-    int64_t dim = atoi(tmp.data());
-    result->push_back(dim);
-    size_t next_offset = tmp.find(delims);
-    if (next_offset == std::string::npos) {
-      break;
-    } else {
-      tmp = tmp.substr(next_offset + 1);
-    }
-  }
-  return true;
-}
-
 }  //  namespace str_util
 
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {

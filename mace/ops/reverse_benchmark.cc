@@ -51,10 +51,9 @@ void Reverse(int iters, int batch, int channels, int height, int width) {
 #define MACE_BM_REVERSE_MACRO(N, C, H, W, TYPE, DEVICE)                   \
   static void MACE_BM_REVERSE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
       int iters) {                                                        \
-    const int64_t macc =                                                  \
+    const int64_t macs =                                                  \
         static_cast<int64_t>(iters) * N * C * H * W;                      \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
-    mace::testing::MaccProcessed(macc);                                   \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
     Reverse<DEVICE, TYPE>(iters, N, C, H, W);                             \
   }                                                                       \

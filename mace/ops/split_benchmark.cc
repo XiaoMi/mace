@@ -65,7 +65,7 @@ void BMSplitHelper(int iters,
       MACE_BM_SPLIT_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE(        \
           int iters) {                                                       \
         const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;     \
-        mace::testing::MaccProcessed(tot);                                   \
+        mace::testing::MacsProcessed(tot);                                   \
         mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
         BMSplitHelper<DEVICE, TYPE>(iters, {N, H, W, C}, NO);                \
       }                                                                      \

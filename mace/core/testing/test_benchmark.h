@@ -42,7 +42,7 @@ class Benchmark {
 };
 
 void BytesProcessed(int64_t);
-void MaccProcessed(int64_t);
+void MacsProcessed(int64_t);
 void RestartTiming();
 void StartTiming();
 void StopTiming();

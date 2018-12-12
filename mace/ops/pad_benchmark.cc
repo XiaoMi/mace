@@ -57,7 +57,6 @@ void Pad(int iters, int batch, int height,
   static void MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE( \
       int iters) {                                                           \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
-    mace::testing::MaccProcessed(tot);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
     Pad<DEVICE, TYPE>(iters, N, H, W, C, PAD);                               \
   }                                                                          \

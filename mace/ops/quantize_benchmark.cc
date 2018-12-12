@@ -82,7 +82,6 @@ void Dequantize(int iters, int count) {
     MACE_BM_QUANTIZE_##N##_##TYPE##_##DEVICE(              \
       int iters) {                                         \
     const int64_t tot = static_cast<int64_t>(iters) * N;   \
-    mace::testing::MaccProcessed(tot);                     \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));    \
     Quantize<DEVICE, TYPE>(iters, N);                      \
   }                                                        \
@@ -97,7 +96,6 @@ void Dequantize(int iters, int count) {
     MACE_BM_DEQUANTIZE_##N##_##TYPE##_##DEVICE(            \
       int iters) {                                         \
     const int64_t tot = static_cast<int64_t>(iters) * N;   \
-    mace::testing::MaccProcessed(tot);                     \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));    \
     Dequantize<DEVICE, TYPE>(iters, N);                    \
   }                                                        \

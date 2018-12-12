@@ -14,6 +14,7 @@
 
 #include <algorithm>
 
+#include "mace/benchmark/statistics.h"
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
@@ -81,11 +82,12 @@ static void DepthwiseDeconv2d(int iters,
         ##_##TYPE##_##DEVICE(                                                 \
           int iters) {                                                        \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    const int64_t macc =                                                      \
-        static_cast<int64_t>(iters) * N * H * W * KH * KW * C;   \
-    mace::testing::MaccProcessed(macc);                                       \
+    const int64_t macs =                                                      \
+        static_cast<int64_t>(iters) * mace::benchmark::StatMACs(              \
+            "DepthwiseDeconv2d", {1, C, KH, KW}, {N, H, W, C});               \
+    mace::testing::MacsProcessed(macs);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
-    DepthwiseDeconv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, S, P);        \
+    DepthwiseDeconv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, S, P);         \
   }                                                                           \
   MACE_BENCHMARK(                                                             \
     MACE_BM_DEPTHWISE_DECONV2D_##N##_##C##_##H##_##W##_##KH##_##KW##_##S##_##P\

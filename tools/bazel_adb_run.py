@@ -50,7 +50,7 @@ def ops_benchmark_stdout_processor(stdout, dev, abi):
         if len(parts) == 5 and parts[0].startswith("BM_"):
             metrics["%s.time_ms" % parts[0]] = str(float(parts[1]) / 1e6)
             metrics["%s.input_mb_per_sec" % parts[0]] = parts[3]
-            metrics["%s.gmacc_per_sec" % parts[0]] = parts[4]
+            metrics["%s.gmac_per_sec" % parts[0]] = parts[4]
 
     # platform = dev[YAMLKeyword.target_socs]
     # model = dev[YAMLKeyword.device_name]

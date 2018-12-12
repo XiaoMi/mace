@@ -62,7 +62,6 @@ void DepthToSpace(
       MACE_BM_DEPTH_TO_SPACE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
           int iters) {                                                        \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     DepthToSpace<DEVICE, TYPE>(iters, N, C, H, W, G);                         \
   }                                                                           \

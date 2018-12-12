@@ -14,6 +14,7 @@
 
 #include <algorithm>
 
+#include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
@@ -115,9 +116,10 @@ void DepthwiseConv2d(int iters,
         (H + 2 * pad_h - KH - (KH - 1) * (dilation - 1)) / STRIDE + 1;         \
     int64_t ow =                                                               \
         (W + 2 * pad_w - KW - (KW - 1) * (dilation - 1)) / STRIDE + 1;         \
-    const int64_t macc =                                                       \
-        static_cast<int64_t>(iters) * N * C * M * oh * ow * (KH * KW + 1);     \
-    mace::testing::MaccProcessed(macc);                                        \
+    const int64_t macs =                                                       \
+        static_cast<int64_t>(iters) * mace::benchmark::StatMACs(               \
+            "DepthwiseConv2d", {M, C, KH, KW}, {N, oh, ow, C});                \
+    mace::testing::MacsProcessed(macs);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     DepthwiseConv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE,           \
                                   mace::Padding::P, M);                        \

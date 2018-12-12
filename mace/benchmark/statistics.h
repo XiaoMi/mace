@@ -19,6 +19,7 @@
 #include <cmath>
 #include <iomanip>
 #include <limits>
+#include <locale>
 #include <map>
 #include <sstream>
 #include <string>
@@ -33,11 +34,33 @@ class RunMetadata;
 
 namespace benchmark {
 
+// stat the number of multiply-accumulate(MAC)
+int64_t StatMACs(const std::string &op_type,
+                 const std::vector<int64_t> &filter_shape,
+                 const std::vector<int64_t> &output_shape);
+
 template <typename IntType>
 std::string IntToString(const IntType v) {
   std::stringstream stream;
   stream << v;
-  return stream.str();
+  std::string src_str = stream.str();
+  size_t size = src_str.size();
+  size_t dst_size = size + ((size-1) / 3);
+  if (src_str[0] == '-') {
+    dst_size = size + ((size-2) / 3);
+  }
+  std::string result(dst_size, ',');
+  size_t dst_idx = dst_size - 1;
+  for (size_t src_idx = 0; src_idx < size; ++src_idx) {
+    if ((src_idx % 3) != 0 || src_idx == 0 || dst_idx == 0) {
+      result[dst_idx] = src_str[size - 1 - src_idx];
+    } else {
+      dst_idx -= 1;
+      result[dst_idx] = src_str[size - 1 - src_idx];
+    }
+    dst_idx -= 1;
+  }
+  return result;
 }
 
 template <typename FloatType>
@@ -127,7 +150,7 @@ enum Metric {
   COMPUTATION_TIME,
 };
 
-class OpStat{
+class OpStat {
  public:
   void StatMetadata(const RunMetadata &meta_data);
 
@@ -136,7 +159,8 @@ class OpStat{
  private:
   std::string StatByMetric(const Metric metric,
       const int top_limit) const;
-  std::string StatByNodeType() const;
+  std::string StatByOpType() const;
+  std::string StatByMACs() const;
   std::string Summary() const;
 
  private:
@@ -145,6 +169,7 @@ class OpStat{
     std::string type;
     std::vector<std::vector<int64_t>> output_shape;
     ConvPoolArgs args;
+    int64_t macs;
     int64_t order;
     TimeInfo<int64_t> start;
     TimeInfo<int64_t> rel_end;

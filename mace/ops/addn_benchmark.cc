@@ -59,7 +59,6 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
       MACE_BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(      \
           int iters) {                                                        \
     const int64_t tot = static_cast<int64_t>(iters) * INPUTS * N * H * W * C; \
-    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     AddNBenchmark<DEVICE, TYPE>(iters, INPUTS, N, H, W, C);                   \
   }                                                                           \

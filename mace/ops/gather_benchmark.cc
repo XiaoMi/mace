@@ -66,7 +66,6 @@ void GatherBenchmark(int iters,
       MACE_BM_GATHER##_##N##_##IND##_##VOC##_##EMBED##_##TYPE##_##DEVICE( \
           int iters) {                                                    \
     const int64_t tot = static_cast<int64_t>(iters) * N * IND * EMBED;    \
-    mace::testing::MaccProcessed(0);                                      \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
     GatherBenchmark<DEVICE, TYPE>(iters, N, IND, VOC, EMBED);             \
   }                                                                       \

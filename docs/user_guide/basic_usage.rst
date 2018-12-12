@@ -227,7 +227,7 @@ to run and validate your model.
 
 * **benchmark**
 
-    benchmark and profile the model.
+    benchmark and profile the model. the details are in :doc:`benchmark`.
 
     .. code:: sh
 

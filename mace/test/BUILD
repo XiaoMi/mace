@@ -7,10 +7,10 @@ licenses(["notice"])  # Apache 2.0
 load(
     "//mace:mace.bzl",
     "if_android",
-    "if_hexagon_enabled",
-    "if_not_hexagon_enabled",
-    "if_openmp_enabled",
     "if_neon_enabled",
+    "if_openmp_enabled",
+    "if_android_armv7",
+    "if_hexagon_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
 )
@@ -32,16 +32,19 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp",
-        "-DMACE_ENABLE_OPENMP",
+        "-fopenmp"
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
-    ]) + if_neon_enabled([
-        "-DMACE_ENABLE_NEON",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
@@ -62,16 +65,19 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp",
-        "-DMACE_ENABLE_OPENMP",
+        "-fopenmp"
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
-    ]) + if_neon_enabled([
-        "-DMACE_ENABLE_NEON",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
@@ -92,16 +98,19 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp",
-        "-DMACE_ENABLE_OPENMP",
+        "-fopenmp"
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
-    ]) + if_neon_enabled([
-        "-DMACE_ENABLE_NEON",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
