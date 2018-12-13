@@ -99,54 +99,6 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
 
    Prepare your pre-trained TensorFlow model.pb file.
 
-   Use `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
-   to optimize your model for inference.
-   This tool will improve the efficiency of inference by making several optimizations like operators
-   folding, redundant node removal etc. We strongly recommend MACE users to use it before building.
-
-   Usage for CPU/GPU,
-
-   .. code:: bash
-
-       # CPU/GPU:
-       ./transform_graph \
-           --in_graph=/path/to/your/tf_model.pb \
-           --out_graph=/path/to/your/output/tf_model_opt.pb \
-           --inputs='input node name' \
-           --outputs='output node name' \
-           --transforms='strip_unused_nodes(type=float, shape="1,64,64,3")
-               strip_unused_nodes(type=float, shape="1,64,64,3")
-               remove_nodes(op=Identity, op=CheckNumerics)
-               fold_constants(ignore_errors=true)
-               flatten_atrous_conv
-               fold_batch_norms
-               fold_old_batch_norms
-               remove_control_dependencies
-               strip_unused_nodes
-               sort_by_execution_order'
-
-   Usage for DSP,
-
-   .. code:: bash
-
-       # DSP:
-       ./transform_graph \
-           --in_graph=/path/to/your/tf_model.pb \
-           --out_graph=/path/to/your/output/tf_model_opt.pb \
-           --inputs='input node name' \
-           --outputs='output node name' \
-           --transforms='strip_unused_nodes(type=float, shape="1,64,64,3")
-               strip_unused_nodes(type=float, shape="1,64,64,3")
-               remove_nodes(op=Identity, op=CheckNumerics)
-               fold_constants(ignore_errors=true)
-               fold_batch_norms
-               fold_old_batch_norms
-               backport_concatv2
-               quantize_weights(minimum_size=2)
-               quantize_nodes
-               remove_control_dependencies
-               strip_unused_nodes
-               sort_by_execution_order'
 
 -  Caffe
 
