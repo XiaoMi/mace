@@ -1237,7 +1237,8 @@ class Transformer(base_converter.ConverterInterface):
             if op.type == MaceOp.Reshape.name and \
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
-                    filter_format == FilterFormat.HWIO:
+                    filter_format == FilterFormat.HWIO and \
+                    op.input[0] in self._producer:
                 input_op = self._producer[op.input[0]]
                 input_shape = input_op.output_shape[0].dims
                 # check input op
@@ -1557,9 +1558,9 @@ class Transformer(base_converter.ConverterInterface):
 
     def add_quantize_tensor_range(self):
         # Quantize info from range statistics
-        print("Add quantize tensor range")
         range_file = self._option.quantize_range_file
         if range_file:
+            print("Add quantize tensor range")
             with open(range_file) as f:
                 for line in f:
                     tensor_name, minmax = line.split("@@")[:2]
