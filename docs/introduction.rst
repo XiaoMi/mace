@@ -18,8 +18,7 @@ MACE Model
 ~~~~~~~~~~
 
 MACE defines a customized model format which is similar to
-Caffe2. The MACE model can be converted from exported models by TensorFlow
-and Caffe.
+Caffe2. The MACE model can be converted from exported models by TensorFlow, Caffe or ONNX Model.
 
 MACE Interpreter
 ~~~~~~~~~~~~~~~~~
@@ -50,7 +49,7 @@ Build MACE dynamic or static libraries.
 
 3. Convert model
 ~~~~~~~~~~~~~~~~~~
-Convert TensorFlow or Caffe model to MACE model.
+Convert TensorFlow, Caffe or ONNX model to MACE model.
 
 4.1. Deploy
 ~~~~~~~~~~~~~~~~~~
@@ -86,7 +85,7 @@ MACE覆盖了常见的移动端计算设备（CPU，GPU和DSP），并且提供�
 MACE Model
 ~~~~~~~~~~~~~~~~~~
 
-MACE定义了自有的模型格式（类似于Caffe2），通过MACE提供的工具可以将Caffe和TensorFlow的模型
+MACE定义了自有的模型格式（类似于Caffe2），通过MACE提供的工具可以将Caffe/TensorFlow/ONNX格式的模型
 转为MACE模型。
 
 MACE Interpreter
@@ -118,7 +117,7 @@ CPU/GPU/DSP Runtime对应于各个计算设备的算子实现。
 
 3. 转换模型
 ~~~~~~~~~~~~~~~~~~
-将TensorFlow 或者 Caffe的模型转为MACE的模型。
+将TensorFlow或者Caffe或者ONNX的模型转为MACE的模型。
 
 4.1. 部署
 ~~~~~~~~~~~~~~~~~~

@@ -352,21 +352,26 @@ class Transformer(base_converter.ConverterInterface):
                 if elttype == EltwiseType.SQR_DIFF.value and\
                         self.consumer_count(op.output[0]) == 1:
                     consumer_op = self._consumers[op.output[0]][0]
-                    axis = ConverterUtil.get_arg(
-                        consumer_op,
-                        MaceKeyword.mace_axis_str).ints
-                    keep_dims = ConverterUtil.get_arg(
-                        consumer_op,
-                        MaceKeyword.mace_keepdims_str).i
-                    if consumer_op.type == MaceOp.ReduceMean.name and\
-                            len(consumer_op.input) == 1 and \
-                            axis[0] == 1 and axis[1] == 2 and keep_dims != 0:
-                        print("Fold SquaredDiff ReduceMean: %s" % op.name)
-                        op.type = MaceOp.SqrDiffMean.name
-                        op.output[0] = consumer_op.output[0]
-                        self.replace_quantize_info(op, consumer_op)
-                        self.safe_remove_node(consumer_op, op)
-                        return True
+                    if consumer_op.type == MaceOp.Reduce.name:
+                        axis = ConverterUtil.get_arg(
+                            consumer_op,
+                            MaceKeyword.mace_axis_str).ints
+                        keep_dims = ConverterUtil.get_arg(
+                            consumer_op,
+                            MaceKeyword.mace_keepdims_str).i
+                        reduce_type = ConverterUtil.get_arg(
+                            consumer_op,
+                            MaceKeyword.mace_reduce_type_str).i
+                        if reduce_type == ReduceType.MEAN and\
+                                len(consumer_op.input) == 1 and\
+                                axis[0] == 1 and axis[1] == 2 and\
+                                keep_dims > 0:
+                            print("Fold SquaredDiff Reduce: %s" % op.name)
+                            op.type = MaceOp.SqrDiffMean.name
+                            op.output[0] = consumer_op.output[0]
+                            self.replace_quantize_info(op, consumer_op)
+                            self.safe_remove_node(consumer_op, op)
+                            return True
 
         return False
 
@@ -1005,13 +1010,13 @@ class Transformer(base_converter.ConverterInterface):
                                        'only support squeeze at at [2, 3]')
                             arg.ints[:] = [1, 2]
 
-            elif op.type == MaceOp.ReduceMean.name:
+            elif op.type == MaceOp.Reduce.name:
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
                         if ConverterUtil.data_format(
                                 op) == DataFormat.NCHW \
                                 and self._target_data_format == DataFormat.NHWC:  # noqa
-                            print("Transpose reduce mean args: %s(%s)"
+                            print("Transpose reduce args: %s(%s)"
                                   % (op.name, op.type))
                             reduce_axises = list(arg.ints)
                             new_axises = []

@@ -37,16 +37,24 @@ class FilterFormat(Enum):
     OHWI = 103
 
 
+# SAME_LOWER: if the amount of paddings to be added is odd,
+# it will add the extra data to the right or bottom
 class PaddingMode(Enum):
     VALID = 0
     SAME = 1
     FULL = 2
-    NA = 3
+    SAME_LOWER = 3
+    NA = 4
 
 
 class PoolingType(Enum):
     AVG = 1
     MAX = 2
+
+
+class RoundMode(Enum):
+    FLOOR = 0
+    CEIL = 1
 
 
 class ActivationType(Enum):
@@ -56,6 +64,7 @@ class ActivationType(Enum):
     PRELU = 3
     TANH = 4
     SIGMOID = 5
+    LEAKYRELU = 6
 
 
 class EltwiseType(Enum):
@@ -72,9 +81,17 @@ class EltwiseType(Enum):
     EQUAL = 10
 
 
+class ReduceType(Enum):
+    MEAN = 0
+    MIN = 1
+    MAX = 2
+    PROD = 3
+
+
 class FrameworkType(Enum):
     TENSORFLOW = 0
     CAFFE = 1
+    ONNX = 2
 
 
 MaceSupportedOps = [
@@ -108,7 +125,7 @@ MaceSupportedOps = [
     'Pooling',
     'Proposal',
     'Quantize',
-    'ReduceMean',
+    'Reduce',
     'Reshape',
     'ResizeBicubic',
     'ResizeBilinear',
@@ -184,6 +201,10 @@ class MaceKeyword(object):
     mace_group_str = "group"
     mace_wino_arg_str = "wino_block_size"
     mace_quantize_flag_arg_str = "quantize_flag"
+    mace_epsilon_str = 'epsilon'
+    mace_reduce_type_str = 'reduce_type'
+    mace_argmin_str = 'argmin'
+    mace_round_mode_str = 'round_mode'
 
 
 class TransformerRule(Enum):

@@ -621,7 +621,8 @@ def validate_model(abi,
                    caffe_env,
                    input_file_name="model_input",
                    output_file_name="model_out",
-                   validation_threshold=0.9):
+                   validation_threshold=0.9,
+                   backend="tensorflow"):
     six.print_("* Validate with %s" % platform)
     if abi != "host":
         for output_name in output_nodes:
@@ -638,7 +639,14 @@ def validate_model(abi,
                  "%s/%s" % (model_output_dir, output_file_name), device_type,
                  ":".join(input_shapes), ":".join(output_shapes),
                  ",".join(input_nodes), ",".join(output_nodes),
-                 validation_threshold, ",".join(input_data_types))
+                 validation_threshold, ",".join(input_data_types), backend)
+    elif platform == "onnx":
+        validate(platform, model_file_path, "",
+                 "%s/%s" % (model_output_dir, input_file_name),
+                 "%s/%s" % (model_output_dir, output_file_name), device_type,
+                 ":".join(input_shapes), ":".join(output_shapes),
+                 ",".join(input_nodes), ",".join(output_nodes),
+                 validation_threshold, ",".join(input_data_types), backend)
     elif platform == "caffe":
         image_name = "mace-caffe:latest"
         container_name = "mace_caffe_validator"
@@ -654,7 +662,7 @@ def validate_model(abi,
                      device_type,
                      ":".join(input_shapes), ":".join(output_shapes),
                      ",".join(input_nodes), ",".join(output_nodes),
-                     validation_threshold, ",".join(input_data_types))
+                     validation_threshold, ",".join(input_data_types), backend)
         elif caffe_env == common.CaffeEnvType.DOCKER:
             docker_image_id = sh.docker("images", "-q", image_name)
             if not docker_image_id:
@@ -720,6 +728,7 @@ def validate_model(abi,
                 "--output_shape=%s" % ":".join(output_shapes),
                 "--validation_threshold=%f" % validation_threshold,
                 "--input_data_type=%s" % ",".join(input_data_types),
+                "--backend=%s" % ",".join(backend),
                 _fg=True)
 
     six.print_("Validation done!\n")

@@ -44,7 +44,7 @@ extern void RegisterLocalResponseNorm(OpRegistryBase *op_registry);
 extern void RegisterMatMul(OpRegistryBase *op_registry);
 extern void RegisterPad(OpRegistryBase *op_registry);
 extern void RegisterPooling(OpRegistryBase *op_registry);
-extern void RegisterReduceMean(OpRegistryBase *op_registry);
+extern void RegisterReduce(OpRegistryBase *op_registry);
 extern void RegisterReshape(OpRegistryBase *op_registry);
 extern void RegisterResizeBicubic(OpRegistryBase *op_registry);
 extern void RegisterResizeBilinear(OpRegistryBase *op_registry);
@@ -102,7 +102,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterMatMul(this);
   ops::RegisterPad(this);
   ops::RegisterPooling(this);
-  ops::RegisterReduceMean(this);
+  ops::RegisterReduce(this);
   ops::RegisterReshape(this);
   ops::RegisterResizeBicubic(this);
   ops::RegisterResizeBilinear(this);

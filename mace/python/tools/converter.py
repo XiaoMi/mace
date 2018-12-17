@@ -101,7 +101,7 @@ def main(unused_args):
                        file=sys.stderr)
             sys.exit(-1)
 
-    if FLAGS.platform not in ['tensorflow', 'caffe']:
+    if FLAGS.platform not in ['tensorflow', 'caffe', 'onnx']:
         six.print_("platform %s is not supported." % FLAGS.platform,
                    file=sys.stderr)
         sys.exit(-1)
@@ -188,6 +188,9 @@ def main(unused_args):
             converter = caffe_converter.CaffeConverter(option,
                                                        FLAGS.model_file,
                                                        FLAGS.weight_file)
+        elif FLAGS.platform == 'onnx':
+            from mace.python.tools.converter_tool import onnx_converter
+            converter = onnx_converter.OnnxConverter(option, FLAGS.model_file)
         else:
             six.print_("Mace do not support platorm %s yet." % FLAGS.platform,
                        file=sys.stderr)
@@ -231,6 +234,7 @@ def parse_args():
         type=str,
         default="",
         help="TensorFlow \'GraphDef\' file to load, "
+             "Onnx model file .onnx to load, "
              "Caffe prototxt file to load.")
     parser.add_argument(
         "--weight_file", type=str, default="", help="Caffe data file to load.")
@@ -300,7 +304,10 @@ def parse_args():
     parser.add_argument(
         "--check_shape", type=str, default="", help="check shape.")
     parser.add_argument(
-        "--platform", type=str, default="tensorflow", help="tensorflow/caffe")
+        "--platform",
+        type=str,
+        default="tensorflow",
+        help="tensorflow/caffe/onnx")
     parser.add_argument(
         "--embed_model_data",
         type=str2bool,

@@ -43,11 +43,14 @@ class PoolingOpBase : public ConvPool2dOpBase {
         kernels_(Operation::GetRepeatedArgs<int>("kernels")),
         pooling_type_(
             static_cast<PoolingType>(Operation::GetOptionalArg<int>(
-                "pooling_type", static_cast<int>(AVG)))) {}
+                "pooling_type", static_cast<int>(AVG)))),
+        round_type_(static_cast<RoundType>(Operation::GetOptionalArg<int>(
+            "round_mode", static_cast<int>(CEIL)))) {}
 
  protected:
   std::vector<int> kernels_;
   PoolingType pooling_type_;
+  RoundType round_type_;
 
   MACE_OP_INPUT_TAGS(INPUT);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
@@ -82,7 +85,7 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
                          paddings_.data(),
                          dilations_.data(),
                          strides_.data(),
-                         RoundType::CEIL,
+                         round_type_,
                          output_shape.data());
     }
     MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
@@ -255,7 +258,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                      paddings_.data(),
                      dilations_.data(),
                      strides_.data(),
-                     RoundType::CEIL,
+                     round_type_,
                      output_shape.data());
     }
     MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
@@ -442,7 +445,7 @@ class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
 
     return kernel_->Compute(context, input, pooling_type_, kernels_.data(),
                             strides_.data(), padding_type_, paddings_,
-                            dilations_.data(), output);
+                            dilations_.data(), round_type_, output);
   }
 
  private:

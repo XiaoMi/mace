@@ -26,6 +26,7 @@ from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
+from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
@@ -465,15 +466,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
                        "Mace only supports dilation == 1 conv2d_transpose.")
             mace_check(len(tf_op.inputs) >= 3,
                        "deconv should have (>=) 3 inputs.")
-            output_shape_arg = op.arg.add()
-            output_shape_arg.name = MaceKeyword.mace_output_shape_str
-            # if tf_op.inputs[0].op.type == TFOpType.Const.name:
-            #     output_shape_value = \
-            #         tf_op.inputs[0].eval().astype(np.int32).flat
-            #     output_shape_arg.ints.extend(output_shape_value)
-            # else:
-            #     output_shape_value = {}
-            #     output_shape_arg.ints.extend(output_shape_value)
             del op.input[:]
             op.input.extend([tf_op.inputs[2].name,
                              tf_op.inputs[1].name,
@@ -810,7 +802,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         del op.input[1:]
 
-        op.type = MaceOp.ReduceMean.name
+        op.type = MaceOp.Reduce.name
+
+        reduce_type_arg = op.arg.add()
+        reduce_type_arg.name = MaceKeyword.mace_reduce_type_str
+        reduce_type_arg.i = ReduceType.MEAN
+
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         if len(tf_op.inputs) > 1:

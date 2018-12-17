@@ -362,6 +362,7 @@ class YAMLKeyword(object):
     validation_threshold = 'validation_threshold'
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
     cl_mem_type = 'cl_mem_type'
+    backend = 'backend'
 
 
 ################################

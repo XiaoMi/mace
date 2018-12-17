@@ -36,6 +36,7 @@ class OpenCLPoolingKernel {
       const Padding &padding_type,
       const std::vector<int> &padding_data,
       const int *dilations,
+      const RoundType round_type,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLPoolingKernel);
 };

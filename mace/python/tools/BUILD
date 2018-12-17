@@ -13,6 +13,7 @@ py_library(
         "converter_tool/base_converter.py",
         "converter_tool/caffe_converter.py",
         "converter_tool/hexagon_converter.py",
+        "converter_tool/onnx_converter.py",
         "converter_tool/shape_inference.py",
         "converter_tool/tensorflow_converter.py",
         "converter_tool/tf_dsp_converter.py",

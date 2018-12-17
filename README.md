@@ -82,7 +82,8 @@ the following projects during the development:
   [Caffe](https://github.com/BVLC/caffe),
   [SNPE](https://developer.qualcomm.com/software/snapdragon-neural-processing-engine-ai),
   [ARM ComputeLibrary](https://github.com/ARM-software/ComputeLibrary),
-  [ncnn](https://github.com/Tencent/ncnn) and many others: we learned many best
+  [ncnn](https://github.com/Tencent/ncnn),
+  [ONNX](https://github.com/onnx/onnx) and many others: we learned many best
   practices from these projects.
 
 Finally, we also thank the Qualcomm, Pinecone and MediaTek engineering teams for

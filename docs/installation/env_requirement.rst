@@ -64,6 +64,9 @@ Optional dependencies
     * - FileLock
       - pip install -I filelock==3.0.0
       - Required by run on Android
+    * - ONNX
+      - pip install onnx
+      - Required by ONNX model
 
 .. note::
 

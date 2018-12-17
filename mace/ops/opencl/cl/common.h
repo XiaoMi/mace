@@ -103,6 +103,9 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
 #ifdef USE_SIGMOID
   out = do_sigmoid(in);
 #endif
+#ifdef USE_LEAKYRELU
+  out = fmax(in, (DATA_TYPE)0) * relux_max_limit;
+#endif
   return out;
 }
 #endif

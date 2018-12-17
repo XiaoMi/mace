@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_REDUCE_MEAN_H_
-#define MACE_OPS_OPENCL_REDUCE_MEAN_H_
+#ifndef MACE_OPS_OPENCL_REDUCE_H_
+#define MACE_OPS_OPENCL_REDUCE_H_
 
 #include "mace/public/mace.h"
 #include "mace/utils/utils.h"
@@ -24,16 +24,16 @@ class OpContext;
 class Tensor;
 
 namespace ops {
-class OpenCLReduceMeanKernel {
+class OpenCLReduceKernel {
  public:
   virtual MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
       Tensor *output) = 0;
-  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLReduceMeanKernel);
+  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLReduceKernel);
 };
 
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_REDUCE_MEAN_H_
+#endif  // MACE_OPS_OPENCL_REDUCE_H_
