@@ -175,7 +175,8 @@ class DeviceWrapper:
                    output_file_name='model_out',
                    runtime_failure_ratio=0.0,
                    address_sanitizer=False,
-                   link_dynamic=False
+                   link_dynamic=False,
+                   quantize_stat=False,
                    ):
         six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
                    "out_of_range_check=%s, omp_num_threads=%s, "
@@ -196,6 +197,7 @@ class DeviceWrapper:
                     "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
                     "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                     "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
+                    "MACE_LOG_TENSOR_RANGE=%d" % (1 if quantize_stat else 0),
                     "%s/%s" % (target_dir, target_name),
                     "--model_name=%s" % model_tag,
                     "--input_node=%s" % ",".join(input_nodes),
@@ -277,6 +279,7 @@ class DeviceWrapper:
                 "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
                 "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
                 "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
+                "MACE_LOG_TENSOR_RANGE=%d" % (1 if quantize_stat else 0),
             ]
             if self.system == SystemType.android and address_sanitizer:
                 cmd.extend([
@@ -542,7 +545,8 @@ class DeviceWrapper:
                     opencl_binary_file=model_opencl_output_bin_path,
                     opencl_parameter_file=model_opencl_parameter_path,
                     libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
-                    link_dynamic=link_dynamic
+                    link_dynamic=link_dynamic,
+                    quantize_stat=flags.quantize_stat,
                 )
                 if flags.validate:
                     model_file_path, weight_file_path = get_model_files(
