@@ -476,6 +476,14 @@ def format_model_config(flags):
             onnx_backend = subgraph.get(
                 YAMLKeyword.backend, "tensorflow")
             subgraph[YAMLKeyword.backend] = onnx_backend
+            validation_outputs_data = subgraph.get(
+                YAMLKeyword.validation_outputs_data, [])
+            if not isinstance(validation_outputs_data, list):
+                subgraph[YAMLKeyword.validation_outputs_data] = [
+                    validation_outputs_data]
+            else:
+                subgraph[YAMLKeyword.validation_outputs_data] = \
+                    validation_outputs_data
             input_ranges = subgraph.get(
                 YAMLKeyword.input_ranges, [])
             if not isinstance(input_ranges, list):

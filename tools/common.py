@@ -401,6 +401,7 @@ class YAMLKeyword(object):
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
     cl_mem_type = 'cl_mem_type'
     backend = 'backend'
+    validation_outputs_data = 'validation_outputs_data'
     docker_image_tag = 'docker_image_tag'
     dockerfile_path = 'dockerfile_path'
     dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'

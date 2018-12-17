@@ -660,6 +660,8 @@ class DeviceWrapper:
                                 YAMLKeyword.validation_threshold][
                                 validate_type],
                             backend=subgraphs[0][YAMLKeyword.backend],
+                            validation_outputs_data=subgraphs[0][
+                                YAMLKeyword.validation_outputs_data],
                             log_file=log_file,
                         )
                     if flags.report and flags.round > 0:

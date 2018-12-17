@@ -656,9 +656,12 @@ def validate_model(abi,
                    output_file_name="model_out",
                    validation_threshold=0.9,
                    backend="tensorflow",
-                   log_file="",
-                   ):
-    six.print_("* Validate with %s" % platform)
+                   validation_outputs_data=[],
+                   log_file=""):
+    if not validation_outputs_data:
+        six.print_("* Validate with %s" % platform)
+    else:
+        six.print_("* Validate with file: %s" % validation_outputs_data)
     if abi != "host":
         for output_name in output_nodes:
             formatted_name = common.formatted_file_name(
@@ -675,6 +678,7 @@ def validate_model(abi,
                  ":".join(input_shapes), ":".join(output_shapes),
                  ",".join(input_nodes), ",".join(output_nodes),
                  validation_threshold, ",".join(input_data_types), backend,
+                 validation_outputs_data,
                  log_file)
     elif platform == "onnx":
         validate(platform, model_file_path, "",
@@ -683,6 +687,7 @@ def validate_model(abi,
                  ":".join(input_shapes), ":".join(output_shapes),
                  ",".join(input_nodes), ",".join(output_nodes),
                  validation_threshold, ",".join(input_data_types), backend,
+                 validation_outputs_data,
                  log_file)
     elif platform == "caffe":
         image_name = "mace-caffe:" + docker_image_tag
@@ -700,6 +705,7 @@ def validate_model(abi,
                      ":".join(input_shapes), ":".join(output_shapes),
                      ",".join(input_nodes), ",".join(output_nodes),
                      validation_threshold, ",".join(input_data_types), backend,
+                     validation_outputs_data,
                      log_file)
         elif caffe_env == common.CaffeEnvType.DOCKER:
             docker_image_id = sh.docker("images", "-q", image_name)
@@ -767,6 +773,8 @@ def validate_model(abi,
                 "--validation_threshold=%f" % validation_threshold,
                 "--input_data_type=%s" % ",".join(input_data_types),
                 "--backend=%s" % ",".join(backend),
+                "--validation_outputs_data=%s" % ",".join(
+                    validation_outputs_data),
                 "--log_file=%s" % log_file,
                 _fg=True)
 

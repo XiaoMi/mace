@@ -258,11 +258,12 @@ MaceStatus Gemv::Compute(const OpContext *context,
           ++rhs_ptr;
         }
 
-        float32x4_t vbias = vdupq_n_f32(0);
         if (bias) {
+          float32x4_t vbias = vdupq_n_f32(0);
           vbias = vld1q_f32(bias_data + h_start);
+          vo = vaddq_f32(vo, vbias);
         }
-        vo = vaddq_f32(vo, vbias);
+
         vst1q_f32(ret_ptr, vo);
       } else {  // h_block_len < 4
 #endif  // MACE_GEMV_UNROLL
