@@ -125,20 +125,6 @@ def parse_args():
 
 
 def main(unused_args):
-    target_socs = None
-    target_devices = DeviceManager.list_devices(FLAGS.device_yml)
-    if FLAGS.target_socs != "all" and FLAGS.target_socs != "random":
-        target_socs = set(FLAGS.target_socs.split(','))
-        target_devices = [dev for dev in target_devices
-                          if dev[YAMLKeyword.target_socs] in target_socs]
-    if FLAGS.target_socs == "random":
-        unlocked_devices = \
-            [d for d in target_devices if not sh_commands.is_device_locked(d)]
-        if len(unlocked_devices) > 0:
-            target_devices = [random.choice(unlocked_devices)]
-        else:
-            target_devices = [random.choice(target_devices)]
-
     target = FLAGS.target
     host_bin_path, bin_name = sh_commands.bazel_target_to_bin(target)
     target_abis = FLAGS.target_abis.split(',')
@@ -150,6 +136,21 @@ def main(unused_args):
                                 enable_neon=FLAGS.enable_neon,
                                 address_sanitizer=FLAGS.address_sanitizer)
         if FLAGS.run_target:
+            target_devices = DeviceManager.list_devices(FLAGS.device_yml)
+            if FLAGS.target_socs != "all" and FLAGS.target_socs != "random":
+                target_socs = set(FLAGS.target_socs.split(','))
+                target_devices = \
+                    [dev for dev in target_devices
+                     if dev[YAMLKeyword.target_socs] in target_socs]
+            if FLAGS.target_socs == "random":
+                unlocked_devices = \
+                    [d for d in target_devices if
+                     not sh_commands.is_device_locked(d)]
+                if len(unlocked_devices) > 0:
+                    target_devices = [random.choice(unlocked_devices)]
+                else:
+                    target_devices = [random.choice(target_devices)]
+
             for dev in target_devices:
                 if target_abi not in dev[YAMLKeyword.target_abis]:
                     print("Skip device %s which does not support ABI %s" %

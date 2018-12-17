@@ -33,8 +33,6 @@ void MaceRunFunc(const int in_out_size) {
   }
   std::string filter_tensor_name = "filter";
 
-  const DeviceType device = DeviceType::GPU;
-
   const std::vector<std::vector<int64_t>> input_shapes = {{1, 32, 32, 16}};
   const std::vector<std::vector<int64_t>> output_shapes = {{1, 32, 32, 16}};
   const std::vector<int64_t> filter_shape = {16, 16, 3, 3};
