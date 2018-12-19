@@ -309,7 +309,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Div.name: self.convert_eltwise,
             OnnxOpType.Equal.name: self.convert_eltwise,
             OnnxOpType.Gather.name: self.convert_gather,
-            OnnxOpType.Gemm.name: self.convert_fully_connected,
+            OnnxOpType.Gemm.name: self.convert_gemm,
             OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
             OnnxOpType.Identity.name: self.convert_identity,
@@ -415,6 +415,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             kernels_arg.name = MaceKeyword.mace_kernel_str
             kernels_arg.ints.extend(kernel)
 
+        # TODO: Does not support AutoPad yet.
         if 'pads' in attrs:
             pads = attrs['pads']
             if len(pads) == 4:
@@ -588,7 +589,10 @@ class OnnxConverter(base_converter.ConverterInterface):
         if "alpha" in node.attrs:
             alpha_value = node.attrs["alpha"]
         else:
-            alpha_value = 0
+            if node.op_type == OnnxOpType.LeakyRelu.name:
+                alpha_value = 0.01
+            else:
+                alpha_value = 0
         alpha_arg = op.arg.add()
         alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
         alpha_arg.f = alpha_value
@@ -894,7 +898,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         tensor.float_data[:] = tensor_data.flat
         tensor.dims[:] = tensor_data.shape
 
-    def convert_fully_connected(self, node):
+    def convert_gemm(self, node):
+        # only supports FullyConnected Style Gemm for now.
         trans_a = node.attrs['transA'] if 'transA' in node.attrs else 0
         trans_b = node.attrs['transB'] if 'transB' in node.attrs else 0
         shape_a = self._graph_shapes_dict[node.inputs[0]]
