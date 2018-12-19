@@ -53,7 +53,7 @@ Optional dependencies
       - apt-get install android-tools-adb
       - Required by Android run, >= 1.0.32
     * - TensorFlow
-      - pip install -I tensorflow==1.6.0
+      - pip install -I tensorflow==1.8.0
       - Required by TensorFlow model
     * - Docker
       - `docker installation guide <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__

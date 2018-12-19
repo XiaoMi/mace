@@ -806,7 +806,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         reduce_type_arg = op.arg.add()
         reduce_type_arg.name = MaceKeyword.mace_reduce_type_str
-        reduce_type_arg.i = ReduceType.MEAN
+        reduce_type_arg.i = ReduceType.MEAN.value
 
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
