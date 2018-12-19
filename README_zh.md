@@ -34,6 +34,9 @@
 * 硬件支持范围
   * 支持高通，联发科，以及松果等系列芯片的CPU，GPU与DSP(目前仅支持Hexagon)计算加速。
   同时支持在具有POSIX接口的系统的CPU上运行。
+* 模型格式支持
+  * 支持[TensorFlow](https://github.com/tensorflow/tensorflow)，
+  [Caffe](https://github.com/BVLC/caffe)和[ONNX](https://github.com/onnx/onnx)等模型格式。
 
 ## 开始使用
 * [简介](https://mace.readthedocs.io/en/latest/introduction.html)

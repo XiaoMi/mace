@@ -43,6 +43,10 @@ targets:
   * Good coverage of recent Qualcomm, MediaTek, Pinecone and other ARM based
     chips. CPU runtime is also compatible with most POSIX systems and
     architectures with limited performance.
+* Rich model formats support
+  * [TensorFlow](https://github.com/tensorflow/tensorflow),
+    [Caffe](https://github.com/BVLC/caffe) and
+    [ONNX](https://github.com/onnx/onnx) model formats are supported.
 
 ## Getting Started
 * [Introduction](https://mace.readthedocs.io/en/latest/introduction.html)
