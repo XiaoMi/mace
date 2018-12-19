@@ -94,7 +94,6 @@ void MemoryAccessBenchmark_NHCW(
   static void MACE_BM_MEMORY_ACCESS_##N##_##H##_##W##_##C##_##ORDER( \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C; \
-    mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot * sizeof(float));              \
     MemoryAccessBenchmark_##ORDER(iters, N, H, W, C);                \
   }                                                                  \

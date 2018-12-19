@@ -14,6 +14,7 @@
 
 #include <algorithm>
 
+#include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
@@ -90,9 +91,10 @@ static void Deconv2d(int iters,
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
     int64_t oh = OH;                                                          \
     int64_t ow = OW;                                                          \
-    const int64_t macc =                                                      \
-        static_cast<int64_t>(iters) * N * OC * oh * ow * (KH * KW * C + 1);   \
-    mace::testing::MaccProcessed(macc);                                       \
+    const int64_t macs =                                                      \
+        static_cast<int64_t>(iters) * mace::benchmark::StatMACs(              \
+            "Deconv2D", {OC, C, KH, KW}, {N, OH, OW, OC});                    \
+    mace::testing::MacsProcessed(macs);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     Deconv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, OH, OW,         \
                          mace::Padding::P, OC);                               \

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <string>
+
+#include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -75,9 +77,10 @@ void ResizeBilinearBenchmark(int iters,
       MACE_BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_\
         ##DEVICE(                                                              \
           int iters) {                                                         \
-    const int64_t macc = static_cast<int64_t>(iters) * N * C * H1 * W1 * 3;    \
+    const int64_t macs = static_cast<int64_t>(iters) *                         \
+        mace::benchmark::StatMACs("ResizeBilinear", {}, {N, H1, W1, C});       \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H0 * W0;         \
-    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::MacsProcessed(macs);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     ResizeBilinearBenchmark<DEVICE, TYPE>(iters, N, C, H0, W0, H1, W1);        \
   }                                                                            \

@@ -49,7 +49,6 @@ void ConcatHelper(int iters, int concat_dim, int dim0, int dim1) {
     net.Run();
   }
   const int64_t tot = static_cast<int64_t>(iters) * dim0 * dim1 * 2;
-  mace::testing::MaccProcessed(tot);
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
@@ -104,7 +103,6 @@ void OpenCLConcatHelper(int iters,
   const int64_t tot =
       static_cast<int64_t>(iters) *
       (net.GetTensor("Input0")->size() + net.GetTensor("Input1")->size());
-  mace::testing::MaccProcessed(tot);
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {

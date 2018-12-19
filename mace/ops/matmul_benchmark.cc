@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "public/gemmlowp.h"
+#include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/gemm.h"
 #include "mace/ops/sgemm.h"
@@ -223,9 +224,10 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
 
 #define MACE_BM_MATMUL_FUNC(M, K, N, FUNC, TYPE)                   \
   static void MACE_BM_MATMUL_##M##_##K##_##N##_##FUNC(int iters) { \
-    const int64_t macc = static_cast<int64_t>(iters) * M * K * N;  \
+    const int64_t macs = static_cast<int64_t>(iters) *             \
+        mace::benchmark::StatMACs("MatMul", {K}, {M, N});          \
     const int64_t tot = static_cast<int64_t>(iters) * (M + N) * K; \
-    mace::testing::MaccProcessed(macc);                            \
+    mace::testing::MacsProcessed(macs);                            \
     mace::testing::BytesProcessed(tot * sizeof(TYPE));             \
     MatmulBenchmark_##FUNC(iters, M, K, N);                        \
   }                                                                \
@@ -377,9 +379,10 @@ void MatMulTransposeBenchmark(
 #define MACE_BM_MATMUL_MACRO(N, H, C, W, TYPE, DEVICE)                         \
   static void MACE_BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(        \
       int iters) {                                                             \
-    const int64_t macc = static_cast<int64_t>(iters) * N * C * H * W;          \
+    const int64_t macs = static_cast<int64_t>(iters) *                         \
+        mace::benchmark::StatMACs("MatMul", {C}, {N, H, W});                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * (C * H + H * W);     \
-    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::MacsProcessed(macs);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     MatMulBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                          \
   }                                                                            \
@@ -392,9 +395,10 @@ void MatMulTransposeBenchmark(
 #define MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, TYPE, DEVICE)               \
   static void MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(    \
       int iters) {                                                             \
-    const int64_t macc = static_cast<int64_t>(iters) * N * C * H * W;          \
+    const int64_t macs = static_cast<int64_t>(iters) *                         \
+        mace::benchmark::StatMACs("MatMul", {C}, {N, H, W});                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * (C * H + H * W);     \
-    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::MacsProcessed(macs);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     MatMulTransposeBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                 \
   }                                                                            \

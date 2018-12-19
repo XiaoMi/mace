@@ -79,11 +79,11 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
   static void                                                                  \
       MACE_BM_LSTMCELL_##N##_##INPUT_SIZE##_##HIDDEN_UNITS##_##TYPE##_##DEVICE(\
         int iters) {                                                           \
-    const int64_t macc =                                                       \
+    const int64_t macs =                                                       \
         static_cast<int64_t>(                                                  \
             iters) * N * (INPUT_SIZE + HIDDEN_UNITS) * 4 * HIDDEN_UNITS;       \
     const int64_t tot = static_cast<int64_t>(iters) * N * INPUT_SIZE;          \
-    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::MacsProcessed(macs);                                        \
     mace::testing::BytesProcessed(tot * (sizeof(TYPE)));                       \
     LSTMCell<DEVICE, TYPE>(iters, N, INPUT_SIZE, HIDDEN_UNITS);                \
   }                                                                            \

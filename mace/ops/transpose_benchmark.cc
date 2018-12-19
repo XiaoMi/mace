@@ -58,7 +58,6 @@ void TransposeBenchmark(int iters,
   static void MACE_BM_TRANSPOSE2D_##H##_##W##_##TYPE##_##DEVICE(     \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * H * W;         \
-    mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     TransposeBenchmark<DEVICE, TYPE>(iters, {H, W}, {1, 0});         \
   }                                                                  \
@@ -72,7 +71,6 @@ void TransposeBenchmark(int iters,
     MACE_BM_TRANSPOSE4D_##N##_##C##_##H##_##W##_##D0##D1##D2##D3##_##TYPE##_##\
       DEVICE(int iters) {                                                     \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     TransposeBenchmark<DEVICE, TYPE>(iters, {N, C, H, W}, {D0, D1, D2, D3});  \
   }                                                                           \

@@ -15,6 +15,7 @@ cc_library(
     srcs = ["statistics.cc"],
     hdrs = ["statistics.h"],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+    visibility = ["//visibility:public"],
     deps = [
         "//mace/utils",
     ],

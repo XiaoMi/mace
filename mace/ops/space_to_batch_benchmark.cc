@@ -64,7 +64,6 @@ void BMSpaceToBatch(
     MACE_BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE(\
         int iters) {                                                           \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
-    mace::testing::MaccProcessed(tot);                                         \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     BMSpaceToBatch<DEVICE, TYPE>(iters, N, H, W, C, SHAPE);                    \
   }                                                                            \

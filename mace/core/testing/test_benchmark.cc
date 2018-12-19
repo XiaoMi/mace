@@ -28,7 +28,7 @@ namespace testing {
 
 static std::vector<Benchmark *> *all_benchmarks = nullptr;
 static int64_t bytes_processed;
-static int64_t macc_processed;
+static int64_t macs_processed = 0;
 static int64_t accum_time = 0;
 static int64_t start_time = 0;
 
@@ -62,8 +62,8 @@ void Benchmark::Run(const char *pattern) {
   // Internal perf regression tools depends on the output formatting,
   // please keep in consistent when modifying
   printf("%-*s %10s %10s %10s %10s\n", width, "Benchmark", "Time(ns)",
-         "Iterations", "Input(MB/s)", "MACC(G/s)");
-  printf("%s\n", std::string(width + 44, '-').c_str());
+         "Iterations", "Input(MB/s)", "GMACPS");
+  printf("%s\n", std::string(width + 45, '-').c_str());
   for (auto b : *all_benchmarks) {
     if (!std::regex_match(b->name_, match, regex)) continue;
     int iters;
@@ -71,9 +71,9 @@ void Benchmark::Run(const char *pattern) {
     b->Run(&iters, &seconds);
     float mbps = (bytes_processed * 1e-6) / seconds;
     // MACCs or other computations
-    float gmaccs = (macc_processed * 1e-9) / seconds;
+    float gmacs = (macs_processed * 1e-9) / seconds;
     printf("%-*s %10.0f %10d %10.2f %10.2f\n", width, b->name_.c_str(),
-           seconds * 1e9 / iters, iters, mbps, gmaccs);
+           seconds * 1e9 / iters, iters, mbps, gmacs);
   }
 }
 
@@ -89,7 +89,7 @@ void Benchmark::Run(int *run_count, double *run_seconds) {
   int64_t iters = kMinIters;
   while (true) {
     bytes_processed = -1;
-    macc_processed = -1;
+    macs_processed = 0;
     RestartTiming();
     (*benchmark_func_)(iters);
     StopTiming();
@@ -108,7 +108,7 @@ void Benchmark::Run(int *run_count, double *run_seconds) {
 }
 
 void BytesProcessed(int64_t n) { bytes_processed = n; }
-void MaccProcessed(int64_t n) { macc_processed = n; }
+void MacsProcessed(int64_t n) { macs_processed = n; }
 void RestartTiming() {
   accum_time = 0;
   start_time = NowMicros();

@@ -403,8 +403,9 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
       std::string type = op->debug_def().type();
 
       if (type.compare("Conv2D") == 0 ||
-          type.compare("FusedConv2D") == 0 ||
+          type.compare("Deconv2D") == 0 ||
           type.compare("DepthwiseConv2d") == 0 ||
+          type.compare("DepthwiseDeconv2d") == 0 ||
           type.compare("Pooling") == 0) {
         strides = op->GetRepeatedArgs<int>("strides");
         padding_type = op->GetOptionalArg<int>("padding", -1);
@@ -415,6 +416,14 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
         } else {
           kernels = op->Input(1)->shape();
         }
+      } else if (type.compare("MatMul") == 0) {
+        bool transpose_a = op->GetOptionalArg<bool>("transpose_a", false);
+        kernels = op->Input(0)->shape();
+        if (transpose_a) {
+          std::swap(kernels[kernels.size()-2], kernels[kernels.size()-1]);
+        }
+      } else if (type.compare("FullyConnected") == 0) {
+        kernels = op->Input(1)->shape();
       }
 
       std::vector<std::vector<int64_t>> output_shapes;

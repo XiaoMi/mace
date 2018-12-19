@@ -379,6 +379,8 @@ Useful Commands
 
 * **benchmark and profile model**
 
+the detailed information is in :doc:`benchmark`.
+
 .. code:: sh
 
     # Benchmark model, get detailed statistics of each Op.

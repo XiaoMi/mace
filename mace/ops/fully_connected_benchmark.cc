@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -104,11 +105,12 @@ void FCBenchmark<CPU, uint8_t>(
 #define MACE_BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
   static void MACE_BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE( \
       int iters) {                                                         \
-    const int64_t macc =                                                   \
-        static_cast<int64_t>(iters) * N * C * H * W * OC + OC;             \
+    const int64_t macs =                                                   \
+        static_cast<int64_t>(iters) * mace::benchmark::StatMACs(           \
+            "FullyConnected", {OC, H, W, C}, {N, 1, 1, OC});               \
     const int64_t tot =                                                    \
         static_cast<int64_t>(iters) * (N + OC) * C * H * W + OC;           \
-    mace::testing::MaccProcessed(macc);                                    \
+    mace::testing::MacsProcessed(macs);                                    \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                    \
     FCBenchmark<DEVICE, TYPE>(iters, N, H, W, C, OC);                      \
   }                                                                        \

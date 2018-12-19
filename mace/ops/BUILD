@@ -230,6 +230,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "test",
+        "//mace/benchmark:statistics",
         "//mace/core:test_benchmark_main",
         "//third_party/eigen3",
     ],

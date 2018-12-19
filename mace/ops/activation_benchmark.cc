@@ -62,7 +62,6 @@ void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
   static void MACE_BM_RELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(        \
       int iters) {                                                           \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
-    mace::testing::MaccProcessed(tot);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
     ReluBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                          \
@@ -119,7 +118,6 @@ void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
   static void MACE_BM_RELUX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(        \
       int iters) {                                                            \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     ReluxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                           \
@@ -179,7 +177,6 @@ void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
   static void MACE_BM_PRELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(        \
       int iters) {                                                            \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     PreluBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                           \
@@ -235,7 +232,6 @@ void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
   static void MACE_BM_TANH_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(        \
       int iters) {                                                           \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
-    mace::testing::MaccProcessed(tot);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
     TanhBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                          \
@@ -292,7 +288,6 @@ void SigmoidBenchmark(
   static void MACE_BM_SIGMOID_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
       int iters) {                                                        \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
-    mace::testing::MaccProcessed(tot);                                    \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
     SigmoidBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                    \
   }                                                                       \

@@ -68,7 +68,6 @@ void FilterBufferToImage(int iters,
   static void MACE_BM_B2I_##O##_##I##_##H##_##W##_##TYPE##_##DEVICE( \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * O * I * H * W; \
-    mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     FilterBufferToImage<DEVICE, TYPE>(iters, O, I, H, W);            \
   }                                                                  \
