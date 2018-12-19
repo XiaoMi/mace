@@ -36,6 +36,7 @@ class OpenCLDeconv2dKernel {
       const int *padding_data,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const std::vector<index_t> &output_shape,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLDeconv2dKernel);

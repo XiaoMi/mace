@@ -244,10 +244,10 @@ void TestNxNS12(const index_t height, const index_t width) {
     net.AddRandomInput<DeviceType::GPU, float>(
         "Input", {batch, height, width, channel});
     net.AddRandomInput<DeviceType::GPU, float>(
-        "Filter", {multiplier, channel, kernel_h, kernel_w}, true);
+        "Filter", {multiplier, channel, kernel_h, kernel_w}, true, false);
     net.AddRandomInput<DeviceType::GPU, float>("Bias",
                                                {multiplier * channel},
-                                               true);
+                                               true, false);
 
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
@@ -260,8 +260,8 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6.0)
+        .AddStringArg("activation", "LEAKYRELU")
+        .AddFloatArg("leakyrelu_coefficient", 0.1)
         .Finalize(net.NewOperatorDef());
 
     // Run on cpu
@@ -283,8 +283,8 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6.0)
+        .AddStringArg("activation", "LEAKYRELU")
+        .AddFloatArg("leakyrelu_coefficient", 0.1)
         .Finalize(net.NewOperatorDef());
 
     net.RunOp(DeviceType::GPU);

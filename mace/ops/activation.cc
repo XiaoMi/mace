@@ -36,9 +36,11 @@ class ActivationOp<DeviceType::CPU, float> : public Operation {
       : Operation(context),
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
-                                                  "NOOP"))),
+                                                   "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit",
-                                                         0.0f)) {}
+                                                          0.0f)),
+        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
+              "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -58,7 +60,7 @@ class ActivationOp<DeviceType::CPU, float> : public Operation {
                       alpha_ptr, output_ptr);
     } else {
       DoActivation(input_ptr, output_ptr, output->size(), activation_,
-                   relux_max_limit_);
+                   relux_max_limit_, leakyrelu_coefficient_);
     }
     return MaceStatus::MACE_SUCCESS;
   }
@@ -66,6 +68,7 @@ class ActivationOp<DeviceType::CPU, float> : public Operation {
  private:
   ActivationType activation_;
   float relux_max_limit_;
+  float leakyrelu_coefficient_;
 };
 
 
@@ -80,11 +83,14 @@ class ActivationOp<DeviceType::GPU, T> : public Operation {
                                               "NOOP"));
     auto relux_max_limit = static_cast<T>(
         Operation::GetOptionalArg<float>("max_limit", 0.0f));
+    auto leakyrelu_coefficient = static_cast<T>(
+        Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f));
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(
-          new opencl::image::ActivationKernel<T>(type, relux_max_limit));
+          new opencl::image::ActivationKernel<T>(type, relux_max_limit,
+                                                 leakyrelu_coefficient));
     } else {
       MACE_NOT_IMPLEMENTED;
     }

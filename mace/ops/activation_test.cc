@@ -54,6 +54,42 @@ TEST_F(ActivationOpTest, OPENCLSimpleRelu) {
 
 namespace {
 template <DeviceType D>
+void TestSimpleLeakyRelu() {
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<D, float>(
+      "Input", {2, 2, 2, 2},
+      {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
+
+  OpDefBuilder("Activation", "ReluTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp(D);
+
+  auto expected = net.CreateTensor<float>(
+      {2, 2, 2, 2},
+      {-0.7, 7, -0.6, 6, -0.5, 5, -0.4, 4, -0.3, 3, -0.2, 2, -0.1, 1, 0, 0});
+
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+}  // namespace
+
+TEST_F(ActivationOpTest, CPUSimpleLeakyRelu) {
+  TestSimpleLeakyRelu<DeviceType::CPU>();
+}
+
+TEST_F(ActivationOpTest, OPENCLSimpleLeakyRelu) {
+  TestSimpleLeakyRelu<DeviceType::GPU>();
+}
+
+namespace {
+template <DeviceType D>
 void TestUnalignedSimpleRelu() {
   OpsTestNet net;
 

@@ -62,7 +62,8 @@ void DoActivation(const T *input_ptr,
                   T *output_ptr,
                   const index_t size,
                   const ActivationType type,
-                  const float relux_max_limit) {
+                  const float relux_max_limit,
+                  const float leakyrelu_coefficient) {
   MACE_CHECK(DataTypeToEnum<T>::value != DataType::DT_HALF);
 
   switch (type) {
@@ -97,7 +98,7 @@ void DoActivation(const T *input_ptr,
 #pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0))
-            + std::min(input_ptr[i], static_cast<T>(0)) * relux_max_limit;
+          + leakyrelu_coefficient * std::min(input_ptr[i], static_cast<T>(0));
       }
       break;
     default:
@@ -110,7 +111,8 @@ inline void DoActivation(const float *input_ptr,
                          float *output_ptr,
                          const index_t size,
                          const ActivationType type,
-                         const float relux_max_limit) {
+                         const float relux_max_limit,
+                         const float leakyrelu_coefficient) {
   switch (type) {
     case NOOP:
       break;
@@ -133,7 +135,7 @@ inline void DoActivation(const float *input_ptr,
       }
       break;
     case LEAKYRELU:
-      LeakyReluNeon(input_ptr, relux_max_limit, size, output_ptr);
+      LeakyReluNeon(input_ptr, leakyrelu_coefficient, size, output_ptr);
       break;
     default:
       LOG(FATAL) << "Unknown activation type: " << type;

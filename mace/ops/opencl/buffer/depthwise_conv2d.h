@@ -39,6 +39,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            const DataType dt,
                            const ActivationType activation,
                            const float relux_max_limit,
+                           const float leakyrelu_coefficient,
                            const bool input_changed,
                            Tensor *output,
                            StatsFuture *future);
@@ -60,6 +61,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       Tensor *output) override;
 
  private:
@@ -81,6 +83,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
+    const float leakyrelu_coefficient,
     Tensor *output) {
   StatsFuture pad_future, dw_conv_future;
   index_t filter_w = filter->dim(3);
@@ -175,7 +178,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
       depthwise::DepthwiseConv2d(
           context, &kernels_[1], padded_input_ptr, filter, bias, strides,
           dilations, DataTypeToEnum<T>::v(), activation, relux_max_limit,
-          input_changed, output, &dw_conv_future));
+          leakyrelu_coefficient, input_changed, output, &dw_conv_future));
   MergeMultipleFutureWaitFn({pad_future, dw_conv_future}, context->future());
   return MaceStatus::MACE_SUCCESS;
 }

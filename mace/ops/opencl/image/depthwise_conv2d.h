@@ -39,6 +39,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            const int *dilations,
                            const ActivationType activation,
                            const float relux_max_limit,
+                           const float leakyrelu_coefficient,
                            const DataType dt,
                            std::vector<index_t> *prev_input_shape,
                            Tensor *output,
@@ -60,6 +61,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       Tensor *output) override;
 
  private:
@@ -80,6 +82,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
+    const float leakyrelu_coefficient,
     Tensor *output) {
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
@@ -118,8 +121,8 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
 
   return depthwise::DepthwiseConv2d(
       context, &kernel_, input, filter, bias, strides[0], paddings.data(),
-      dilations, activation, relux_max_limit, DataTypeToEnum<T>::value,
-      &input_shape_, output, &kwg_size_);
+      dilations, activation, relux_max_limit, leakyrelu_coefficient,
+      DataTypeToEnum<T>::value, &input_shape_, output, &kwg_size_);
 }
 
 }  // namespace image

@@ -292,7 +292,8 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
                         output_data,
                         output->size(),
                         activation_,
-                        relux_max_limit_);
+                        relux_max_limit_,
+                        leakyrelu_coefficient_);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -443,7 +444,8 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
 
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), in_paddings.data(), activation_,
-                            relux_max_limit_, out_shape, output);
+                            relux_max_limit_, leakyrelu_coefficient_,
+                            out_shape, output);
   }
 
  private:

@@ -35,10 +35,12 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
   explicit BatchNormOp(OpConstructContext *context)
       : Operation(context),
         epsilon_(Operation::GetOptionalArg<float>("epsilon",
-                                                 static_cast<float>(1e-4))),
+                                                  static_cast<float>(1e-4))),
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation", "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)) {}
+        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
+        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
+              "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -121,7 +123,7 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
       }
     }
     DoActivation(output_ptr, output_ptr, output->size(), activation_,
-                 relux_max_limit_);
+                 relux_max_limit_, leakyrelu_coefficient_);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -130,6 +132,7 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
   float epsilon_;
   const ActivationType activation_;
   const float relux_max_limit_;
+  const float leakyrelu_coefficient_;
 
  protected:
   MACE_OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR);
@@ -148,11 +151,13 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
     ActivationType activation = ops::StringToActivationType(
         Operation::GetOptionalArg<std::string>("activation", "NOOP"));
     float relux_max_limit = Operation::GetOptionalArg<float>("max_limit", 0.0f);
+    float leakyrelu_coefficient = Operation::GetOptionalArg<float>(
+        "leakyrelu_coefficient", 0.0f);
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::BatchNormKernel<T>(
-          epsilon, activation, relux_max_limit));
+          epsilon, activation, relux_max_limit, leakyrelu_coefficient));
     } else {
       MACE_NOT_IMPLEMENTED;
     }

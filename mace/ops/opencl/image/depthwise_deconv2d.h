@@ -43,6 +43,7 @@ class DepthwiseDeconv2dKernel : public OpenCLDepthwiseDeconv2dKernel {
       const int group,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const std::vector<index_t> &output_shape,
       Tensor *output) override;
 
@@ -63,6 +64,7 @@ MaceStatus DepthwiseDeconv2dKernel<T>::Compute(
     const int group,
     const ActivationType activation,
     const float relux_max_limit,
+    const float leakyrelu_coefficient,
     const std::vector<index_t> &output_shape,
     Tensor *output) {
   const index_t batch = output_shape[0];
@@ -125,6 +127,9 @@ MaceStatus DepthwiseDeconv2dKernel<T>::Compute(
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
         break;
+      case LEAKYRELU:
+        built_options.emplace("-DUSE_LEAKYRELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
@@ -152,6 +157,7 @@ MaceStatus DepthwiseDeconv2dKernel<T>::Compute(
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit);
+    kernel_.setArg(idx++, leakyrelu_coefficient);
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(height));

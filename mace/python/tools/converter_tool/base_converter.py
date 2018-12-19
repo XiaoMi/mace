@@ -168,6 +168,7 @@ class MaceKeyword(object):
     mace_element_type_str = 'type'
     mace_activation_type_str = 'activation'
     mace_activation_max_limit_str = 'max_limit'
+    mace_activation_leakyrelu_coefficient_str = 'leakyrelu_coefficient'
     mace_resize_size_str = 'size'
     mace_batch_to_space_crops_str = 'crops'
     mace_paddings_str = 'paddings'

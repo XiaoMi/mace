@@ -127,7 +127,8 @@ __kernel void winograd_inverse_transform_2x2(OUT_OF_RANGE_PARAMS
                                              __private const int out_width,
                                              __private const int round_hw,
                                              __private const int round_w,
-                                             __private const float relux_max_limit) {
+                                             __private const float relux_max_limit,
+                                             __private const float leakyrelu_coefficient) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
 
@@ -203,11 +204,11 @@ __kernel void winograd_inverse_transform_2x2(OUT_OF_RANGE_PARAMS
 #endif
 
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-  in0[0] = do_activation(in0[0], relux_max_limit);
-  in0[1] = do_activation(in0[1], relux_max_limit);
-  in1[0] = do_activation(in1[0], relux_max_limit);
-  in1[1] = do_activation(in1[1], relux_max_limit);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  in0[0] = do_activation(in0[0], relux_max_limit, leakyrelu_coefficient);
+  in0[1] = do_activation(in0[1], relux_max_limit, leakyrelu_coefficient);
+  in1[0] = do_activation(in1[0], relux_max_limit, leakyrelu_coefficient);
+  in1[1] = do_activation(in1[1], relux_max_limit, leakyrelu_coefficient);
 #endif
 
   WRITE_IMAGET(output, (int2)(coord_x, coord_y), in0[0]);
@@ -395,7 +396,8 @@ __kernel void winograd_inverse_transform_4x4(OUT_OF_RANGE_PARAMS
                                              __private const int out_width,
                                              __private const int round_hw,
                                              __private const int round_w,
-                                             __private const float relux_max_limit) {
+                                             __private const float relux_max_limit,
+                                             __private const float leakyrelu_coefficient) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
 
@@ -515,23 +517,23 @@ __kernel void winograd_inverse_transform_4x4(OUT_OF_RANGE_PARAMS
     out3[3] += bias_value;
 #endif
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0[0] = do_activation(out0[0], relux_max_limit);
-  out0[1] = do_activation(out0[1], relux_max_limit);
-  out0[2] = do_activation(out0[2], relux_max_limit);
-  out0[3] = do_activation(out0[3], relux_max_limit);
-  out1[0] = do_activation(out1[0], relux_max_limit);
-  out1[1] = do_activation(out1[1], relux_max_limit);
-  out1[2] = do_activation(out1[2], relux_max_limit);
-  out1[3] = do_activation(out1[3], relux_max_limit);
-  out2[0] = do_activation(out2[0], relux_max_limit);
-  out2[1] = do_activation(out2[1], relux_max_limit);
-  out2[2] = do_activation(out2[2], relux_max_limit);
-  out2[3] = do_activation(out2[3], relux_max_limit);
-  out3[0] = do_activation(out3[0], relux_max_limit);
-  out3[1] = do_activation(out3[1], relux_max_limit);
-  out3[2] = do_activation(out3[2], relux_max_limit);
-  out3[3] = do_activation(out3[3], relux_max_limit);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out0[0] = do_activation(out0[0], relux_max_limit, leakyrelu_coefficient);
+  out0[1] = do_activation(out0[1], relux_max_limit, leakyrelu_coefficient);
+  out0[2] = do_activation(out0[2], relux_max_limit, leakyrelu_coefficient);
+  out0[3] = do_activation(out0[3], relux_max_limit, leakyrelu_coefficient);
+  out1[0] = do_activation(out1[0], relux_max_limit, leakyrelu_coefficient);
+  out1[1] = do_activation(out1[1], relux_max_limit, leakyrelu_coefficient);
+  out1[2] = do_activation(out1[2], relux_max_limit, leakyrelu_coefficient);
+  out1[3] = do_activation(out1[3], relux_max_limit, leakyrelu_coefficient);
+  out2[0] = do_activation(out2[0], relux_max_limit, leakyrelu_coefficient);
+  out2[1] = do_activation(out2[1], relux_max_limit, leakyrelu_coefficient);
+  out2[2] = do_activation(out2[2], relux_max_limit, leakyrelu_coefficient);
+  out2[3] = do_activation(out2[3], relux_max_limit, leakyrelu_coefficient);
+  out3[0] = do_activation(out3[0], relux_max_limit, leakyrelu_coefficient);
+  out3[1] = do_activation(out3[1], relux_max_limit, leakyrelu_coefficient);
+  out3[2] = do_activation(out3[2], relux_max_limit, leakyrelu_coefficient);
+  out3[3] = do_activation(out3[3], relux_max_limit, leakyrelu_coefficient);
 #endif
 
   const int num = min(4, out_width - out_width_idx);

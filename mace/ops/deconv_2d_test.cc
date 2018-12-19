@@ -377,8 +377,9 @@ void TestComplexDeconvNxN(const int batch,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
-    net.AddRandomInput<D, T>("Bias", {output_channels}, true);
+        "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true,
+        false);
+    net.AddRandomInput<D, T>("Bias", {output_channels}, true, false);
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
     int out_h = 0;
@@ -418,6 +419,8 @@ void TestComplexDeconvNxN(const int batch,
           .AddIntsArg("strides", {stride_h, stride_w})
           .AddIntsArg("padding_values", paddings)
           .AddIntArg("framework_type", model_type)
+          .AddStringArg("activation", "LEAKYRELU")
+          .AddFloatArg("leakyrelu_coefficient", 0.1)
           .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
           .Finalize(net.NewOperatorDef());
     } else {
@@ -454,6 +457,8 @@ void TestComplexDeconvNxN(const int batch,
           .AddIntsArg("strides", {stride_h, stride_w})
           .AddIntsArg("padding_values", paddings)
           .AddIntArg("framework_type", model_type)
+          .AddStringArg("activation", "LEAKYRELU")
+          .AddFloatArg("leakyrelu_coefficient", 0.1)
           .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
           .Finalize(net.NewOperatorDef());
     } else {

@@ -47,7 +47,9 @@ class Deconv2dOpBase : public Operation {
             Operation::GetOptionalArg<std::string>("activation",
                                                    "NOOP"))),
         relux_max_limit_(
-            Operation::GetOptionalArg<float>("max_limit", 0.0f)) {}
+            Operation::GetOptionalArg<float>("max_limit", 0.0f)),
+        leakyrelu_coefficient_(
+            Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f)) {}
 
   static void CalcDeconvShape_Caffe(
       const index_t *input_shape,   // NHWC
@@ -191,6 +193,7 @@ class Deconv2dOpBase : public Operation {
   const FrameworkType model_type_;
   const ActivationType activation_;
   const float relux_max_limit_;
+  const float leakyrelu_coefficient_;
 };
 
 template <typename T>

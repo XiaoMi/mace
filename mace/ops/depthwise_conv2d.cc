@@ -49,10 +49,13 @@ class DepthwiseConv2dOpBase : public ConvPool2dOpBase {
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
                                                   "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)) {}
+        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
+        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
+              "leakyrelu_coefficient", 0.0f)) {}
  protected:
   const ActivationType activation_;
   const float relux_max_limit_;
+  const float leakyrelu_coefficient_;
 };
 
 template <DeviceType D, class T>
@@ -218,7 +221,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
     }
 
     DoActivation(output_data, output_data, output->size(), activation_,
-                 relux_max_limit_);
+                 relux_max_limit_, leakyrelu_coefficient_);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -524,7 +527,7 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), padding_type_, paddings_,
                             dilations_.data(), activation_, relux_max_limit_,
-                            output);
+                            leakyrelu_coefficient_, output);
   }
 
  private:
