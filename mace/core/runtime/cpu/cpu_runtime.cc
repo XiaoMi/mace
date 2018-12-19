@@ -84,7 +84,7 @@ int GetCPUMaxFreq(std::vector<float> *max_freqs) {
     }
     std::string line;
     if (std::getline(f, line)) {
-      float freq = atof(line.c_str());
+      float freq = strtof(line.c_str(), nullptr);
       max_freqs->push_back(freq);
     }
     if (f.bad()) {
