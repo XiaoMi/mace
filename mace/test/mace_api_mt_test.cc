@@ -39,7 +39,6 @@ void MaceRunFunc(const int in_out_size) {
 
   std::shared_ptr<NetDef> net_def(new NetDef());
 
-
   std::vector<half> data;
   ops::test::GenerateRandomRealTypeData<half>(filter_shape, &data);
   AddTensor<half>(
@@ -63,6 +62,7 @@ void MaceRunFunc(const int in_out_size) {
   }
 
   MaceEngineConfig config(DeviceType::GPU);
+  config.SetGPUContext(mace::ops::test::OpTestContext::Get()->gpu_context());
 
   MaceEngine engine(config);
   MaceStatus status = engine.Init(net_def.get(), input_names, output_names,

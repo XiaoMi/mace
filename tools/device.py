@@ -901,6 +901,8 @@ class DeviceWrapper:
             stdout_buf = []
             process_output = sh_commands.make_output_processor(stdout_buf)
 
+            internal_storage_dir = self.create_internal_storage_dir()
+
             if simpleperf and self.system == SystemType.android:
                 self.push(sh_commands.find_simpleperf_library(abi),
                           self.data_dir)
@@ -909,6 +911,7 @@ class DeviceWrapper:
                     ld_preload,
                     'MACE_OUT_OF_RANGE_CHECK=%s' % out_of_range_check,
                     'MACE_OPENCL_PROFILING=%d' % opencl_profiling,
+                    'MACE_INTERNAL_STORAGE_PATH=%s' % internal_storage_dir,
                     'MACE_CPP_MIN_VLOG_LEVEL=%d' % vlog_level,
                     simpleperf_cmd,
                     'stat',
@@ -928,6 +931,7 @@ class DeviceWrapper:
                     ld_preload,
                     'MACE_OUT_OF_RANGE_CHECK=%d' % out_of_range_check,
                     'MACE_OPENCL_PROFILNG=%d' % opencl_profiling,
+                    'MACE_INTERNAL_STORAGE_PATH=%s' % internal_storage_dir,
                     'MACE_CPP_MIN_VLOG_LEVEL=%d' % vlog_level,
                     device_bin_full_path,
                     args

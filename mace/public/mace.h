@@ -146,6 +146,9 @@ class MaceStatus {
 ///
 /// There are some data in common between different MaceEngines using GPU,
 /// use one GPUContext could avoid duplication.
+///
+/// Thread-safe.
+/// You could use one GPUContext for multiple parallel MaceEngines.
 class GPUContext;
 
 /// \brief GPUContext builder.
