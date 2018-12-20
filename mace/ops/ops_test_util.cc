@@ -100,6 +100,14 @@ void OpDefBuilder::Finalize(OperatorDef *op_def) const {
   *op_def = op_def_;
 }
 
+namespace {
+std::string GetStoragePathFromEnv() {
+  char *storage_path_str = getenv("MACE_INTERNAL_STORAGE_PATH");
+  if (storage_path_str == nullptr) return "";
+  return storage_path_str;
+}
+}  // namespace
+
 OpTestContext *OpTestContext::Get(int num_threads,
                                   CPUAffinityPolicy cpu_affinity_policy,
                                   bool use_gemmlowp) {
@@ -112,7 +120,7 @@ OpTestContext *OpTestContext::Get(int num_threads,
 OpTestContext::OpTestContext(int num_threads,
                              CPUAffinityPolicy cpu_affinity_policy,
                              bool use_gemmlowp)
-    : gpu_context_(new GPUContext()),
+    : gpu_context_(new GPUContext(GetStoragePathFromEnv())),
       opencl_mem_types_({MemoryType::GPU_IMAGE}) {
   device_map_[DeviceType::CPU] = std::unique_ptr<Device>(
       new CPUDevice(num_threads,
