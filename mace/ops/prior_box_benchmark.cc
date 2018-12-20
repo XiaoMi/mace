@@ -51,7 +51,6 @@ void PriorBox(
     net.RunOp(D);
   }
   const int64_t tot = static_cast<int64_t>(iters) * (300 * 300 * 3 + h);
-  mace::testing::MaccProcessed(tot);
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
