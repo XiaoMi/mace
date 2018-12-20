@@ -188,6 +188,10 @@ class CaffeConverter(base_converter.ConverterInterface):
             'Crop': self.convert_crop,
             'Scale': self.convert_scale,
             'ShuffleChannel': self.convert_channel_shuffle,
+            'Permute': self.convert_permute,
+            'Flatten': self.convert_flatten,
+            'PriorBox': self.convert_prior_box,
+            'Reshape': self.convert_reshape,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -565,8 +569,6 @@ class CaffeConverter(base_converter.ConverterInterface):
             axis_arg.i = param.axis
         elif param.HasField('concat_dim'):
             axis_arg.i = param.concat_dim
-        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
-        mace_check(axis_arg.i == 1, "only support concat at channel dimension")
 
     def convert_slice(self, caffe_op):
         op = self.convert_general_op(caffe_op)
@@ -668,3 +670,107 @@ class CaffeConverter(base_converter.ConverterInterface):
         group_arg.i = 1
         if param.HasField('group'):
             group_arg.i = param.group
+
+    def convert_permute(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.permute_param
+        op.type = MaceOp.Transpose.name
+
+        dims_arg = op.arg.add()
+        dims_arg.name = MaceKeyword.mace_dims_str
+        dims_arg.ints.extend(list(param.order))
+
+    def convert_flatten(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.flatten_param
+        op.type = MaceOp.Reshape.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = 1
+        if param.HasField('axis'):
+            axis_arg.i = param.axis
+        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
+
+        end_axis_arg = op.arg.add()
+        end_axis_arg.name = MaceKeyword.mace_end_axis_str
+        end_axis_arg.i = -1
+        if param.HasField('end_axis'):
+            end_axis_arg.i = param.end_axis
+
+    def convert_prior_box(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.prior_box_param
+        op.type = MaceOp.PriorBox.name
+
+        min_size_arg = op.arg.add()
+        min_size_arg.name = MaceKeyword.mace_min_size_str
+        min_size_arg.floats.extend(list(param.min_size))
+        max_size_arg = op.arg.add()
+        max_size_arg.name = MaceKeyword.mace_max_size_str
+        max_size_arg.floats.extend(list(param.max_size))
+        aspect_ratio_arg = op.arg.add()
+        aspect_ratio_arg.name = MaceKeyword.mace_aspect_ratio_str
+        aspect_ratio_arg.floats.extend(list(param.aspect_ratio))
+        flip_arg = op.arg.add()
+        flip_arg.name = MaceKeyword.mace_flip_str
+        flip_arg.i = 1
+        if param.HasField('flip'):
+            flip_arg.i = int(param.flip)
+        clip_arg = op.arg.add()
+        clip_arg.name = MaceKeyword.mace_clip_str
+        clip_arg.i = 0
+        if param.HasField('clip'):
+            clip_arg.i = int(param.clip)
+        variance_arg = op.arg.add()
+        variance_arg.name = MaceKeyword.mace_variance_str
+        variance_arg.floats.extend(list(param.variance))
+        offset_arg = op.arg.add()
+        offset_arg.name = MaceKeyword.mace_offset_str
+        offset_arg.f = 0.5
+        if param.HasField('offset'):
+            offset_arg.f = param.offset
+        step_h_arg = op.arg.add()
+        step_h_arg.name = MaceKeyword.mace_step_h_str
+        step_h_arg.f = 0
+        if param.HasField('step_h'):
+            mace_check(not param.HasField('step'),
+                       "Either step or step_h/step_w should be specified; not both.")  # noqa
+            step_h_arg.f = param.step_h
+            mace_check(step_h_arg.f > 0, "step_h should be larger than 0.")
+        step_w_arg = op.arg.add()
+        step_w_arg.name = MaceKeyword.mace_step_w_str
+        step_w_arg.f = 0
+        if param.HasField('step_w'):
+            mace_check(not param.HasField('step'),
+                       "Either step or step_h/step_w should be specified; not both.")  # noqa
+            step_w_arg.f = param.step_w
+            mace_check(step_w_arg.f > 0, "step_w should be larger than 0.")
+
+        if param.HasField('step'):
+            mace_check(not param.HasField('step_h') and not param.HasField('step_w'),  # noqa
+                       "Either step or step_h/step_w should be specified; not both.")  # noqa
+            mace_check(param.step > 0, "step should be larger than 0.")
+            step_h_arg.f = param.step
+            step_w_arg.f = param.step
+
+    def convert_reshape(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.reshape_param
+        op.type = MaceOp.Reshape.name
+
+        dim_arg = op.arg.add()
+        dim_arg.name = MaceKeyword.mace_dim_str
+        dim_arg.ints.extend(list(param.shape.dim))
+
+        axis_arg = op.arg.add()
+        axis_arg.name = 'reshape_' + MaceKeyword.mace_axis_str
+        axis_arg.i = 0
+        if param.HasField('axis'):
+            axis_arg.i = param.axis
+
+        num_axes_arg = op.arg.add()
+        num_axes_arg.name = MaceKeyword.mace_num_axes_str
+        num_axes_arg.i = -1
+        if param.HasField('num_axes'):
+            num_axes_arg.i = param.num_axes

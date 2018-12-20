@@ -95,6 +95,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
             TransformerRule.CHECK_QUANTIZE_INFO:
                 self.check_quantize_info,
+            TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN:
+                self.transform_caffe_reshape_and_flatten,
         }
 
         self._option = option
@@ -979,8 +981,9 @@ class Transformer(base_converter.ConverterInterface):
             elif op.type == MaceOp.Concat.name or op.type == MaceOp.Split.name:
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
-                        if ConverterUtil.data_format(op) == DataFormat.NCHW \
-                                and self._target_data_format == DataFormat.NHWC:  # noqa
+                        if (ConverterUtil.data_format(op) == DataFormat.NCHW
+                                and self._target_data_format == DataFormat.NHWC
+                                and len(op.output_shape[0].dims) == 4):
                             print("Transpose concat/split args: %s(%s)"
                                   % (op.name, op.type))
                             if arg.i == 1:
@@ -1231,6 +1234,7 @@ class Transformer(base_converter.ConverterInterface):
             # transform input(4D) -> reshape(2D) -> matmul to fc
             # work for TensorFlow
             if op.type == MaceOp.Reshape.name and \
+                    len(op.input) == 2 and \
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
                     filter_format == FilterFormat.HWIO and \
@@ -1714,3 +1718,35 @@ class Transformer(base_converter.ConverterInterface):
             output_info.name = check_node.name
             output_info.dims.extend(check_node.output_shape[0].dims)
             output_info.data_type = mace_pb2.DT_FLOAT
+
+    def transform_caffe_reshape_and_flatten(self):
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.Reshape.name and \
+                    len(op.input) == 1:
+                print("Transform Caffe Reshape")
+                if op.arg[3].name == 'dim':
+                    shape_tensor = net.tensors.add()
+                    shape_tensor.name = op.name + '_shape'
+                    shape_tensor.dims.append(len(op.output_shape[0].dims))
+                    shape_tensor.data_type = mace_pb2.DT_INT32
+                    shape_tensor.int32_data.extend(op.arg[3].ints)
+                    op.input.append(shape_tensor.name)
+                else:
+                    axis = op.arg[3].i
+                    dims = [1] * len(op.output_shape[0].dims)
+                    end_axis = op.arg[4].i
+                    end_axis = end_axis if end_axis >= 0 else end_axis + len(dims)  # noqa
+                    for i in range(0, axis):
+                        dims[i] = 0
+                    for i in range(axis + 1, end_axis + 1):
+                        dims[i] = 1
+                    for i in range(end_axis + 1, len(dims)):
+                        dims[i] = 0
+                    dims[axis] = -1
+                    shape_tensor = net.tensors.add()
+                    shape_tensor.name = op.name + '_shape'
+                    shape_tensor.dims.append(len(dims))
+                    shape_tensor.data_type = mace_pb2.DT_INT32
+                    shape_tensor.int32_data.extend(dims)
+                    op.input.append(shape_tensor.name)
