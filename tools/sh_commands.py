@@ -111,7 +111,7 @@ def clear_phone_data_dir(serialno, phone_data_dir):
 ################################
 def adb_devices():
     serialnos = []
-    p = re.compile(r'([\w|-]+)\s+device')
+    p = re.compile(r'(\S+)\s+device')
     for line in split_stdout(sh.adb("devices")):
         m = p.match(line)
         if m:
