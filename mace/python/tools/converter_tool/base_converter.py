@@ -256,6 +256,7 @@ class TransformerRule(Enum):
     TRANSPOSE_MATMUL_WEIGHT = 34
     FOLD_EMBEDDING_LOOKUP = 35
     TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN = 36
+    FOLD_FC_RESHAPE = 37
 
 
 class ConverterInterface(object):
@@ -461,6 +462,7 @@ class ConverterOption(object):
                 TransformerRule.FOLD_SQRDIFF_MEAN,
                 TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
                 TransformerRule.RESHAPE_FC_WEIGHT,
+                TransformerRule.FOLD_FC_RESHAPE,
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
