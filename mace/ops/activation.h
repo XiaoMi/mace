@@ -96,8 +96,8 @@ void DoActivation(const T *input_ptr,
     case LEAKYRELU:
 #pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = std::max(input_ptr[i],
-                                 static_cast<T>(0)) * relux_max_limit;
+        output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0))
+            + std::min(input_ptr[i], static_cast<T>(0)) * relux_max_limit;
       }
       break;
     default:
