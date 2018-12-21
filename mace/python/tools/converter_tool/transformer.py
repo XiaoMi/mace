@@ -29,6 +29,7 @@ from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import PaddingMode
+from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import TransformerRule
 from mace.python.tools.convert_util import mace_check
 from mace.python.tools.quantization import quantize_util
