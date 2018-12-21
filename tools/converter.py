@@ -411,7 +411,7 @@ def format_model_config(flags):
                                ModuleName.YAML_CONFIG,
                                "'input_data_formats' must be in "
                                + str(DataFormatStrs) + ", but got "
-                               + input_data_formats)
+                               + input_data_format)
             else:
                 subgraph[YAMLKeyword.input_data_formats] = [DataFormat.NHWC]
 
@@ -431,7 +431,7 @@ def format_model_config(flags):
                         subgraph[YAMLKeyword.output_data_formats]:
                     mace_check(output_data_format in DataFormatStrs,
                                ModuleName.YAML_CONFIG,
-                               "'input_data_formats' must be in "
+                               "'output_data_formats' must be in "
                                + str(DataFormatStrs))
             else:
                 subgraph[YAMLKeyword.output_data_formats] = [DataFormat.NHWC]
