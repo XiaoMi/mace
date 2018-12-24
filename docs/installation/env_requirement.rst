@@ -19,7 +19,7 @@ Required dependencies
       - `bazel installation guide <https://docs.bazel.build/versions/master/install.html>`__
       - 0.13.0
     * - CMake
-      - apt-get install cmake
+      - Linux:``apt-get install cmake`` Mac:``brew install cmake``
       - >= 3.11.3
     * - Jinja2
       - pip install -I jinja2==2.10
@@ -50,7 +50,7 @@ Optional dependencies
       - `NDK installation guide <https://developer.android.com/ndk/guides/setup#install>`__
       - Required by Android build, r15b, r15c, r16b, r17b
     * - ADB
-      - apt-get install android-tools-adb
+      - Linux:``apt-get install android-tools-adb`` Mac:``brew cask install android-platform-tools``
       - Required by Android run, >= 1.0.32
     * - TensorFlow
       - pip install -I tensorflow==1.8.0
@@ -72,3 +72,5 @@ Optional dependencies
 
     - For Android build, `ANDROID_NDK_HOME` must be confifigured by using ``export ANDROID_NDK_HOME=/path/to/ndk``
     - It will link ``libc++`` instead of ``gnustl`` if ``NDK version >= r17b`` and ``bazel version >= 0.13.0``, please refer to `NDK cpp-support <https://developer.android.com/ndk/guides/cpp-support>`__.
+    - For Mac, please install Homebrew at first before installing other dependencies. Set ANDROID_NDK_HOME in ``/etc/bashrc`` and then run ``source /etc/bashrc``.  This installation was tested with macOS Mojave(10.14).
+    
