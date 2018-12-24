@@ -34,6 +34,7 @@
 
 #ifdef MACE_ENABLE_HEXAGON
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#include "mace/core/runtime/hexagon/hexagon_device.h"
 #endif  // MACE_ENABLE_HEXAGON
 
 namespace mace {
@@ -387,7 +388,7 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 #endif
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
-  if (device_type_ == DeviceType::CPU || device_type_ == DeviceType::HEXAGON) {
+  if (device_type_ == DeviceType::CPU) {
     device_.reset(new CPUDevice(config.impl_->num_threads(),
                                 config.impl_->cpu_affinity_policy(),
                                 config.impl_->use_gemmlowp()));
@@ -405,6 +406,12 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
         config.impl_->use_gemmlowp()));
   }
 #endif
+#ifdef MACE_ENABLE_HEXAGON
+  if (device_type_ == DeviceType::HEXAGON) {
+    device_.reset(new HexagonDevice());
+  }
+#endif
+  MACE_CHECK_NOTNULL(device_);
 }
 
 MaceStatus MaceEngine::Impl::Init(
@@ -443,6 +450,7 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's outputs "
                  << MakeString(MapKeys(output_info_map_));
     }
+    ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
   }
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {

@@ -107,11 +107,7 @@ bool HexagonControlWrapper::Config() {
 
 bool HexagonControlWrapper::Init() {
   LOG(INFO) << "Hexagon init";
-#ifdef MACE_USE_NNLIB_OLD
-  nn_id_ = hexagon_nn_init();
-#else
   MACE_CHECK(hexagon_nn_init(&nn_id_) == 0, "hexagon_nn_init failed");
-#endif
   ResetPerfInfo();
   return true;
 }
@@ -128,138 +124,116 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
   int64_t t0 = NowMicros();
 
   // const node
-#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
-  std::thread const_thread([&]()
-#endif
-  {
-    std::vector<hexagon_nn_const_node> const_node_list;
-    for (const ConstTensor &const_tensor : net_def.tensors()) {
-      std::vector<int> tensor_shape(const_tensor.dims().begin(),
-                                    const_tensor.dims().end());
-      while (tensor_shape.size() < 4) {
-        tensor_shape.insert(tensor_shape.begin(), 1);
-      }
-
-      hexagon_nn_const_node const_node;
-      const_node.node_id = node_id(const_tensor.node_id());
-      const_node.tensor.batches = tensor_shape[0];
-      const_node.tensor.height = tensor_shape[1];
-      const_node.tensor.width = tensor_shape[2];
-      const_node.tensor.depth = tensor_shape[3];
-
-      if (const_tensor.data_type() == DataType::DT_INT32 &&
-          const_tensor.data_size() == 0) {
-        const_node.tensor.data = NULL;
-        const_node.tensor.dataLen = 0;
-      } else {
-        const_node.tensor.data =
-            const_cast<unsigned char *>(model_data + const_tensor.offset());
-        const_node.tensor.dataLen = const_tensor.data_size() *
-                                    GetEnumTypeSize(const_tensor.data_type());
-      }
-      const_node_list.push_back(const_node);
-      // 255 is magic number: why fastrpc limits sequence length to that?
-      if (const_node_list.size() >= 250) {
-        MACE_CHECK(
-            hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
-                                              const_node_list.size()) == 0,
-            "append const node error");
-        const_node_list.clear();
-      }
+  std::vector<hexagon_nn_const_node> const_node_list;
+  for (const ConstTensor &const_tensor : net_def.tensors()) {
+    std::vector<int> tensor_shape(const_tensor.dims().begin(),
+                                  const_tensor.dims().end());
+    while (tensor_shape.size() < 4) {
+      tensor_shape.insert(tensor_shape.begin(), 1);
     }
 
-    if (!const_node_list.empty()) {
+    hexagon_nn_const_node const_node;
+    const_node.node_id = node_id(const_tensor.node_id());
+    const_node.tensor.batches = tensor_shape[0];
+    const_node.tensor.height = tensor_shape[1];
+    const_node.tensor.width = tensor_shape[2];
+    const_node.tensor.depth = tensor_shape[3];
+
+    if (const_tensor.data_type() == DataType::DT_INT32 &&
+        const_tensor.data_size() == 0) {
+      const_node.tensor.data = NULL;
+      const_node.tensor.dataLen = 0;
+    } else {
+      const_node.tensor.data =
+          const_cast<unsigned char *>(model_data + const_tensor.offset());
+      const_node.tensor.dataLen = const_tensor.data_size() *
+                                  GetEnumTypeSize(const_tensor.data_type());
+    }
+    const_node_list.push_back(const_node);
+    // 255 is magic number: why fastrpc limits sequence length to that?
+    if (const_node_list.size() >= 250) {
       MACE_CHECK(
           hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
                                             const_node_list.size()) == 0,
           "append const node error");
+      const_node_list.clear();
     }
-    const_node_list.clear();
   }
-#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
-  );  // NOLINT
-#endif
+
+  if (!const_node_list.empty()) {
+    MACE_CHECK(
+        hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
+                                          const_node_list.size()) == 0,
+        "append const node error");
+  }
+  const_node_list.clear();
 
   // op node
-#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
-  std::thread op_thread([&]()
-#endif
-  {
-    OpMap op_map;
-    op_map.Init();
-    std::vector<hexagon_nn_op_node> op_node_list;
-    std::vector<std::vector<hexagon_nn_input>> cached_inputs;
-    std::vector<std::vector<hexagon_nn_output>> cached_outputs;
-    std::vector<hexagon_nn_input> inputs;
-    std::vector<hexagon_nn_output> outputs;
+  OpMap op_map;
+  op_map.Init();
+  std::vector<hexagon_nn_op_node> op_node_list;
+  std::vector<std::vector<hexagon_nn_input>> cached_inputs;
+  std::vector<std::vector<hexagon_nn_output>> cached_outputs;
+  std::vector<hexagon_nn_input> inputs;
+  std::vector<hexagon_nn_output> outputs;
 
-    for (const OperatorDef &op : net_def.op()) {
-      int op_id = op_map.GetOpId(op.type());
-      inputs.resize(op.node_input().size());
-      for (int i = 0; i < op.node_input().size(); ++i) {
-        inputs[i].src_id = node_id(op.node_input()[i].node_id());
-        inputs[i].output_idx = op.node_input()[i].output_port();
-      }
-      outputs.resize(op.output_shape().size());
-      for (int i = 0; i < op.output_shape().size(); ++i) {
-#ifdef MACE_USE_NNLIB_OLD
-        outputs[i].max_size = op.out_max_byte_size()[i];
-#else
-        outputs[i].rank = op.output_shape()[i].dims().size();
-        for (size_t j = 0; j < outputs[i].rank; ++j) {
-          outputs[i].max_sizes[j] = op.output_shape()[i].dims()[j];
-        }
-        if (outputs[i].rank == 0) {
-          outputs[i].rank = 1;
-          outputs[i].max_sizes[0] = 1;
-        }
-        outputs[i].max_sizes[outputs[i].rank] = 0;
-        outputs[i].elementsize = GetEnumTypeSize(
-            static_cast<DataType>(op.output_type()[i]));
-        outputs[i].zero_offset = 0;
-        outputs[i].stepsize = 0;
-#endif
-      }
-      cached_inputs.push_back(inputs);
-      cached_outputs.push_back(outputs);
-
-      hexagon_nn_padding_type padding_type =
-          static_cast<hexagon_nn_padding_type>(op.padding());
-
-      hexagon_nn_op_node op_node;
-      op_node.node_id = node_id(op.node_id());
-      op_node.operation = op_id;
-      op_node.padding = padding_type;
-      op_node.inputs = cached_inputs.back().data();
-      op_node.inputsLen = inputs.size();
-      op_node.outputs = cached_outputs.back().data();
-      op_node.outputsLen = outputs.size();
-
-      op_node_list.push_back(op_node);
-      if (op_node_list.size() >= 125) {
-        MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
-                                               op_node_list.size()) == 0,
-                   "append node error");
-        op_node_list.clear();
-        cached_inputs.clear();
-        cached_outputs.clear();
-      }
+  for (const OperatorDef &op : net_def.op()) {
+    int op_id = op_map.GetOpId(op.type());
+    inputs.resize(op.node_input().size());
+    for (int i = 0; i < op.node_input().size(); ++i) {
+      inputs[i].src_id = node_id(op.node_input()[i].node_id());
+      inputs[i].output_idx = op.node_input()[i].output_port();
     }
+    outputs.resize(op.output_shape().size());
+    for (int i = 0; i < op.output_shape().size(); ++i) {
+      outputs[i].rank = op.output_shape()[i].dims().size();
+      for (size_t j = 0; j < outputs[i].rank; ++j) {
+        outputs[i].max_sizes[j] = op.output_shape()[i].dims()[j];
+      }
+      if (outputs[i].rank == 0) {
+        outputs[i].rank = 1;
+        outputs[i].max_sizes[0] = 1;
+      }
+      outputs[i].max_sizes[outputs[i].rank] = 0;
+      outputs[i].elementsize = GetEnumTypeSize(
+          static_cast<DataType>(op.output_type()[i]));
+      outputs[i].zero_offset = 0;
+      outputs[i].stepsize = 0;
+    }
+    cached_inputs.push_back(inputs);
+    cached_outputs.push_back(outputs);
 
-    if (!op_node_list.empty()) {
+    hexagon_nn_padding_type padding_type =
+        static_cast<hexagon_nn_padding_type>(op.padding());
+
+    hexagon_nn_op_node op_node;
+    op_node.node_id = node_id(op.node_id());
+    op_node.operation = op_id;
+    op_node.padding = padding_type;
+    op_node.inputs = cached_inputs.back().data();
+    op_node.inputsLen = inputs.size();
+    op_node.outputs = cached_outputs.back().data();
+    op_node.outputsLen = outputs.size();
+
+    op_node_list.push_back(op_node);
+    if (op_node_list.size() >= 125) {
       MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
                                              op_node_list.size()) == 0,
                  "append node error");
+      op_node_list.clear();
+      cached_inputs.clear();
+      cached_outputs.clear();
     }
-    op_node_list.clear();
-    cached_inputs.clear();
-    cached_outputs.clear();
   }
-#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
-  );  // NOLINT
-  const_thread.join();
-  op_thread.join();
-#endif
+
+  if (!op_node_list.empty()) {
+    MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
+                                           op_node_list.size()) == 0,
+               "append node error");
+  }
+  op_node_list.clear();
+  cached_inputs.clear();
+  cached_outputs.clear();
 
   // input info
   num_inputs_ = 0;
@@ -460,7 +434,7 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
 bool HexagonControlWrapper::ExecuteGraphNew(
     const std::vector<Tensor *> &input_tensors,
     std::vector<Tensor *> *output_tensors) {
-  LOG(INFO) << "Execute graph new: " << nn_id_;
+  VLOG(2) << "Execute graph new: " << nn_id_;
   uint32_t num_inputs = static_cast<uint32_t>(input_tensors.size());
   uint32_t num_outputs = static_cast<uint32_t>(output_tensors->size());
   MACE_ASSERT(num_inputs_ == num_inputs, "Wrong inputs num");

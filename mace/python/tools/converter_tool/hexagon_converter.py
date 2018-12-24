@@ -104,7 +104,6 @@ class HexagonConverter(base_converter.ConverterInterface):
             output_name = self._option.output_nodes.values()[0].name
         else:
             output_name = self._option.check_nodes.values()[0].name
-        output_name = MaceKeyword.mace_output_node_name + '_' + output_name
         output_name = normalize_name(output_name)
         self._model = graph_util.sort_mace_graph(self._model, output_name)
 
@@ -311,9 +310,8 @@ class HexagonConverter(base_converter.ConverterInterface):
         return tensor.name
 
     def add_input_output_node(self):
-        input_node = self._option.input_nodes.values()[0]
         for op in self._model.op:
-            if op.name == input_node.name:
+            if op.name.startswith(MaceKeyword.mace_input_node_name):
                 del op.input[0]
                 break
 
@@ -324,8 +322,7 @@ class HexagonConverter(base_converter.ConverterInterface):
             output_name = self._option.check_nodes.values()[0].name
         output_name = normalize_name(output_name)
         for op in self._model.op:
-            if op.name.startswith(MaceKeyword.mace_output_node_name) \
-                    and op.name.find(output_name) != -1:
+            if op.name == output_name:
                 output_node = op
                 break
         mace_check(output_node is not None,
@@ -348,8 +345,6 @@ class HexagonConverter(base_converter.ConverterInterface):
             node_id_counter += 1
             node_id_map[op.name] = op.node_id
             for ipt in op.input:
-                if ipt.startswith(MaceKeyword.mace_input_node_name):
-                    ipt = ipt[len(MaceKeyword.mace_input_node_name + '_'):]
                 op_name, port = get_op_and_port_from_tensor(ipt)
                 node_id = node_id_map[op_name]
                 node_input = op.node_input.add()
