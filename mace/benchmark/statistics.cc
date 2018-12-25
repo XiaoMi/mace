@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <numeric>
 #include <functional>
 #include <set>
 
