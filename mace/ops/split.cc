@@ -75,8 +75,8 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
 
 #pragma omp parallel for
     for (int outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
-      int input_idx = outer_idx * input_channels * inner_size;
-      int output_idx = outer_idx * output_channels * inner_size;
+      index_t input_idx = outer_idx * input_channels * inner_size;
+      index_t output_idx = outer_idx * output_channels * inner_size;
       for (size_t i = 0; i < outputs_count; ++i) {
         if (DataTypeCanUseMemcpy(DataTypeToEnum<T>::v())) {
           memcpy(output_ptrs[i]+output_idx, input_ptr+input_idx,
