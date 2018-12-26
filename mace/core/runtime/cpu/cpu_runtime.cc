@@ -223,7 +223,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
       }
       ++cores_to_use;
     }
-    num_threads_hint = cores_to_use;
+    num_threads_hint = std::min(num_threads_hint, cores_to_use);
   } else {
     cores_to_use = num_threads_hint;
   }
