@@ -173,6 +173,8 @@ class DeviceWrapper:
                    gpu_priority_hint=3,
                    input_file_name='model_input',
                    output_file_name='model_out',
+                   input_dir="",
+                   output_dir="",
                    runtime_failure_ratio=0.0,
                    address_sanitizer=False,
                    link_dynamic=False,
@@ -208,6 +210,8 @@ class DeviceWrapper:
                                             input_file_name),
                     "--output_file=%s/%s" % (model_output_dir,
                                              output_file_name),
+                    "--input_dir=%s" % input_dir,
+                    "--output_dir=%s" % output_dir,
                     "--model_data_file=%s/%s.data" % (mace_model_dir,
                                                       model_tag),
                     "--device=%s" % device_type,
@@ -296,6 +300,8 @@ class DeviceWrapper:
                 "--output_shape=%s" % ":".join(output_shapes),
                 "--input_file=%s/%s" % (self.data_dir, input_file_name),
                 "--output_file=%s/%s" % (self.data_dir, output_file_name),
+                "--input_dir=%s" % input_dir,
+                "--output_dir=%s" % output_dir,
                 "--model_data_file=%s/%s.data" % (self.data_dir, model_tag),
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
@@ -553,6 +559,8 @@ class DeviceWrapper:
                     libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
                     link_dynamic=link_dynamic,
                     quantize_stat=flags.quantize_stat,
+                    input_dir=flags.input_dir,
+                    output_dir=flags.output_dir,
                 )
                 if flags.validate:
                     model_file_path, weight_file_path = get_model_files(
