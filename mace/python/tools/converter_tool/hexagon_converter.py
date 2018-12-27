@@ -116,7 +116,7 @@ class HexagonConverter(base_converter.ConverterInterface):
         for op in self._model.op:
             if not self._hexagon_ops.has_op(op.type):
                 raise Exception('Unsupported op: ', op)
-            print('Op: ', op.name, op.type)
+            print('Op: %s (%s)' % (op.name, op.type))
             for i in range(len(op.input)):
                 if ':' not in op.input[i]:
                     node_name = op.input[i]

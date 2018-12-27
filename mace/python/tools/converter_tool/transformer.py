@@ -1482,7 +1482,9 @@ class Transformer(base_converter.ConverterInterface):
                     mace_check(False, "wrong device.")
                 tensor.data_type = mace_pb2.DT_INT32
             else:
-                quantized_tensor = quantize_util.quantize(tensor.float_data)
+                non_zero = self._option.device == DeviceType.CPU.value
+                quantized_tensor = quantize_util.quantize(tensor.float_data,
+                                                          non_zero)
                 tensor.data_type = mace_pb2.DT_UINT8
 
             del tensor.float_data[:]
@@ -1718,6 +1720,11 @@ class Transformer(base_converter.ConverterInterface):
                 and op.type != MaceOp.Dequantize.name):  # noqa
                 mace_check(len(op.output) == len(op.quantize_info),
                            "missing quantize info: %s" % op)
+            for i in six.moves.range(len(op.quantize_info)):
+                print("Op output %s range: [%f, %f]" % (
+                    op.output[i],
+                    op.quantize_info[i].minval,
+                    op.quantize_info[i].maxval))
 
     def add_opencl_informations(self):
         print("Add OpenCL informations")
