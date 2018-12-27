@@ -271,11 +271,15 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         print("Run transform_graph: %s" % TFTransformGraphOptions[
             option.device])
-        transformed_graph_def = TransformGraph(tf_graph_def,
-                                               option.input_nodes.keys(),
-                                               option.output_nodes.keys(),
-                                               TFTransformGraphOptions[
-                                                   option.device])
+        try:
+            transformed_graph_def = TransformGraph(tf_graph_def,
+                                                   option.input_nodes.keys(),
+                                                   option.output_nodes.keys(),
+                                                   TFTransformGraphOptions[
+                                                       option.device])
+        except Exception as ex:
+            print("Failed to transform graph using tf tool: %s" % ex)
+            transformed_graph_def = tf_graph_def
 
         with tf.Session() as session:
             with session.graph.as_default() as graph:

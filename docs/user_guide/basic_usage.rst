@@ -99,7 +99,6 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
 
    Prepare your pre-trained TensorFlow model.pb file.
 
-
 -  Caffe
 
    Caffe 1.0+ models are supported in MACE converter tool.
@@ -253,7 +252,13 @@ However, there are some differences in different devices.
 
 * **DSP**
 
-    MACE only support Qualcomm DSP.
+    MACE only supports Qualcomm DSP. And you need to push the hexagon nn library to the device.
+
+    .. code:: sh
+
+        # For Android device
+        adb root; adb remount
+        adb push third_party/nnlib/v6x/libhexagon_nn_skel.so /system/vendor/lib/rfsa/adsp/
 
 In the converting and building steps, you've got the static/shared library, model files and
 header files.

@@ -22,9 +22,6 @@ models, e.g., MobileNet. The only thing you need to make it run using MACE is to
 
 	2. `quantize`: set `quantize` to be 1.
 
-    .. note::
-	You need set `runtime` to be `cpu` because we only support this quantization method to run on CPU for now (soon DSP will be supported).
-
 
 Post training quantization
 ---------------------------

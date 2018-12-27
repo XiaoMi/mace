@@ -39,6 +39,7 @@ The main documentation is organized into the following sections:
    development/contributing
    development/adding_a_new_op
    development/how_to_run_tests
+   development/how_to_debug
    development/memory_layout
 
 .. toctree::

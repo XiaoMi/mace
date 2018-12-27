@@ -18,7 +18,6 @@ models:
           - 1,1001
     runtime: cpu+gpu
     limit_opencl_kernel_time: 0
-    nnlib_graph_mode: 0
     obfuscate: 0
     winograd: 0
   mobilenet_v2:
@@ -36,7 +35,6 @@ models:
           - 1,1001
     runtime: cpu+gpu
     limit_opencl_kernel_time: 0
-    nnlib_graph_mode: 0
     obfuscate: 0
     winograd: 0
   mobilenet_v1_quant:
@@ -56,7 +54,6 @@ models:
           - 1,1001
     runtime: cpu
     limit_opencl_kernel_time: 0
-    nnlib_graph_mode: 0
     obfuscate: 0
     winograd: 0
     quantize: 1
@@ -77,7 +74,6 @@ models:
           - 1,1001
     runtime: cpu
     limit_opencl_kernel_time: 0
-    nnlib_graph_mode: 0
     obfuscate: 0
     winograd: 0
     quantize: 1

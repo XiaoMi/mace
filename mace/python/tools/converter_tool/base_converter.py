@@ -257,6 +257,7 @@ class TransformerRule(Enum):
     FOLD_EMBEDDING_LOOKUP = 35
     TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN = 36
     FOLD_FC_RESHAPE = 37
+    TRANSFORM_CHANNEL_SHUFFLE = 38
 
 
 class ConverterInterface(object):
@@ -373,7 +374,7 @@ class ConverterOption(object):
 
     @input_nodes.setter
     def input_nodes(self, input_nodes):
-        for node in input_nodes:
+        for node in input_nodes.values():
             self._input_nodes[node.name] = node
 
     def add_input_node(self, input_node):
@@ -381,7 +382,7 @@ class ConverterOption(object):
 
     @output_nodes.setter
     def output_nodes(self, output_nodes):
-        for node in output_nodes:
+        for node in output_nodes.values():
             self.output_nodes[node.name] = node
 
     def add_output_node(self, output_node):
@@ -389,7 +390,7 @@ class ConverterOption(object):
 
     @check_nodes.setter
     def check_nodes(self, check_nodes):
-        for node in check_nodes:
+        for node in check_nodes.values():
             self.check_nodes[node.name] = node
 
     def add_check_node(self, check_node):
@@ -463,6 +464,7 @@ class ConverterOption(object):
                 TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
                 TransformerRule.RESHAPE_FC_WEIGHT,
                 TransformerRule.FOLD_FC_RESHAPE,
+                TransformerRule.TRANSFORM_CHANNEL_SHUFFLE,
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,

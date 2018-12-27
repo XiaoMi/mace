@@ -173,6 +173,8 @@ class DeviceWrapper:
                    gpu_priority_hint=3,
                    input_file_name='model_input',
                    output_file_name='model_out',
+                   input_dir="",
+                   output_dir="",
                    runtime_failure_ratio=0.0,
                    address_sanitizer=False,
                    link_dynamic=False,
@@ -208,6 +210,8 @@ class DeviceWrapper:
                                             input_file_name),
                     "--output_file=%s/%s" % (model_output_dir,
                                              output_file_name),
+                    "--input_dir=%s" % input_dir,
+                    "--output_dir=%s" % output_dir,
                     "--model_data_file=%s/%s.data" % (mace_model_dir,
                                                       model_tag),
                     "--device=%s" % device_type,
@@ -296,6 +300,8 @@ class DeviceWrapper:
                 "--output_shape=%s" % ":".join(output_shapes),
                 "--input_file=%s/%s" % (self.data_dir, input_file_name),
                 "--output_file=%s/%s" % (self.data_dir, output_file_name),
+                "--input_dir=%s" % input_dir,
+                "--output_dir=%s" % output_dir,
                 "--model_data_file=%s/%s.data" % (self.data_dir, model_tag),
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
@@ -515,6 +521,12 @@ class DeviceWrapper:
             for runtime in runtime_list:
                 device_type = parse_device_type(runtime)
                 # run for specified soc
+                if not subgraphs[0][YAMLKeyword.check_tensors]:
+                    output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
+                    output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
+                else:
+                    output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
+                    output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
                 run_output = self.tuning_run(
                     abi=target_abi,
                     target_dir=build_tmp_binary_dir,
@@ -523,9 +535,9 @@ class DeviceWrapper:
                     embed_model_data=embed_model_data,
                     model_output_dir=model_output_dir,
                     input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                    output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+                    output_nodes=output_nodes,
                     input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                    output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+                    output_shapes=output_shapes,
                     mace_model_dir=mace_model_dir,
                     model_tag=model_name,
                     device_type=device_type,
@@ -547,6 +559,8 @@ class DeviceWrapper:
                     libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
                     link_dynamic=link_dynamic,
                     quantize_stat=flags.quantize_stat,
+                    input_dir=flags.input_dir,
+                    output_dir=flags.output_dir,
                 )
                 if flags.validate:
                     model_file_path, weight_file_path = get_model_files(
@@ -568,9 +582,9 @@ class DeviceWrapper:
                         platform=model_config[YAMLKeyword.platform],
                         device_type=device_type,
                         input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                        output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+                        output_nodes=output_nodes,
                         input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                        output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+                        output_shapes=output_shapes,
                         model_output_dir=model_output_dir,
                         input_data_types=subgraphs[0][
                             YAMLKeyword.input_data_types],
@@ -961,7 +975,8 @@ class DeviceManager:
                 YAMLKeyword.address: adb[0],
                 YAMLKeyword.username: '',
             }
-            devices.append(android)
+            if android not in devices:
+                devices.append(android)
         return devices
 
     @classmethod
