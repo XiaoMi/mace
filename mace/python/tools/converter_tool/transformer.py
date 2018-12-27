@@ -1777,7 +1777,8 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         for op in net.op:
             # whether to reshape fc output(default 4D)
-            if op.type == MaceOp.FullyConnected.name:
+            if op.type == MaceOp.FullyConnected.name and\
+                    op.output[0] in self._consumers:
                 consumers = self._consumers[op.output[0]]
                 op_output_shape = op.output_shape[0].dims[:]
                 for consumer in consumers:
