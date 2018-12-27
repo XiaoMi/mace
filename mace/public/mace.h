@@ -262,7 +262,12 @@ class MACE_API MaceTensor {
  public:
   // shape - the shape of the tensor, with size n
   // data - the buffer of the tensor, must not be null with size equals
-  //        shape[0] * shape[1] * ... * shape[n-1]
+  //        shape[0] * shape[1] * ... * shape[n-1].
+  //        If you want to pass a buffer which is unsuitable to use the default
+  //        shared_ptr deleter (for example, the buffer is not dynamically
+  //        allocated by C++, e.g. a C buffer), you can set customized deleter
+  //        of shared_ptr and manage the life cycle of the buffer by yourself.
+  //        For example, std::shared_ptr<float>(raw_buffer, [](float *){});
   MaceTensor(const std::vector<int64_t> &shape,
              std::shared_ptr<float> data,
              const DataFormat format = DataFormat::NHWC);
