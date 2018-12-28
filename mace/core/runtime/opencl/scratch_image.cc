@@ -33,7 +33,7 @@ Image *ScratchImageManager::Spawn(
   for (int i = 0; i < image_count; ++i) {
     int count = reference_count_[i];
     if (count == 0 && images_.at(count)->dtype() == dt) {
-      auto image_shape = images_.at(count)->image_shape();
+      auto image_shape = images_.at(count)->shape();
       if (image_shape[0] >= shape[0] && image_shape[1] >= shape[1]) {
         found_image_idx = i;
         break;

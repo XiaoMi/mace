@@ -215,7 +215,7 @@ class Tensor {
 
   inline bool has_opencl_image() const {
     return buffer_ != nullptr && !buffer_->OnHost() &&
-           typeid(*buffer_) == typeid(Image);
+           buffer_->buffer_type() == core::BufferType::BT_IMAGE;
   }
 
   inline bool has_opencl_buffer() const {
@@ -226,7 +226,7 @@ class Tensor {
     MACE_CHECK(buffer_ != nullptr, "Tensor ", name_, " is empty");
     if (buffer_->OnHost()) {
       return MemoryType::CPU_BUFFER;
-    } else if (typeid(*buffer_) == typeid(Image)) {
+    } else if (buffer_->buffer_type() == core::BufferType::BT_IMAGE) {
       return MemoryType::GPU_IMAGE;
     } else {
       return MemoryType::GPU_BUFFER;
@@ -343,12 +343,11 @@ class Tensor {
     } else {
       MACE_CHECK(has_opencl_image(),
                  name_, ": Cannot ResizeImage buffer, use Resize.");
-      Image *image = dynamic_cast<Image *>(buffer_);
-      MACE_CHECK(image_shape[0] <= image->image_shape()[0] &&
-                     image_shape[1] <= image->image_shape()[1],
+      MACE_CHECK(image_shape[0] <= buffer_->shape()[0] &&
+                     image_shape[1] <= buffer_->shape()[1],
                  "tensor (source op ", name_,
-                 "): current physical image shape: ", image->image_shape()[0],
-                 ", ", image->image_shape()[1], " < logical image shape: ",
+                 "): current physical image shape: ", buffer_->shape()[0],
+                 ", ", buffer_->shape()[1], " < logical image shape: ",
                  image_shape[0], ", ", image_shape[1]);
       return MaceStatus::MACE_SUCCESS;
     }
