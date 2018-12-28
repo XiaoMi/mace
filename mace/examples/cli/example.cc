@@ -213,13 +213,19 @@ bool RunModel(const std::vector<std::string> &input_names,
                                config,
                                &engine);
 #else
-  std::vector<unsigned char> model_pb_data;
-  if (!ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
+  std::vector<unsigned char> model_graph_data;
+  if (!ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
     std::cerr << "Failed to read file: " << FLAGS_model_file << std::endl;
   }
+  std::vector<unsigned char> model_weights_data;
+  if (!ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
+    std::cerr << "Failed to read file: " << FLAGS_model_data_file << std::endl;
+  }
   create_engine_status =
-      CreateMaceEngineFromProto(model_pb_data,
-                                FLAGS_model_data_file,
+      CreateMaceEngineFromProto(model_graph_data.data(),
+                                model_graph_data.size(),
+                                model_weights_data.data(),
+                                model_weights_data.size(),
                                 input_names,
                                 output_names,
                                 config,

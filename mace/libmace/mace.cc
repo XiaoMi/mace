@@ -520,7 +520,7 @@ MaceStatus MaceEngine::Impl::Init(
 
 MaceEngine::Impl::~Impl() {
   LOG(INFO) << "Destroying MaceEngine";
-  if (device_type_ == DeviceType::CPU && model_data_ != nullptr) {
+  if (model_data_ != nullptr) {
     UnloadModelData(model_data_, model_data_size_);
   }
 #ifdef MACE_ENABLE_HEXAGON
@@ -730,6 +730,34 @@ MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
 }
 
 MaceStatus CreateMaceEngineFromProto(
+    const unsigned char *model_graph_proto,
+    const size_t model_graph_proto_size,
+    const unsigned char *model_weights_data,
+    const size_t model_weights_data_size,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const MaceEngineConfig &config,
+    std::shared_ptr<MaceEngine> *engine) {
+  // TODO(heliangliang) Add buffer range checking
+  MACE_UNUSED(model_weights_data_size);
+  LOG(INFO) << "Create MaceEngine from model graph proto and weights data";
+
+  if (engine == nullptr) {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+
+  auto net_def = std::make_shared<NetDef>();
+  net_def->ParseFromArray(model_graph_proto, model_graph_proto_size);
+
+  engine->reset(new mace::MaceEngine(config));
+  MaceStatus status = (*engine)->Init(
+      net_def.get(), input_nodes, output_nodes, model_weights_data);
+
+  return status;
+}
+
+// Deprecated, will be removed in future version.
+MaceStatus CreateMaceEngineFromProto(
     const std::vector<unsigned char> &model_pb,
     const std::string &model_data_file,
     const std::vector<std::string> &input_nodes,
@@ -737,6 +765,7 @@ MaceStatus CreateMaceEngineFromProto(
     const MaceEngineConfig &config,
     std::shared_ptr<MaceEngine> *engine) {
   LOG(INFO) << "Create MaceEngine from model pb";
+  LOG(WARNING) << "Function deprecated, please change to the new API";
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;

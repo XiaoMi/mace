@@ -318,7 +318,36 @@ class MACE_API MaceEngine {
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
 
+/// \brief Create MaceEngine from model graph proto and weights data
+///
+/// Create MaceEngine object
+///
+/// \param model_graph_proto[in]: the content of model graph proto
+/// \param model_graph_proto_size[in]: the size of model graph proto
+/// \param model_weights_data[in]: the content of model weights data, the
+///                                returned engine will refer to this buffer
+///                                if CPU runtime is used. In this case, the
+///                                buffer should keep alive.
+/// \param model_weights_data_size[in]: the size of model weights data
+/// \param input_nodes[in]: the array of input nodes' name
+/// \param output_nodes[in]: the array of output nodes' name
+/// \param config[in]: configurations for MaceEngine.
+/// \param engine[out]: output MaceEngine object
+/// \return MaceStatus::MACE_SUCCESS for success,
+///         MaceStatus::MACE_INVALID_ARGS for wrong arguments,
+///         MaceStatus::MACE_OUT_OF_RESOURCES for resources is out of range.
+MACE_API MaceStatus CreateMaceEngineFromProto(
+    const unsigned char *model_graph_proto,
+    const size_t model_graph_proto_size,
+    const unsigned char *model_weights_data,
+    const size_t model_weights_data_size,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const MaceEngineConfig &config,
+    std::shared_ptr<MaceEngine> *engine);
+
 /// \brief Create MaceEngine from files (model file + data file)
+/// Deprecated, will be removed in future version
 ///
 /// Create MaceEngine object
 ///
@@ -337,7 +366,7 @@ MACE_API MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine);
+    std::shared_ptr<MaceEngine> *engine) __attribute__((deprecated));
 
 }  // namespace mace
 
