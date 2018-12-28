@@ -272,11 +272,9 @@ MaceStatus Workspace::PreallocateOutputTensor(
               << " Mem: " << tensor_mem.second.first
               << " Data type: " << tensor->dtype()
               << " Image shape: "
-              << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                  ->image_shape()[0]
+              << tensor->UnderlyingBuffer()->shape()[0]
               << ", "
-              << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                  ->image_shape()[1];
+              << tensor->UnderlyingBuffer()->shape()[1];
      tensor->set_data_format(DataFormat::NHWC);
     } else {
       VLOG(1) << "Tensor: " << tensor_mem.first
