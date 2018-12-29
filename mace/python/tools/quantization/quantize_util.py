@@ -108,11 +108,12 @@ def quantize_with_scale_and_zero(data, scale, zero):
     return quantized_data
 
 
-def quantize(data):
+def quantize(data, non_zero):
     np_data = np.array(data).astype(float)
     in_min = np_data.min()
     in_max = np_data.max()
-    scale, zero, out_min, out_max = adjust_range(in_min, in_max, non_zero=True)
+    scale, zero, out_min, out_max = adjust_range(in_min, in_max,
+                                                 non_zero=non_zero)
     output = np.clip((np.round(zero + data / scale).astype(int)), 0, 255)
 
     quantized_data = QuantizedData()
