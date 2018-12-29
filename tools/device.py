@@ -850,7 +850,7 @@ class DeviceWrapper:
             if target_abi == ABIType.host:
                 runtime_list.append(RuntimeType.cpu)
             elif model_runtime == RuntimeType.cpu_gpu:
-                runtime_list.extend([RuntimeType.cpu, RuntimeType.cpu_gpu])
+                runtime_list.extend([RuntimeType.cpu, RuntimeType.gpu])
             else:
                 runtime_list.append(model_runtime)
             for runtime in runtime_list:
