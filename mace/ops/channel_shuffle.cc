@@ -58,14 +58,12 @@ class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
 #pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t b = 0; b < batch; ++b) {
       for (index_t c = 0; c < channels; ++c) {
-        const T *input_base = input_ptr + b * batch_size;
-        T *output_base = output_ptr + b * batch_size;
         index_t g = c % groups_;
         index_t idx = c / groups_;
-        for (index_t hw = 0; hw < height * width; ++hw) {
-          output_base[c * image_size + hw] = input_base[
-              (g * channels_per_group + idx) * image_size + hw];
-        }
+        const T *in_ptr = input_ptr + b * batch_size
+            + (g * channels_per_group + idx) * image_size;
+        T *out_ptr = output_ptr + b * batch_size + c * image_size;
+        memcpy(out_ptr, in_ptr, image_size * sizeof(float));
       }
     }
 
