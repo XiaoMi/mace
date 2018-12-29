@@ -66,9 +66,22 @@ def calculate_similarity(u, v, data_type=np.float64):
     return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
 
 
+def calculate_pixel_accuracy(out_value, mace_out_value):
+    out_value = out_value.reshape((-1, out_value.shape[-1]))
+    batches = out_value.shape[0]
+    classes = out_value.shape[1]
+    mace_out_value = mace_out_value.reshape((batches, classes))
+    correct_count = 0
+    for i in range(batches):
+        if np.argmax(out_value[i]) == np.argmax(mace_out_value[i]):
+            correct_count += 1
+    return 1.0 * correct_count / batches
+
+
 def compare_output(platform, device_type, output_name, mace_out_value,
                    out_value, validation_threshold):
     if mace_out_value.size != 0:
+        pixel_accuracy = calculate_pixel_accuracy(out_value, mace_out_value)
         out_value = out_value.reshape(-1)
         mace_out_value = mace_out_value.reshape(-1)
         assert len(out_value) == len(mace_out_value)
@@ -76,7 +89,8 @@ def compare_output(platform, device_type, output_name, mace_out_value,
         similarity = calculate_similarity(out_value, mace_out_value)
         common.MaceLogger.summary(
             output_name + ' MACE VS ' + platform.upper()
-            + ' similarity: ' + str(similarity) + ' , sqnr: ' + str(sqnr))
+            + ' similarity: ' + str(similarity) + ' , sqnr: ' + str(sqnr)
+            + ' , pixel_accuracy: ' + str(pixel_accuracy))
         if similarity > validation_threshold:
             common.MaceLogger.summary(
                 common.StringFormatter.block("Similarity Test Passed"))
