@@ -482,14 +482,14 @@ MaceStatus MaceEngine::Impl::Init(
     MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(*net_def,
                                                       &mem_optimizer,
                                                       device_.get()));
-
+    if (device_type_ == DeviceType::GPU) {
+      ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
+    }
     MACE_RETURN_IF_ERROR(net_->Init());
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif
-  if (device_type_ == DeviceType::GPU) {
-    ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
-  }
+
   return MaceStatus::MACE_SUCCESS;
 }
 

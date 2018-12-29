@@ -328,6 +328,14 @@ void Workspace::RemoveUnusedBuffer() {
 void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
                                       const unsigned char *model_data,
                                       Allocator *alloc) {
+  std::unordered_set<std::string> tensor_to_host;
+  for (auto &op : net_def.op()) {
+    if (op.device_type() == DeviceType::CPU) {
+      for (std::string input : op.input()) {
+        tensor_to_host.insert(input);
+      }
+    }
+  }
   for (auto &const_tensor : net_def.tensors()) {
     auto iter = tensor_map_.find(const_tensor.name());
     if (iter->second->unused()) {
@@ -338,16 +346,32 @@ void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
       for (const index_t d : const_tensor.dims()) {
         dims.push_back(d);
       }
-      std::unique_ptr<Tensor> tensor(
-          new Tensor(alloc, const_tensor.data_type()));
-      tensor->Resize(dims);
-      MACE_CHECK(tensor->size() == const_tensor.data_size(),
-                 "Tensor's data_size not equal with the shape");
-      tensor->CopyBytes(model_data + const_tensor.offset(),
-                        const_tensor.data_size() *
-                            GetEnumTypeSize(const_tensor.data_type()));
 
-      tensor_map_[const_tensor.name()] = std::move(tensor);
+      if (tensor_to_host.find(const_tensor.name()) != tensor_to_host.end()) {
+        DataType host_data_type = const_tensor.data_type();
+        if (host_data_type == DataType::DT_HALF) {
+          host_data_type = DataType ::DT_FLOAT;
+        }
+        std::unique_ptr<Tensor> tensor(
+            new Tensor(alloc, host_data_type, true, const_tensor.name()));
+        tensor->Resize(dims);
+        MACE_CHECK(tensor->size() == const_tensor.data_size(),
+                   "Tensor's data_size not equal with the shape");
+        if (const_tensor.data_type() == DataType::DT_HALF) {
+          Tensor::MappingGuard guard(tensor.get());
+          float *dst_data = tensor->mutable_data<float>();
+          const half *org_data = reinterpret_cast<const half *>(
+              model_data + const_tensor.offset());
+          for (index_t i = 0; i < const_tensor.data_size(); ++i) {
+            dst_data[i] = half_float::half_cast<float>(org_data[i]);
+          }
+        } else {
+          tensor->CopyBytes(model_data + const_tensor.offset(),
+                            const_tensor.data_size() *
+                                GetEnumTypeSize(const_tensor.data_type()));
+        }
+        tensor_map_[const_tensor.name()] = std::move(tensor);
+      }
     }
   }
   tensor_buffer_.reset(nullptr);
