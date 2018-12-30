@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import numpy as np
+from operator import mul
 
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
@@ -23,9 +26,6 @@ from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import PoolingType
 from mace.python.tools.convert_util import mace_check
 from mace.python.tools import graph_util
-
-import copy
-from operator import mul
 
 
 class HexagonOps(object):
@@ -133,6 +133,8 @@ class HexagonConverter(base_converter.ConverterInterface):
                     print('Supernode requires biasadd, we add it.')
                     bias_data = np.zeros(channels, dtype=int)
                     bias_tensor = self._model.tensors.add()
+                    bias_tensor.data_type = mace_pb2.DT_INT32
+                    bias_tensor.dims.extend([channels])
                     bias_tensor.int32_data.extend(bias_data)
                     bias_tensor.minval = 0
                     bias_tensor.maxval = 0
