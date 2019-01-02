@@ -131,7 +131,8 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         }
 
         std::unique_ptr<Tensor> tensor(
-            new Tensor(device->allocator(), dst_data_type, true));
+            new Tensor(device->allocator(), dst_data_type, true,
+                       const_tensor.name()));
         tensor->Resize(dims);
 
         MACE_CHECK(tensor->size() == const_tensor.data_size(),
@@ -328,26 +329,52 @@ void Workspace::RemoveUnusedBuffer() {
 void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
                                       const unsigned char *model_data,
                                       Allocator *alloc) {
+  std::unordered_set<std::string> tensor_to_host;
+  for (auto &op : net_def.op()) {
+    if (op.device_type() == DeviceType::CPU) {
+      for (std::string input : op.input()) {
+        tensor_to_host.insert(input);
+      }
+    }
+  }
   for (auto &const_tensor : net_def.tensors()) {
     auto iter = tensor_map_.find(const_tensor.name());
     if (iter->second->unused()) {
       tensor_map_.erase(iter);
-    } else if (!diffused_buffer_) {
-      tensor_map_.erase(iter);
+    } else {
       std::vector<index_t> dims;
       for (const index_t d : const_tensor.dims()) {
         dims.push_back(d);
       }
-      std::unique_ptr<Tensor> tensor(
-          new Tensor(alloc, const_tensor.data_type()));
-      tensor->Resize(dims);
-      MACE_CHECK(tensor->size() == const_tensor.data_size(),
-                 "Tensor's data_size not equal with the shape");
-      tensor->CopyBytes(model_data + const_tensor.offset(),
-                        const_tensor.data_size() *
-                            GetEnumTypeSize(const_tensor.data_type()));
 
-      tensor_map_[const_tensor.name()] = std::move(tensor);
+      if (tensor_to_host.find(const_tensor.name()) != tensor_to_host.end()
+          && const_tensor.data_type() == DataType::DT_HALF) {
+        std::unique_ptr<Tensor> tensor(
+            new Tensor(alloc, DataType::DT_FLOAT,
+                       true, const_tensor.name()));
+        tensor->Resize(dims);
+        MACE_CHECK(tensor->size() == const_tensor.data_size(),
+                   "Tensor's data_size not equal with the shape");
+        Tensor::MappingGuard guard(tensor.get());
+        float *dst_data = tensor->mutable_data<float>();
+        const half *org_data = reinterpret_cast<const half *>(
+            model_data + const_tensor.offset());
+        for (index_t i = 0; i < const_tensor.data_size(); ++i) {
+          dst_data[i] = half_float::half_cast<float>(org_data[i]);
+        }
+        tensor_map_[const_tensor.name()] = std::move(tensor);
+      } else if (!diffused_buffer_) {
+        std::unique_ptr<Tensor> tensor(
+            new Tensor(alloc, const_tensor.data_type(),
+                       true, const_tensor.name()));
+        tensor->Resize(dims);
+        MACE_CHECK(tensor->size() == const_tensor.data_size(),
+                   "Tensor's data_size not equal with the shape");
+        tensor->CopyBytes(model_data + const_tensor.offset(),
+                          const_tensor.data_size() *
+                              GetEnumTypeSize(const_tensor.data_type()));
+        tensor_map_[const_tensor.name()] = std::move(tensor);
+      }
     }
   }
   tensor_buffer_.reset(nullptr);

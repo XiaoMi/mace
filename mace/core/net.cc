@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <set>
 #include <unordered_set>
 #include <utility>
 
@@ -63,18 +64,85 @@ bool TransformRequiredOp(const std::string &op_type) {
 }
 #endif  // MACE_ENABLE_OPENCL
 
+
+
+// TODO(lichao): Move to runtime driver class after universality done.
+// fallback to gpu buffer when kernels are implemented
+void FindAvailableDevicesForOp(const OpRegistryBase &op_registry,
+                               const OperatorDef &op,
+                               const std::unordered_map<std::string,
+                                   std::vector<index_t>> &tensor_shape_info,
+                               std::set<DeviceType>
+                                   *available_devices) {
+  auto devices = op_registry.AvailableDevices(op.type());
+  available_devices->insert(devices.begin(), devices.end());
+  std::string op_type = op.type();
+  // For those whose shape is not 4-rank but can run on GPU
+  if (op_type == "BufferTransform"
+      || op_type == "LSTMCell"
+      || op_type == "FullyConnected"
+      || op_type == "Softmax"
+      || op_type == "Squeeze") {
+    return;
+  } else {
+    if (op.output_shape_size() != op.output_size()) {
+      return;
+    }
+    if (op.output_shape(0).dims_size() != 4) {
+      available_devices->erase(DeviceType::GPU);
+    }
+
+    if (op_type == "Split") {
+      if (op.output_shape(0).dims_size() != 4
+          || op.output_shape(0).dims()[3] % 4 != 0) {
+        available_devices->erase(DeviceType::GPU);
+      }
+    } else if (op_type == "Concat") {
+      if (op.output_shape(0).dims_size() != 4) {
+        available_devices->erase(DeviceType::GPU);
+      } else {
+        if (op.input_size() != 2) {
+          for (const std::string &input : op.input()) {
+            if (tensor_shape_info.find(input) != tensor_shape_info.end()) {
+              auto &input_shape = tensor_shape_info.at(input);
+              if (input_shape[3] % 4 != 0) {
+                available_devices->erase(DeviceType::GPU);
+                break;
+              }
+            }
+          }
+        }
+      }
+    } else if (op_type == "ChannelShuffle") {
+      int groups = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          op, "group", 1);
+      int channels = op.output_shape(0).dims(3);
+      int channels_per_group = channels / groups;
+      if (groups % 4 != 0 || channels_per_group % 4 != 0) {
+        available_devices->erase(DeviceType::GPU);
+      }
+    }
+  }
+}
+
 }  // namespace
 
 std::unique_ptr<Operation> SerialNet::CreateOperation(
     const OpRegistryBase *op_registry,
     OpConstructContext *construct_context,
     std::shared_ptr<OperatorDef> op_def,
+    const std::unordered_map<std::string,
+                             std::vector<index_t>> tensor_shape_info,
     DataFormat data_format_flag,
     bool is_quantize_model) {
   // Create the Operation
   DeviceType target_device_type = target_device_->device_type();
   // Get available devices
-  auto available_devices = op_registry->AvailableDevices(op_def->type());
+  std::set<DeviceType> available_devices;
+  FindAvailableDevicesForOp(*op_registry,
+                            *op_def,
+                            tensor_shape_info,
+                            &available_devices);
   // Find the device type to run the op.
   // If the target_device_type in available devices, use target_device_type,
   // otherwise, fallback to CPU device.
@@ -93,6 +161,7 @@ std::unique_ptr<Operation> SerialNet::CreateOperation(
     }
   }
   op_def->set_device_type(device_type);
+
   // transpose output shape if run on CPU (default format is NHWC)
   if (!is_quantize_model && device_type == DeviceType::CPU &&
       op_def->output_shape_size() == op_def->output_size()) {
@@ -139,7 +208,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
   MemoryType target_mem_type;
   // quantize model flag
   bool is_quantize_model = IsQuantizedModel(*net_def);
-  //
+
   DataFormat data_format_flag = NHWC;
   if (target_device_->device_type() == DeviceType::CPU) {
     target_mem_type = MemoryType::CPU_BUFFER;
@@ -163,6 +232,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
           target_mem_type, DataType::DT_FLOAT, input_shape, -1));
     }
   }
+
 #ifdef MACE_ENABLE_OPENCL
   else {  // GPU  NOLINT[readability/braces]
     target_mem_type = MemoryType::GPU_BUFFER;
@@ -176,6 +246,22 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
   }
 #endif  // MACE_ENABLE_OPENCL
 
+  std::unordered_map<std::string, std::vector<index_t>> tensor_shape_info;
+  for (auto &op : net_def->op()) {
+    if (op.output_size() != op.output_shape_size()) {
+      continue;
+    }
+    for (int i = 0; i < op.output_size(); ++i) {
+      tensor_shape_info[op.output(i)] =
+          std::move(std::vector<index_t>(op.output_shape(i).dims().begin(),
+                                         op.output_shape(i).dims().end()));
+    }
+  }
+  for (auto &tensor : net_def->tensors()) {
+    tensor_shape_info[tensor.name()] =
+        std::move(std::vector<index_t>(tensor.dims().begin(),
+                                       tensor.dims().end()));
+  }
   OpConstructContext construct_context(ws_);
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     std::shared_ptr<OperatorDef> op_def(new OperatorDef(net_def->op(idx)));
@@ -183,6 +269,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
     auto op = CreateOperation(op_registry,
                               &construct_context,
                               op_def,
+                              tensor_shape_info,
                               data_format_flag,
                               is_quantize_model);
 #ifdef MACE_ENABLE_OPENCL
@@ -211,7 +298,8 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
               auto &output_info = output_map.at(op_def->input(i));
               // check whether the tensor has been transformed
               if (transformed_set.count(t_input_name) == 0) {
-                VLOG(1) << "Add Transform operation to transform tensor '"
+                VLOG(1) << "Add Transform operation " << op_def->name()
+                        << " to transform tensor "
                         << op_def->input(i) << "', from memory type "
                         << output_info.mem_type << " to "
                         << wanted_in_mem_type
@@ -234,6 +322,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
                     op_registry,
                     &construct_context,
                     transform_op_def,
+                    tensor_shape_info,
                     data_format_flag);
                 operators_.emplace_back(std::move(transform_op));
                 transformed_set.insert(t_input_name);
@@ -321,6 +410,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
             op_registry,
             &construct_context,
             transform_op_def,
+            tensor_shape_info,
             output_data_format);
         operators_.emplace_back(std::move(transform_op));
         // where to do graph reference count.
