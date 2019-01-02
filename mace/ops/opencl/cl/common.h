@@ -86,7 +86,8 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
 #ifdef USE_PRELU
                                 DATA_TYPE4 prelu_alpha,
 #endif
-                                __private const float relux_max_limit) {
+                                __private const float relux_max_limit,
+                                __private const float leakyrelu_coefficient) {
   DATA_TYPE4 out;
 #ifdef USE_RELU
   out = fmax(in, (DATA_TYPE)0);
@@ -104,7 +105,7 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
   out = do_sigmoid(in);
 #endif
 #ifdef USE_LEAKYRELU
-  out = fmax(in, (DATA_TYPE)0) * relux_max_limit;
+  out = select(leakyrelu_coefficient * in, in, in >= (DATA_TYPE)0);
 #endif
   return out;
 }

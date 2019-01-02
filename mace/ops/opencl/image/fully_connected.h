@@ -40,6 +40,7 @@ class FullyConnectedKernel : public OpenCLFullyConnectedKernel {
       const Tensor *bias,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       Tensor *output) override;
 
  private:
@@ -57,6 +58,7 @@ MaceStatus FullyConnectedKernel<T>::Compute(
     const Tensor *bias,
     const ActivationType activation,
     const float relux_max_limit,
+    const float leakyrelu_coefficient,
     Tensor *output) {
   std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
   std::vector<size_t> output_image_shape;
@@ -97,6 +99,9 @@ MaceStatus FullyConnectedKernel<T>::Compute(
         break;
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
+        break;
+      case LEAKYRELU:
+        built_options.emplace("-DUSE_LEAKYRELU");
         break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
@@ -148,6 +153,7 @@ MaceStatus FullyConnectedKernel<T>::Compute(
     kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(input->dim(3))));
     kernel_.setArg(idx++, static_cast<int>(output_blocks));
     kernel_.setArg(idx++, relux_max_limit);
+    kernel_.setArg(idx++, leakyrelu_coefficient);
 
     input_shape_ = input->shape();
   }

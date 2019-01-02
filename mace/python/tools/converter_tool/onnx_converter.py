@@ -286,10 +286,10 @@ class OnnxConverter(base_converter.ConverterInterface):
 
     activation_type = {
         OnnxOpType.Relu.name: ActivationType.RELU,
+        OnnxOpType.LeakyRelu.name: ActivationType.LEAKYRELU,
         OnnxOpType.PRelu.name: ActivationType.PRELU,
         OnnxOpType.Tanh.name: ActivationType.TANH,
         OnnxOpType.Sigmoid.name: ActivationType.SIGMOID,
-        OnnxOpType.LeakyRelu.name: ActivationType.LEAKYRELU,
     }
 
     def __init__(self, option, src_model_file):

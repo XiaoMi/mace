@@ -115,6 +115,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
                                    const int wino_blk_size,
                                    const ActivationType activation,
                                    const float relux_max_limit,
+                                   const float leakyrelu_coefficient,
                                    const bool input_changed,
                                    Tensor *output_tensor,
                                    uint32_t *kwg_size,
@@ -164,6 +165,9 @@ MaceStatus WinogradOutputTransform(OpContext *context,
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
         break;
+      case LEAKYRELU:
+        built_options.emplace("-DUSE_LEAKYRELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
@@ -199,6 +203,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
     kernel->setArg(idx++, static_cast<uint32_t>(round_h * round_w));
     kernel->setArg(idx++, static_cast<uint32_t>(round_w));
     kernel->setArg(idx++, relux_max_limit);
+    kernel->setArg(idx++, leakyrelu_coefficient);
   }
   const std::vector<uint32_t> lws = {*kwg_size / 8, 8, 0};
   std::string tuning_key =
@@ -222,6 +227,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                                        const int *paddings,
                                        const ActivationType activation,
                                        const float relux_max_limit,
+                                       const float leakyrelu_coefficient,
                                        const DataType dt,
                                        const int wino_blk_size,
                                        std::vector<index_t> *prev_input_shape,
@@ -338,7 +344,8 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   MACE_RETURN_IF_ERROR(WinogradOutputTransform(
       context, kernels[2], mm_output.get(), bias,
       dt, round_h, round_w, wino_blk_size, activation, relux_max_limit,
-      input_changed, output, kwg_size[2], &t_output_future))
+      leakyrelu_coefficient, input_changed, output, kwg_size[2],
+      &t_output_future))
 
   MergeMultipleFutureWaitFn({t_input_future, mm_future, t_output_future},
                             context->future());

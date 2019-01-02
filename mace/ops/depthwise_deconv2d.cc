@@ -281,7 +281,8 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
                         output_data,
                         output->size(),
                         activation_,
-                        relux_max_limit_);
+                        relux_max_limit_,
+                        leakyrelu_coefficient_);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -458,6 +459,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
                             group_,
                             activation_,
                             relux_max_limit_,
+                            leakyrelu_coefficient_,
                             out_shape,
                             output);
   }

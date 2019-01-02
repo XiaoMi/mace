@@ -45,6 +45,7 @@ class OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const int winograd_blk_size,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLConv2dKernel);

@@ -38,6 +38,7 @@ extern MaceStatus Conv2d1x1(OpContext *context,
                             const DataType dt,
                             const ActivationType activation,
                             const float relux_max_limit,
+                            const float leakyrelu_coefficient,
                             const bool input_changed,
                             Tensor *output,
                             StatsFuture *future);
@@ -52,6 +53,7 @@ extern MaceStatus Conv2dGeneral(OpContext *context,
                                 const DataType dt,
                                 const ActivationType activation,
                                 const float relux_max_limit,
+                                const float leakyrelu_coefficient,
                                 const bool input_changed,
                                 Tensor *output,
                                 StatsFuture *future);
@@ -81,6 +83,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const int winograd_blk_size,
       Tensor *output) override;
 
@@ -120,6 +123,7 @@ MaceStatus Conv2dKernel<T>::Compute(
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const int winograd_blk_size,
       Tensor *output) {
   MACE_UNUSED(winograd_blk_size);
@@ -221,14 +225,14 @@ MaceStatus Conv2dKernel<T>::Compute(
       return conv2d::Conv2d1x1(
           context, &kernels_[1], pad_input, filter, bias, strides,
           DataTypeToEnum<T>::v(), activation, relux_max_limit,
-          input_changed, output, &conv_future);
+          leakyrelu_coefficient, input_changed, output, &conv_future);
     };
   } else {
     conv_func = [&](const Tensor *pad_input, Tensor *output) -> MaceStatus {
       return conv2d::Conv2dGeneral(
         context, &kernels_[1], pad_input, filter, bias, strides, dilations,
         DataTypeToEnum<T>::v(), activation, relux_max_limit,
-        input_changed, output, &conv_future);
+        leakyrelu_coefficient, input_changed, output, &conv_future);
     };
   }
   MACE_RETURN_IF_ERROR(conv_func(padded_input_ptr, output));

@@ -37,7 +37,8 @@ class BatchNormKernel : public OpenCLBatchNormKernel {
   BatchNormKernel(
       const float epsilon,
       const ActivationType activation,
-      const float relux_max_limit);
+      const float relux_max_limit,
+      const float leakyrelu_coefficient);
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,
                      const Tensor *scale,
@@ -50,6 +51,7 @@ class BatchNormKernel : public OpenCLBatchNormKernel {
   const float epsilon_;
   const ActivationType activation_;
   const float relux_max_limit_;
+  const float leakyrelu_coefficient_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
@@ -58,10 +60,12 @@ class BatchNormKernel : public OpenCLBatchNormKernel {
 template <typename T>
 BatchNormKernel<T>::BatchNormKernel(const float epsilon,
                                     const ActivationType activation,
-                                    const float relux_max_limit)
+                                    const float relux_max_limit,
+                                    const float leakyrelu_coefficient)
     : epsilon_(epsilon),
       activation_(activation),
-      relux_max_limit_(relux_max_limit) {}
+      relux_max_limit_(relux_max_limit),
+      leakyrelu_coefficient_(leakyrelu_coefficient) {}
 
 template <typename T>
 MaceStatus BatchNormKernel<T>::Compute(
@@ -115,6 +119,9 @@ MaceStatus BatchNormKernel<T>::Compute(
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
         break;
+      case LEAKYRELU:
+        built_options.emplace("-DUSE_LEAKYRELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
@@ -140,6 +147,7 @@ MaceStatus BatchNormKernel<T>::Compute(
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit_);
+    kernel_.setArg(idx++, leakyrelu_coefficient_);
 
     input_shape_ = input->shape();
   }

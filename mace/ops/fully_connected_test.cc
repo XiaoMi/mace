@@ -123,10 +123,11 @@ void Random(const index_t batch,
 
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input",
-                                             {batch, height, width, channels});
+      {batch, height, width, channels}, false, false);
   net.AddRandomInput<DeviceType::GPU, float>(
-      "Weight", {out_channel, channels, height, width}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel}, true);
+      "Weight", {out_channel, channels, height, width}, true, false);
+  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel}, true,
+      false);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -135,6 +136,8 @@ void Random(const index_t batch,
       .Input("Weight")
       .Input("Bias")
       .Output("OutputNCHW")
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1f)
       .Finalize(net.NewOperatorDef());
 
   // run cpu
@@ -152,6 +155,8 @@ void Random(const index_t batch,
       .Input("Weight")
       .Input("Bias")
       .Output("Output")
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 

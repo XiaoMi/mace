@@ -42,6 +42,7 @@ class Deconv2dKernel : public OpenCLDeconv2dKernel {
       const int *padding_data,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const std::vector<index_t> &output_shape,
       Tensor *output) override;
 
@@ -61,6 +62,7 @@ MaceStatus Deconv2dKernel<T>::Compute(
       const int *padding_data,
       const ActivationType activation,
       const float relux_max_limit,
+      const float leakyrelu_coefficient,
       const std::vector<index_t> &output_shape,
       Tensor *output) {
   std::vector<size_t> output_image_shape;
@@ -119,6 +121,9 @@ MaceStatus Deconv2dKernel<T>::Compute(
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
         break;
+      case LEAKYRELU:
+        built_options.emplace("-DUSE_LEAKYRELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
@@ -146,6 +151,7 @@ MaceStatus Deconv2dKernel<T>::Compute(
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit);
+    kernel_.setArg(idx++, leakyrelu_coefficient);
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(3)));

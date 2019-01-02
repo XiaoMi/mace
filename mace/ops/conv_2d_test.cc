@@ -527,8 +527,9 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
-    net.AddRandomInput<D, T>("Bias", {output_channels}, true);
+        "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true,
+        false);
+    net.AddRandomInput<D, T>("Bias", {output_channels}, true, false);
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
 
@@ -541,6 +542,8 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
+        .AddStringArg("activation", "LEAKYRELU")
+        .AddFloatArg("leakyrelu_coefficient", 0.1)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
 
@@ -564,6 +567,8 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
+        .AddStringArg("activation", "LEAKYRELU")
+        .AddFloatArg("leakyrelu_coefficient", 0.1)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .AddIntArg("wino_block_size", wino_blk_size)
         .Finalize(net.NewOperatorDef());

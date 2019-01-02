@@ -88,8 +88,8 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true, false);
+  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true, false);
   net.AddRandomInput<DeviceType::GPU, float>("Mean", {channels}, true);
   net.AddRandomInput<DeviceType::GPU, float>("Var", {channels}, true);
 
@@ -105,6 +105,8 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .Input("Var")
       .AddFloatArg("epsilon", 1e-3)
       .Output("OutputNCHW")
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
   // run cpu
@@ -126,6 +128,8 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .Input("Var")
       .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
   // Tuning

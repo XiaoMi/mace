@@ -493,6 +493,14 @@ class CaffeConverter(base_converter.ConverterInterface):
                             mace_pb2.DT_FLOAT, alpha_data)
             op.input.extend([alpha_tensor_name])
 
+        negative_slope = caffe_op.layer.relu_param.negative_slope
+        if caffe_op.type == 'ReLU' and negative_slope != 0:
+            param_arg = op.arg.add()
+            param_arg.name = MaceKeyword.mace_activation_leakyrelu_coefficient_str  # noqa
+            param_arg.f = caffe_op.layer.relu_param.negative_slope
+
+            type_arg.s = six.b(ActivationType.LEAKYRELU.name)
+
     def convert_folded_batchnorm(self, caffe_op):
         op = self.convert_general_op(caffe_op)
         op.type = MaceOp.BatchNorm.name

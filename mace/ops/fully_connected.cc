@@ -41,10 +41,13 @@ class FullyConnectedOpBase : public Operation {
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
                                                   "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)) {}
+        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
+        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
+              "leakyrelu_coefficient", 0.0f)) {}
  protected:
   const ActivationType activation_;
   const float relux_max_limit_;
+  const float leakyrelu_coefficient_;
 
   MACE_OP_INPUT_TAGS(INPUT, WEIGHT, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
@@ -104,7 +107,7 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
     }
 
     DoActivation(output_ptr, output_ptr, output->size(), activation_,
-                 relux_max_limit_);
+                 relux_max_limit_, leakyrelu_coefficient_);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -226,7 +229,8 @@ class FullyConnectedOp<DeviceType::GPU, T> : public FullyConnectedOpBase {
         "The shape of Weight: ", MakeString(weight->shape()),
         " don't match.");
     return kernel_->Compute(
-        context, input, weight, bias, activation_, relux_max_limit_, output);
+        context, input, weight, bias, activation_, relux_max_limit_,
+        leakyrelu_coefficient_, output);
   }
 
  private:

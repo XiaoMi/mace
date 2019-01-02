@@ -35,8 +35,10 @@ template <typename T>
 class ActivationKernel : public OpenCLActivationKernel {
  public:
   ActivationKernel(ActivationType type,
-                   T relux_max_limit)
-      : activation_(type), relux_max_limit_(relux_max_limit) {}
+                   T relux_max_limit,
+                   T leakyrelu_coefficient)
+      : activation_(type), relux_max_limit_(relux_max_limit),
+        leakyrelu_coefficient_(leakyrelu_coefficient) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -47,6 +49,7 @@ class ActivationKernel : public OpenCLActivationKernel {
  private:
   ActivationType activation_;
   T relux_max_limit_;
+  T leakyrelu_coefficient_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
@@ -128,6 +131,7 @@ MaceStatus ActivationKernel<T>::Compute(
       kernel_.setArg(idx++, *(alpha->opencl_image()));
     }
     kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
+    kernel_.setArg(idx++, static_cast<float>(leakyrelu_coefficient_));
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();

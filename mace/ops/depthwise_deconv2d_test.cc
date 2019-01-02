@@ -185,12 +185,13 @@ void RandomTest(index_t batch,
   GenerateRandomRealTypeData({multiplier, channel, kernel, kernel},
                              &filter_data);
   net.AddInputFromArray<DeviceType::GPU, float>(
-      "Filter", {multiplier, channel, kernel, kernel}, filter_data, true);
+      "Filter", {multiplier, channel, kernel, kernel}, filter_data, true,
+      false);
   std::vector<float> bias_data(channel * multiplier);
   GenerateRandomRealTypeData({channel * multiplier}, &bias_data);
   net.AddInputFromArray<DeviceType::GPU, float>("Bias",
                                                 {channel * multiplier},
-                                                bias_data, true);
+                                                bias_data, true, false);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -203,6 +204,8 @@ void RandomTest(index_t batch,
       .AddIntsArg("padding_values", {padding, padding})
       .AddIntArg("group", channel)
       .AddIntsArg("dilations", {1, 1})
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
       .Finalize(net.NewOperatorDef());
   // Run
@@ -224,6 +227,8 @@ void RandomTest(index_t batch,
       .AddIntsArg("strides", {stride, stride})
       .AddIntsArg("padding_values", {padding, padding})
       .AddIntArg("group", channel)
+      .AddStringArg("activation", "LEAKYRELU")
+      .AddFloatArg("leakyrelu_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
