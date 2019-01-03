@@ -8,7 +8,8 @@ Before you open an issue, please make sure you have tried the following steps:
 
 1. Make sure your **environment** is the same with (https://mace.readthedocs.io/en/latest/installation/env_requirement.html).
 2. Have you ever read the document for your usage?
-3. The form below must be filled.
+3. Check if your issue appears in [HOW-TO-DEBUG](https://mace.readthedocs.io/en/latest/development/how_to_debug.html) or [FAQ](https://mace.readthedocs.io/en/latest/faq.html).
+4. The form below must be filled.
 
 ------------------------
 
