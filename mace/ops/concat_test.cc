@@ -186,6 +186,7 @@ TEST_F(ConcatOpTest, QuantizedCPURandom) {
     builder = builder.Input(MakeString("Input", i));
   }
   builder.AddIntArg("axis", axis_arg)
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -245,8 +246,9 @@ TEST_F(ConcatOpTest, QuantizedCPURandom) {
 
 namespace {
 template <typename T>
-void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
-                      const int axis) {
+void OpenCLRandomTest(const std::vector<std::vector<index_t>> &shapes,
+                      const int axis,
+                      DataFormat data_format) {
   srand(time(nullptr));
   int num_inputs = shapes.size();
   int concat_axis_size = 0;
@@ -262,6 +264,8 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     net.AddInputFromArray<DeviceType::GPU, float>(input_name, shapes[i],
                                                   inputs[i]);
   }
+  std::vector<index_t> expected_shape = shapes[0];
+  expected_shape[axis] = concat_axis_size;
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
@@ -271,6 +275,8 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   builder.AddIntArg("axis", axis)
       .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("data_format", data_format)
+      .OutputShape(expected_shape)
       .Finalize(net.NewOperatorDef());
 
   // Run
@@ -279,8 +285,6 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   // Check
   auto output = net.GetOutput("Output");
 
-  std::vector<index_t> expected_shape = shapes[0];
-  expected_shape[axis] = concat_axis_size;
   EXPECT_THAT(output->shape(), ::testing::ContainerEq(expected_shape));
 
   Tensor::MappingGuard output_mapper(output);
@@ -305,20 +309,38 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
 }  // namespace
 
 TEST_F(ConcatOpTest, OPENCLAligned) {
-  OpenclRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3);
+  OpenCLRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3,
+                          DataFormat::NHWC);
 }
 
 TEST_F(ConcatOpTest, OPENCLHalfAligned) {
-  OpenclRandomTest<half>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3);
+  OpenCLRandomTest<half>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3,
+                         DataFormat::NHWC);
 }
 
 TEST_F(ConcatOpTest, OPENCLUnAligned) {
-  OpenclRandomTest<float>({{3, 32, 32, 13}, {3, 32, 32, 17}}, 3);
+  OpenCLRandomTest<float>({{3, 32, 32, 13}, {3, 32, 32, 17}}, 3,
+                          DataFormat::NHWC);
 }
 
 TEST_F(ConcatOpTest, OPENCLAlignedMultiInput) {
-  OpenclRandomTest<float>(
-      {{3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}}, 3);
+  OpenCLRandomTest<float>(
+      {{3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}},
+      3, DataFormat::NHWC);
+}
+
+TEST_F(ConcatOpTest, GPUFallbackToCPU2DInput) {
+  OpenCLRandomTest<float>({{3, 4}, {3, 4}}, 1, DataFormat::DF_NONE);
+}
+
+TEST_F(ConcatOpTest, GPUFallbackToCPUChanNotDivisibleBy4) {
+  OpenCLRandomTest<float>({{1, 1, 4, 3}, {1, 1, 4, 3}}, 3,
+                          DataFormat::DF_NONE);
+}
+
+TEST_F(ConcatOpTest, GPUFallbackToCPUAxis2) {
+  OpenCLRandomTest<float>({{1, 1, 4, 3}, {1, 1, 4, 3}}, 2,
+                          DataFormat::DF_NONE);
 }
 
 }  // namespace test

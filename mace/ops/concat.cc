@@ -59,7 +59,9 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
     MACE_UNUSED(context);
     if (!checked_) {
       Validate();
-      if (this->Input(0)->dim_size() == 4) {
+      auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
+          "data_format", DataFormat::DF_NONE));
+      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
         if (axis_ == 3) axis_ = 1;
         else if (axis_ == 2) axis_ = 3;
         else if (axis_ == 1) axis_ = 2;
@@ -232,7 +234,42 @@ void RegisterConcat(OpRegistryBase *op_registry) {
 
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
                    DeviceType::GPU, half);
+
 #endif  // MACE_ENABLE_OPENCL
+
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Concat")
+          .SetDevicePlacerFunc(
+            [](OpConstructContext *context) -> std::set<DeviceType> {
+              auto op = context->operator_def();
+              auto tensor_shape_info = context->tensor_shape_info();
+              if (op->output_shape_size() != op->output_size()) {
+                return { DeviceType::CPU, DeviceType::GPU };
+              }
+              if (op->output_shape(0).dims_size() != 4) {
+                return { DeviceType::CPU };
+              } else {
+                int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                    *op, "axis", 3);
+                if (axis != 3) {
+                  return { DeviceType::CPU };
+                }
+                bool divisible_four = true;
+                for (const std::string &input : op->input()) {
+                  if (tensor_shape_info->find(input)
+                      != tensor_shape_info->end()) {
+                    divisible_four = divisible_four
+                        && (tensor_shape_info->at(input)[3] % 4 == 0);
+                  }
+                }
+                // Only support not divisible 4 case with 2 inputs.
+                if (op->input_size() > 2 && !divisible_four) {
+                  return { DeviceType::CPU };
+                }
+              }
+              return { DeviceType::CPU, DeviceType::GPU };
+            }));
 }
 
 }  // namespace ops

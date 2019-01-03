@@ -34,6 +34,7 @@ void Simple() {
         .Output("Output")
         .AddIntsArg("paddings", {0, 0, 1, 2, 1, 2, 0, 0})
         .AddFloatArg("constant_value", 1.0)
+        .AddIntArg("data_format", DataFormat::NHWC)
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -46,6 +47,7 @@ void Simple() {
         .Output("TOutput")
         .AddIntsArg("paddings", {0, 0, 1, 2, 1, 2, 0, 0})
         .AddFloatArg("constant_value", 1.0)
+        .AddIntArg("data_format", DataFormat::NHWC)
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -84,6 +86,7 @@ TEST_F(PadTest, ComplexCPU) {
       .Output("TOutput")
       .AddIntsArg("paddings", {0, 0, 1, 1, 1, 1, 1, 1})
       .AddFloatArg("constant_value", 1.0)
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Finalize(net.NewOperatorDef());
 
   // Run
@@ -120,6 +123,7 @@ void Complex(const std::vector<index_t> &input_shape,
       .Output("TOutput")
       .AddIntsArg("paddings", paddings)
       .AddFloatArg("constant_value", 1.0)
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Finalize(net.NewOperatorDef());
 
   // Run
@@ -135,6 +139,7 @@ void Complex(const std::vector<index_t> &input_shape,
       .Output("Output")
       .AddIntsArg("paddings", paddings)
       .AddFloatArg("constant_value", 1.0)
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Finalize(net.NewOperatorDef());
 
   // Run

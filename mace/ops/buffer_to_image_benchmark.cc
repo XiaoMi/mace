@@ -46,6 +46,7 @@ void FilterBufferToImage(int iters,
                    OpenCLBufferType::IN_OUT_CHANNEL,
                    MemoryType::GPU_IMAGE,
                    0,
+                   DataFormat::NHWC,
                    b2i_output);
   };
 

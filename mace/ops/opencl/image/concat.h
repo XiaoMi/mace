@@ -67,18 +67,14 @@ MaceStatus ConcatKernel<T>::Compute(
     const std::vector<const Tensor *> &input_list,
     Tensor *output) {
   const int inputs_count = input_list.size();
-  MACE_CHECK(inputs_count >= 2 && axis_ == 3)
-    << "Concat opencl kernel only support >=2 elements with axis == 3";
 
   const Tensor *input0 = input_list[0];
-  bool divisible_four = input0->dim(axis_) % 4 == 0;
 
   std::vector<index_t> output_shape(input0->shape());
   for (int i = 1; i < inputs_count; ++i) {
     const Tensor *input = input_list[i];
     MACE_CHECK(input->dim_size() == input0->dim_size(),
                "Ranks of all input tensors must be same.");
-    divisible_four &= input->dim(axis_) % 4 == 0;
     for (int j = 0; j < input->dim_size(); ++j) {
       if (j == axis_) {
         continue;
@@ -88,9 +84,6 @@ MaceStatus ConcatKernel<T>::Compute(
     }
     output_shape[axis_] += input->dim(axis_);
   }
-  MACE_CHECK(
-      inputs_count == 2 || divisible_four,
-      "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
   OpenCLUtil::CalImage2DShape(output_shape,
                               OpenCLBufferType::IN_OUT_CHANNEL,
@@ -103,15 +96,9 @@ MaceStatus ConcatKernel<T>::Compute(
           context, &kernel_, input_list[0], input_list[1],
           DataTypeToEnum<T>::value, &input_shape_, output, &kwg_size_);
     default:
-      if (divisible_four) {
-        return concat::ConcatN(context, &kernel_, input_list,
-                               DataTypeToEnum<T>::value, output, &kwg_size_);
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
+      return concat::ConcatN(context, &kernel_, input_list,
+                             DataTypeToEnum<T>::value, output, &kwg_size_);
   }
-
-  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

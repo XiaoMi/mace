@@ -34,9 +34,7 @@ namespace image {
 template <typename T>
 class SplitKernel : public OpenCLSplitKernel {
  public:
-  explicit SplitKernel(const int32_t axis) : axis_(axis) {
-    MACE_CHECK(axis == 3) << "GPU only support channel-dimension split";
-  }
+  explicit SplitKernel(const int32_t axis) : axis_(axis) {}
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -56,8 +54,6 @@ MaceStatus SplitKernel<T>::Compute(
   const index_t input_channels = input->dim(3);
   const size_t outputs_count = output_list.size();
   const index_t output_channels = input_channels / outputs_count;
-  MACE_CHECK(output_channels % 4 == 0)
-    << "output channels of split op must be divisible by 4";
   std::vector<index_t> output_shape(
       {input->dim(0), input->dim(1), input->dim(2), output_channels});
 

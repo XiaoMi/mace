@@ -410,6 +410,22 @@ void RegisterSoftmax(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
                    DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Softmax")
+          .SetDevicePlacerFunc(
+              [](OpConstructContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
+                if (op->output_shape(0).dims_size() != 2 &&
+                    op->output_shape(0).dims_size() != 4) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops

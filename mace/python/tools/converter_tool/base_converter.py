@@ -259,6 +259,7 @@ class TransformerRule(Enum):
     TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN = 36
     FOLD_FC_RESHAPE = 37
     TRANSFORM_CHANNEL_SHUFFLE = 38
+    UPDATE_DATA_FORMAT = 39
 
 
 class ConverterInterface(object):
@@ -479,6 +480,8 @@ class ConverterOption(object):
                 TransformerRule.ADD_OPENCL_INFORMATIONS,
                 # for quantization entropy calibration use
                 TransformerRule.SORT_BY_EXECUTION,
+                # update the data format of ops
+                TransformerRule.UPDATE_DATA_FORMAT,
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
             ]

@@ -35,7 +35,9 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
         checked_(false) {}
 
   void Validate() {
-    if (this->Input(0)->dim_size() == 4) {
+    auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
+        "data_format", DataFormat::DF_NONE));
+    if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
       if (axis_ == 3) axis_ = 1;
       else if (axis_ == 2) axis_ = 3;
       else if (axis_ == 1) axis_ = 2;
@@ -139,6 +141,24 @@ void RegisterSplit(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Split", SplitOp,
                    DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Split")
+          .SetDevicePlacerFunc(
+              [](OpConstructContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
+                int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                    *op, "axis", 3);
+                if (axis != 3 || op->output_shape(0).dims_size() != 4 ||
+                    (op->output_shape(0).dims()[3] % 4 != 0)) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops

@@ -46,7 +46,7 @@ void TestBidirectionTransform(const OpenCLBufferType type,
   OpenCLBufferTransformer<DstType>(MemoryType::GPU_BUFFER,
                                    MemoryType::GPU_BUFFER)
       .Transform(&context, net.ws()->GetTensor("Input"),
-                 type, MemoryType::GPU_BUFFER, 0, bt_output);
+                 type, MemoryType::GPU_BUFFER, 0, DataFormat::NHWC, bt_output);
 
   // Inverse Transform
   Tensor *output = net.ws()->CreateTensor(
@@ -55,7 +55,7 @@ void TestBidirectionTransform(const OpenCLBufferType type,
   OpenCLBufferTransformer<OrgType>(MemoryType::GPU_BUFFER,
                                    MemoryType::GPU_BUFFER)
       .Transform(&context, bt_output,
-                 type, MemoryType::GPU_BUFFER, 0, output);
+                 type, MemoryType::GPU_BUFFER, 0, DataFormat::NHWC, output);
 
   if (DataTypeToEnum<OrgType>::value == DataTypeToEnum<DstType>::value) {
     EXPECT_EQ(net.GetOutput("Input")->UnderlyingBuffer(),
@@ -92,7 +92,7 @@ void TestArgumentTransform(const index_t input_size) {
                              MemoryType::GPU_BUFFER)
       .Transform(&context, net.ws()->GetTensor("Input"),
                  OpenCLBufferType::ARGUMENT, MemoryType::GPU_BUFFER,
-                 0, output);
+                 0, DataFormat::NHWC, output);
 
   index_t expected_size = RoundUp<index_t>(input_size, 4);
   EXPECT_EQ(expected_size, output->buffer_shape()[0]);
