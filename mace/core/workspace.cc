@@ -131,7 +131,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         }
 
         std::unique_ptr<Tensor> tensor(
-            new Tensor(device->allocator(), dst_data_type, true));
+            new Tensor(device->allocator(), dst_data_type, true, const_tensor.name()));
         tensor->Resize(dims);
 
         MACE_CHECK(tensor->size() == const_tensor.data_size(),
