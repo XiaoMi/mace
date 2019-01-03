@@ -78,7 +78,6 @@ MaceStatus BufferTransform<T>::Compute(OpContext *context,
                                        const OpenCLBufferType type,
                                        const int wino_blk_size,
                                        Tensor *output) {
-  MACE_UNUSED(type);
   MACE_UNUSED(wino_blk_size);
   const DataType dt = DataTypeToEnum<T>::value;
   switch (type) {
@@ -92,8 +91,8 @@ MaceStatus BufferTransform<T>::Compute(OpContext *context,
       if (input->dtype() != dt) {
         return BufferTypeTransform(context, &kernel_, input, dt, output);
       } else {
-        LOG(FATAL) << "Should not reach here. " << input->name()
-                   << "<" << type << "> to " << output->name();
+        SetFutureDefaultWaitFn(context->future());
+        output->ReuseTensorBuffer(*input);
         return MaceStatus::MACE_SUCCESS;
       }
   }

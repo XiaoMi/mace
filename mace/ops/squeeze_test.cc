@@ -30,6 +30,7 @@ void TestSqueeze(const std::vector<index_t> &org_shape,
   OpDefBuilder("Squeeze", "SqueezeTest")
       .Input("Input")
       .AddIntsArg("axis", axis)
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 

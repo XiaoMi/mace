@@ -61,9 +61,6 @@ MaceStatus ChannelShuffleKernel<T>::Compute(
   const index_t width = input->dim(2);
   const index_t channels = input->dim(3);
   const index_t channels_per_group = channels / groups_;
-  MACE_CHECK(channels_per_group % 4 == 0,
-             "channels per group must be multiple of 4");
-  MACE_CHECK(groups_ % 4 == 0, "groups must be multiple of 4");
   const index_t group_channel_blocks = RoundUpDiv4(channels_per_group);
 
   const uint32_t gws[3] = {static_cast<uint32_t>(group_channel_blocks),

@@ -31,11 +31,14 @@ class SqueezeOp : public Operation {
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     if (!checked_ && D == DeviceType::CPU
-        && DataTypeToEnum<T>::value != DT_UINT8
-        && this->Input(0)->dim_size() == 4) {
-      if (axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2) {
-        axis_[0] = 2;
-        axis_[1] = 3;
+        && DataTypeToEnum<T>::value != DT_UINT8) {
+      auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
+          "data_format", DataFormat::DF_NONE));
+      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+        if (axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2) {
+          axis_[0] = 2;
+          axis_[1] = 3;
+        }
       }
       checked_ = true;
     }
@@ -70,6 +73,21 @@ void RegisterSqueeze(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::GPU, float);
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Squeeze")
+          .SetDevicePlacerFunc(
+              [](OpConstructContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
+                if (op->output_shape(0).dims_size() != 2 &&
+                    op->output_shape(0).dims_size() != 4) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops

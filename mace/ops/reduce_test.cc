@@ -44,6 +44,7 @@ void Simple(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", keepdims ? 1 : 0)
         .AddIntArg("reduce_type", type)
+        .AddIntArg("data_format", DataFormat::NHWC)
         .Output("OutputNCHW")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -55,6 +56,7 @@ void Simple(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", keepdims ? 1 : 0)
         .AddIntArg("reduce_type", type)
+        .AddIntArg("data_format", DataFormat::NHWC)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -82,6 +84,7 @@ void Simple3D(const std::vector<index_t> &input_shape,
       .AddIntsArg("axis", axis)
       .AddIntArg("keepdims", keepdims ? 1 : 0)
       .AddIntArg("reduce_type", type)
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -585,6 +588,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", 1)
         .AddIntArg("reduce_type", type)
+        .AddIntArg("data_format", DataFormat::NHWC)
         .Output("OutputNCHW")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -596,6 +600,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", 1)
         .AddIntArg("reduce_type", type)
+        .AddIntArg("data_format", DataFormat::NHWC)
         .Output("OPENCLOutput")
         .Finalize(net.NewOperatorDef());
     // Run

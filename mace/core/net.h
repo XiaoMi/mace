@@ -59,8 +59,6 @@ class SerialNet : public NetBase {
       const OpRegistryBase *op_registry,
       OpConstructContext *construct_context,
       std::shared_ptr<OperatorDef> op_def,
-      const std::unordered_map<std::string,
-                               std::vector<index_t>> tensor_shape_info,
       DataFormat input_format,
       bool is_quantize_model = false);
 

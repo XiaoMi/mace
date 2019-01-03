@@ -151,7 +151,8 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
     const std::vector<mace::index_t> &input_shape,
     const std::string &output_name,
     const mace::DataType dt,
-    const mace::MemoryType mem_type) {
+    const mace::MemoryType mem_type,
+    const DataFormat data_format) {
   std::unique_ptr<OperatorDef> op(new OperatorDef);
   std::string op_name = "mace_node_" + output_name;
   op->set_name(op_name);
@@ -168,8 +169,8 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
   arg->set_name("T");
   arg->set_i(static_cast<int32_t>(dt));
   arg = op->add_arg();
-  arg->set_name("device");
-  arg->set_i(DeviceType::GPU);
+  arg->set_name("data_format");
+  arg->set_i(data_format);
   if (!input_shape.empty()) {
     OutputShape *shape = op->add_output_shape();
     for (auto value : input_shape) {

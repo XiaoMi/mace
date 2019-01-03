@@ -54,6 +54,7 @@ void RandomTest(const int num_outputs, int axis) {
     builder = builder.Output(MakeString("Output", i));
   }
   builder.AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("data_format", DataFormat::NHWC)
       .Finalize(net.NewOperatorDef());
 
   // Run

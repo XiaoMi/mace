@@ -47,6 +47,7 @@ class OpenCLBufferTransformer {
                        const OpenCLBufferType type,
                        const MemoryType out_mem_type,
                        const int wino_blk_size,
+                       const DataFormat data_format,
                        Tensor *output) {
     Workspace *ws = context->workspace();
     DataType dt = DataTypeToEnum<T>::value;
@@ -65,7 +66,7 @@ class OpenCLBufferTransformer {
         VLOG(2) << "Transform CPU Buffer " << input->name()
                 << " to GPU Buffer " << internal_tensor->name()
                 << " with data type " << dt;
-        if (input->shape().size() == 4) {
+        if (data_format == DataFormat::NHWC && input->shape().size() == 4) {
           // 1. (NCHW -> NHWC)
           std::vector<int> dst_dims = {0, 2, 3, 1};
           std::vector<index_t> output_shape =
@@ -103,7 +104,8 @@ class OpenCLBufferTransformer {
       VLOG(2) << "Transform GPU Buffer " << internal_tensor.name()
               << " to CPU Buffer " << output->name()
               << " with data type " << dt;
-      if (internal_tensor.shape().size() == 4) {
+      if (data_format == DataFormat::NHWC &&
+          internal_tensor.shape().size() == 4) {
         // NHWC -> NCHW
         std::vector<int> dst_dims = {0, 3, 1, 2};
         std::vector<index_t> output_shape =
@@ -165,7 +167,7 @@ MaceStatus TransformFilter(
   input->MarkUnused();
   return OpenCLBufferTransformer<T>(input->memory_type(), mem_type).
       Transform(&op_context, input, buffer_type, mem_type, wino_blk_size,
-                output);
+                DataFormat::DF_NONE, output);
 }
 
 }  // namespace ops

@@ -31,8 +31,11 @@ namespace mace {
 
 // memory_optimizer, device
 class OpConstructContext {
+  typedef std::unordered_map<std::string, std::vector<index_t>> TensorShapeMap;
+
  public:
   explicit OpConstructContext(Workspace *ws);
+  OpConstructContext(Workspace *ws, TensorShapeMap *info);
   ~OpConstructContext() = default;
 
   void set_operator_def(std::shared_ptr<OperatorDef> operator_def);
@@ -53,6 +56,10 @@ class OpConstructContext {
     return device_;
   }
 
+  inline TensorShapeMap *tensor_shape_info() const {
+    return tensor_shape_info_;
+  }
+
   void set_output_mem_type(MemoryType type);
 
   inline MemoryType output_mem_type() const {
@@ -69,6 +76,7 @@ class OpConstructContext {
   std::shared_ptr<OperatorDef> operator_def_;
   Workspace *ws_;
   Device *device_;
+  TensorShapeMap *tensor_shape_info_;
   // used for memory transform
   std::vector<MemoryType> input_mem_types_;
   std::vector<DataType> input_data_types_;
@@ -188,8 +196,10 @@ struct OpRegistrationInfo {
  public:
   typedef std::function<std::unique_ptr<Operation>(OpConstructContext *)>
       OpCreator;
+  typedef std::function<std::set<DeviceType>(OpConstructContext *)>
+      DevicePlacer;
 
-  OpRegistrationInfo() = default;
+  OpRegistrationInfo();
 
   void AddDevice(DeviceType);
 
@@ -197,7 +207,25 @@ struct OpRegistrationInfo {
 
   std::set<DeviceType> devices;
   std::unordered_map<std::string, OpCreator> creators;
+  DevicePlacer device_placer;
 };
+
+class OpConditionBuilder {
+ public:
+  explicit OpConditionBuilder(const std::string &type);
+
+  const std::string type() const;
+
+  OpConditionBuilder &SetDevicePlacerFunc(
+      OpRegistrationInfo::DevicePlacer placer);
+
+  void Finalize(OpRegistrationInfo *info) const;
+
+ private:
+  std::string type_;
+  OpRegistrationInfo::DevicePlacer placer_;
+};
+
 
 class OpRegistryBase {
  public:
@@ -208,8 +236,10 @@ class OpRegistryBase {
                       const DataType dt,
                       OpRegistrationInfo::OpCreator creator);
 
+  MaceStatus Register(const OpConditionBuilder &builder);
+
   const std::set<DeviceType> AvailableDevices(
-      const std::string &op_type) const;
+      const std::string &op_type, OpConstructContext *context) const;
 
   std::unique_ptr<Operation> CreateOperation(
       OpConstructContext *context,
@@ -233,6 +263,9 @@ class OpRegistryBase {
                         device,                                        \
                         DataTypeToEnum<dt>::value,                     \
                         OpRegistryBase::DefaultCreator<class_name<device, dt>>)
+
+#define MACE_REGISTER_OP_CONDITION(op_registry, builder) \
+  op_registry->Register(builder)
 
 }  // namespace mace
 

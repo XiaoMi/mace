@@ -167,6 +167,9 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
           !ws_.GetTensor(input)->is_weight()) {
         auto input_info = net_def.add_input_info();
         input_info->set_name(input);
+        auto data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            op_def_, "data_format", DataFormat::DF_NONE);
+        input_info->set_data_format(data_format);
         auto &shape = ws_.GetTensor(input)->shape();
         for (auto d : shape) {
           input_info->add_dims(static_cast<int>(d));

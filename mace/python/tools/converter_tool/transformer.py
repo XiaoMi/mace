@@ -96,6 +96,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.ADD_OPENCL_INFORMATIONS:
                 self.add_opencl_informations,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
+            TransformerRule.UPDATE_DATA_FORMAT: self.update_data_format,
             TransformerRule.CHECK_QUANTIZE_INFO:
                 self.check_quantize_info,
             TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN:
@@ -1356,6 +1357,24 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             print("%s (%s): %s" % (op.name, op.type, [
                 out_shape.dims for out_shape in op.output_shape]))
+        return False
+
+    def update_data_format(self):
+        data_format_flag = DataFormat.NHWC.value
+        for input_node in self._option.input_nodes.values():
+            if input_node.data_format.value == DataFormat.DF_NONE.value:
+                data_format_flag = DataFormat.DF_NONE.value
+
+        net = self._model
+        for op in net.op:
+            data_format_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_data_format_str)
+            if not data_format_arg:
+                data_format_arg = op.arg.add()
+                data_format_arg.name = MaceKeyword.mace_data_format_str
+                data_format_arg.i = data_format_flag
+            elif data_format_arg.i != data_format_flag:
+                data_format_arg.i = data_format_flag
         return False
 
     def quantize_nodes(self):

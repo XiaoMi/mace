@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "mace/core/types.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 enum OpenCLBufferType {
@@ -47,7 +48,8 @@ class OpenCLUtil {
       const std::vector<mace::index_t> &input_shape,
       const std::string &output_name,
       const mace::DataType dt,
-      const MemoryType mem_type);
+      const MemoryType mem_type,
+      const DataFormat data_format);
 };
 
 }  // namespace mace

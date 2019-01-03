@@ -35,7 +35,11 @@ class PadOp<DeviceType::CPU, T> : public Operation {
         constant_value_(Operation::GetOptionalArg<float>(
             "constant_value", 0.0)) {
     MACE_CHECK(paddings_.size() == 8);
-    paddings_ = TransposeShape<int, int>(paddings_, {0, 1, 6, 7, 2, 3, 4, 5});
+    auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
+        "data_format", DataFormat::DF_NONE));
+    if (df == DataFormat::NHWC) {
+      paddings_ = TransposeShape<int, int>(paddings_, {0, 1, 6, 7, 2, 3, 4, 5});
+    }
   }
 
   MaceStatus Run(OpContext *context) override {

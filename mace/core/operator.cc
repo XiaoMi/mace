@@ -22,7 +22,18 @@
 namespace mace {
 
 OpConstructContext::OpConstructContext(Workspace *ws)
-    : operator_def_(nullptr), ws_(ws), device_(nullptr) {}
+    : operator_def_(nullptr),
+      ws_(ws),
+      device_(nullptr),
+      tensor_shape_info_(nullptr) {}
+
+OpConstructContext::OpConstructContext(
+    mace::Workspace *ws,
+    mace::OpConstructContext::TensorShapeMap *info)
+    : operator_def_(nullptr),
+      ws_(ws),
+      device_(nullptr),
+      tensor_shape_info_(info) {}
 
 void OpConstructContext::set_operator_def(
     std::shared_ptr<mace::OperatorDef> operator_def) {
@@ -169,6 +180,19 @@ const std::string OpKeyBuilder::Build() {
 }
 }  // namespace
 
+OpRegistrationInfo::OpRegistrationInfo() {
+  device_placer = [this](OpConstructContext *context) -> std::set<DeviceType> {
+    auto op = context->operator_def();
+    // The GPU ops only support 4D In/Out tensor by default
+    if (this->devices.count(DeviceType::CPU) == 1 &&
+        op->output_shape_size() == op->output_size() &&
+        op->output_shape(0).dims_size() != 4) {
+      return { DeviceType::CPU };
+    }
+    return this->devices;
+  };
+}
+
 void OpRegistrationInfo::AddDevice(mace::DeviceType device) {
   devices.insert(device);
 }
@@ -179,10 +203,11 @@ void OpRegistrationInfo::Register(const std::string &key, OpCreator creator) {
   creators[key] = creator;
 }
 
-MaceStatus OpRegistryBase::Register(const std::string &op_type,
-                                const mace::DeviceType device_type,
-                                const mace::DataType dt,
-                                mace::OpRegistrationInfo::OpCreator creator) {
+MaceStatus OpRegistryBase::Register(
+    const std::string &op_type,
+    const mace::DeviceType device_type,
+    const mace::DataType dt,
+    mace::OpRegistrationInfo::OpCreator creator) {
   if (registry_.count(op_type) == 0) {
     registry_[op_type] = std::unique_ptr<OpRegistrationInfo>(
         new OpRegistrationInfo);
@@ -197,14 +222,24 @@ MaceStatus OpRegistryBase::Register(const std::string &op_type,
   return MaceStatus::MACE_SUCCESS;
 }
 
+MaceStatus OpRegistryBase::Register(
+    const OpConditionBuilder &builder) {
+  std::string op_type = builder.type();
+  if (registry_.count(op_type) == 0) {
+    registry_[op_type] = std::unique_ptr<OpRegistrationInfo>(
+        new OpRegistrationInfo);
+  }
+  builder.Finalize(registry_[op_type].get());
+  return MaceStatus::MACE_SUCCESS;
+}
+
 const std::set<DeviceType> OpRegistryBase::AvailableDevices(
-    const std::string &op_type) const {
+    const std::string &op_type, OpConstructContext *context) const {
   MACE_CHECK(registry_.count(op_type) != 0,
              op_type, " operation is not registered.");
 
-  return registry_.at(op_type)->devices;
+  return registry_.at(op_type)->device_placer(context);
 }
-
 
 std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
     OpConstructContext *context,
@@ -238,4 +273,24 @@ std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
   }
   return registry_.at(op_type)->creators.at(key)(context);
 }
+
+OpConditionBuilder::OpConditionBuilder(const std::string &type)
+  : type_(type) {}
+
+const std::string OpConditionBuilder::type() const {
+  return type_;
+}
+
+OpConditionBuilder &OpConditionBuilder::SetDevicePlacerFunc(
+    OpRegistrationInfo::DevicePlacer placer) {
+  placer_ = placer;
+  return *this;
+}
+
+void OpConditionBuilder::Finalize(OpRegistrationInfo *info) const {
+  if (info != nullptr && placer_) {
+    info->device_placer = placer_;
+  }
+}
+
 }  // namespace mace

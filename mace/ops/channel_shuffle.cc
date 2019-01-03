@@ -111,6 +111,28 @@ void RegisterChannelShuffle(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "ChannelShuffle",
                    ChannelShuffleOp, DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("ChannelShuffle")
+          .SetDevicePlacerFunc(
+              [](OpConstructContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
+                int groups = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                    *op, "group", 1);
+                if (op->output_shape(0).dims_size() != 4) {
+                  return { DeviceType::CPU };
+                }
+                index_t channels = op->output_shape(0).dims(3);
+                index_t channels_per_group = channels / groups;
+                if (groups % 4 != 0 || channels_per_group % 4 != 0) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops
