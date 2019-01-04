@@ -1,3 +1,30 @@
+# v0.10.0 (2019-01-03)
+------
+## Improvements
+1. Support mixing usage of CPU and GPU.
+2. Support ONNX format.
+3. Support ARM Linux development board.
+4. Support CPU quantization.
+5. Update DSP library.
+6. Add `Depthwise Deconvolution` of Caffe.
+7. Add documents about debug and benchmark.
+8. Bug fixed.
+
+## Incompatible Changes
+1. Remove all APIs in mace_runtime.h
+
+## New APIs
+1. Add GPUContext and GPUContextBuilder API.
+2. Add MaceEngineConfig API.
+3. Add MaceStatus API.
+4. MaceTensor support data format.
+
+## Acknowledgement
+Thanks for the following guys who contribute code which make MACE better.
+
+ByronHsu, conansherry, jackwish, herbakamil, tomaszkaliciak, oneTaken,
+madhavajay, wayen820, idstein, newway1995.
+
 # v0.9.0 (2018-07-20)
 ------
 ## Improvements
@@ -21,7 +48,7 @@
 4. Incorrect dynamic library of host.
 
 ## Acknowledgement
-Appreciate for the following guys contribute code to make MACE better.
+Thanks for the following guys who contribute code which make MACE better.
 
 Zero King(@l2dy), James Bie(@JamesBie), Sun Aries(@SunAriesCN), Allen(@allen0125),
 conansherry(@conansherry), 黎明灰烬(@jackwish)
