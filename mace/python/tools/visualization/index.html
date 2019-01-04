@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<style>
+    line {
+        stroke: #999;
+        stroke-width: 1.5px;
+        stroke: black;
+        fill: transparent;
+        opacity: 0.5;
+    }
+
+    ellipse {
+        stroke-width: 1.5px;
+        stroke: black;
+        opacity: 0.5;
+    }
+</style>
+
+<head>
+    <meta charset="UTF-8">
+    <title>MACE Model</title>
+</head>
+
+<body>
+<h1>MACE Visualization</h1>
+
+<h2>Ops</h2>
+<div id="op_table"></div>
+
+<h2>Tensors</h2>
+<div id="tensor_table"></div>
+
+<h2>Graph</h2>
+Click node to see details at bottom of this page.
+<div class='graph'>
+    <svg id='graph' width='1000' height='1600' viewBox='0 0 1000 1600'></svg>
+</div>
+
+<div>
+    <pre id='info'></pre>
+</div>
+
+</body>
+
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script>
+    /*
+     var graph = {
+     "nodes": [
+     {
+     "name": "A_",
+     "id": "A",
+     },
+     {
+     "name": "B_",
+     "id": "B",
+     }
+     ],
+     "links": [
+     {
+     "source": "A",
+     "target": "B"
+     }
+     ]
+     }
+     */
+    var graph =%s;
+
+
+    function create_table(divid, data, columns) {
+        var table = d3.select(divid).append("table");
+        var thead = table.append("thead");
+        var tbody = table.append("tbody");
+
+        thead.append("tr")
+            .selectAll("th")
+            .data(columns).enter()
+            .append("th")
+            .text(function (column) {
+                return column;
+            });
+
+        var tr = tbody.selectAll("tr")
+            .data(data)
+            .enter()
+            .append("tr");
+
+        var td = tr.selectAll("td")
+            .data(function (row) {
+                return columns.map(function (column) {
+                    return {column: column, value: row[column]};
+                });
+            })
+            .enter()
+            .append("td")
+            .text(function (d) {
+                return d.value;
+            });
+
+        return table;
+    }
+
+    nodes = graph["nodes"];
+    op_data = [];
+    tensor_data = [];
+
+    for (var i = 0; i < nodes.length; i++) {
+        var node = nodes[i];
+        if (node.node_type === "op") {
+            var output_shapes = [];
+            if (typeof node["outputShape"] !== "undefined") {
+                for (var j = 0; j < node["outputShape"].length; j++) {
+                    var output_shape = node["outputShape"][j].dims.join(",");
+                    output_shapes.push(output_shape);
+                }
+            }
+            var quantize_infos = [];
+            if (typeof node["quantizeInfo"] !== "undefined") {
+                for (var j = 0; j < node["quantizeInfo"].length; j++) {
+                    quantize_infos.push(
+                        "scale=" + node["quantizeInfo"][j]["scale"] +
+                        " zero=" + node["quantizeInfo"][j]["zeroPoint"] +
+                        " min=" + node["quantizeInfo"][j]["minval"] +
+                        " max=" + node["quantizeInfo"][j]["maxval"]);
+                }
+            }
+            op_data.push({
+                "idx": op_data.length,
+                "name": node["name"],
+                "type": node["type"],
+                "output_shape": output_shapes.join("; "),
+                "quantize_info": quantize_infos.join("; ")
+            });
+        } else if (node.node_type === "tensor") {
+            var quantize_info = "";
+            if (typeof node["scale"] !== "undefined") {
+                quantize_info = "scale=" + node["scale"] +
+                    " zero=" + node["zeroPoint"] +
+                    " min=" + node["minval"] +
+                    " max=" + node["maxval"];
+            }
+            tensor_data.push({
+                "idx": tensor_data.length,
+                "name": node["name"],
+                "data_type": node["dataType"],
+                "dims": node["dims"].join(","),
+                "quantize_info": quantize_info
+
+            })
+        }
+    }
+    create_table("#op_table", op_data, ["idx", "name", "type",
+        "output_shape", "quantize_info"]);
+    create_table("#tensor_table", tensor_data, ["idx", "name", "data_type",
+        "dims", "quantize_info"]);
+
+
+    var svg = d3.select("#graph");
+    svg.append("svg:defs").append("svg:marker")
+        .attr("id", "arrow")
+        .attr("viewBox", "0 -5 10 10")
+        .attr('refX', 30)
+        .attr("markerWidth", 5)
+        .attr("markerHeight", 5)
+        .attr("orient", "auto")
+        .append("svg:path")
+        .attr("d", "M0,-5L10,0L0,5");
+
+    var width = svg.attr("width");
+    var height = svg.attr("height");
+
+    var is_mouse_down = false;
+    var mouse_x = 0;
+    var mouse_y = 0;
+    var view_box_x = 0;
+    var view_box_y = 0;
+    svg.on("mousedown", function () {
+        is_mouse_down = true;
+        mouse_x = d3.mouse(this)[0];
+        mouse_y = d3.mouse(this)[1];
+    });
+
+    svg.on("mouseup", function () {
+        is_mouse_down = false;
+        view_box_x = view_box_x - d3.mouse(this)[0] + mouse_x;
+        view_box_y = view_box_y - d3.mouse(this)[1] + mouse_y;
+        svg.attr("viewBox", view_box_x + " " + view_box_y + " "
+            + width + " " + height);
+    });
+
+    svg.on("mousemove", function () {
+        if (is_mouse_down) {
+            view_box_x = view_box_x - d3.mouse(this)[0] + mouse_x;
+            view_box_y = view_box_y - d3.mouse(this)[1] + mouse_y;
+            svg.attr("viewBox", view_box_x + " " + view_box_y + " "
+                + width + " " + height);
+        }
+    });
+
+    var simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(function (d) {
+            return d.id;
+        }).distance(50))
+        .force("gravity", d3.forceManyBody().strength(-50))
+        .force("center", d3.forceCenter(0.5 * width, 0.5 * height));
+
+    var node = svg.selectAll(".nodes")
+        .data(graph.nodes)
+        .enter().append("g")
+        .attr("class", "nodes")
+        .call(d3.drag()
+            .on("start", function (d) {
+                if (!d3.event.active) simulation.alphaTarget(1.0).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            })
+            .on("drag", function (d) {
+                d.fx = d3.event.x;
+                d.fy = d3.event.y;
+            })
+            .on("end", function (d) {
+                if (!d3.event.active) simulation.alphaTarget(0);
+                d.fx = d.fy = null;
+            }))
+        .on("click", function (d) {
+            d3.select('#info').text(JSON.stringify(d, null, 2))
+        })
+
+    function shape_size(node_type) {
+        if (node_type === "op") return ["60px", "20px"];
+        else if (node_type === "input") return ["15px", "15px"];
+        else return ["5px", "5px"];
+    }
+    function color(node_type) {
+        if (node_type === "op") return "#3366cc";
+        else if (node_type === "input") return "#ff9900";
+        else return "#dc3912";
+    }
+    function font_size(node_type) {
+        if (node_type === "op" || node_type === "input") return "14px";
+        else return "8px";
+    }
+
+    node.append("ellipse")
+        .attr("rx", function (d) {
+            return shape_size(d.node_type)[0];
+        })
+        .attr("ry", function (d) {
+            return shape_size(d.node_type)[1];
+        })
+        .attr("fill", function (d) {
+            return color(d.node_type);
+        })
+    node.append("text")
+        .attr("font-size", function (d) {
+            return font_size(d.node_type);
+        })
+        .attr("dx", 60).attr("dy", 5).text(function (d) {
+        return d.name;
+    });
+    node.append("text")
+        .attr("font-size", function (d) {
+            return font_size(d.node_type);
+        })
+        .attr("dx", -25).attr("dy", 5).text(function (d) {
+        if (d.node_type === "op") return d.type;
+        else return "";
+    }).style("fill", "white");
+
+    var link = svg.append("g").attr("class", "links").selectAll("line")
+        .data(graph.links).enter().append("line")
+        .attr("marker-end", "url(#arrow)");
+
+
+    simulation.nodes(graph.nodes).on("tick", tick);
+    simulation.force("link").links(graph.links);
+    function tick() {
+        link.attr("x1", function (d) {
+            return d.source.x;
+        })
+            .attr("y1", function (d) {
+                return d.source.y;
+            })
+            .attr("x2", function (d) {
+                return d.target.x;
+            })
+            .attr("y2", function (d) {
+                return d.target.y;
+            });
+        node.attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    }
+</script>
+
+</html>

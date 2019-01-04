@@ -25,6 +25,7 @@ from mace.python.tools import model_saver
 from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool import transformer
 from mace.python.tools.convert_util import mace_check
+from mace.python.tools.visualization import visualize_model
 
 # ./bazel-bin/mace/python/tools/tf_converter --model_file quantized_test.pb \
 #                                            --output quantized_test_dsp.pb \
@@ -200,6 +201,13 @@ def main(unused_args):
         converter = hexagon_converter.HexagonConverter(
             option, output_graph_def, quantize_activation_info)
         output_graph_def = converter.run()
+
+    try:
+        visualizer = visualize_model.ModelVisualizer(FLAGS.model_tag,
+                                                     output_graph_def)
+        visualizer.save_html()
+    except:  # noqa
+        print("Failed to visualize model:", sys.exc_info()[0])
 
     model_saver.save_model(
         option, output_graph_def, model_checksum, weight_checksum,

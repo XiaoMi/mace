@@ -45,6 +45,7 @@ py_binary(
     deps = [
         ":converter_lib",
         ":model_saver_lib",
+        "//mace/python/tools/visualization:visualization_lib",
         "@six_archive//:six",
     ],
 )
