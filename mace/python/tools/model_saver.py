@@ -190,6 +190,8 @@ def save_model_to_proto(net_def, model_tag, output_dir):
     with open(proto_file_path + '_txt', "w") as f:
         f.write(str(net_def))
 
+    return proto_file_path
+
 
 def save_model_to_code(net_def, model_tag, device,
                        template_dir, output_dir, embed_model_data,

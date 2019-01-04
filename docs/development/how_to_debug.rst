@@ -34,6 +34,14 @@ It is usually used to measure classification accuracy. The higher the better.
 where :math:`X` is expected output (from training platform) whereas :math:`X'` is actual output (from MACE) .
 
 
+You can validate it by specifying `--validate` while running the model.
+
+    .. code:: sh
+
+        # Validate the correctness by comparing the results against the
+        # original model and framework
+        python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --validate
+
 MACE automatically validate these metrics by running models with synthetic inputs.
 If you want to specify input data to use, you can add an option in yaml config under 'subgraphs', e.g.,
 
@@ -53,12 +61,21 @@ If you want to specify input data to use, you can add an option in yaml config u
 	          - MobilenetV1/Predictions/Reshape_1
 	        output_shapes:
 	          - 1,1001
+	        check_tensors:
+	          - MobilenetV1/Logits/Conv2d_1c_1x1/BiasAdd:0
+	        check_shapes:
+	          - 1,1,1,1001
 	        validation_inputs_data:
 	          - https://cnbj1.fds.api.xiaomi.com/mace/inputs/dog.npy
 
-
 If model's output is suspected to be incorrect, it might be useful to debug your model layer by layer by specifying an intermediate layer as output,
 or use binary search method until suspicious layer is found.
+
+You can also specify `--validate_all_layers` to validate all the layers of the model(excluding some layers changed by MACE, e.g., BatchToSpaceND),
+it only supports TensorFlow now. You can find validation results in `builds/your_model/model/runtime_in_yaml/log.csv`.
+
+For quantized model, if you want to check one layer, you can add `check_tensors` and `check_shapes` like in the yaml above. You can only specify
+MACE op's output.
 
 
 Debug memory usage

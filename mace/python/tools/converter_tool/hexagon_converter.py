@@ -14,6 +14,7 @@
 
 import copy
 import numpy as np
+from enum import Enum
 from operator import mul
 
 from mace.proto import mace_pb2
@@ -28,22 +29,44 @@ from mace.python.tools.convert_util import mace_check
 from mace.python.tools import graph_util
 
 
+HexagonSupportedOps = [
+    'BatchToSpaceND_8',
+    'DepthwiseSupernode_8x8p32to8',
+    'DequantizeOUTPUT_8tof',
+    'QuantizedAdd_8p8to8',
+    'QuantizedAvgPool_8',
+    'QuantizedConcat_8',
+    'QuantizedMaxPool_8',
+    'QuantizedResizeBilinear_8',
+    'QuantizedSoftmax_8',
+    'QuantizeINPUT_f_to_8',
+    'SpaceToBatchND_8',
+    'Supernode_8x8p32to8',
+    'Nop',
+]
+
+HexagonOp = Enum('HexagonOp', [(op, op) for op in HexagonSupportedOps],
+                 type=str)
+
+
 class HexagonOps(object):
     def __init__(self):
         self.hexagon_ops = {
-            'Quantize': 'QuantizeINPUT_f_to_8',
-            'Dequantize': 'DequantizeOUTPUT_8tof',
-            'Concat': 'QuantizedConcat_8',
-            'Conv2D': 'Supernode_8x8p32to8',
-            'DepthwiseConv2d': 'DepthwiseSupernode_8x8p32to8',
-            'ResizeBilinear': 'QuantizedResizeBilinear_8',
-            'SpaceToBatchND': 'SpaceToBatchND_8',
-            'BatchToSpaceND': 'BatchToSpaceND_8',
-            'Softmax': 'QuantizedSoftmax_8',
-            'Eltwise': 'Eltwise',
-            'Pooling': 'Pooling',
-            'Identity': 'Nop',
-            'Squeeze': 'Nop',
+            MaceOp.BatchToSpaceND.name: HexagonOp.BatchToSpaceND_8.name,
+            MaceOp.Concat.name: HexagonOp.QuantizedConcat_8.name,
+            MaceOp.Conv2D.name: HexagonOp.Supernode_8x8p32to8.name,
+            MaceOp.DepthwiseConv2d.name:
+                HexagonOp.DepthwiseSupernode_8x8p32to8.name,
+            MaceOp.Dequantize.name: HexagonOp.DequantizeOUTPUT_8tof.name,
+            MaceOp.Eltwise.name: [HexagonOp.QuantizedAdd_8p8to8],
+            MaceOp.Identity.name: HexagonOp.Nop.name,
+            MaceOp.Quantize.name: HexagonOp.QuantizeINPUT_f_to_8.name,
+            MaceOp.Pooling.name: [HexagonOp.QuantizedAvgPool_8.name,
+                                  HexagonOp.QuantizedMaxPool_8.name],
+            MaceOp.ResizeBilinear.name:
+                HexagonOp.QuantizedResizeBilinear_8.name,
+            MaceOp.SpaceToBatchND.name: HexagonOp.SpaceToBatchND_8.name,
+            MaceOp.Softmax.name: HexagonOp.QuantizedSoftmax_8.name,
         }
 
     def has_op(self, tf_op):
@@ -116,7 +139,6 @@ class HexagonConverter(base_converter.ConverterInterface):
         for op in self._model.op:
             if not self._hexagon_ops.has_op(op.type):
                 raise Exception('Unsupported op: ', op)
-            print('Op: %s (%s)' % (op.name, op.type))
             for i in range(len(op.input)):
                 if ':' not in op.input[i]:
                     node_name = op.input[i]
@@ -250,14 +272,14 @@ class HexagonConverter(base_converter.ConverterInterface):
                     and ConverterUtil.get_arg(
                         op, MaceKeyword.mace_element_type_str).i
                     == EltwiseType.SUM.value):
-                op.type = 'QuantizedAdd_8p8to8'
+                op.type = HexagonOp.QuantizedAdd_8p8to8.name
             elif op.type == MaceOp.Pooling.name:
                 pooling_type_arg = ConverterUtil.get_arg(
                     op, MaceKeyword.mace_pooling_type_str)
                 if PoolingType(pooling_type_arg.i) == PoolingType.AVG:
-                    op.type = 'QuantizedAvgPool_8'
+                    op.type = HexagonOp.QuantizedAvgPool_8.name
                 else:
-                    op.type = 'QuantizedMaxPool_8'
+                    op.type = HexagonOp.QuantizedMaxPool_8.name
             else:
                 op.type = self._hexagon_ops.map_nn_op(op.type)
 
@@ -342,8 +364,10 @@ class HexagonConverter(base_converter.ConverterInterface):
             tensor_op, port = get_op_and_port_from_tensor(tensor.name)
             node_id_map[tensor_op] = tensor.node_id
 
+        print("Hexagon op:")
         for op in self._model.op:
             op.node_id = node_id_counter
+            print('Op: %s (%s, %d)' % (op.name, op.type, op.node_id))
             node_id_counter += 1
             node_id_map[op.name] = op.node_id
             for ipt in op.input:
