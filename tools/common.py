@@ -14,6 +14,7 @@
 
 import enum
 import hashlib
+import inspect
 import re
 import os
 
@@ -34,6 +35,12 @@ class CMDColors:
     UNDERLINE = '\033[4m'
 
 
+def get_frame_info(level=2):
+    caller_frame = inspect.stack()[level]
+    info = inspect.getframeinfo(caller_frame[0])
+    return info.filename + ':' + str(info.lineno) + ': '
+
+
 class MaceLogger:
     @staticmethod
     def header(message):
@@ -45,22 +52,25 @@ class MaceLogger:
 
     @staticmethod
     def info(message):
-        six.print_(message)
+        six.print_(get_frame_info() + message)
 
     @staticmethod
     def warning(message):
-        six.print_(CMDColors.YELLOW + 'WARNING:' + message + CMDColors.ENDC)
+        six.print_(CMDColors.YELLOW + 'WARNING:' + get_frame_info() + message
+                   + CMDColors.ENDC)
 
     @staticmethod
-    def error(module, message):
-        six.print_(CMDColors.RED + 'ERROR: [' + module + '] '
+    def error(module, message, location_info=""):
+        if not location_info:
+            location_info = get_frame_info()
+        six.print_(CMDColors.RED + 'ERROR: [' + module + '] ' + location_info
                    + message + CMDColors.ENDC)
         exit(1)
 
 
 def mace_check(condition, module, message):
     if not condition:
-        MaceLogger.error(module, message)
+        MaceLogger.error(module, message, get_frame_info())
 
 
 ################################

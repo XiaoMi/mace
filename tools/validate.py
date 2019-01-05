@@ -79,7 +79,7 @@ def calculate_pixel_accuracy(out_value, mace_out_value):
 
 
 def compare_output(platform, device_type, output_name, mace_out_value,
-                   out_value, validation_threshold):
+                   out_value, validation_threshold, log_file):
     if mace_out_value.size != 0:
         pixel_accuracy = calculate_pixel_accuracy(out_value, mace_out_value)
         out_value = out_value.reshape(-1)
@@ -91,7 +91,18 @@ def compare_output(platform, device_type, output_name, mace_out_value,
             output_name + ' MACE VS ' + platform.upper()
             + ' similarity: ' + str(similarity) + ' , sqnr: ' + str(sqnr)
             + ' , pixel_accuracy: ' + str(pixel_accuracy))
-        if similarity > validation_threshold:
+        if log_file:
+            if not os.path.exists(log_file):
+                with open(log_file, 'w') as f:
+                    f.write('output_name,similarity,sqnr,pixel_accuracy\n')
+            summary = '{output_name},{similarity},{sqnr},{pixel_accuracy}\n'\
+                .format(output_name=output_name,
+                        similarity=similarity,
+                        sqnr=sqnr,
+                        pixel_accuracy=pixel_accuracy)
+            with open(log_file, "a") as f:
+                f.write(summary)
+        elif similarity > validation_threshold:
             common.MaceLogger.summary(
                 common.StringFormatter.block("Similarity Test Passed"))
         else:
@@ -112,7 +123,8 @@ def normalize_tf_tensor_name(name):
 
 def validate_tf_model(platform, device_type, model_file, input_file,
                       mace_out_file, input_names, input_shapes,
-                      output_names, validation_threshold, input_data_types):
+                      output_names, validation_threshold, input_data_types,
+                      log_file):
     import tensorflow as tf
     if not os.path.isfile(model_file):
         common.MaceLogger.error(
@@ -151,12 +163,13 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                     mace_out_value = load_data(output_file_name)
                     compare_output(platform, device_type, output_names[i],
                                    mace_out_value, output_values[i],
-                                   validation_threshold)
+                                   validation_threshold, log_file)
 
 
 def validate_caffe_model(platform, device_type, model_file, input_file,
                          mace_out_file, weight_file, input_names, input_shapes,
-                         output_names, output_shapes, validation_threshold):
+                         output_names, output_shapes, validation_threshold,
+                         log_file):
     os.environ['GLOG_minloglevel'] = '1'  # suprress Caffe verbose prints
     import caffe
     if not os.path.isfile(model_file):
@@ -201,13 +214,13 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
         compare_output(platform, device_type, output_names[i], mace_out_value,
-                       value, validation_threshold)
+                       value, validation_threshold, log_file)
 
 
 def validate_onnx_model(platform, device_type, model_file, input_file,
                         mace_out_file, input_names, input_shapes,
                         output_names, output_shapes, validation_threshold,
-                        input_data_types, backend):
+                        input_data_types, backend, log_file):
     import onnx
     if backend == "tensorflow":
         from onnx_tf.backend import prepare
@@ -257,12 +270,12 @@ def validate_onnx_model(platform, device_type, model_file, input_file,
         mace_out_value = load_data(output_file_name)
         compare_output(platform, device_type, output_names[i],
                        mace_out_value, value,
-                       validation_threshold)
+                       validation_threshold, log_file)
 
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
              device_type, input_shape, output_shape, input_node, output_node,
-             validation_threshold, input_data_type, backend):
+             validation_threshold, input_data_type, backend, log_file):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
@@ -278,7 +291,8 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
     if platform == 'tensorflow':
         validate_tf_model(platform, device_type, model_file, input_file,
                           mace_out_file, input_names, input_shapes,
-                          output_names, validation_threshold, input_data_types)
+                          output_names, validation_threshold, input_data_types,
+                          log_file)
     elif platform == 'caffe':
         output_shape_strs = [shape for shape in output_shape.split(':')]
         output_shapes = [[int(x) for x in shape.split(',')]
@@ -286,7 +300,7 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
         validate_caffe_model(platform, device_type, model_file, input_file,
                              mace_out_file, weight_file, input_names,
                              input_shapes, output_names, output_shapes,
-                             validation_threshold)
+                             validation_threshold, log_file)
     elif platform == 'onnx':
         output_shape_strs = [shape for shape in output_shape.split(':')]
         output_shapes = [[int(x) for x in shape.split(',')]
@@ -295,7 +309,7 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                             mace_out_file, input_names, input_shapes,
                             output_names, output_shapes,
                             validation_threshold,
-                            input_data_types, backend)
+                            input_data_types, backend, log_file)
 
 
 def parse_args():

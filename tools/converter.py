@@ -1178,6 +1178,11 @@ def parse_args():
         help="whether to verify the results are consistent with "
              "the frameworks.")
     run.add_argument(
+        "--validate_all_layers",
+        action="store_true",
+        help="whether to verify the results of all layers are "
+             "consistent with the frameworks.")
+    run.add_argument(
         "--caffe_env",
         type=str_to_caffe_env_type,
         default='docker',
