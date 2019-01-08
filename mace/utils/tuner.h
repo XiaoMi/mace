@@ -14,7 +14,11 @@
 
 #ifndef MACE_UTILS_TUNER_H_
 #define MACE_UTILS_TUNER_H_
+#include <fcntl.h>
 #include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <cstring>
 #include <fstream>
@@ -39,10 +43,16 @@ inline bool IsTuning() {
 template <typename param_type>
 class Tuner {
  public:
-  explicit Tuner(const std::string tuned_param_file_path = ""):
+  explicit Tuner(const std::string tuned_param_file_path = "",
+      const unsigned char *param_byte_stream = nullptr,
+      const size_t param_byte_stream_size = 0):
       tuned_param_file_path_(tuned_param_file_path) {
     path_ = getenv("MACE_RUN_PARAMETER_PATH");
-    ReadRunParamters();
+    if (param_byte_stream != nullptr && param_byte_stream_size != 0) {
+      ParseData(param_byte_stream, param_byte_stream_size);
+    } else {
+      ReadRunParamters();
+    }
   }
 
   ~Tuner() { WriteRunParameters(); }
@@ -114,32 +124,100 @@ class Tuner {
     }
   }
 
+  inline void ParseData(const unsigned char *data, size_t data_size) {
+    const size_t int_size = sizeof(int32_t);
+    const size_t param_type_size = sizeof(param_type);
+
+    size_t parsed_offset = 0;
+    int64_t num_params = 0;
+    memcpy(&num_params, data, sizeof(num_params));
+    data += sizeof(num_params);
+    parsed_offset += sizeof(num_params);
+    while (num_params--) {
+      int32_t key_size = 0;
+      memcpy(&key_size, data, int_size);
+      data += int_size;
+      std::string key(key_size, ' ');
+      memcpy(&key[0], data, key_size);
+      data += key_size;
+      parsed_offset += int_size + key_size;
+
+      int32_t params_size = 0;
+      memcpy(&params_size, data, int_size);
+      data += int_size;
+      parsed_offset += int_size;
+      int32_t params_count = params_size / param_type_size;
+      std::vector<param_type> params(params_count);
+      for (int i = 0; i < params_count; ++i) {
+        memcpy(&params[i], data, param_type_size);
+        data += param_type_size;
+        parsed_offset += param_type_size;
+      }
+      MACE_CHECK(parsed_offset <= data_size,
+                 "Parsing tuned data out of range: ",
+                 parsed_offset, " > ", data_size);
+      param_table_.emplace(key, params);
+    }
+  }
+
   inline void ReadRunParamters() {
     if (!tuned_param_file_path_.empty()) {
-      std::ifstream ifs(tuned_param_file_path_,
-                        std::ios::binary | std::ios::in);
-      if (ifs.is_open()) {
-        int64_t num_params = 0;
-        ifs.read(reinterpret_cast<char *>(&num_params), sizeof(num_params));
-        while (num_params--) {
-          int32_t key_size = 0;
-          ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
-          std::string key(key_size, ' ');
-          ifs.read(&key[0], key_size);
-
-          int32_t params_size = 0;
-          ifs.read(reinterpret_cast<char *>(&params_size), sizeof(params_size));
-          int32_t params_count = params_size / sizeof(unsigned int);
-          std::vector<unsigned int> params(params_count);
-          for (int i = 0; i < params_count; ++i) {
-            ifs.read(reinterpret_cast<char *>(&params[i]),
-                     sizeof(unsigned int));
-          }
-          param_table_.emplace(key, params);
+      struct stat st;
+      if (stat(tuned_param_file_path_.c_str(), &st) == -1) {
+        if (errno == ENOENT) {
+          VLOG(1) << "File " << tuned_param_file_path_
+                  << " does not exist";
+        } else {
+          LOG(WARNING) << "Stat file " << tuned_param_file_path_
+                       << " failed, error code: " << strerror(errno);
         }
-        ifs.close();
-      } else {
-        LOG(WARNING) << "Read OpenCL tuned parameters file failed.";
+        return;
+      }
+      int fd = open(tuned_param_file_path_.c_str(), O_RDONLY);
+      if (fd < 0) {
+        if (errno == ENOENT) {
+          LOG(INFO) << "File " << tuned_param_file_path_
+                    << " does not exist";
+        } else {
+          LOG(WARNING) << "open file " << tuned_param_file_path_
+                       << " failed, error code: " << strerror(errno);
+        }
+        return;
+      }
+      size_t file_size = st.st_size;
+      unsigned char *file_data =
+          static_cast<unsigned char *>(mmap(nullptr, file_size, PROT_READ,
+                                            MAP_PRIVATE, fd, 0));
+      int res = 0;
+      if (file_data == MAP_FAILED) {
+        LOG(WARNING) << "mmap file " << tuned_param_file_path_
+                     << " failed, error code: " << strerror(errno);
+
+        res = close(fd);
+        if (res != 0) {
+          LOG(WARNING) << "close file " << tuned_param_file_path_
+                       << " failed, error code: " << strerror(errno);
+        }
+        return;
+      }
+
+      ParseData(file_data, file_size);
+      res = munmap(file_data, file_size);
+      if (res != 0) {
+        LOG(WARNING) << "munmap file " << tuned_param_file_path_
+                     << " failed, error code: " << strerror(errno);
+        res = close(fd);
+        if (res != 0) {
+          LOG(WARNING) << "close file " << tuned_param_file_path_
+                       << " failed, error code: " << strerror(errno);
+        }
+        return;
+      }
+      res = close(fd);
+      if (res != 0) {
+        LOG(WARNING) << "close file " << tuned_param_file_path_
+                     << " failed, error code: " << strerror(errno);
+        return;
       }
     } else {
       VLOG(1) << "There is no tuned parameters.";

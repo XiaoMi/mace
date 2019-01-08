@@ -130,7 +130,7 @@ class DeviceWrapper:
         dst_file = "%s/%s" % (dst_path, file_name)
         if os.path.exists(dst_file):
             sh.rm('-f', dst_file)
-        six.print_("Pull %s to %s" % (src_path, dst_path))
+        six.print_("Pull %s to %s" % (src_file, dst_path))
         if self.system == SystemType.android:
             sh_commands.adb_pull(
                 src_file, dst_file, self.address)
@@ -626,6 +626,11 @@ class DeviceWrapper:
                 model_output_dirs, CL_TUNED_PARAMETER_FILE_NAME,
                 opencl_parameter_bin_path
             )
+            sh_commands.gen_opencl_binary_cpps(
+                opencl_output_bin_path,
+                opencl_parameter_bin_path,
+                opencl_output_bin_path + '.cc',
+                opencl_parameter_bin_path + '.cc')
 
     def report_run_statistics(self,
                               target_abi,

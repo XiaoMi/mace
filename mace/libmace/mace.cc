@@ -97,11 +97,16 @@ MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
 
 class GPUContextBuilder::Impl {
  public:
+  Impl();
   void SetStoragePath(const std::string &path);
 
   void SetOpenCLBinaryPaths(const std::vector<std::string> &paths);
 
+  void SetOpenCLBinary(const unsigned char *data, const size_t size);
+
   void SetOpenCLParameterPath(const std::string &path);
+
+  void SetOpenCLParameter(const unsigned char *data, const size_t size);
 
   std::shared_ptr<GPUContext> Finalize();
 
@@ -109,7 +114,16 @@ class GPUContextBuilder::Impl {
   std::string storage_path_;
   std::vector<std::string> opencl_binary_paths_;
   std::string opencl_parameter_path_;
+  const unsigned char *opencl_binary_ptr_;
+  size_t opencl_binary_size_;
+  const unsigned char *opencl_parameter_ptr_;
+  size_t opencl_parameter_size_;
 };
+
+GPUContextBuilder::Impl::Impl()
+    : storage_path_(""), opencl_binary_paths_(0), opencl_parameter_path_(""),
+      opencl_binary_ptr_(nullptr), opencl_binary_size_(0),
+      opencl_parameter_ptr_(nullptr), opencl_parameter_size_(0) {}
 
 void GPUContextBuilder::Impl::SetStoragePath(const std::string &path) {
   storage_path_ = path;
@@ -120,15 +134,31 @@ void GPUContextBuilder::Impl::SetOpenCLBinaryPaths(
   opencl_binary_paths_ = paths;
 }
 
+void GPUContextBuilder::Impl::SetOpenCLBinary(const unsigned char *data,
+                                              const size_t size) {
+  opencl_binary_ptr_ = data;
+  opencl_binary_size_ = size;
+}
+
 void GPUContextBuilder::Impl::SetOpenCLParameterPath(
     const std::string &path) {
   opencl_parameter_path_ = path;
 }
 
+void GPUContextBuilder::Impl::SetOpenCLParameter(const unsigned char *data,
+                                                 const size_t size) {
+  opencl_parameter_ptr_ = data;
+  opencl_parameter_size_ = size;
+}
+
 std::shared_ptr<GPUContext> GPUContextBuilder::Impl::Finalize() {
   return std::shared_ptr<GPUContext>(new GPUContext(storage_path_,
                                                     opencl_binary_paths_,
-                                                    opencl_parameter_path_));
+                                                    opencl_parameter_path_,
+                                                    opencl_binary_ptr_,
+                                                    opencl_binary_size_,
+                                                    opencl_parameter_ptr_,
+                                                    opencl_parameter_size_));
 }
 
 GPUContextBuilder::GPUContextBuilder() : impl_(new GPUContextBuilder::Impl) {}
@@ -146,9 +176,21 @@ GPUContextBuilder &GPUContextBuilder::SetOpenCLBinaryPaths(
   return *this;
 }
 
+GPUContextBuilder& GPUContextBuilder::SetOpenCLBinary(
+    const unsigned char *data, const size_t size) {
+  impl_->SetOpenCLBinary(data, size);
+  return *this;
+}
+
 GPUContextBuilder &GPUContextBuilder::SetOpenCLParameterPath(
     const std::string &path) {
   impl_->SetOpenCLParameterPath(path);
+  return *this;
+}
+
+GPUContextBuilder& GPUContextBuilder::SetOpenCLParameter(
+    const unsigned char *data, const size_t size) {
+  impl_->SetOpenCLParameter(data, size);
   return *this;
 }
 

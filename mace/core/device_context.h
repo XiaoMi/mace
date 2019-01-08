@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/file_storage.h"
+#include "mace/core/kv_storage.h"
 #include "mace/utils/tuner.h"
 
 namespace mace {
@@ -29,7 +29,11 @@ class GPUContext {
  public:
   GPUContext(const std::string &storage_path = "",
              const std::vector<std::string> &opencl_binary_path = {},
-             const std::string &opencl_parameter_path = "");
+             const std::string &opencl_parameter_path = "",
+             const unsigned char *opencl_binary_ptr = nullptr,
+             const size_t opencl_binary_size = 0,
+             const unsigned char *opencl_parameter_ptr = nullptr,
+             const size_t opencl_parameter_size = 0);
   ~GPUContext();
 
   std::shared_ptr<KVStorage> opencl_binary_storage();

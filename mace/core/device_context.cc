@@ -39,20 +39,30 @@ std::string FindFirstExistPath(const std::vector<std::string> &paths) {
 
 GPUContext::GPUContext(const std::string &storage_path,
                        const std::vector<std::string> &opencl_binary_paths,
-                       const std::string &opencl_parameter_path)
+                       const std::string &opencl_parameter_path,
+                       const unsigned char *opencl_binary_ptr,
+                       const size_t opencl_binary_size,
+                       const unsigned char *opencl_parameter_ptr,
+                       const size_t opencl_parameter_size)
     : storage_factory_(new FileStorageFactory(storage_path)),
-      opencl_tuner_(new Tuner<uint32_t>(opencl_parameter_path)) {
-
+      opencl_tuner_(new Tuner<uint32_t>(opencl_parameter_path,
+                                        opencl_parameter_ptr,
+                                        opencl_parameter_size)) {
   if (!storage_path.empty()) {
     opencl_cache_storage_ =
         storage_factory_->CreateStorage(kPrecompiledProgramFileName);
   }
 
-  std::string precompiled_binary_path =
-      FindFirstExistPath(opencl_binary_paths);
-  if (!precompiled_binary_path.empty()) {
+  if (opencl_binary_ptr != nullptr) {
     opencl_binary_storage_.reset(
-        new FileStorage(precompiled_binary_path));
+        new ReadOnlyByteStreamStorage(opencl_binary_ptr, opencl_binary_size));
+  } else {
+    std::string precompiled_binary_path =
+        FindFirstExistPath(opencl_binary_paths);
+    if (!precompiled_binary_path.empty()) {
+      opencl_binary_storage_.reset(
+          new FileStorage(precompiled_binary_path));
+    }
   }
 }
 

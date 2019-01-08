@@ -27,6 +27,16 @@
 #include "mace/codegen/engine/mace_engine_factory.h"
 #endif
 
+#ifdef MACE_ENABLE_OPENCL
+namespace mace {
+const unsigned char *LoadOpenCLBinary();
+size_t OpenCLBinarySize();
+const unsigned char *LoadOpenCLParameter();
+size_t OpenCLParameterSize();
+}  // namespace mace
+#endif
+
+
 namespace mace {
 namespace examples {
 
@@ -187,7 +197,9 @@ bool RunModel(const std::vector<std::string> &input_names,
     gpu_context = GPUContextBuilder()
         .SetStoragePath(storage_path)
         .SetOpenCLBinaryPaths(opencl_binary_paths)
+        .SetOpenCLBinary(LoadOpenCLBinary(), OpenCLBinarySize())
         .SetOpenCLParameterPath(FLAGS_opencl_parameter_file)
+        .SetOpenCLParameter(LoadOpenCLParameter(), OpenCLParameterSize())
         .Finalize();
 
     config.SetGPUContext(gpu_context);

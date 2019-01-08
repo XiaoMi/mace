@@ -25,7 +25,7 @@
 #include <utility>
 
 #include "mace/core/macros.h"
-#include "mace/core/file_storage.h"
+#include "mace/core/kv_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/utils/tuner.h"
 

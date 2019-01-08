@@ -31,6 +31,8 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_libmace",
+        "//mace/codegen:generated_opencl_binary",
+        "//mace/codegen:generated_opencl_parameter",
     ] + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),
@@ -59,5 +61,7 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_libmace",
         "//mace/codegen:generated_mace_engine_factory",
+        "//mace/codegen:generated_opencl_binary",
+        "//mace/codegen:generated_opencl_parameter",
     ],
 )

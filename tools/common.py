@@ -407,6 +407,7 @@ CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
 ENGINE_CODEGEN_DIR = CODEGEN_BASE_DIR + '/engine'
 LIB_CODEGEN_DIR = CODEGEN_BASE_DIR + '/lib'
+OPENCL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/opencl'
 LIBMACE_SO_TARGET = "//mace/libmace:libmace.so"
 LIBMACE_STATIC_TARGET = "//mace/libmace:libmace_static"
 LIBMACE_STATIC_PATH = "bazel-genfiles/mace/libmace/libmace.a"
