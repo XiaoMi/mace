@@ -357,6 +357,11 @@ def parse_args():
         type=str,
         default="tensorflow",
         help="onnx backend framwork")
+    parser.add_argument(
+        "--log_file",
+        type=str,
+        default="",
+        help="log file")
 
     return parser.parse_known_args()
 
@@ -375,4 +380,5 @@ if __name__ == '__main__':
              FLAGS.output_node,
              FLAGS.validation_threshold,
              FLAGS.input_data_type,
-             FLAGS.backend)
+             FLAGS.backend,
+             FLAGS.log_file)

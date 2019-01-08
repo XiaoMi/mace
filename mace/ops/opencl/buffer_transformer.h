@@ -66,7 +66,7 @@ class OpenCLBufferTransformer {
         VLOG(2) << "Transform CPU Buffer " << input->name()
                 << " to GPU Buffer " << internal_tensor->name()
                 << " with data type " << dt;
-        if (data_format == DataFormat::NHWC && input->shape().size() == 4) {
+        if (data_format == DataFormat::NCHW && input->shape().size() == 4) {
           // 1. (NCHW -> NHWC)
           std::vector<int> dst_dims = {0, 2, 3, 1};
           std::vector<index_t> output_shape =
