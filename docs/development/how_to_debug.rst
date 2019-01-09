@@ -96,6 +96,8 @@ Debug model conversion
 After model is converted to MACE model, a literal model graph is generated in directory `mace/codegen/models/your_model`.
 You can refer to it when debugging model conversion.
 
+MACE also provides model visualization HTML generated in `builds` directory, generated after converting model.
+
 
 Debug engine using log
 --------------------------
