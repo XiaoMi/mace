@@ -853,7 +853,7 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
 
 
 def build_example(configs, target_abi, toolchain,
-                  enable_openmp, mace_lib_type):
+                  enable_openmp, mace_lib_type, cl_binary_to_code, device):
     library_name = configs[YAMLKeyword.library_name]
     hexagon_mode = get_hexagon_mode(configs)
 
@@ -861,6 +861,20 @@ def build_example(configs, target_abi, toolchain,
     if os.path.exists(build_tmp_binary_dir):
         sh.rm("-rf", build_tmp_binary_dir)
     os.makedirs(build_tmp_binary_dir)
+
+    if cl_binary_to_code:
+        sh_commands.gen_opencl_binary_cpps(
+            get_opencl_binary_output_path(
+                library_name, target_abi, device),
+            get_opencl_parameter_output_path(
+                library_name, target_abi, device),
+            OPENCL_CODEGEN_DIR + '/opencl_binary.cc',
+            OPENCL_CODEGEN_DIR + '/opencl_parameter.cc')
+    else:
+        sh_commands.gen_opencl_binary_cpps(
+            "", "",
+            OPENCL_CODEGEN_DIR + '/opencl_binary.cc',
+            OPENCL_CODEGEN_DIR + '/opencl_parameter.cc')
 
     symbol_hidden = True
 
@@ -942,12 +956,15 @@ def run_mace(flags):
             if target_abi in dev[YAMLKeyword.target_abis]:
                 # get toolchain
                 toolchain = infer_toolchain(target_abi)
+                device = DeviceWrapper(dev)
                 if flags.example:
                     build_example(configs,
                                   target_abi,
                                   toolchain,
                                   not flags.disable_openmp,
-                                  flags.mace_lib_type)
+                                  flags.mace_lib_type,
+                                  flags.cl_binary_to_code,
+                                  device)
                 else:
                     build_mace_run(configs,
                                    target_abi,
@@ -956,7 +973,6 @@ def run_mace(flags):
                                    flags.address_sanitizer,
                                    flags.mace_lib_type)
                 # run
-                device = DeviceWrapper(dev)
                 with device.lock():
                     device.run_specify_abi(flags, configs, target_abi)
             elif dev[YAMLKeyword.device_name] != SystemType.host:
@@ -1234,6 +1250,10 @@ def parse_args():
         type=str,
         default="",
         help="quantize stat output dir.")
+    run.add_argument(
+        "--cl_binary_to_code",
+        action="store_true",
+        help="convert OpenCL binaries to cpp.")
     benchmark = subparsers.add_parser(
         'benchmark',
         parents=[all_type_parent_parser, run_bm_parent_parser],

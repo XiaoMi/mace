@@ -314,14 +314,18 @@ Tuning for specific SoC's GPU
                   └── opencl
                       └── arm64-v8a
                          ├── moblinet-v2_compiled_opencl_kernel.MiNote3.sdm660.bin
-                         └── moblinet-v2_tuned_opencl_parameter.MiNote3.sdm660.bin
+                         ├── moblinet-v2_compiled_opencl_kernel.MiNote3.sdm660.bin.cc
+                         ├── moblinet-v2_tuned_opencl_parameter.MiNote3.sdm660.bin
+                         └── moblinet-v2_tuned_opencl_parameter.MiNote3.sdm660.bin.cc
 
 
         * **mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin** stands for the OpenCL binaries
           used for your models, which could accelerate the initialization stage.
           Details please refer to `OpenCL Specification <https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clCreateProgramWithBinary.html>`__.
+        * **mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin.cc** contains C++ source code which defines OpenCL binary data as const array.
         * **mobilenet-v2-tuned_opencl_parameter.MI6.msm8998.bin** stands for the tuned OpenCL parameters
           for the SoC.
+        * **mobilenet-v2-tuned_opencl_parameter.MI6.msm8998.bin.cc** contains C++ source code which defines OpenCL binary data as const array.
 
     * **4. Deployment**
         * Change the names of files generated above for not collision and push them to **your own device's directory**.

@@ -23,10 +23,49 @@
 #include <memory>
 #include <utility>
 
-#include "mace/core/file_storage.h"
+#include "mace/core/kv_storage.h"
+#include "mace/core/macros.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
+
+namespace {
+void ParseKVData(const unsigned char *data,
+                 size_t data_size,
+                 std::map<std::string, std::vector<unsigned char>> *kv_map) {
+  const size_t int_size = sizeof(int32_t);
+
+  size_t parsed_offset = 0;
+  int64_t num_tuple = 0;
+  memcpy(&num_tuple, data, sizeof(num_tuple));
+  data += sizeof(num_tuple);
+  parsed_offset += sizeof(num_tuple);
+  int32_t key_size = 0;
+  int32_t value_size = 0;
+  for (int i = 0; i < num_tuple; ++i) {
+    memcpy(&key_size, data, int_size);
+    data += int_size;
+    std::unique_ptr<char[]> key(new char[key_size+1]);
+    memcpy(&key[0], data, key_size);
+    data += key_size;
+    key[key_size] = '\0';
+    parsed_offset += int_size + key_size;
+
+    memcpy(&value_size, data, int_size);
+    data += int_size;
+    std::vector<unsigned char> value(value_size);
+    memcpy(value.data(), data, value_size);
+    data += value_size;
+    parsed_offset += int_size + value_size;
+    MACE_CHECK(parsed_offset <= data_size,
+               "Paring storage data out of range: ",
+               parsed_offset, " > ", data_size);
+
+    kv_map->emplace(std::string(&key[0]), value);
+  }
+}
+
+}  // namespace
 
 class FileStorageFactory::Impl {
  public:
@@ -103,32 +142,8 @@ int FileStorage::Load() {
     }
     return -1;
   }
-  unsigned char *file_data_ptr = file_data;
 
-  const size_t int_size = sizeof(int32_t);
-
-  int64_t data_size = 0;
-  memcpy(&data_size, file_data_ptr, sizeof(int64_t));
-  file_data_ptr += sizeof(int64_t);
-  int32_t key_size = 0;
-  int32_t value_size = 0;
-  for (int i = 0; i < data_size; ++i) {
-    memcpy(&key_size, file_data_ptr, int_size);
-    file_data_ptr += int_size;
-    std::unique_ptr<char[]> key(new char[key_size+1]);
-    memcpy(&key[0], file_data_ptr, key_size);
-    file_data_ptr += key_size;
-    key[key_size] = '\0';
-
-    memcpy(&value_size, file_data_ptr, int_size);
-    file_data_ptr += int_size;
-    std::vector<unsigned char> value(value_size);
-    memcpy(value.data(), file_data_ptr, value_size);
-    file_data_ptr += value_size;
-
-    data_.emplace(std::string(&key[0]), value);
-  }
-
+  ParseKVData(file_data, file_size, &data_);
   res = munmap(file_data, file_size);
   if (res != 0) {
     LOG(WARNING) << "munmap file " << file_path_
@@ -242,6 +257,42 @@ int FileStorage::Flush() {
     return -1;
   }
   data_changed_ = false;
+  return 0;
+}
+
+
+ReadOnlyByteStreamStorage::ReadOnlyByteStreamStorage(
+    const unsigned char *byte_stream, size_t byte_stream_size) {
+  ParseKVData(byte_stream, byte_stream_size, &data_);
+}
+
+int ReadOnlyByteStreamStorage::Load() {
+  return 0;
+}
+
+bool ReadOnlyByteStreamStorage::Clear() {
+  LOG(FATAL) << "ReadOnlyByteStreamStorage should not clear data";
+  return true;
+}
+
+const std::vector<unsigned char>* ReadOnlyByteStreamStorage::Find(
+    const std::string &key) {
+  auto iter = data_.find(key);
+  if (iter == data_.end()) return nullptr;
+
+  return &(iter->second);
+}
+
+bool ReadOnlyByteStreamStorage::Insert(
+    const std::string &key,
+    const std::vector<unsigned char> &value) {
+  MACE_UNUSED(key);
+  MACE_UNUSED(value);
+  LOG(FATAL) << "ReadOnlyByteStreamStorage should not insert data";
+  return true;
+}
+
+int ReadOnlyByteStreamStorage::Flush() {
   return 0;
 }
 

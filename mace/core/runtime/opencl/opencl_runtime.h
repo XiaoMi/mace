@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/file_storage.h"
+#include "mace/core/kv_storage.h"
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/scratch_image.h"

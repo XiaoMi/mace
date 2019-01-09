@@ -173,9 +173,9 @@ class MACE_API GPUContextBuilder {
   /// \param path  Make sure your program have Read/Write permission of the path
   /// \return
   GPUContextBuilder &SetStoragePath(const std::string &path);
-  /// \brief Set paths of Generated OpenCL Compiled Kernel Binary file (not libOpenCL.so)  // NOLINT(whitespace/line_length)
+  /// \brief Set paths of generated OpenCL compiled kernel binary file (not libOpenCL.so)  // NOLINT(whitespace/line_length)
   ///
-  /// if you use gpu of specific soc, Using OpenCL binary will speed up the initialization.  // NOLINT(whitespace/line_length)
+  /// If you use GPU of specific soc, using OpenCL binary will speed up the initialization.  // NOLINT(whitespace/line_length)
   /// OpenCL binary is corresponding to the OpenCL Driver version,
   /// you should update the binary when OpenCL Driver changed.
   ///
@@ -183,15 +183,38 @@ class MACE_API GPUContextBuilder {
   /// \return
   GPUContextBuilder &SetOpenCLBinaryPaths(
       const std::vector<std::string> &paths);
-  /// \brief Set the path of Generated OpenCL parameter file
+
+  /// \brief Set generated OpenCL compiled kernel binary with bytes array
   ///
-  /// If you use gpu for specific soc, The parameters is the local work group
+  /// If you use GPU of specific soc, using OpenCL binary will speed up the initialization.  // NOLINT(whitespace/line_length)
+  /// OpenCL binary is corresponding to the OpenCL Driver version,
+  /// you should update the binary when OpenCL Driver changed.
+  ///
+  /// \param data Byte stream of OpenCL binary file
+  /// \param size Size of byte stream (data)
+  /// \return
+  GPUContextBuilder &SetOpenCLBinary(const unsigned char *data,
+                                     const size_t size);
+  /// \brief Set the path of generated OpenCL parameter file
+  ///
+  /// If you use GPU for specific soc, the parameters is the local work group
   /// size tuned for specific SOC, which may be faster than the
   /// general parameters.
   ///
   /// \param path Make sure your program have Read/Write permission of the path
   /// \return
   GPUContextBuilder &SetOpenCLParameterPath(const std::string &path);
+  /// \brief Set generated OpenCL parameter with bytes array
+  ///
+  /// If you use GPU for specific soc, the parameters is the local work group
+  /// size tuned for specific SOC, which may be faster than the
+  /// general parameters.
+  ///
+  /// \param data Byte stream of OpenCL parameter file
+  /// \param size Size of byte stream (data)
+  /// \return
+  GPUContextBuilder &SetOpenCLParameter(const unsigned char *data,
+                                        const size_t size);
 
   std::shared_ptr<GPUContext> Finalize();
 

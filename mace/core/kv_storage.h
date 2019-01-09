@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_CORE_FILE_STORAGE_H_
-#define MACE_CORE_FILE_STORAGE_H_
+#ifndef MACE_CORE_KV_STORAGE_H_
+#define MACE_CORE_KV_STORAGE_H_
 
 #include <map>
 #include <memory>
@@ -80,6 +80,25 @@ class FileStorage : public KVStorage {
   utils::RWMutex data_mutex_;
 };
 
+
+class ReadOnlyByteStreamStorage : public KVStorage {
+ public:
+  // load data from byte stream
+  explicit ReadOnlyByteStreamStorage(const unsigned char *byte_stream,
+                                     size_t byte_stream_size);
+
+ public:
+  int Load() override;
+  bool Clear() override;
+  bool Insert(const std::string &key,
+              const std::vector<unsigned char> &value) override;
+  const std::vector<unsigned char> *Find(const std::string &key) override;
+  int Flush() override;
+
+ private:
+  std::map<std::string, std::vector<unsigned char>> data_;
+};
+
 }  // namespace mace
 
-#endif  // MACE_CORE_FILE_STORAGE_H_
+#endif  // MACE_CORE_KV_STORAGE_H_

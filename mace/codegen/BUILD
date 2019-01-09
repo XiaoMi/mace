@@ -39,6 +39,18 @@ cc_library(
 )
 
 cc_library(
+    name = "generated_opencl_binary",
+    srcs = ["opencl/opencl_binary.cc"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+)
+
+cc_library(
+    name = "generated_opencl_parameter",
+    srcs = ["opencl/opencl_parameter.cc"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+)
+
+cc_library(
     name = "generated_version",
     srcs = ["version/version.cc"],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],

@@ -32,7 +32,7 @@ from common import abi_to_internal
 sys.path.insert(0, "mace/python/tools")
 try:
     from encrypt_opencl_codegen import encrypt_opencl_codegen
-    from binary_codegen import tuning_param_codegen
+    from opencl_binary_codegen import generate_opencl_code
     from generate_data import generate_input_data
     from validate import validate
     from mace_engine_factory_codegen import gen_mace_engine_factory
@@ -565,6 +565,23 @@ def gen_random_input(model_output_dir,
                                                          dst_input_file)
                 else:
                     sh.cp("-f", input_file_list[i], dst_input_file)
+
+
+def gen_opencl_binary_cpps(opencl_bin_file_path,
+                           opencl_param_file_path,
+                           opencl_bin_cpp_path,
+                           opencl_param_cpp_path):
+    output_dir = os.path.dirname(opencl_bin_cpp_path)
+    if not os.path.exists(output_dir):
+        sh.mkdir("-p", output_dir)
+    opencl_bin_load_func_name = 'LoadOpenCLBinary'
+    opencl_bin_size_func_name = 'OpenCLBinarySize'
+    opencl_param_load_func_name = 'LoadOpenCLParameter'
+    opencl_param_size_func_name = 'OpenCLParameterSize'
+    generate_opencl_code(opencl_bin_file_path, opencl_bin_load_func_name,
+                         opencl_bin_size_func_name, opencl_bin_cpp_path)
+    generate_opencl_code(opencl_param_file_path, opencl_param_load_func_name,
+                         opencl_param_size_func_name, opencl_param_cpp_path)
 
 
 def update_mace_run_binary(build_tmp_binary_dir, link_dynamic=False):
