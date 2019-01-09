@@ -282,8 +282,12 @@ class MACE_API MaceEngineConfig {
 
 // MACE input/output tensor
 class MACE_API MaceTensor {
+  friend class MaceEngine;
+
  public:
-  // shape - the shape of the tensor, with size n
+  // shape - the shape of the tensor, with size n, if shape is unknown
+  // in advance, it should be specified large enough to hold tensor of all
+  // possible size.
   // data - the buffer of the tensor, must not be null with size equals
   //        shape[0] * shape[1] * ... * shape[n-1].
   //        If you want to pass a buffer which is unsuitable to use the default
@@ -301,6 +305,7 @@ class MACE_API MaceTensor {
   MaceTensor &operator=(const MaceTensor &&other);
   ~MaceTensor();
 
+  // shape will be updated to the actual output shape after running.
   const std::vector<int64_t> &shape() const;
   const std::shared_ptr<float> data() const;
   std::shared_ptr<float> data();
