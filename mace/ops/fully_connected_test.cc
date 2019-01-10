@@ -259,12 +259,12 @@ void QuantRandom(const index_t batch,
   Tensor *q_input = net.GetTensor("QuantizedInput");
   Tensor *bias = net.GetTensor("Bias");
   auto bias_data = bias->data<float>();
+  float bias_scale = q_input->scale() * q_weight->scale();
   std::vector<int32_t> q_bias(bias->size());
   QuantizeWithScaleAndZeropoint(
-      bias_data, bias->size(), q_input->scale() * q_weight->scale(), 0,
-      q_bias.data());
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("QuantizedBias",
-                                                  {out_channel}, q_bias);
+      bias_data, bias->size(), bias_scale, 0, q_bias.data());
+  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+      "QuantizedBias", {out_channel}, q_bias, true, bias_scale, 0);
 
   OpDefBuilder("FullyConnected", "QuantizeFullyConnectedTest")
       .Input("QuantizedInput")

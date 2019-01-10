@@ -218,6 +218,7 @@ class MaceKeyword(object):
     mace_variance_str = 'variance'
     mace_step_h_str = 'step_h'
     mace_step_w_str = 'step_w'
+    mace_find_range_every_time = 'find_range_every_time'
 
 
 class TransformerRule(Enum):

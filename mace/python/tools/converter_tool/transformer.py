@@ -117,6 +117,10 @@ class Transformer(base_converter.ConverterInterface):
         self._quantize_activation_info = {}
         self._quantized_tensor = set()
 
+        self.input_name_map = {}
+        self.output_name_map = {}
+        self.initialize_name_map()
+
     def run(self):
         for key in self._option.transformer_option:
             transformer = self._registered_transformers[key]
@@ -127,6 +131,18 @@ class Transformer(base_converter.ConverterInterface):
                         break
         self.delete_after_check_nodes()
         return self._model, self._quantize_activation_info
+
+    def initialize_name_map(self):
+        for input_node in self._option.input_nodes.values():
+            new_input_name = MaceKeyword.mace_input_node_name \
+                             + '_' + input_node.name
+            self.input_name_map[input_node.name] = new_input_name
+
+        output_nodes = self._option.check_nodes.values()
+        for output_node in output_nodes:
+            new_output_name = MaceKeyword.mace_output_node_name \
+                              + '_' + output_node.name
+            self.output_name_map[output_node.name] = new_output_name
 
     def filter_format(self):
         filter_format_value = ConverterUtil.get_arg(self._model,
@@ -1382,29 +1398,16 @@ class Transformer(base_converter.ConverterInterface):
             return False
 
         print("Add mace quantize and dequantize nodes")
-        input_name_map = {}
-        output_name_map = {}
-
-        for input_node in self._option.input_nodes.values():
-            new_input_name = MaceKeyword.mace_input_node_name \
-                             + '_' + input_node.name
-            input_name_map[input_node.name] = new_input_name
-
-        output_nodes = self._option.check_nodes.values()
-        for output_node in output_nodes:
-            new_output_name = MaceKeyword.mace_output_node_name \
-                              + '_' + output_node.name
-            output_name_map[output_node.name] = new_output_name
 
         for op in self._model.op:
             for i in range(len(op.input)):
-                if op.input[i] in input_name_map:
-                    op.input[i] = input_name_map[op.input[i]]
+                if op.input[i] in self.input_name_map:
+                    op.input[i] = self.input_name_map[op.input[i]]
             for i in range(len(op.output)):
-                if op.output[i] in output_name_map:
+                if op.output[i] in self.output_name_map:
                     op.name = MaceKeyword.mace_output_node_name \
                               + '_' + op.name
-                    new_output_name = output_name_map[op.output[i]]
+                    new_output_name = self.output_name_map[op.output[i]]
                     self._quantize_activation_info[new_output_name] = \
                         self._quantize_activation_info[op.output[i]]
                     op.output[i] = new_output_name
@@ -1427,23 +1430,31 @@ class Transformer(base_converter.ConverterInterface):
                            % (op.name, op.type))
 
         for input_node in self._option.input_nodes.values():
+            new_input_name = self.input_name_map[input_node.name]
             op_def = self._model.op.add()
-            op_def.name = \
-                self.normalize_op_name(input_name_map[input_node.name])
+            op_def.name = self.normalize_op_name(new_input_name)
             op_def.type = MaceOp.Quantize.name
             op_def.input.extend([input_node.name])
-            op_def.output.extend([input_name_map[input_node.name]])
+            op_def.output.extend([new_input_name])
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(input_node.shape)
+            self.copy_quantize_info(
+                op_def, self._quantize_activation_info[new_input_name])
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+            # use actual ranges for model input quantize
+            find_range_every_time_arg = op_def.arg.add()
+            find_range_every_time_arg.name = \
+                MaceKeyword.mace_find_range_every_time
+            find_range_every_time_arg.i = 1
 
+        output_nodes = self._option.check_nodes.values()
         for output_node in output_nodes:
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(output_node.name)
             op_def.type = MaceOp.Dequantize.name
-            op_def.input.extend([output_name_map[output_node.name]])
+            op_def.input.extend([self.output_name_map[output_node.name]])
             op_def.output.extend([output_node.name])
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(
@@ -1651,6 +1662,24 @@ class Transformer(base_converter.ConverterInterface):
 
         if not self._option.quantize:
             return False
+
+        print("Add default quantize info for input")
+        for input_node in self._option.input_nodes.values():
+            if input_node.name not in self._quantize_activation_info:
+                print("Input range %s: %s" % (input_node.name,
+                                              str(input_node.range)))
+                new_input_name = self.input_name_map[input_node.name]
+                scale, zero, minval, maxval = \
+                    quantize_util.adjust_range(input_node.range[0],
+                                               input_node.range[1],
+                                               non_zero=False)
+                quantize_info = mace_pb2.QuantizeActivationInfo()
+                quantize_info.minval = minval
+                quantize_info.maxval = maxval
+                quantize_info.scale = scale
+                quantize_info.zero_point = zero
+                self._quantize_activation_info[new_input_name] = quantize_info
+
         print("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
             if op.type in [MaceOp.Pooling.name,
@@ -1661,7 +1690,12 @@ class Transformer(base_converter.ConverterInterface):
                            MaceOp.SpaceToBatchND.name]:
                 del op.quantize_info[:]
                 producer_op = self._producer[op.input[0]]
-                self.copy_quantize_info(op, producer_op.quantize_info[0])
+                if producer_op.output[0] in self._option.input_nodes:
+                    new_input_name = self.input_name_map[producer_op.output[0]]
+                    self.copy_quantize_info(
+                        op, self._quantize_activation_info[new_input_name])
+                else:
+                    self.copy_quantize_info(op, producer_op.quantize_info[0])
                 self._quantize_activation_info[op.output[0]] = \
                     op.quantize_info[0]
             elif (op.type == MaceOp.Concat.name
@@ -1708,24 +1742,6 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_info = \
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
-
-        print("Add default quantize info for input")
-        for input_node in self._option.input_nodes.values():
-            if input_node.name not in self._quantize_activation_info:
-                print("Input range %s: %s" % (input_node.name,
-                                              str(input_node.range)))
-                new_input_name = MaceKeyword.mace_input_node_name \
-                    + '_' + input_node.name
-                scale, zero, minval, maxval = \
-                    quantize_util.adjust_range(input_node.range[0],
-                                               input_node.range[1],
-                                               non_zero=False)
-                quantize_info = mace_pb2.QuantizeActivationInfo()
-                quantize_info.minval = minval
-                quantize_info.maxval = maxval
-                quantize_info.scale = scale
-                quantize_info.zero_point = zero
-                self._quantize_activation_info[new_input_name] = quantize_info
 
         return False
 

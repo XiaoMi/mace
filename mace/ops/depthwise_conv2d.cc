@@ -21,6 +21,7 @@
 #include <vector>
 
 #ifdef MACE_ENABLE_QUANTIZE
+#include "mace/ops/quantization_util.h"
 // We reuse TensorFlow Lite's optimized depthwiseconv_uint8 and parallelized it
 // using OpenMP for MACE's quantized depthwise_conv2d.
 #include "tensorflow/contrib/lite/kernels/internal/optimized/depthwiseconv_uint8.h"
@@ -355,21 +356,13 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
     auto input_data = input->data<uint8_t>();
     auto filter_data = filter->data<uint8_t>();
     auto output_data = output->mutable_data<uint8_t>();
+    auto bias_data = GetBiasData(bias,
+                                 input->scale(),
+                                 filter->scale(),
+                                 out_channels,
+                                 &bias_);
 
     if (dilation_h == 1 && dilation_w == 1) {
-      std::vector<index_t> bias_shape{out_channels};
-      std::unique_ptr<Tensor> zero_bias;
-      const int32_t *bias_data = nullptr;
-      if (bias == nullptr) {
-        zero_bias.reset(
-            new Tensor(GetCPUAllocator(), DT_INT32));
-        zero_bias->Resize(bias_shape);
-        zero_bias->Clear();
-        bias_data = zero_bias->data<int32_t>();
-      } else {
-        bias_data = bias->data<int32_t>();
-      }
-
       int32_t quantized_multiplier;
       int32_t right_shift;
       GetOutputMultiplierAndShift(input->scale(), filter->scale(),
@@ -378,6 +371,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
       // 1HWO
       std::vector<index_t> filter_shape{
           1, filter->dim(0), filter->dim(1), filter->dim(2) * filter->dim(3)};
+      std::vector<index_t> bias_shape{out_channels};
 
       tflite::optimized_ops::DepthwiseConv(
           input_data, ShapeToTfliteDims(input->shape()), -input->zero_point(),
@@ -387,7 +381,6 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
           quantized_multiplier, right_shift, 0, 255, output_data,
           ShapeToTfliteDims(output->shape()));
     } else {
-      auto bias_data = bias == nullptr ? nullptr : bias->data<int32_t>();
       float output_multiplier =
           input->scale() * filter->scale() / output->scale();
       const int pad_hw[2] = {pad_top, pad_left};
@@ -485,6 +478,9 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
  protected:
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
+
+ private:
+  std::vector<int32_t> bias_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 

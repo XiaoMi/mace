@@ -24,6 +24,7 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/gemmlowp_util.h"
+#include "mace/ops/quantization_util.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
@@ -155,19 +156,11 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
     auto input_ptr = input->data<uint8_t>();
     auto weight_ptr = weight->data<uint8_t>();
     auto output_ptr = output->mutable_data<uint8_t>();
-
-    std::vector<index_t> bias_shape{output_size};
-    std::unique_ptr<Tensor> zero_bias;
-    const int32_t *bias_ptr = nullptr;
-    if (bias == nullptr) {
-      zero_bias.reset(
-          new Tensor(GetCPUAllocator(), DT_INT32));
-      zero_bias->Resize(bias_shape);
-      zero_bias->Clear();
-      bias_ptr = zero_bias->data<int32_t>();
-    } else {
-      bias_ptr = bias->data<int32_t>();
-    }
+    auto bias_ptr = GetBiasData(bias,
+                                input->scale(),
+                                weight->scale(),
+                                output_size,
+                                &bias_);
 
     gemmlowp::MatrixMap<const uint8_t, gemmlowp::MapOrder::RowMajor>
         weight_matrix(weight_ptr, output_size, input_size);
@@ -187,6 +180,9 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
 
     return MaceStatus::MACE_SUCCESS;
   }
+
+ private:
+  std::vector<int32_t> bias_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 

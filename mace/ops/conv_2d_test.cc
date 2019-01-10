@@ -1076,8 +1076,9 @@ void TestQuantSimple3x3() {
       "Input", {1, 3, 3, 2},
       {1, 75, 117, 161, 127, 119, 94, 151, 203, 151, 84, 61, 55, 142, 113, 139,
        3, 255}, false, 0.0204, 93);
+  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+      "Bias", {1}, {2}, true, 0.00046104, 0);
 
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("Bias", {1}, {2}, true);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
@@ -1167,12 +1168,13 @@ void TestQuant(const index_t batch,
   Tensor *q_input = net.GetTensor("QuantizedInput");
   Tensor *bias = net.GetTensor("Bias");
   auto bias_data = bias->data<float>();
+  float bias_scale = q_input->scale() * q_filter->scale();
   std::vector<int32_t> q_bias(bias->size());
   QuantizeWithScaleAndZeropoint(
-      bias_data, bias->size(), q_input->scale() * q_filter->scale(), 0,
-      q_bias.data());
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("QuantizedBias",
-                                                  {out_channels}, q_bias, true);
+      bias_data, bias->size(), bias_scale, 0, q_bias.data());
+  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+      "QuantizedBias", {out_channels}, q_bias, true, bias_scale, 0);
+
   OpDefBuilder("Conv2D", "QuantizeConv2dTest")
       .Input("QuantizedInput")
       .Input("QuantizedFilter")

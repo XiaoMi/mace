@@ -33,6 +33,7 @@ cc_library(
             "buffer_transform.cc",
             "lstm_cell.cc",
             "quantize.cc",
+            "quantization_util.cc",
         ],
     ) + if_opencl_enabled(glob(
         [
@@ -48,6 +49,7 @@ cc_library(
     )) + if_quantize_enabled(glob(
         [
             "quantize.cc",
+            "quantization_util.cc",
         ],
     )),
     hdrs = glob(
@@ -61,6 +63,7 @@ cc_library(
             "fixpoint.h",
             "gemmlowp_util.h",
             "arm/fixpoint_*.h",
+            "quantization_util.h",
         ],
     ) + if_opencl_enabled(glob([
         "opencl/*.h",
@@ -70,6 +73,7 @@ cc_library(
         "fixpoint.h",
         "gemmlowp_util.h",
         "arm/fixpoint_*.h",
+        "quantization_util.h",
     ])),
     copts = [
         "-Werror",
