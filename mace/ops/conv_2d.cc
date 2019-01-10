@@ -35,6 +35,7 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/gemmlowp_util.h"
+#include "mace/ops/quantization_util.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
@@ -802,33 +803,22 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
     auto input_data = input->data<uint8_t>();
     auto filter_data = filter->data<uint8_t>();
     auto output_data = output->mutable_data<uint8_t>();
+    auto bias_data = GetBiasData(bias,
+                                 input->scale(),
+                                 filter->scale(),
+                                 channels,
+                                 &bias_);
 
-    index_t total_scratch_size = 0;
-    index_t zero_bias_size = channels * sizeof(int32_t);
-    total_scratch_size += (bias == nullptr ? zero_bias_size : 0);
-    index_t im2col_size = depth * columns * sizeof(uint8_t);
+    auto gemm_input_data = input_data;
+    std::unique_ptr<Tensor> im2col;
     bool im2col_required =
         filter_h != 1 || filter_w != 1 || stride_h != 1 || stride_w != 1;
-    total_scratch_size += (im2col_required ? im2col_size : 0);
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(total_scratch_size);
-
-    std::unique_ptr<Tensor> zero_bias;
-    const int32_t *bias_data = nullptr;
-    if (bias == nullptr) {
-      zero_bias.reset(new Tensor(scratch->Scratch(zero_bias_size), DT_INT32));
-      zero_bias->Reshape({channels});
-      zero_bias->Clear();
-      bias_data = zero_bias->data<int32_t>();
-    } else {
-      bias_data = bias->data<int32_t>();
-    }
-
-    std::unique_ptr<Tensor> im2col;
-    auto gemm_input_data = input_data;
     if (im2col_required) {
       // prepare im2col
+      index_t im2col_size = depth * columns * sizeof(uint8_t);
+      ScratchBuffer *scratch = context->device()->scratch_buffer();
+      scratch->Rewind();
+      scratch->GrowSize(im2col_size);
       im2col.reset(new Tensor(scratch->Scratch(im2col_size), DT_UINT8));
       uint8_t *im2col_data = im2col->mutable_data<uint8_t>();
       Im2col(input_data, input->shape(), filter_h, filter_w, stride_h,
@@ -950,6 +940,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
   const ActivationType activation_;
   const float relux_max_limit_;
   const float leakyrelu_coefficient_;
+  std::vector<int32_t> bias_;
 
  private:
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
