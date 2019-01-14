@@ -571,7 +571,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             limit_arg.f = 6.0
         elif tf_op.type == TFOpType.LeakyRelu.name:
             alpha_arg = op.arg.add()
-            alpha_arg.name = MaceKeyword.mace_activation_leakyrelu_coefficient_str
+            alpha_arg.name = \
+                MaceKeyword.mace_activation_leakyrelu_coefficient_str
             alpha_arg.f = tf_op.get_attr(tf_alpha_str)
 
     def convert_fill(self, tf_op):
