@@ -18,7 +18,12 @@ build:android --distinct_host_configuration=true
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 
+
 # Usage example: bazel build --config arm_linux_gnueabihf
+# Used to fix library not find linking issue, see also:
+# https://github.com/bazelbuild/bazel/issues/6653,
+# https://github.com/bazelbuild/bazel/issues/6189
+build:arm_linux_gnueabihf --spawn_strategy=standalone
 build:arm_linux_gnueabihf --distinct_host_configuration=true
 build:arm_linux_gnueabihf --crosstool_top=//tools/arm_compiler:toolchain
 build:arm_linux_gnueabihf --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
@@ -31,6 +36,7 @@ build:arm_linux_gnueabihf --copt -Wno-sequence-point
 build:arm_linux_gnueabihf --copt -Wno-implicit-fallthrough
 
 # Usage example: bazel build --config aarch64_linux_gnu
+build:aarch64_linux_gnu --spawn_strategy=standalone
 build:aarch64_linux_gnu --distinct_host_configuration=true
 build:aarch64_linux_gnu --crosstool_top=//tools/aarch64_compiler:toolchain
 build:aarch64_linux_gnu --host_crosstool_top=@bazel_tools//tools/cpp:toolchain

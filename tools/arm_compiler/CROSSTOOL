@@ -65,7 +65,6 @@ toolchain {
   cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_arm_linux_gnueabihf//arm-linux-gnueabihf/include)%/c++/7.3.1"
 
   linker_flag: "--sysroot=external/gcc_linaro_7_3_1_arm_linux_gnueabihf/arm-linux-gnueabihf/libc"
-  linker_flag: "-fuse-ld=gold"
   linker_flag: "-Wl,-no-as-needed"
   linker_flag: "-lstdc++"
   linker_flag: "-latomic"
