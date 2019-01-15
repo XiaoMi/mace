@@ -73,6 +73,9 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
     Simplify(input);
+    // Use the same scale and zero point with input and output.
+    output->SetScale(input->scale());
+    output->SetZeroPoint(input->zero_point());
     output->Resize(out_shape_);
     Compute(input, output);
     return MaceStatus::MACE_SUCCESS;
@@ -92,7 +95,8 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
                           axis_[i] + input->dim_size();
         auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
             "data_format", DataFormat::DF_NONE));
-        if (df == DataFormat::NHWC && input->dim_size() == 4) {
+        if (df == DataFormat::NHWC && DataTypeToEnum<T>::value != DT_UINT8
+            && input->dim_size() == 4) {
           if (index == 1 || index == 2) index = index + 1;
           else if (index == 3) index = 1;
         }
@@ -132,7 +136,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-  void compute_reduce_1(const T *input, ReduceType type, T *output) {
+  void Reduce1Dims(const T *input, ReduceType type, T *output) {
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
         T tmp = 0;
@@ -166,7 +170,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-  void compute_reduce_2(const T *input, ReduceType type, T *output) {
+  void Reduce2Dims(const T *input, ReduceType type, T *output) {
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
 #pragma omp parallel for schedule(runtime)
@@ -250,7 +254,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-  void compute_reduce_3(const T *input, ReduceType type, T *output) {
+  void Reduce3Dims(const T *input, ReduceType type, T *output) {
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
 #pragma omp parallel for collapse(1) schedule(runtime)
@@ -364,7 +368,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-  void compute_reduce_4(const T *input, ReduceType type, T *output) {
+  void Reduce4Dims(const T *input, ReduceType type, T *output) {
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
 #pragma omp parallel for collapse(2) schedule(runtime)
@@ -498,7 +502,6 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-
   void Compute(const Tensor *input, Tensor *output) {
     Tensor::MappingGuard input_mapper(input);
     const T *input_ptr = input->data<T>();
@@ -507,16 +510,16 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     memset(output_ptr, 0, output->size() * sizeof(T));
     switch (data_reshape_.size()) {
       case 1:
-        compute_reduce_1(input_ptr, reduce_type_, output_ptr);
+        Reduce1Dims(input_ptr, reduce_type_, output_ptr);
         break;
       case 2:
-        compute_reduce_2(input_ptr, reduce_type_, output_ptr);
+        Reduce2Dims(input_ptr, reduce_type_, output_ptr);
         break;
       case 3:
-        compute_reduce_3(input_ptr, reduce_type_, output_ptr);
+        Reduce3Dims(input_ptr, reduce_type_, output_ptr);
         break;
       case 4:
-        compute_reduce_4(input_ptr, reduce_type_, output_ptr);
+        Reduce4Dims(input_ptr, reduce_type_, output_ptr);
         break;
       default:
         MACE_CHECK(false, "not implemented in mace")
@@ -531,6 +534,311 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
   std::vector<int> data_reshape_;
   std::vector<index_t> out_shape_;
 };
+
+#ifdef MACE_ENABLE_QUANTIZE
+template <>
+void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
+    const uint8_t *input, ReduceType type, uint8_t *output) {
+  if (reduce_first_axis_) {
+    if (type == ReduceType::MEAN) {
+      uint32_t tmp = 0;
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        tmp = tmp + input[i];
+      }
+      output[0] = static_cast<uint8_t>(
+          (tmp + data_reshape_[0] / 2) / data_reshape_[0]);
+    } else if (type == ReduceType::MIN) {
+      uint8_t tmp = input[0];
+      for (int i = 1; i < data_reshape_[0]; ++i) {
+        tmp = std::min<uint8_t>(tmp, input[i]);
+      }
+      output[0] = tmp;
+    } else if (type == ReduceType::MAX) {
+      uint8_t tmp = input[0];
+      for (int i = 1; i < data_reshape_[0]; ++i) {
+        tmp = std::max<uint8_t>(tmp, input[i]);
+      }
+      output[0] = tmp;
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  } else {
+    memcpy(output, input, data_reshape_[0] * sizeof(uint8_t));
+  }
+}
+
+template <>
+void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
+    const uint8_t *input, ReduceType type, uint8_t *output) {
+  if (reduce_first_axis_) {
+    if (type == ReduceType::MEAN) {
+#pragma omp parallel for schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        uint32_t tmp = 0;
+        for (int j = 0; j < data_reshape_[0]; ++j) {
+          tmp += input[j * data_reshape_[1] + i];
+        }
+        output[i] = static_cast<uint8_t>(
+            (tmp + data_reshape_[0] / 2) / data_reshape_[0]);
+      }
+    } else if (type == ReduceType::MIN) {
+#pragma omp parallel for schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        uint8_t tmp = input[i];
+        for (int j = 1; j < data_reshape_[0]; ++j) {
+          tmp = std::min(tmp, input[j * data_reshape_[1] + i]);
+        }
+        output[i] = tmp;
+      }
+    } else if (type == ReduceType::MAX) {
+#pragma omp parallel for schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        uint8_t tmp = input[i];
+        for (int j = 1; j < data_reshape_[0]; ++j) {
+          tmp = std::max(tmp, input[j * data_reshape_[1] + i]);
+        }
+        output[i] = tmp;
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  } else {
+    if (type == ReduceType::MEAN) {
+#pragma omp parallel for schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        uint32_t tmp = 0;
+        for (int j = 0; j < data_reshape_[1]; ++j) {
+          tmp += input[i * data_reshape_[1] + j];
+        }
+        output[i] = static_cast<uint8_t>(
+            (tmp + data_reshape_[1] / 2) / data_reshape_[1]);
+      }
+    } else if (type == ReduceType::MIN) {
+#pragma omp parallel for schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        uint8_t tmp = input[i * data_reshape_[1]];
+        for (int j = 1; j < data_reshape_[1]; ++j) {
+          tmp = std::min(tmp, input[i * data_reshape_[1] + j]);
+        }
+        output[i] = tmp;
+      }
+    } else if (type == ReduceType::MAX) {
+#pragma omp parallel for schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        uint8_t tmp = input[i * data_reshape_[1]];
+        for (int j = 1; j < data_reshape_[1]; ++j) {
+          tmp = std::max(tmp, input[i * data_reshape_[1] + j]);
+        }
+        output[i] = tmp;
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  }
+}
+
+template <>
+void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
+    const uint8_t *input, ReduceType type, uint8_t *output) {
+  if (reduce_first_axis_) {
+    if (type == ReduceType::MEAN) {
+#pragma omp parallel for collapse(1) schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        uint32_t tmp = 0;
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          for (int k = 0; k < data_reshape_[0]; ++k) {
+            tmp += input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
+          }
+        }
+        index_t dim = data_reshape_[0] * data_reshape_[2];
+        output[i] = static_cast<uint8_t>((tmp + dim / 2) / dim);
+      }
+    } else if (type == ReduceType::MIN) {
+#pragma omp parallel for collapse(1) schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        uint8_t tmp = input[i * data_reshape_[2]];
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          for (int k = 0; k < data_reshape_[0]; ++k) {
+            tmp = std::min(tmp,
+                           input[(k * data_reshape_[1] + i) * data_reshape_[2]
+                               + j]);
+          }
+        }
+        output[i] = tmp;
+      }
+    } else if (type == ReduceType::MAX) {
+#pragma omp parallel for collapse(1) schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        uint8_t tmp = input[i * data_reshape_[2]];
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          for (int k = 0; k < data_reshape_[0]; ++k) {
+            tmp =
+                std::max(tmp,
+                         input[(k * data_reshape_[1] + i)
+                             * data_reshape_[2] + j]);
+          }
+        }
+        output[i] = tmp;
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  } else {
+    if (type == ReduceType::MEAN) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          uint32_t tmp = 0;
+          for (int k = 0; k < data_reshape_[1]; ++k) {
+            tmp += input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
+          }
+          output[i * data_reshape_[2] + j] =
+              static_cast<uint8_t>((tmp + data_reshape_[1] / 2) /
+                  data_reshape_[1]);
+        }
+      }
+    } else if (type == ReduceType::MIN) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          uint8_t tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+          for (int k = 1; k < data_reshape_[1]; ++k) {
+            tmp = std::min(tmp,
+                           input[(i * data_reshape_[1] + k) *
+                               data_reshape_[2] + j]);
+          }
+          output[i * data_reshape_[2] + j] = tmp;
+        }
+      }
+    } else if (type == ReduceType::MAX) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          uint8_t tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+          for (int k = 1; k < data_reshape_[1]; ++k) {
+            tmp = std::max(tmp,
+                           input[(i * data_reshape_[1] + k) *
+                               data_reshape_[2] + j]);
+          }
+          output[i * data_reshape_[2] + j] = tmp;
+        }
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  }
+}
+
+template <>
+void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
+    const uint8_t *input, ReduceType type, uint8_t *output) {
+  if (reduce_first_axis_) {
+    if (type == ReduceType::MEAN) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        for (int j = 0; j < data_reshape_[3]; ++j) {
+          uint32_t tmp = 0;
+          for (int k = 0; k < data_reshape_[2]; ++k) {
+            for (int t = 0; t < data_reshape_[0]; ++t) {
+              tmp += input[((t * data_reshape_[1] + i) *
+                  data_reshape_[2] + k)*data_reshape_[3] + j];
+            }
+          }
+          index_t dim = data_reshape_[0] * data_reshape_[2];
+          output[i * data_reshape_[3] + j] =
+              static_cast<uint8_t>((tmp + dim / 2) / dim);
+        }
+      }
+    } else if (type == ReduceType::MIN) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        for (int j = 0; j < data_reshape_[3]; ++j) {
+          uint8_t tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
+          for (int k = 0; k < data_reshape_[2]; ++k) {
+            for (int t = 0; t < data_reshape_[0]; ++t) {
+              tmp = std::min(tmp,
+                             input[((t * data_reshape_[1] + i) *
+                                 data_reshape_[2] + k)*data_reshape_[3] + j]);
+            }
+          }
+          output[i * data_reshape_[3] + j] = tmp;
+        }
+      }
+    } else if (type == ReduceType::MAX) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[1]; ++i) {
+        for (int j = 0; j < data_reshape_[3]; ++j) {
+          uint8_t tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
+          for (int k = 0; k < data_reshape_[2]; ++k) {
+            for (int t = 0; t < data_reshape_[0]; ++t) {
+              tmp = std::max(tmp,
+                             input[((t * data_reshape_[1] + i) *
+                                 data_reshape_[2] + k)*data_reshape_[3] + j]);
+            }
+          }
+          output[i * data_reshape_[3] + j] = tmp;
+        }
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  } else {
+    if (type == ReduceType::MEAN) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          uint32_t tmp = 0;
+          for (int k = 0; k < data_reshape_[1]; ++k) {
+            for (int t = 0; t < data_reshape_[3]; ++t) {
+              tmp += input[((i * data_reshape_[1] + k) *
+                  data_reshape_[2] + j)*data_reshape_[3] + t];
+            }
+          }
+          index_t dim = data_reshape_[1] * data_reshape_[3];
+          output[i * data_reshape_[2] + j] =
+              static_cast<uint8_t>((tmp + dim / 2) / dim);
+        }
+      }
+    } else if (type == ReduceType::MIN) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          uint8_t tmp = input[(i * data_reshape_[1] *
+              data_reshape_[2] + j)*data_reshape_[3]];
+          for (int k = 0; k < data_reshape_[1]; ++k) {
+            for (int t = 0; t < data_reshape_[3]; ++t) {
+              tmp =
+                  std::min(tmp,
+                           input[((i * data_reshape_[1] + k) *
+                               data_reshape_[2] + j)*data_reshape_[3] + t]);
+            }
+          }
+          output[i * data_reshape_[2] + j] = tmp;
+        }
+      }
+    } else if (type == ReduceType::MAX) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        for (int j = 0; j < data_reshape_[2]; ++j) {
+          uint8_t tmp = input[(i * data_reshape_[1] *
+              data_reshape_[2] + j)*data_reshape_[3]];
+          for (int k = 0; k < data_reshape_[1]; ++k) {
+            for (int t = 0; t < data_reshape_[3]; ++t) {
+              tmp =
+                  std::max(tmp,
+                           input[((i * data_reshape_[1] + k) *
+                               data_reshape_[2] + j)*data_reshape_[3] + t]);
+            }
+          }
+          output[i * data_reshape_[2] + j] = tmp;
+        }
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  }
+}
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -562,7 +870,10 @@ class ReduceOp<DeviceType::GPU, T> : public ReduceOpBase {
 void RegisterReduce(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, float);
-
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
+                   DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::GPU, float);

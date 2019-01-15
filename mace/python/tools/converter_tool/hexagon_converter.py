@@ -25,6 +25,7 @@ from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import PoolingType
+from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.convert_util import mace_check
 from mace.python.tools import graph_util
 
@@ -63,6 +64,7 @@ class HexagonOps(object):
             MaceOp.Quantize.name: HexagonOp.QuantizeINPUT_f_to_8.name,
             MaceOp.Pooling.name: [HexagonOp.QuantizedAvgPool_8.name,
                                   HexagonOp.QuantizedMaxPool_8.name],
+            MaceOp.Reduce.name: HexagonOp.QuantizedAvgPool_8.name,
             MaceOp.ResizeBilinear.name:
                 HexagonOp.QuantizedResizeBilinear_8.name,
             MaceOp.SpaceToBatchND.name: HexagonOp.SpaceToBatchND_8.name,
@@ -221,6 +223,43 @@ class HexagonConverter(base_converter.ConverterInterface):
                 strides_tensor.data_type = mace_pb2.DT_INT32
                 strides_tensor.dims.extend(
                     [1, strides_arg.ints[0], strides_arg.ints[1], 1])
+                op.input.extend([window_tensor.name, strides_tensor.name])
+            elif op.type == MaceOp.Reduce.name:
+                self.add_min_max_const_node(op, op.input[0])
+                reduce_type_arg = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_reduce_type_str)
+                mace_check(reduce_type_arg.i == ReduceType.MEAN.value,
+                           "Hexagon Reduce only supports Mean now.")
+                keep_dims_arg = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_keepdims_str)
+                mace_check(keep_dims_arg.i == 1,
+                           "Hexagon Reduce Mean only supports keep dims now.")
+                axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
+                mace_check(1 <= len(axis_arg.ints) <= 2,
+                           "Hexagon Reduce Mean only supports spatial now.")
+                for i in axis_arg.ints:
+                    mace_check(1 <= i <= 2,
+                               "Hexagon Reduce Mean only supports spatial now")
+                producer_op_name, _ = get_op_and_port_from_tensor(op.input[0])
+                input_dims = None
+                for producer_op in self._model.op:
+                    if producer_op.name == producer_op_name:
+                        input_dims = producer_op.output_shape[0].dims
+                        break
+                mace_check(input_dims is not None, "Missing input shape.")
+                window_tensor = self._model.tensors.add()
+                window_tensor.name = op.name + '/window:0'
+                window_tensor.data_type = mace_pb2.DT_INT32
+                if len(axis_arg.ints) == 1:
+                    dim1, dim2 = (input_dims[1], 1) \
+                        if axis_arg.ints[0] == 1 else (1, input_dims[2])
+                else:
+                    dim1, dim2 = input_dims[1], input_dims[2]
+                window_tensor.dims.extend([1, dim1, dim2, 1])
+                strides_tensor = self._model.tensors.add()
+                strides_tensor.name = op.name + '/strides:0'
+                strides_tensor.data_type = mace_pb2.DT_INT32
+                strides_tensor.dims.extend([1, dim1, dim2, 1])
                 op.input.extend([window_tensor.name, strides_tensor.name])
             elif op.type == MaceOp.ResizeBilinear.name:
                 newdim_arg = ConverterUtil.get_arg(
