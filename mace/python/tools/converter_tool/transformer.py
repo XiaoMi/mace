@@ -1370,8 +1370,14 @@ class Transformer(base_converter.ConverterInterface):
         net.op.extend(sorted_nodes)
 
         print("Final ops:")
+        index = 0
         for op in net.op:
-            print("%s (%s): %s" % (op.name, op.type, [
+            if op.type not in [MaceOp.Quantize.name, MaceOp.Dequantize.name]:
+                index_str = str(index)
+                index += 1
+            else:
+                index_str = ''
+            print("%s (%s, index:%s): %s" % (op.name, op.type, index_str, [
                 out_shape.dims for out_shape in op.output_shape]))
         return False
 

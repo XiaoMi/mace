@@ -31,6 +31,27 @@ def normalize_op_name(name):
     return name.replace('/', '_').replace(':', '_')
 
 
+def handle_index(start, end, layers):
+    num_layers = end - start + 1
+    if ':' in layers:
+        start_index, end_index = layers.split(':')
+        start_index = int(start_index) if start_index else 0
+        end_index = int(end_index) if end_index else num_layers - 1
+    else:
+        start_index = int(layers)
+        end_index = start_index + 1
+    if start_index < 0:
+        start_index += num_layers
+    if end_index < 0:
+        end_index += num_layers
+    start_index += start
+    end_index += start
+    start_index = max(start, min(end - 1, start_index))
+    end_index = max(start + 1, min(end, end_index))
+
+    return start_index, end_index
+
+
 def main(unused_args):
     mace_check(os.path.isfile(FLAGS.model_file),
                "Input graph file '" + FLAGS.model_file + "' does not exist!")
@@ -68,6 +89,8 @@ def main(unused_args):
     # omit original output
     end_index -= 1
 
+    index, end_index = handle_index(index, end_index, FLAGS.layers)
+
     data_format = net_def.output_info[0].data_format
     output_configs = {"subgraphs": []}
     while index < end_index:
@@ -82,7 +105,7 @@ def main(unused_args):
         net = copy.deepcopy(net_def)
         if hexagon_flag:
             # reuse dequantize op and it's min/max tensor's node_id
-            del net.op[index+1:end_index+1]
+            del net.op[index+1:-1]
         else:
             del net.op[index+1:]
         del net.output_info[:]
@@ -163,6 +186,12 @@ def parse_args():
         type=str,
         default="",
         help="Directory to save the output graph to.")
+    parser.add_argument(
+        "--layers",
+        type=str,
+        default="-1",
+        help="'start_layer:end_layer' or 'layer', similar to python slice."
+             " Use with --validate flag.")
     return parser.parse_known_args()
 
 
