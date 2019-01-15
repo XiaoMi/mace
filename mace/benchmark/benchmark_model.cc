@@ -277,15 +277,16 @@ int Main(int argc, char **argv) {
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
   // Create Engine
-  const char *model_data_file_ptr =
-    FLAGS_model_data_file.empty() ? nullptr : FLAGS_model_data_file.c_str();
-
-  std::vector<unsigned char> model_pb_data;
-  if (FLAGS_model_file != "") {
-    if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
-      LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
-    }
+  std::vector<unsigned char> model_graph_data;
+  if (!mace::ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
+    LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
   }
+
+  std::vector<unsigned char> model_weights_data;
+  if (!mace::ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
+    LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
+  }
+
 #ifdef MODEL_GRAPH_FORMAT_CODE
   create_engine_status =
         CreateMaceEngineFromCode(FLAGS_model_name,
@@ -296,8 +297,10 @@ int Main(int argc, char **argv) {
                                  &engine);
 #else
   create_engine_status =
-      CreateMaceEngineFromProto(model_pb_data,
-                                model_data_file_ptr,
+      CreateMaceEngineFromProto(model_graph_data.data(),
+                                model_graph_data.size(),
+                                model_weights_data.data(),
+                                model_weights_data.size(),
                                 input_names,
                                 output_names,
                                 config,

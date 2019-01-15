@@ -240,10 +240,17 @@ bool RunModel(const std::string &model_name,
   }
 #endif  // MACE_ENABLE_OPENCL
 
-  std::vector<unsigned char> model_pb_data;
+  std::vector<unsigned char> model_graph_data;
   if (FLAGS_model_file != "") {
-    if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
+    if (!mace::ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
+    }
+  }
+
+  std::vector<unsigned char> model_weights_data;
+  if (FLAGS_model_data_file != "") {
+    if (!mace::ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
     }
   }
 
@@ -265,8 +272,10 @@ bool RunModel(const std::string &model_name,
 #else
     (void)(model_name);
     create_engine_status =
-        CreateMaceEngineFromProto(model_pb_data,
-                                  FLAGS_model_data_file,
+        CreateMaceEngineFromProto(model_graph_data.data(),
+                                  model_graph_data.size(),
+                                  model_weights_data.data(),
+                                  model_weights_data.size(),
                                   input_names,
                                   output_names,
                                   config,
@@ -338,8 +347,10 @@ bool RunModel(const std::string &model_name,
                                    &engine);
 #else
         create_engine_status =
-            CreateMaceEngineFromProto(model_pb_data,
-                                      FLAGS_model_data_file,
+            CreateMaceEngineFromProto(model_graph_data.data(),
+                                      model_graph_data.size(),
+                                      model_weights_data.data(),
+                                      model_weights_data.size(),
                                       input_names,
                                       output_names,
                                       config,
@@ -378,8 +389,10 @@ bool RunModel(const std::string &model_name,
                                        &engine);
 #else
             create_engine_status =
-                CreateMaceEngineFromProto(model_pb_data,
-                                          FLAGS_model_data_file,
+                CreateMaceEngineFromProto(model_graph_data.data(),
+                                          model_graph_data.size(),
+                                          model_weights_data.data(),
+                                          model_weights_data.size(),
                                           input_names,
                                           output_names,
                                           config,

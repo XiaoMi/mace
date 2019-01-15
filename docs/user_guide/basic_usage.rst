@@ -344,8 +344,10 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
 
     // Create Engine from model file
     create_engine_status =
-        CreateMaceEngineFromProto(model_pb_data,
-                                  model_data_file.c_str(),
+        CreateMaceEngineFromProto(model_graph_proto,
+                                  model_graph_proto_size,
+                                  model_weights_data,
+                                  model_weights_data_size,
                                   input_names,
                                   output_names,
                                   device_type,
