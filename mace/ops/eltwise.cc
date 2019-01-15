@@ -433,6 +433,7 @@ inline void TensorEltwise(const EltwiseType type,
           output[i] = std::pow(input0[i], input1[i]);
         }
       } else {
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = std::pow(input1[i], input0[i]);
         }
@@ -552,6 +553,7 @@ inline void TensorScalarEltwise(const EltwiseType type,
           output[i] = std::pow(input0[i], input1);
         }
       } else {
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = std::pow(input1, input0[i]);
         }
