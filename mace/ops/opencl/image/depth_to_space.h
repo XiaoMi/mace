@@ -94,7 +94,7 @@ MaceStatus DepthToSpaceKernel<T>::Compute(
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
-    const char *kernel_name = kernel_name = "depth_to_space";
+    const char *kernel_name = "depth_to_space";
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
