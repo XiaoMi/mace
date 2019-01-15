@@ -43,6 +43,7 @@ tf_dilations_str = 'dilations'
 tf_data_format_str = 'data_format'
 tf_kernel_str = 'ksize'
 tf_epsilon_str = 'epsilon'
+tf_alpha_str = 'alpha'
 tf_is_training_str = 'is_training'
 tf_align_corners = 'align_corners'
 tf_block_size = 'block_size'
@@ -71,6 +72,7 @@ TFSupportedOps = [
     'Rsqrt',
     'Equal',
     'Relu',
+    'LeakyRelu',
     'Relu6',
     'Tanh',
     'Sigmoid',
@@ -191,7 +193,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Relu.name: ActivationType.RELU,
         TFOpType.Relu6.name: ActivationType.RELUX,
         TFOpType.Tanh.name: ActivationType.TANH,
-        TFOpType.Sigmoid.name: ActivationType.SIGMOID
+        TFOpType.Sigmoid.name: ActivationType.SIGMOID,
+        TFOpType.LeakyRelu.name: ActivationType.LEAKYRELU,
     }
 
     def __init__(self, option, src_model_file):
@@ -217,6 +220,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Rsqrt.name: self.convert_elementwise,
             TFOpType.Equal.name: self.convert_elementwise,
             TFOpType.Relu.name: self.convert_activation,
+            TFOpType.LeakyRelu.name: self.convert_activation,
             TFOpType.Relu6.name: self.convert_activation,
             TFOpType.Tanh.name: self.convert_activation,
             TFOpType.Sigmoid.name: self.convert_activation,
@@ -565,6 +569,11 @@ class TensorflowConverter(base_converter.ConverterInterface):
             limit_arg = op.arg.add()
             limit_arg.name = MaceKeyword.mace_activation_max_limit_str
             limit_arg.f = 6.0
+        elif tf_op.type == TFOpType.LeakyRelu.name:
+            alpha_arg = op.arg.add()
+            alpha_arg.name = \
+                MaceKeyword.mace_activation_leakyrelu_coefficient_str
+            alpha_arg.f = tf_op.get_attr(tf_alpha_str)
 
     def convert_fill(self, tf_op):
         op = self.convert_general_op(tf_op)
