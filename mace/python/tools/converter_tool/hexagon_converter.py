@@ -232,6 +232,14 @@ class HexagonConverter(base_converter.ConverterInterface):
                 newdim_tensor.int32_data.extend(newdim_arg.ints)
                 op.input.extend([newdim_tensor.name])
                 self.add_min_max_const_node(op, op.input[0])
+                align_corners_arg = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_align_corners_str)
+                align_corners_tensor = self._model.tensors.add()
+                align_corners_tensor.name = op.name + '/align_corners:0'
+                align_corners_tensor.data_type = mace_pb2.DT_INT32
+                align_corners_tensor.dims.extend([1])
+                align_corners_tensor.int32_data.extend([align_corners_arg.i])
+                op.input.extend([align_corners_tensor.name])
             elif op.type == MaceOp.Concat.name:
                 inputs = copy.deepcopy(op.input)
                 for ipt in inputs:
