@@ -36,7 +36,7 @@ std::string DataTypeToString(const DataType dt) {
       {DT_FLOAT, "DT_FLOAT"},
       {DT_HALF, "DT_HALF"},
       {DT_UINT8, "DT_UINT8"},
-      {DT_INT32, "DT_UINT32"}};
+      {DT_INT32, "DT_INT32"}};
   MACE_CHECK(dt != DT_INVALID, "Not support Invalid data type");
   return dtype_string_map[dt];
 }
@@ -50,7 +50,7 @@ size_t GetEnumTypeSize(const DataType dt) {
     case DT_UINT8:
       return sizeof(uint8_t);
     case DT_INT32:
-      return sizeof(uint32_t);
+      return sizeof(int32_t);
     default:
       LOG(FATAL) << "Unsupported data type: " << dt;
       return 0;
