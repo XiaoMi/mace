@@ -71,7 +71,7 @@ If you want to specify input data to use, you can add an option in yaml config u
 If model's output is suspected to be incorrect, it might be useful to debug your model layer by layer by specifying an intermediate layer as output,
 or use binary search method until suspicious layer is found.
 
-You can also specify `--validate_all_layers` to validate all the layers of the model(excluding some layers changed by MACE, e.g., BatchToSpaceND),
+You can also specify `--layers` after `--validate` to validate all or some of the layers of the model(excluding some layers changed by MACE, e.g., BatchToSpaceND),
 it only supports TensorFlow now. You can find validation results in `builds/your_model/model/runtime_in_yaml/log.csv`.
 
 For quantized model, if you want to check one layer, you can add `check_tensors` and `check_shapes` like in the yaml above. You can only specify

@@ -365,9 +365,17 @@ class HexagonConverter(base_converter.ConverterInterface):
             node_id_map[tensor_op] = tensor.node_id
 
         print("Hexagon op:")
+        index = 0
         for op in self._model.op:
             op.node_id = node_id_counter
-            print('Op: %s (%s, %d)' % (op.name, op.type, op.node_id))
+            if op.type not in [HexagonOp.QuantizeINPUT_f_to_8,
+                               HexagonOp.DequantizeOUTPUT_8tof.name]:
+                index_str = str(index)
+                index += 1
+            else:
+                index_str = ''
+            print('Op: %s (%s, node_id:%d, index:%s)' %
+                  (op.name, op.type, op.node_id, index_str))
             node_id_counter += 1
             node_id_map[op.name] = op.node_id
             for ipt in op.input:

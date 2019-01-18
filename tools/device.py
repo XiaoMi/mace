@@ -416,7 +416,7 @@ class DeviceWrapper:
         six.print_('Tuning done! \n')
 
     @staticmethod
-    def get_layers(model_dir, model_name):
+    def get_layers(model_dir, model_name, layers):
         sh_commands.bazel_build_common("//mace/python/tools:layers_validate")
 
         model_file = "%s/%s.pb" % (model_dir, model_name)
@@ -428,6 +428,7 @@ class DeviceWrapper:
                   "-u",
                   "--model_file=%s" % model_file,
                   "--output_dir=%s" % output_dir,
+                  "--layers=%s" % layers,
                   _fg=True)
 
         output_configs_path = output_dir + "outputs.yml"
@@ -553,14 +554,15 @@ class DeviceWrapper:
                     output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
                 output_configs = []
                 log_file = ""
-                if flags.validate_all_layers:
+                if flags.layers != "-1":
                     mace_check(configs[YAMLKeyword.model_graph_format] ==
                                ModelFormat.file and
                                configs[YAMLKeyword.model_data_format] ==
                                ModelFormat.file, "Device",
-                               "'--validate_all_layers' only supports model format 'file'.")  # noqa
-                    output_configs = \
-                        self.get_layers(mace_model_dir, model_name)
+                               "'--layers' only supports model format 'file'.")
+                    output_configs = self.get_layers(mace_model_dir,
+                                                     model_name,
+                                                     flags.layers)
                     log_dir = mace_model_dir + "/" + runtime
                     if os.path.exists(log_dir):
                         sh.rm('-rf', log_dir)
@@ -611,7 +613,7 @@ class DeviceWrapper:
                         layers_validate_file=output_config[
                             YAMLKeyword.model_file_path]
                     )
-                    if flags.validate or flags.validate_all_layers:
+                    if flags.validate:
                         model_file_path, weight_file_path = get_model_files(
                             model_config[YAMLKeyword.model_file_path],
                             model_config[YAMLKeyword.model_sha256_checksum],

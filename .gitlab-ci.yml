@@ -147,7 +147,7 @@ python_tools_tests:
       python tools/converter.py convert --config=${CONF_FILE} --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --round=1 --target_abis=armeabi-v7a,armhf --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,armhf --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,armhf --round=1 --validate_all_layers --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,armhf --round=1 --validate --layers=0 --model_graph_format=file --model_data_format=file || exit 1;
 
 model_tests:
   stage: model_tests
@@ -190,7 +190,7 @@ quantization_tests:
       python tools/converter.py convert --config=${CONF_FILE} --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate_all_layers --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate --layers=0 --model_graph_format=file --model_data_format=file || exit 1;
       done
     - rm -rf mace-models
 
