@@ -644,6 +644,89 @@ TEST_F(ReduceOpTest, GPURandomHalf) {
   RandomTest<DeviceType::GPU, half>({1, 511, 561, 11}, {1, 2});
 }
 
+namespace {
+
+void TestQuant(const std::vector<index_t> &input_shape,
+               const std::vector<int> &axis) {
+  auto func = [&](ReduceType type) {
+    OpsTestNet net;
+    net.AddRandomInput<CPU, float>(
+        "Input", input_shape, false, false);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", NHWC, "InputNCHW", NCHW);
+    net.AddRandomInput<DeviceType::CPU, float>(
+        "OutputNCHW", input_shape, false, true, true);
+
+    OpDefBuilder("Reduce", "ReduceTest")
+        .Input("InputNCHW")
+        .AddIntsArg("axis", axis)
+        .AddIntArg("keepdims", 1)
+        .AddIntArg("reduce_type", type)
+        .AddIntArg("data_format", DataFormat::NHWC)
+        .Output("OutputNCHW")
+        .AddIntArg("T", DT_FLOAT)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp(CPU);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", NCHW, "Output", NHWC);
+
+    OpDefBuilder("Quantize", "QuantizeInput")
+        .Input("Input")
+        .Output("QuantizedInput")
+        .OutputType({DT_UINT8})
+        .AddIntArg("T", DT_UINT8)
+        .AddIntArg("non_zero", true)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+
+    net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput",
+                                                 input_shape);
+    OpDefBuilder("Reduce", "ReduceTest")
+        .Input("QuantizedInput")
+        .Output("QuantizedOutput")
+        .AddIntsArg("axis", axis)
+        .AddIntArg("keepdims", 1)
+        .AddIntArg("reduce_type", type)
+        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("T", DT_UINT8)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+
+    OpDefBuilder("Dequantize", "DeQuantizeTest")
+        .Input("QuantizedOutput")
+        .Output("DequantizedOutput")
+        .OutputType({DT_FLOAT})
+        .AddIntArg("T", DT_UINT8)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+    // Check
+    ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                               *net.GetTensor("DequantizedOutput"), 0.01);
+  };
+
+  for (ReduceType type : {MEAN, MIN, MAX}) {
+    func(type);
+  }
+}
+}  // namespace
+
+TEST_F(ReduceOpTest, Quant) {
+  // reduce 1, first axis
+  TestQuant({1, 1, 3, 4}, {2, 3});
+  // reduce 2, first axis
+  TestQuant({1, 4, 4, 320}, {1, 2});
+  // reduce 2, not first axis
+  TestQuant({16, 320, 4, 4}, {2, 3});
+  // reduce 3, first axis
+  TestQuant({1, 4, 323, 4}, {1, 3});
+  // reduce 3, not first axis
+  TestQuant({15, 117, 15, 32}, {2});
+  // reduce 4, first axis
+  TestQuant({4, 323, 4, 4}, {0, 2});
+  // reduce 4, not first axis
+  TestQuant({32, 4, 323, 16}, {1, 3});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

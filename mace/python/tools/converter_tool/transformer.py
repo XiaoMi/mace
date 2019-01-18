@@ -113,7 +113,6 @@ class Transformer(base_converter.ConverterInterface):
         self._consts = {}
         self._consumers = {}
         self._producer = {}
-        self._target_data_format = DataFormat.NHWC
         self._quantize_activation_info = {}
         self._quantized_tensor = set()
 
@@ -996,8 +995,7 @@ class Transformer(base_converter.ConverterInterface):
                     if arg.name == MaceKeyword.mace_paddings_str:
                         mace_check(len(arg.ints) == 8,
                                    "pad dim rank should be 8.")
-                        if ConverterUtil.data_format(op) == DataFormat.NCHW \
-                                and self._target_data_format == DataFormat.NHWC:  # noqa
+                        if ConverterUtil.data_format(op) == DataFormat.NCHW:
                             print("Transpose pad args: %s(%s)"
                                   % (op.name, op.type))
                             self.transpose_shape(arg.ints,
@@ -1006,7 +1004,6 @@ class Transformer(base_converter.ConverterInterface):
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
                         if (ConverterUtil.data_format(op) == DataFormat.NCHW
-                                and self._target_data_format == DataFormat.NHWC
                                 and len(op.output_shape[0].dims) == 4):
                             print("Transpose concat/split args: %s(%s)"
                                   % (op.name, op.type))
@@ -1023,8 +1020,7 @@ class Transformer(base_converter.ConverterInterface):
                                 len(input_shape) == 2:
                             axis_arg = ConverterUtil.get_arg(
                                 op, MaceKeyword.mace_axis_str)
-                            if axis_arg.i == 1 \
-                                    and self._target_data_format == DataFormat.NHWC:  # noqa
+                            if axis_arg.i == 1:
                                 axis_arg.i = 3
 
             elif op.type == MaceOp.Squeeze.name:
@@ -1041,8 +1037,7 @@ class Transformer(base_converter.ConverterInterface):
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
                         if ConverterUtil.data_format(
-                                op) == DataFormat.NCHW \
-                                and self._target_data_format == DataFormat.NHWC:  # noqa
+                                op) == DataFormat.NCHW:
                             print("Transpose reduce args: %s(%s)"
                                   % (op.name, op.type))
                             reduce_axises = list(arg.ints)
@@ -1062,15 +1057,12 @@ class Transformer(base_converter.ConverterInterface):
             # transpose op output shape
             data_format = ConverterUtil.data_format(op)
             if data_format is not None \
-                    and data_format != self._target_data_format:
+                    and data_format != DataFormat.NHWC:
                 print("Transpose output shapes: %s(%s)" % (op.name, op.type))
                 for output_shape in op.output_shape:
                     if len(output_shape.dims) == 4:
                         self.transpose_shape(output_shape.dims,
                                              [0, 2, 3, 1])
-                ConverterUtil.get_arg(op,
-                                      MaceKeyword.mace_data_format_str).i = \
-                    self._target_data_format.value
 
         return False
 
@@ -1689,6 +1681,7 @@ class Transformer(base_converter.ConverterInterface):
         print("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
             if op.type in [MaceOp.Pooling.name,
+                           MaceOp.Reduce.name,
                            MaceOp.Squeeze.name,
                            MaceOp.Reshape.name,
                            MaceOp.ResizeBilinear.name,
