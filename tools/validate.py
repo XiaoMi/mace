@@ -224,10 +224,10 @@ def validate_onnx_model(platform, device_type, model_file, input_file,
     import onnx
     if backend == "tensorflow":
         from onnx_tf.backend import prepare
-        print "valivate on onnx tensorflow backend."
+        print("valivate on onnx tensorflow backend.")
     elif backend == "caffe2" or backend == "pytorch":
         from caffe2.python.onnx.backend import prepare
-        print "valivate on onnx caffe2 backend."
+        print("valivate on onnx caffe2 backend.")
     else:
         common.MaceLogger.error(
             VALIDATION_MODULE,
