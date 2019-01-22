@@ -766,6 +766,7 @@ def validate_model(abi,
                 "--validation_threshold=%f" % validation_threshold,
                 "--input_data_type=%s" % ",".join(input_data_types),
                 "--backend=%s" % ",".join(backend),
+                "--log_file=%s" % log_file,
                 _fg=True)
 
     six.print_("Validation done!\n")
