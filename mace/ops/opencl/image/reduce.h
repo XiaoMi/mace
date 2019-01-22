@@ -109,13 +109,20 @@ MaceStatus ReduceKernel<T>::Compute(
         static_cast<uint32_t>(runtime->GetKernelWaveSize(kernel_));
     gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * channel_blocks)};
   } else {
-    gws = {4, 16, static_cast<uint32_t>(batch * channel_blocks)};
+    // Ensure each kernel has at least 4 input elements.
+    gws = {4, image_size / 16, static_cast<uint32_t>(batch * channel_blocks)};
+    if (gws[1] == 0) {
+      gws[1] = 1;
+    } else if (gws[1] > 16) {
+      gws[1] = 16;
+    }
   }
   lws = {gws[0], gws[1], 1};
-  const int group_size = lws[0] * lws[1] * lws[2];
-  const int partial_len = (image_size + group_size - 1) / group_size;
-  const int remain_index = image_size % group_size;
-  const float img_size_reciprocal = 1.f / (in_width * in_height);
+  const int group_num = lws[0] * lws[1] * lws[2];
+  // Each kernel intends to compute compute_size elements.
+  const int compute_size = (image_size + group_num - 1) / group_num;
+  const int last_index = image_size % group_num;
+  const float scale = 1.f / (in_width * in_height);
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (!IsVecEqual(input_shape_, input->shape())) {
@@ -123,15 +130,14 @@ MaceStatus ReduceKernel<T>::Compute(
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
     kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, (group_size * 4 * sizeof(T)),
+    kernel_.setArg(idx++, (group_num * 4 * sizeof(float)),
                    nullptr);
-    kernel_.setArg(idx++, static_cast<int32_t>(group_size));
-    kernel_.setArg(idx++, static_cast<int32_t>(partial_len));
-    kernel_.setArg(idx++, static_cast<int32_t>(remain_index));
-    kernel_.setArg(idx++, static_cast<int32_t>(batch));
+    kernel_.setArg(idx++, static_cast<int32_t>(group_num));
+    kernel_.setArg(idx++, static_cast<int32_t>(compute_size));
+    kernel_.setArg(idx++, static_cast<int32_t>(last_index));
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
-    kernel_.setArg(idx++, img_size_reciprocal);
+    kernel_.setArg(idx++, scale);
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blocks));
     kernel_.setArg(idx++, *(output->opencl_image()));
 
