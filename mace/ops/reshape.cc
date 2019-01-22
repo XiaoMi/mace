@@ -77,6 +77,14 @@ class ReshapeOp : public Operation {
     }
 
     Tensor *output = this->Output(OUTPUT);
+    // NCHW -> NHWC
+    if (D == DeviceType::GPU && out_shape.size() == 4) {
+      std::vector<int> dst_dims = {0, 2, 3, 1};
+      std::vector<index_t> out_shape_gpu = TransposeShape<index_t, index_t>(
+          out_shape, dst_dims);
+      out_shape = out_shape_gpu;
+    }
+
     output->ReuseTensorBuffer(*input);
     output->Reshape(out_shape);
 

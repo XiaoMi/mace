@@ -209,6 +209,30 @@ def sha256_checksum(fname):
     return hash_func.hexdigest()
 
 
+def get_dockerfile_file(dockerfile_path="",
+                        dockerfile_sha256_checksum=""):
+    dockerfile = dockerfile_path
+    if dockerfile_path.startswith("http://") or \
+            dockerfile_path.startswith("https://"):
+        dockerfile = \
+            "third_party/caffe/" + md5sum(dockerfile_path) + "/Dockerfile"
+        if not os.path.exists(dockerfile) or \
+                sha256_checksum(dockerfile) != dockerfile_sha256_checksum:
+            os.makedirs(dockerfile.strip("/Dockerfile"))
+            MaceLogger.info("Downloading Dockerfile, please wait ...")
+            six.moves.urllib.request.urlretrieve(dockerfile_path, dockerfile)
+            MaceLogger.info("Dockerfile downloaded successfully.")
+
+    if dockerfile:
+        if sha256_checksum(dockerfile) != dockerfile_sha256_checksum:
+            MaceLogger.error(ModuleName.MODEL_CONVERTER,
+                             "Dockerfile sha256checksum not match")
+    else:
+        dockerfile = "third_party/caffe"
+
+    return dockerfile
+
+
 def get_model_files(model_file_path,
                     model_sha256_checksum,
                     model_output_dir,
@@ -373,6 +397,8 @@ class YAMLKeyword(object):
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
     cl_mem_type = 'cl_mem_type'
     backend = 'backend'
+    dockerfile_path = 'dockerfile_path'
+    dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'
 
 
 ################################

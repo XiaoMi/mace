@@ -72,10 +72,9 @@ class PriorBoxOp : public Operation {
     Tensor::MappingGuard output_guard(output);
     T *output_data = output->mutable_data<T>();
     float box_w, box_h;
-#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t i = 0; i < input_h; ++i) {
+      index_t idx = i * input_w * num_prior * 4;
       for (index_t j = 0; j < input_w; ++j) {
-        index_t idx = i * input_w * num_prior * 4;
         float center_y = (offset_ + i) * step_h;
         float center_x = (offset_ + j) * step_w;
         for (index_t k = 0; k < num_min_size; ++k) {

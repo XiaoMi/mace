@@ -627,6 +627,7 @@ def validate_model(abi,
                    device,
                    model_file_path,
                    weight_file_path,
+                   dockerfile_path,
                    platform,
                    device_type,
                    input_nodes,
@@ -690,7 +691,7 @@ def validate_model(abi,
             if not docker_image_id:
                 six.print_("Build caffe docker")
                 sh.docker("build", "-t", image_name,
-                          "third_party/caffe")
+                          dockerfile_path)
 
             container_id = sh.docker("ps", "-qa", "-f",
                                      "name=%s" % container_name)

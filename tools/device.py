@@ -624,11 +624,18 @@ class DeviceWrapper:
                         validate_type = device_type
                         if model_config[YAMLKeyword.quantize] == 1:
                             validate_type = device_type + '_QUANTIZE'
+
+                        dockerfile_path = get_dockerfile_file(
+                            model_config.get(YAMLKeyword.dockerfile_path),
+                            model_config.get(YAMLKeyword.dockerfile_sha256_checksum)  # noqa
+                        ) if YAMLKeyword.dockerfile_path in model_config else "third_party/caffe"  # noqa
+
                         sh_commands.validate_model(
                             abi=target_abi,
                             device=self,
                             model_file_path=model_file_path,
                             weight_file_path=weight_file_path,
+                            dockerfile_path=dockerfile_path,
                             platform=model_config[YAMLKeyword.platform],
                             device_type=device_type,
                             input_nodes=subgraphs[0][
