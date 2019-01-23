@@ -440,8 +440,8 @@ class DeviceWrapper:
 
     def run_specify_abi(self, flags, configs, target_abi):
         if target_abi not in self.target_abis:
-            six.print_('There is no device with soc: %s abi: %s' %
-                       (self.target_socs, target_abi))
+            six.print_('The device %s with soc %s do not support the abi %s' %
+                       (self.device_name, self.target_socs, target_abi))
             return
         library_name = configs[YAMLKeyword.library_name]
         mace_lib_type = flags.mace_lib_type
@@ -478,17 +478,10 @@ class DeviceWrapper:
             model_runtime = model_config[YAMLKeyword.runtime]
             subgraphs = model_config[YAMLKeyword.subgraphs]
 
-            if not configs[YAMLKeyword.target_socs] \
-                    or target_abi == ABIType.host:
-                model_output_base_dir, model_output_dir, mace_model_dir = \
-                    get_build_model_dirs(
-                        library_name, model_name, target_abi, self,
-                        model_config[YAMLKeyword.model_file_path])
-            else:
-                model_output_base_dir, model_output_dir, mace_model_dir = \
-                    get_build_model_dirs(
-                        library_name, model_name, target_abi, self,
-                        model_config[YAMLKeyword.model_file_path])
+            model_output_base_dir, model_output_dir, mace_model_dir = \
+                get_build_model_dirs(
+                    library_name, model_name, target_abi, self,
+                    model_config[YAMLKeyword.model_file_path])
 
             # clear temp model output dir
             if os.path.exists(model_output_dir):
@@ -501,7 +494,8 @@ class DeviceWrapper:
             if not flags.address_sanitizer \
                     and not flags.example \
                     and target_abi != ABIType.host \
-                    and configs[YAMLKeyword.target_socs] \
+                    and (configs[YAMLKeyword.target_socs]
+                         or flags.target_socs) \
                     and self.target_socs \
                     and model_runtime in [RuntimeType.gpu,
                                           RuntimeType.cpu_gpu] \
@@ -874,7 +868,8 @@ class DeviceWrapper:
         else:
             bm_model_binary_name = BM_MODEL_STATIC_NAME
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
-        if configs[YAMLKeyword.target_socs] and target_abi != ABIType.host:
+        if (configs[YAMLKeyword.target_socs] or flags.target_socs)\
+                and target_abi != ABIType.host:
             opencl_output_bin_path = get_opencl_binary_output_path(
                 library_name, target_abi, self
             )

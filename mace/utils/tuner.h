@@ -172,6 +172,10 @@ class Tuner {
                        << " failed, error code: " << strerror(errno);
         }
         return;
+      } else if (!S_ISREG(st.st_mode)) {
+        VLOG(1) << "The path " << tuned_param_file_path_
+                << " is not a file";
+        return;
       }
       int fd = open(tuned_param_file_path_.c_str(), O_RDONLY);
       if (fd < 0) {
