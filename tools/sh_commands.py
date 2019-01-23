@@ -17,6 +17,7 @@ import glob
 import logging
 import numpy as np
 import os
+import random
 import re
 import sh
 import struct
@@ -94,6 +95,19 @@ def stdout_success(stdout):
                 "Segmentation fault" in line:
             return False
     return True
+
+
+# select a random unlocked device support the ABI
+def choose_a_random_device(target_devices, target_abi):
+    eligible_devices = [dev for dev in target_devices
+                        if target_abi in dev[common.YAMLKeyword.target_abis]]
+    unlocked_devices = \
+        [dev for dev in eligible_devices if not is_device_locked(dev)]
+    if len(unlocked_devices) > 0:
+        chosen_devices = [random.choice(unlocked_devices)]
+    else:
+        chosen_devices = [random.choice(eligible_devices)]
+    return chosen_devices
 
 
 ################################

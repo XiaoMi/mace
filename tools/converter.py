@@ -229,7 +229,8 @@ def format_model_config(flags):
                    "target_abis must be in " + str(ABITypeStrs))
 
     target_socs = configs.get(YAMLKeyword.target_socs, "")
-    if flags.target_socs:
+    if flags.target_socs and flags.target_socs != TargetSOCTag.random \
+            and flags.target_socs != TargetSOCTag.all:
         configs[YAMLKeyword.target_socs] = \
             [soc.lower() for soc in flags.target_socs.split(',')]
     elif not target_socs:
@@ -244,7 +245,7 @@ def format_model_config(flags):
             or ABIType.arm64_v8a in target_abis:
         available_socs = sh_commands.adb_get_all_socs()
         target_socs = configs[YAMLKeyword.target_socs]
-        if ALL_SOC_TAG in target_socs:
+        if TargetSOCTag.all in target_socs:
             mace_check(available_socs,
                        ModuleName.YAML_CONFIG,
                        "Android abi is listed in config file and "
@@ -947,12 +948,17 @@ def run_mace(flags):
 
     target_socs = configs[YAMLKeyword.target_socs]
     device_list = DeviceManager.list_devices(flags.device_yml)
-    if target_socs and ALL_SOC_TAG not in target_socs:
+    if target_socs and TargetSOCTag.all not in target_socs:
         device_list = [dev for dev in device_list
                        if dev[YAMLKeyword.target_socs].lower() in target_socs]
     for target_abi in configs[YAMLKeyword.target_abis]:
+        if flags.target_socs == TargetSOCTag.random:
+            target_devices = sh_commands.choose_a_random_device(
+                device_list, target_abi)
+        else:
+            target_devices = device_list
         # build target
-        for dev in device_list:
+        for dev in target_devices:
             if target_abi in dev[YAMLKeyword.target_abis]:
                 # get toolchain
                 toolchain = infer_toolchain(target_abi)
@@ -1038,13 +1044,17 @@ def benchmark_model(flags):
 
     target_socs = configs[YAMLKeyword.target_socs]
     device_list = DeviceManager.list_devices(flags.device_yml)
-    if target_socs and ALL_SOC_TAG not in target_socs:
+    if target_socs and TargetSOCTag.all not in target_socs:
         device_list = [dev for dev in device_list
                        if dev[YAMLKeyword.target_socs].lower() in target_socs]
-
     for target_abi in configs[YAMLKeyword.target_abis]:
+        if flags.target_socs == TargetSOCTag.random:
+            target_devices = sh_commands.choose_a_random_device(
+                device_list, target_abi)
+        else:
+            target_devices = device_list
         # build benchmark_model binary
-        for dev in device_list:
+        for dev in target_devices:
             if target_abi in dev[YAMLKeyword.target_abis]:
                 toolchain = infer_toolchain(target_abi)
                 build_benchmark_model(configs,

@@ -428,7 +428,6 @@ BM_MODEL_STATIC_NAME = "benchmark_model_static"
 BM_MODEL_DYNAMIC_NAME = "benchmark_model_dynamic"
 BM_MODEL_STATIC_TARGET = "//mace/benchmark:" + BM_MODEL_STATIC_NAME
 BM_MODEL_DYNAMIC_TARGET = "//mace/benchmark:" + BM_MODEL_DYNAMIC_NAME
-ALL_SOC_TAG = 'all'
 
 
 ################################
@@ -486,3 +485,11 @@ class ToolchainType:
     android = 'android'
     arm_linux_gnueabihf = 'arm_linux_gnueabihf'
     aarch64_linux_gnu = 'aarch64_linux_gnu'
+
+
+#################################
+# SOC tag
+#################################
+class TargetSOCTag:
+    all = 'all'
+    random = 'random'

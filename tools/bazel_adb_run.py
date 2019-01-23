@@ -20,7 +20,6 @@
 #     --stdout_processor=stdout_processor
 
 import argparse
-import random
 import re
 import sys
 
@@ -137,19 +136,15 @@ def main(unused_args):
                                 address_sanitizer=FLAGS.address_sanitizer)
         if FLAGS.run_target:
             target_devices = DeviceManager.list_devices(FLAGS.device_yml)
-            if FLAGS.target_socs != "all" and FLAGS.target_socs != "random":
+            if FLAGS.target_socs != TargetSOCTag.all and\
+                    FLAGS.target_socs != TargetSOCTag.random:
                 target_socs = set(FLAGS.target_socs.split(','))
                 target_devices = \
                     [dev for dev in target_devices
                      if dev[YAMLKeyword.target_socs] in target_socs]
-            if FLAGS.target_socs == "random":
-                unlocked_devices = \
-                    [d for d in target_devices if
-                     not sh_commands.is_device_locked(d)]
-                if len(unlocked_devices) > 0:
-                    target_devices = [random.choice(unlocked_devices)]
-                else:
-                    target_devices = [random.choice(target_devices)]
+            if FLAGS.target_socs == TargetSOCTag.random:
+                target_devices = sh_commands.choose_a_random_device(
+                    target_devices, target_abi)
 
             for dev in target_devices:
                 if target_abi not in dev[YAMLKeyword.target_abis]:

@@ -575,7 +575,7 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
     // Run on device
     net.RunOp(D);
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-4,
-                            1e-4);
+                            1e-3);
   };
 
   for (int kernel_size : {1, 3, 5, 7}) {
