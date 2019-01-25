@@ -169,8 +169,8 @@ DEFINE_string(output_node, "output_node0,output_node1",
 DEFINE_string(input_shape, "", "input shape, separated by colon and comma");
 DEFINE_string(output_shape, "", "output shape, separated by colon and comma");
 DEFINE_string(input_file, "", "input file name");
-DEFINE_int32(max_num_runs, 100, "number of runs max");
-DEFINE_string(max_time, "10.0", "length to run max");
+DEFINE_int32(max_num_runs, 100, "max number of runs");
+DEFINE_double(max_seconds, 10.0, "max number of seconds to run");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(opencl_binary_file,
               "",
@@ -209,13 +209,9 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "output shapes: [" << FLAGS_output_shape << "]";
   LOG(INFO) << "Warmup runs: [" << FLAGS_warmup_runs << "]";
   LOG(INFO) << "Num runs: [" << FLAGS_max_num_runs << "]";
-  LOG(INFO) << "Max run time: [" << FLAGS_max_time << "]";
-
-  const double max_benchmark_time_seconds =
-      std::strtod(FLAGS_max_time.c_str(), nullptr);
+  LOG(INFO) << "Max run seconds: [" << FLAGS_max_seconds << "]";
 
   std::unique_ptr<OpStat> statistician(new OpStat());
-
 
   std::vector<std::string> input_names =
       str_util::Split(FLAGS_input_node, ',');
@@ -365,7 +361,7 @@ int Main(int argc, char **argv) {
   int64_t no_stat_runs = 0;
   bool status =
       Run("Run without statistics", engine.get(), inputs, &outputs,
-          FLAGS_max_num_runs, max_benchmark_time_seconds,
+          FLAGS_max_num_runs, FLAGS_max_seconds,
           &no_stat_time_us, &no_stat_runs, nullptr);
   if (!status) {
     LOG(ERROR) << "Failed at normal no-stat run";
@@ -374,7 +370,7 @@ int Main(int argc, char **argv) {
   int64_t stat_time_us = 0;
   int64_t stat_runs = 0;
   status = Run("Run with statistics", engine.get(), inputs, &outputs,
-               FLAGS_max_num_runs, max_benchmark_time_seconds,
+               FLAGS_max_num_runs, FLAGS_max_seconds,
                &stat_time_us, &stat_runs, statistician.get());
   if (!status) {
     LOG(ERROR) << "Failed at normal stat run";
