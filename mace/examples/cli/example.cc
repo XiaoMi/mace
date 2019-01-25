@@ -59,6 +59,29 @@ std::vector<std::string> Split(const std::string &str, char delims) {
 
 }  // namespace str_util
 
+namespace {
+bool ReadBinaryFile(std::vector<unsigned char> *data,
+                           const std::string &filename) {
+  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+  if (!ifs.is_open()) {
+    return false;
+  }
+  ifs.seekg(0, ifs.end);
+  size_t length = ifs.tellg();
+  ifs.seekg(0, ifs.beg);
+
+  data->reserve(length);
+  data->insert(data->begin(), std::istreambuf_iterator<char>(ifs),
+               std::istreambuf_iterator<char>());
+  if (ifs.fail()) {
+    return false;
+  }
+  ifs.close();
+
+  return true;
+}
+}  // namespace
+
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
   while (!tmp.empty()) {
@@ -142,30 +165,6 @@ DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
-#ifndef MODEL_GRAPH_FORMAT_CODE
-namespace {
-bool ReadBinaryFile(std::vector<unsigned char> *data,
-                           const std::string &filename) {
-  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
-  if (!ifs.is_open()) {
-    return false;
-  }
-  ifs.seekg(0, ifs.end);
-  size_t length = ifs.tellg();
-  ifs.seekg(0, ifs.beg);
-
-  data->reserve(length);
-  data->insert(data->begin(), std::istreambuf_iterator<char>(ifs),
-               std::istreambuf_iterator<char>());
-  if (ifs.fail()) {
-    return false;
-  }
-  ifs.close();
-
-  return true;
-}
-}  // namespace
-#endif
 
 bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
@@ -212,19 +211,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   // Create Engine
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
-  // Only choose one of the two type based on the `model_graph_format`
-  // in model deployment file(.yml).
-#ifdef MODEL_GRAPH_FORMAT_CODE
-  // if model_data_format == code, just pass an empty string("")
-  // to model_data_file parameter.
-  create_engine_status =
-      CreateMaceEngineFromCode(FLAGS_model_name,
-                               FLAGS_model_data_file,
-                               input_names,
-                               output_names,
-                               config,
-                               &engine);
-#else
+
   std::vector<unsigned char> model_graph_data;
   if (!ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
     std::cerr << "Failed to read file: " << FLAGS_model_file << std::endl;
@@ -233,6 +220,21 @@ bool RunModel(const std::vector<std::string> &input_names,
   if (!ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
     std::cerr << "Failed to read file: " << FLAGS_model_data_file << std::endl;
   }
+
+  // Only choose one of the two type based on the `model_graph_format`
+  // in model deployment file(.yml).
+#ifdef MODEL_GRAPH_FORMAT_CODE
+  // if model_data_format == code, just pass an empty string("")
+  // to model_data_file parameter.
+  create_engine_status =
+      CreateMaceEngineFromCode(FLAGS_model_name,
+                               model_weights_data.data(),
+                               model_weights_data.size(),
+                               input_names,
+                               output_names,
+                               config,
+                               &engine);
+#else
   create_engine_status =
       CreateMaceEngineFromProto(model_graph_data.data(),
                                 model_graph_data.size(),
