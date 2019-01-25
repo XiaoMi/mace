@@ -61,6 +61,7 @@ Running models on Hexagon DSP need a few prerequisites for DSP developers:
 
 * You need to make sure SOCs of your phone is manufactured by Qualcomm and has HVX supported.
 * You need a phone that disables secure boot (once enabled, cannot be reversed, so you probably can only get that type phones from manufacturers)
+* You need to root your phone.
 * You need to sign your phone by using testsig provided by Qualcomm. (Download Qualcomm Hexagon SDK first, plugin your phone to PC, run scripts/testsig.py)
 * You need to push `third_party/nnlib/v6x/libhexagon_nn_skel.so` to `/system/vendor/lib/rfsa/adsp/`.
 

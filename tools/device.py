@@ -743,6 +743,8 @@ class DeviceWrapper:
                         output_nodes,
                         input_shapes,
                         output_shapes,
+                        max_num_runs,
+                        max_seconds,
                         model_tag,
                         device_type,
                         model_graph_format,
@@ -756,7 +758,6 @@ class DeviceWrapper:
                         input_file_name='model_input',
                         link_dynamic=False):
         six.print_('* Benchmark for %s' % model_tag)
-
         mace_model_path = ''
         if model_graph_format == ModelFormat.file:
             mace_model_path = '%s/%s.pb' % (mace_model_dir, model_tag)
@@ -784,6 +785,8 @@ class DeviceWrapper:
                     '--output_shape=%s' % ':'.join(output_shapes),
                     '--input_file=%s/%s' % (model_output_dir, input_file_name),
                     "--model_data_file=%s" % model_data_file,
+                    '--max_num_runs=%d' % max_num_runs,
+                    '--max_seconds=%f' % max_seconds,
                     '--device=%s' % device_type,
                     '--omp_num_threads=%s' % omp_num_threads,
                     '--cpu_affinity_policy=%s' % cpu_affinity_policy,
@@ -837,6 +840,8 @@ class DeviceWrapper:
                 '--output_shape=%s' % ':'.join(output_shapes),
                 '--input_file=%s/%s' % (self.data_dir, input_file_name),
                 "--model_data_file=%s" % model_data_file,
+                '--max_num_runs=%d' % max_num_runs,
+                '--max_seconds=%f' % max_seconds,
                 '--device=%s' % device_type,
                 '--omp_num_threads=%s' % omp_num_threads,
                 '--cpu_affinity_policy=%s' % cpu_affinity_policy,
@@ -932,6 +937,12 @@ class DeviceWrapper:
                 runtime_list.append(model_runtime)
             for runtime in runtime_list:
                 device_type = parse_device_type(runtime)
+                if not subgraphs[0][YAMLKeyword.check_tensors]:
+                    output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
+                    output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
+                else:
+                    output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
+                    output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
                 self.benchmark_model(
                     abi=target_abi,
                     benchmark_binary_dir=build_tmp_binary_dir,
@@ -940,9 +951,11 @@ class DeviceWrapper:
                     embed_model_data=embed_model_data,
                     model_output_dir=model_output_dir,
                     input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                    output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+                    output_nodes=output_nodes,
                     input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                    output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+                    output_shapes=output_shapes,
+                    max_num_runs=flags.max_num_runs,
+                    max_seconds=flags.max_seconds,
                     mace_model_dir=mace_model_dir,
                     model_tag=model_name,
                     device_type=device_type,
@@ -1041,6 +1054,8 @@ class DeviceManager:
         adb_list = [tuple(pair.split('\t')) for pair in adb_list]
         devices = []
         for adb in adb_list:
+            if adb[1].startswith("no permissions"):
+                continue
             prop = sh_commands.adb_getprop_by_serialno(adb[0])
             android = {
                 YAMLKeyword.device_name:
