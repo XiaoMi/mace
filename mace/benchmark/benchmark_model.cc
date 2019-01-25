@@ -278,19 +278,24 @@ int Main(int argc, char **argv) {
   MaceStatus create_engine_status;
   // Create Engine
   std::vector<unsigned char> model_graph_data;
-  if (!mace::ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
-    LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
+  if (FLAGS_model_file != "") {
+    if (!mace::ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
+    }
   }
 
   std::vector<unsigned char> model_weights_data;
-  if (!mace::ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
-    LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
+  if (FLAGS_model_data_file != "") {
+    if (!mace::ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
+    }
   }
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
   create_engine_status =
         CreateMaceEngineFromCode(FLAGS_model_name,
-                                 model_data_file_ptr,
+                                 model_weights_data.data(),
+                                 model_weights_data.size(),
                                  input_names,
                                  output_names,
                                  config,

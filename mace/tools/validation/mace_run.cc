@@ -264,7 +264,8 @@ bool RunModel(const std::string &model_name,
 #ifdef MODEL_GRAPH_FORMAT_CODE
     create_engine_status =
           CreateMaceEngineFromCode(model_name,
-                                   FLAGS_model_data_file,
+                                   model_weights_data.data(),
+                                   model_weights_data.size(),
                                    input_names,
                                    output_names,
                                    config,
@@ -340,7 +341,8 @@ bool RunModel(const std::string &model_name,
 #ifdef MODEL_GRAPH_FORMAT_CODE
         create_engine_status =
           CreateMaceEngineFromCode(model_name,
-                                   FLAGS_model_data_file,
+                                   model_weights_data.data(),
+                                   model_weights_data.size(),
                                    input_names,
                                    output_names,
                                    config,
@@ -382,7 +384,8 @@ bool RunModel(const std::string &model_name,
 #ifdef MODEL_GRAPH_FORMAT_CODE
             create_engine_status =
               CreateMaceEngineFromCode(model_name,
-                                       FLAGS_model_data_file,
+                                       model_weights_data.data(),
+                                       model_weights_data.size(),
                                        input_names,
                                        output_names,
                                        config,
