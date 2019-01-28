@@ -19,8 +19,6 @@ RUN apt-get install -y --no-install-recommends \
     libprotobuf-dev \
     libzmq3-dev \
     pkg-config \
-    python-dev \
-    python-pip \
     protobuf-compiler \
     libprotoc-dev \
     rsync \
@@ -33,7 +31,27 @@ RUN apt-get install -y --no-install-recommends \
     openssh-server \
     wget \
     bsdmainutils
-RUN pip install --upgrade pip
+
+# install pyenv
+RUN apt-get install -y make \
+    libssl-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    llvm \
+    libncurses5-dev \
+    libncursesw5-dev \
+    xz-utils \
+    tk-dev \
+    libffi-dev \
+    liblzma-dev \
+    python-openssl
+RUN curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+ENV PATH /root/.pyenv/bin:/root/.pyenv/shims/:${PATH}
+RUN eval "$(pyenv init -)"
+RUN eval "$(pyenv virtualenv-init -)"
+RUN pyenv install 2.7.14 && pyenv install 3.6.3
+RUN pyenv global 2.7.14
 
 # Setup vim
 RUN apt-get install -y --no-install-recommends \
@@ -78,6 +96,7 @@ RUN mkdir -p /opt/sdk && \
     unzip ${ANDROID_SDK_FILENAME} -d ${ANDROID_HOME} && \
     rm ${ANDROID_SDK_FILENAME} && \
     yes | android update sdk --no-ui -a --filter tools,platform-tools,${ANDROID_API_LEVELS},build-tools-${ANDROID_BUILD_TOOLS_VERSION}
+RUN ${ANDROID_HOME}/tools/bin/sdkmanager "cmake;3.6.4111459"
 
 # Download NDK
 RUN cd /opt/ && \
@@ -102,7 +121,8 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     pyyaml \
     sh==1.12.14 \
     pycodestyle==2.4.0 \
-    filelock
+    filelock \
+    PTable
 
 # Install Tensorflow
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
