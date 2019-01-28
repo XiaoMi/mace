@@ -8,13 +8,14 @@ stages:
   - ops_test_disable_neon
   - ops_test
   - api_test
-  - python_tools_tests
   - model_tests
   - quantization_tests
   - build_android_demo
   - ops_benchmark
   - extra_tests
   - so_size_check
+  - dynamic_link_test
+  - python3_test
 
 cpplint:
   stage: cpplint
@@ -76,12 +77,9 @@ ndk_versions_compatible_tests:
         export ANDROID_NDK_HOME=$new_ndk_path;
         export PATH=$ANDROID_NDK_HOME:$PATH;
         echo "ndk path: $ANDROID_NDK_HOME";
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a --target_socs=$TARGET_SOCS --enable_neon=false --args="--gtest_filter=ActivationOpTest*";
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a --target_socs=$TARGET_SOCS --args="--gtest_filter=ActivationOpTest*";
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64-v8a --target_socs=$TARGET_SOCS --enable_neon=false --args="--gtest_filter=ActivationOpTest*";
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64-v8a --target_socs=$TARGET_SOCS --args="--gtest_filter=ActivationOpTest*";
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS --enable_neon=false --args="--gtest_filter=ActivationOpTest*";
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS --args="--gtest_filter=ActivationOpTest*";
+        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a --target_socs=$TARGET_SOCS --enable_neon=false --args="--gtest_filter=ActivationOpTest*" || exit 1;
+        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a --target_socs=$TARGET_SOCS --args="--gtest_filter=ActivationOpTest*" || exit 1;
+        python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64-v8a --target_socs=$TARGET_SOCS --args="--gtest_filter=ActivationOpTest*" || exit 1;
       fi
       done
     - export ANDROID_NDK_HOME=$DEFAULT_NDK_PATH
@@ -96,7 +94,7 @@ ops_test_disable_neon:
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS --enable_neon=false
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS --enable_neon=false || exit 1;
 
 ops_test:
   stage: ops_test
@@ -107,42 +105,23 @@ ops_test:
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS || exit 1;
 
 api_test:
   stage: api_test
   script:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
-    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
-    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_exception_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_exception_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS || exit 1;
     - >
       if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
-    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS
-    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS
-    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_exception_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS
-
-python_tools_tests:
-  stage: python_tools_tests
-  script:
-    - pwd
-    - rm -rf mace-models
-    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
-    - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2.yml
-    - >
-      if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
-        GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
-        DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
-      fi
-    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - >
-      python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --target_abis=armeabi-v7a,arm64 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,arm64 --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,arm64 --round=1 --validate --layers=0 --model_graph_format=file --model_data_format=file || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_exception_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=arm64 --target_socs=$TARGET_SOCS || exit 1;
 
 model_tests:
   stage: model_tests
@@ -186,7 +165,6 @@ quantization_tests:
       do
       python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate --layers=0 --model_graph_format=file --model_data_format=file || exit 1;
       done
     - rm -rf mace-models
@@ -200,7 +178,7 @@ ops_benchmark:
   stage: ops_benchmark
   script:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS --args="--filter=.*CONV.*"
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS --args="--filter=.*SIGMOID.*" || exit 1;
 
 extra_tests:
   stage: extra_tests
@@ -211,7 +189,7 @@ extra_tests:
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
-    - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS
+    - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS || exit 1;
 
 so_size_check:
   stage: so_size_check
@@ -230,3 +208,36 @@ so_size_check:
     - rm -rf $TARGET_MACE_WORK_DIR
     - echo "The libmace.so size grows from $TARGET_LIBMACE_SO_SIZE(KB) to $CURRENT_LIBMACE_SO_SIZE(KB)"
     - if [ $TARGET_LIBMACE_SO_SIZE -lt `expr \( $CURRENT_LIBMACE_SO_SIZE - $TARGET_LIBMACE_SO_SIZE \) \* 10` ]; then echo "The libmace.so size grows larger than 10%"; exit 1; fi
+
+dynamic_link_test:
+  stage: dynamic_link_test
+  script:
+    - pwd
+    - rm -rf mace-models
+    - rm -rf generic-mobile-devices
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - >
+      if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
+        GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
+        DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
+      fi
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - >
+      python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --mace_lib_type=dynamic --target_abis=armeabi-v7a,arm64 --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
+    - rm -rf mace-models
+
+python3_test:
+  stage: python3_test
+  script:
+    - pyenv local 3.6.3
+    - rm -rf mace-models
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - >
+      python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a --target_socs=$TARGET_SOCS --validate || exit 1;
+    - pyenv local 2.7.14

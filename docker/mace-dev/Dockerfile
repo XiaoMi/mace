@@ -1,17 +1,57 @@
 FROM registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite:latest
 
 # Install tools
+RUN apt-get update -y
 RUN apt-get install -y --no-install-recommends \
     telnet \
     net-tools \
     inetutils-ping \
     screen \
     htop
+
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
     sphinx \
     sphinx-autobuild \
     sphinx_rtd_theme \
     recommonmark
+
+# ============ Install same deps for python3 ============
+RUN pyenv global 3.6.3
+
+# Install tools
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+    "numpy>=1.14.0" \
+    scipy \
+    jinja2 \
+    pyyaml \
+    sh==1.12.14 \
+    pycodestyle==2.4.0 \
+    filelock \
+    PTable
+
+# Install Tensorflow
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+    tensorflow==1.8.0
+
+# Install pytorch (refer to: https://pytorch.org/get-started/locally/)
+RUN pip install future==0.17.1 torchvision_nightly
+RUN pip install torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+
+# Install ONNX
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+    onnx==1.3.0 \
+    onnx-tf==1.2.0
+
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+    sphinx \
+    sphinx-autobuild \
+    sphinx_rtd_theme \
+    recommonmark
+
+RUN pyenv global 2.7.14
+# ============ End installing same deps for python3 ============
+
 
 # Customize vim
 RUN mkdir -p ~/.vim/autoload ~/.vim/bundle && \
@@ -34,11 +74,6 @@ RUN wget https://cmake.org/files/v3.11/cmake-3.11.3-Linux-x86_64.tar.gz -P /tmp/
     rm -f /tmp/cmake-3.11.3-Linux-x86_64.tar.gz
 
 # mace-dev-lite image already included NDK r15c
-## Download other NDK r12b
-RUN cd /opt/ && \
-    wget -q https://dl.google.com/android/repository/android-ndk-r12b-linux-x86_64.zip && \
-    unzip -q android-ndk-r12b-linux-x86_64.zip && \
-    rm -f android-ndk-r12b-linux-x86_64.zip
 ## Download other NDK r16
 RUN cd /opt/ && \
     wget -q https://dl.google.com/android/repository/android-ndk-r16-linux-x86_64.zip && \
