@@ -229,20 +229,6 @@ GPUType ParseGPUType(const std::string &device_name) {
   }
 }
 
-std::string FindFirstExistPath(const std::vector<std::string> &paths) {
-  std::string result;
-  struct stat st;
-  for (auto path : paths) {
-    if (stat(path.c_str(), &st) == 0) {
-      if (S_ISREG(st.st_mode)) {
-        result = path;
-        break;
-      }
-    }
-  }
-  return result;
-}
-
 const char *kOpenCLPlatformInfoKey =
     "mace_opencl_precompiled_platform_info_key";
 }  // namespace
