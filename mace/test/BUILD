@@ -120,3 +120,35 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "device_capability_api_test",
+    testonly = 1,
+    srcs = ["device_capability_api_test.cc"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
+        "-fopenmp"
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    linkopts = ["-fopenmp"],
+    linkstatic = 1,
+    deps = [
+        "//mace/ops:test",
+        "//mace/libmace:libmace",
+        "@gtest//:gtest_main",
+    ],
+)
