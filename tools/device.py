@@ -192,6 +192,14 @@ class DeviceWrapper:
         if model_graph_format == ModelFormat.file:
             mace_model_path = layers_validate_file if layers_validate_file \
                 else "%s/%s.pb" % (mace_model_dir, model_tag)
+
+        model_data_file = ""
+        if not embed_model_data:
+            if self.system == SystemType.host:
+                model_data_file = "%s/%s.data" % (mace_model_dir, model_tag)
+            else:
+                model_data_file = "%s/%s.data" % (self.data_dir, model_tag)
+
         if self.system == SystemType.host:
             libmace_dynamic_lib_path = \
                 os.path.dirname(libmace_dynamic_library_path)
@@ -214,8 +222,7 @@ class DeviceWrapper:
                                              output_file_name),
                     "--input_dir=%s" % input_dir,
                     "--output_dir=%s" % output_dir,
-                    "--model_data_file=%s/%s.data" % (mace_model_dir,
-                                                      model_tag),
+                    "--model_data_file=%s" % model_data_file,
                     "--device=%s" % device_type,
                     "--round=%s" % running_round,
                     "--restart_round=%s" % restart_round,
@@ -229,7 +236,7 @@ class DeviceWrapper:
                 stdout=subprocess.PIPE)
             out, err = p.communicate()
             self.stdout = err + out
-            six.print_(self.stdout)
+            six.print_(self.stdout.decode('UTF-8'))
             six.print_("Running finished!\n")
         elif self.system in [SystemType.android, SystemType.arm_linux]:
             self.rm(self.data_dir)
@@ -304,7 +311,7 @@ class DeviceWrapper:
                 "--output_file=%s/%s" % (self.data_dir, output_file_name),
                 "--input_dir=%s" % input_dir,
                 "--output_dir=%s" % output_dir,
-                "--model_data_file=%s/%s.data" % (self.data_dir, model_tag),
+                "--model_data_file=%s" % model_data_file,
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
                 "--restart_round=%s" % restart_round,
@@ -753,6 +760,14 @@ class DeviceWrapper:
         mace_model_path = ''
         if model_graph_format == ModelFormat.file:
             mace_model_path = '%s/%s.pb' % (mace_model_dir, model_tag)
+
+        model_data_file = ""
+        if not embed_model_data:
+            if self.system == SystemType.host:
+                model_data_file = "%s/%s.data" % (mace_model_dir, model_tag)
+            else:
+                model_data_file = "%s/%s.data" % (self.data_dir, model_tag)
+
         if abi == ABIType.host:
             libmace_dynamic_lib_dir_path = \
                 os.path.dirname(libmace_dynamic_library_path)
@@ -768,8 +783,7 @@ class DeviceWrapper:
                     '--input_shape=%s' % ':'.join(input_shapes),
                     '--output_shape=%s' % ':'.join(output_shapes),
                     '--input_file=%s/%s' % (model_output_dir, input_file_name),
-                    '--model_data_file=%s/%s.data' % (mace_model_dir,
-                                                      model_tag),
+                    "--model_data_file=%s" % model_data_file,
                     '--device=%s' % device_type,
                     '--omp_num_threads=%s' % omp_num_threads,
                     '--cpu_affinity_policy=%s' % cpu_affinity_policy,
@@ -822,7 +836,7 @@ class DeviceWrapper:
                 '--input_shape=%s' % ':'.join(input_shapes),
                 '--output_shape=%s' % ':'.join(output_shapes),
                 '--input_file=%s/%s' % (self.data_dir, input_file_name),
-                '--model_data_file=%s/%s.data' % (self.data_dir, model_tag),
+                "--model_data_file=%s" % model_data_file,
                 '--device=%s' % device_type,
                 '--omp_num_threads=%s' % omp_num_threads,
                 '--cpu_affinity_policy=%s' % cpu_affinity_policy,
