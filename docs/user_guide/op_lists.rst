@@ -20,7 +20,7 @@ Operator lists
     "DEPTHWISE_CONV_2D","Y","Only multiplier = 1 is supported; Fusion is supported."
     "DEPTH_TO_SPACE","Y",""
     "DEQUANTIZE","Y","Model quantization will be supported later."
-    "ELEMENT_WISE","Y","ADD/MUL/DIV/MIN/MAX/NEG/ABS/SQR_DIFF/POW/RSQRT/EQUAL"
+    "ELEMENT_WISE","Y","ADD/MUL/DIV/MIN/MAX/NEG/ABS/SQR_DIFF/POW/RSQRT/SQRT/EQUAL"
     "EMBEDDING_LOOKUP","Y",""
     "EXPANDDIMS","Y","Only CPU and TensorFlow is supported."
     "FILL","Y","Only CPU and TensorFlow is supported."
