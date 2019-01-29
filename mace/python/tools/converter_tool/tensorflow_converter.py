@@ -112,6 +112,7 @@ TFSupportedOps = [
     'ArgMax',
     'Split',
     'FakeQuantWithMinMaxVars',
+    'FloorDiv',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -183,6 +184,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Abs.name: EltwiseType.ABS,
         TFOpType.Pow.name: EltwiseType.POW,
         TFOpType.RealDiv.name: EltwiseType.DIV,
+        TFOpType.FloorDiv.name: EltwiseType.FLOOR_DIV,
         TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
         TFOpType.Square.name: EltwiseType.POW,
         TFOpType.Rsqrt.name: EltwiseType.POW,
@@ -260,6 +262,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.Split.name: self.convert_split,
             TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
+            TFOpType.FloorDiv.name: self.convert_elementwise,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()

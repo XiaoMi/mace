@@ -224,6 +224,10 @@ TEST_F(EltwiseOpTest, CPUSimpleScalarScalar) {
   SimpleScalarScalar<DeviceType::CPU, float, float>(
       ops::EltwiseType::DIV, 1, 2, 0.5);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, 1, 2, 0);
+  SimpleScalarScalar<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, 1, -2, -1);
+  SimpleScalarScalar<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, 1, 2, 1);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
       ops::EltwiseType::MAX, 1, 2, 2);
@@ -249,6 +253,12 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorScalar) {
   SimpleTensorScalar<DeviceType::CPU, float, float>(
       ops::EltwiseType::DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 2,
       {1, 2, 3, 4, 5, 6});
+  SimpleTensorScalar<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 3,
+      {0, 1, 2, 2, 3, 4});
+  SimpleTensorScalar<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, -3,
+      {-1, -2, -2, -3, -4, -4});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {1, 1, 1, 1, 1, 1});
@@ -281,6 +291,12 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorScalar) {
   SimpleTensorScalar<DeviceType::GPU, float, float>(
       ops::EltwiseType::DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 2,
       {1, 2, 3, 4, 5, 6});
+  SimpleTensorScalar<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 3,
+      {0, 1, 2, 2, 3, 4});
+  SimpleTensorScalar<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, -3,
+      {-1, -2, -2, -3, -4, -4});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
       ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {1, 1, 1, 1, 1, 1});
@@ -315,8 +331,24 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
       ops::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 1, 1, 1, 5}, {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
-      {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
+    ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+    {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV,
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {1, 1, 1, 5}, {2, 2, 2, 2, 3}, {0, 1, 1, 2, 1, 3, 3, 4, 4, 3});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV,
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {1, 1, 1, 5}, {-2, -2, -2, -2, -3},
+      {-1, -1, -2, -2, -2, -3, -4, -4, -5, -4});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {2, 2, 2, 3, 3, 2, 2, 2, 2, 2}, {0, 0, 0, 0, 1, 0, 0, 0, 1, 2});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {-2, -2, -2, -3, -3, -2, -2, -2, -2, -2},
+      {-1, -1, -1, -1, -2, -1, -1, -1, -1, -2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
@@ -349,6 +381,21 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::DIV, {5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
       {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV,
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {5}, {2, 2, 2, 2, 3}, {0, 1, 1, 2, 1, 3, 3, 4, 4, 3});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV,
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {5}, {-2, -2, -2, -2, -3}, {-1, -1, -2, -2, -2, -3, -4, -4, -5, -4});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {2, 2, 2, 3, 3, 2, 2, 2, 2, 2}, {0, 0, 0, 0, 1, 0, 0, 0, 1, 2});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {-2, -2, -2, -3, -3, -2, -2, -2, -2, -2},
+      {-1, -1, -1, -1, -2, -1, -1, -1, -1, -2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
@@ -383,6 +430,22 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorVector) {
       ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
       {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV,
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {1, 1, 1, 5}, {2, 2, 2, 2, 3}, {0, 1, 1, 2, 1, 3, 3, 4, 4, 3});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV,
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {1, 1, 1, 5}, {-2, -2, -2, -2, -3},
+      {-1, -1, -2, -2, -2, -3, -4, -4, -5, -4});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {2, 2, 2, 3, 3, 2, 2, 2, 2, 2}, {0, 0, 0, 0, 1, 0, 0, 0, 1, 2});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {-2, -2, -2, -3, -3, -2, -2, -2, -2, -2},
+      {-1, -1, -1, -1, -2, -1, -1, -1, -1, -2});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
       ops::EltwiseType::MIN, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
@@ -410,6 +473,12 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorTensor) {
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::DIV, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 1, 1, 1, 1, 1});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 2, 1, 3}, {2, 3, 4, 5, 6, 7},
+      {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {2, 1, 1, 1, 1, 1});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 2, 1, 3}, {-2, -3, -4, -5, -6, -7},
+      {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {-2, -2, -2, -2, -2, -2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
@@ -442,6 +511,12 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorTensor) {
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
       ops::EltwiseType::DIV, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 1, 1, 1, 1, 1});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 2, 1, 3}, {2, 3, 4, 5, 6, 7},
+      {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {2, 1, 1, 1, 1, 1});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 2, 1, 3}, {-2, -3, -4, -5, -6, -7},
+      {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {-2, -2, -2, -2, -2, -2});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
       ops::EltwiseType::MIN, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
@@ -768,6 +843,12 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcastCPU) {
       ops::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 2, 2.5, 3});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {2, 3}, {1, 1, 2, 3}, {0, 1, 1, 1, 1, 2});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {-2, -3}, {1, 1, 2, 3}, {-1, -1, -2, -2, -2, -2});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 1, 1, 2, 2, 2});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
@@ -794,6 +875,12 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcastGPU) {
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
       ops::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 2, 2.5, 3});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {2, 3}, {1, 1, 2, 3}, {0, 1, 1, 1, 1, 2});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {-2, -3}, {1, 1, 2, 3}, {-1, -1, -2, -2, -2, -2});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
       ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 1, 1, 2, 2, 2});

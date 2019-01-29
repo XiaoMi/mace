@@ -136,6 +136,23 @@ inline void TensorGeneralBroadcastEltwise(
         }
       }
       break;
+    case FLOOR_DIV:
+      if (!swapped) {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = std::floor(input0[idx0] / input1[idx1]);
+          IncreaseIndex(output_shape, &out_index);
+        }
+      } else {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = std::floor(input1[idx1] / input0[idx0]);
+          IncreaseIndex(output_shape, &out_index);
+        }
+      }
+      break;
     case MIN:
       for (index_t i = 0; i < output_size; ++i) {
         const index_t idx0 = GetIndex(input0_shape, out_index);
@@ -266,6 +283,25 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
                 input1[i] / input0[i + d * common_size];
+          }
+        }
+      }
+      break;
+    case FLOOR_DIV:
+      if (!swapped) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                std::floor(input0[i + d * common_size] / input1[i]);
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2) schedule(runtime)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                std::floor(input1[i] / input0[i + d * common_size]);
           }
         }
       }
@@ -405,6 +441,19 @@ inline void TensorEltwise(const EltwiseType type,
         }
       }
       break;
+    case FLOOR_DIV:
+      if (!swapped) {
+#pragma omp parallel for schedule(runtime)
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::floor(input0[i] / input1[i]);
+        }
+      } else {
+#pragma omp parallel for schedule(runtime)
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::floor(input1[i] / input0[i]);
+        }
+      }
+      break;
     case MIN:
 #pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
@@ -522,6 +571,19 @@ inline void TensorScalarEltwise(const EltwiseType type,
 #pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input1 / input0[i];
+        }
+      }
+      break;
+    case FLOOR_DIV:
+      if (!swapped) {
+#pragma omp parallel for schedule(runtime)
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::floor(input0[i] / input1);
+        }
+      } else {
+#pragma omp parallel for schedule(runtime)
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::floor(input1 / input0[i]);
         }
       }
       break;
@@ -689,6 +751,33 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = in1_ptr[c] / in0_ptr[i];
+            }
+          }
+        }
+      }
+      break;
+    case FLOOR_DIV:
+      if (!swapped) {
+#pragma omp parallel for collapse(2) schedule(runtime)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = std::floor(in0_ptr[i] / in1_ptr[c]);
+            }
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2) schedule(runtime)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = std::floor(in1_ptr[c] / in0_ptr[i]);
             }
           }
         }

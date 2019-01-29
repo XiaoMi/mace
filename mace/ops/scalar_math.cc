@@ -58,6 +58,10 @@ void ScalarEltwise(const T* in0,
       else
         out[0] = in0[0] / in1[0];
       break;
+    case FLOOR_DIV:
+      out[0] = std::floor(swapped ? in1[0] / in0[0] :
+                                    in0[0] / in1[0]);
+      break;
     case MIN:
       out[0] = std::min(in1[0], in0[0]);
       break;

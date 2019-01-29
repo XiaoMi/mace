@@ -64,6 +64,10 @@ TEST_F(ScalarMathOpTest, SimpleCPU) {
   ScalarMathTest<DeviceType::CPU, float, float>(
       ops::EltwiseType::DIV, 3, -2, 1, -1.5);
   ScalarMathTest<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, 3, -2, 1, -2);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      ops::EltwiseType::FLOOR_DIV, 3, 2, 1, 1);
+  ScalarMathTest<DeviceType::CPU, float, float>(
       ops::EltwiseType::MIN, 3, -2, 1, -2);
   ScalarMathTest<DeviceType::CPU, float, float>(
       ops::EltwiseType::MAX, 3, -2, 1, 3);

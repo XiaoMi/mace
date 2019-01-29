@@ -81,6 +81,12 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   #else
     out = pow(in0, in1);
   #endif
+#elif ELTWISE_TYPE == 11
+  #ifdef SWAPPED
+    out = floor(in1 / in0);
+  #else
+    out = floor(in0 / in1);
+  #endif
 #endif
 
 #if INPUT_TYPE == 1 || INPUT_TYPE == 4
