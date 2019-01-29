@@ -29,29 +29,42 @@ MACE supports post-training quantization if you want to take a chance to quantiz
 This method requires developer to calculate tensor range of each activation layer statistically using sample inputs.
 MACE provides tools to do statistics with following steps:
 
-	1. Convert original model to run on CPU host without obfuscation (by setting `target_abis` to `host`, `runtime` to `cpu`, and `obfuscate` to `0`, appending `:0` to `output_tensors` if missing in yaml config).
-	E.g.,
+	1. Convert original model to run on CPU host without obfuscation (by setting `target_abis` to `host`, `runtime` to `cpu`,
+	and `obfuscate` to `0`, appending `:0` to `output_tensors` if missing in yaml config). E.g.,
 
 	.. code:: sh
 
 		python tools/converter.py convert --config ../mace-models/inception-v3/inception-v3.yml
 
 
-	2. Log tensor range of each activation layer by inferring several samples.
+	2. Log tensor range of each activation layer by inferring several samples on CPU host. Sample inputs should be
+	representative to calculate the ranges of each layer properly.
 
 	.. code:: sh
 
-		python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml --example --quantize_stat --input_dir samples > range_log
+		# convert images to input tensors for MACE
+		python tools/image/image_to_tensor.py --input /path/to/directory/of/input/images
+			--output_dir /path/to/directory/of/input/tensors --image_shape=299,299,3
+
+		# rename input tensors to start with input tensor name
+		rename 's/^/input/' *
+
+		# run with input tensors
+		python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml --example
+			--quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
 
 
-	3. Calculate overall range of each activation layer by specifying percentage cutoff.
+	3. Calculate overall range of each activation layer. You may specify `--percentile` or `--enhance` and `--enhance_ratio`
+	to try different ranges and see which is better. Experimentation shows that the default `percentile` and `enhance_ratio`
+	works fine for several common models.
 
 	.. code:: sh
 
-		python mace/python/tools/quantization/quantize_stat.py --log_file range_log --percentile 5 > overall_range
+		python mace/python/tools/quantization/quantize_stat.py --log_file range_log > overall_range
 
 
-	4. Convert quantized model (by setting `quantize` to `1` and `quantize_range_file` to the overall_range file path in yaml config).
+	4. Convert quantized model (by setting `target_abis` to the final target abis, e.g., `armeabi-v7a`,
+	`quantize` to `1` and `quantize_range_file` to the overall_range file path in yaml config).
 
 
 .. note::
