@@ -1282,6 +1282,16 @@ def parse_args():
         parents=[all_type_parent_parser, run_bm_parent_parser],
         help='benchmark model for detail information')
     benchmark.set_defaults(func=benchmark_model)
+    benchmark.add_argument(
+        "--max_num_runs",
+        type=int,
+        default=100,
+        help="max number of runs.")
+    benchmark.add_argument(
+        "--max_seconds",
+        type=float,
+        default=10.0,
+        help="max number of seconds to run.")
     return parser.parse_known_args()
 
 
