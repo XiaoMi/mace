@@ -23,7 +23,7 @@
 #include "mace/ops/opencl/image/buffer_to_image.h"
 #include "mace/ops/opencl/image/image_to_buffer.h"
 #include "mace/ops/opencl/buffer/buffer_transform.h"
-#include "mace/ops/transpose.h"
+#include "mace/ops/common/transpose.h"
 
 namespace mace {
 namespace ops {

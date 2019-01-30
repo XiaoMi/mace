@@ -30,7 +30,7 @@
 #include "mace/ops/arm/conv_2d_neon.h"
 #include "mace/ops/arm/conv_winograd.h"
 #include "mace/ops/conv_pool_2d_base.h"
-#include "mace/ops/conv_pool_2d_util.h"
+#include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_QUANTIZE

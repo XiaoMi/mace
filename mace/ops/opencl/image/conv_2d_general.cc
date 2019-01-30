@@ -15,7 +15,7 @@
 #include "mace/core/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/ops/opencl/helper.h"
-#include "mace/ops/activation.h"
+#include "mace/ops/common/activation_type.h"
 #include "mace/utils/utils.h"
 
 namespace mace {

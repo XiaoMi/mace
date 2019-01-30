@@ -12,36 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_POOLING_H_
-#define MACE_OPS_OPENCL_POOLING_H_
-
-#include <vector>
-
-#include "mace/ops/pooling.h"
-#include "mace/ops/common/conv_pool_2d_util.h"
+#ifndef MACE_OPS_COMMON_ACTIVATION_TYPE_H_
+#define MACE_OPS_COMMON_ACTIVATION_TYPE_H_
 
 namespace mace {
-
-class OpContext;
-class Tensor;
 namespace ops {
-class OpenCLPoolingKernel {
- public:
-  virtual MaceStatus Compute(
-      OpContext *context,
-      const Tensor *input,
-      const PoolingType pooling_type,
-      const int *kernels,
-      const int *strides,
-      const Padding &padding_type,
-      const std::vector<int> &padding_data,
-      const int *dilations,
-      const RoundType round_type,
-      Tensor *output) = 0;
-  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLPoolingKernel);
+
+enum ActivationType {
+  NOOP = 0,
+  RELU = 1,
+  RELUX = 2,
+  PRELU = 3,
+  TANH = 4,
+  SIGMOID = 5,
+  LEAKYRELU = 6,
 };
 
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_POOLING_H_
+#endif  // MACE_OPS_COMMON_ACTIVATION_TYPE_H_

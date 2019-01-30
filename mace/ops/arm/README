@@ -1,0 +1,15 @@
+# Notes for Contributors and Roadmap
+
+We are going to refactor and optimize ARM related kernels one step at a time.
+
+The code structure will be organized as that kernels for each data type are separated.
+By this way, they are independent to each other and can be linked and shipped as a submodule,
+and it saves us from writing macro boilerplate. The reason we do not use a unified header file for each kernel
+is that we are not forcing developers to use exact same interface for kernels of different data types at this level,
+although doing this is recommended if convenient to do so. A reference version is put right in `ops` directory to be used
+as non-NEON kernels, which are not separated for different data types for simplicity.
+
+Although interface is kept flexible and can be defined according to demand,
+input/output parameters should be of `Tensor` type instead of raw pointer, as
+`Tensor` has more information kernel might use.
+

@@ -21,7 +21,6 @@
 #include "public/gemmlowp.h"
 #include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/ops/gemm.h"
 #include "mace/ops/sgemm.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -96,19 +95,6 @@ namespace test {
 namespace {
 
 // Matmul with (m, k) x (k, n)
-void MatmulBenchmark_Mace(int iters, int m, int k, int n) {
-  mace::testing::StopTiming();
-  std::vector<float> lhs(m * k);
-  std::vector<float> rhs(k * n);
-  std::vector<float> result(m * n);
-  // warm up
-  Gemm(lhs.data(), rhs.data(), 1, m, k, n, result.data());
-  mace::testing::StartTiming();
-  while (iters--) {
-    Gemm(lhs.data(), rhs.data(), 1, m, k, n, result.data());
-  }
-}
-
 void MatmulBenchmark_Mace_SGemm(int iters, int m, int k, int n) {
   mace::testing::StopTiming();
   std::vector<float> lhs(m * k);
@@ -234,7 +220,6 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
   MACE_BENCHMARK(MACE_BM_MATMUL_##M##_##K##_##N##_##FUNC)
 
 #define MACE_BM_MATMUL(M, K, N)                          \
-  MACE_BM_MATMUL_FUNC(M, K, N, Mace, float);             \
   MACE_BM_MATMUL_FUNC(M, K, N, Mace_SGemm, float);       \
   MACE_BM_MATMUL_FUNC(M, K, N, Eigen, float);            \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_uint8, uint8_t); \
@@ -307,6 +292,7 @@ void MatMulBenchmark(
       .Input("A")
       .Input("B")
       .Output("Output")
+      .OutputType({DT_INT32})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
@@ -408,7 +394,7 @@ void MatMulTransposeBenchmark(
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 
-MACE_BM_MATMUL_OP(1, 128, 128, 49);
+MACE_BM_MATMUL_OP(1, 30000, 256, 1);
 MACE_BM_MATMUL_OP(2, 128, 128, 49);
 MACE_BM_MATMUL_OP(3, 128, 128, 49);
 MACE_BM_MATMUL_OP(4, 128, 128, 49);

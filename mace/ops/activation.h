@@ -20,21 +20,12 @@
 #include <string>
 
 #include "mace/core/types.h"
+#include "mace/ops/common/activation_type.h"
 #include "mace/ops/arm/activation_neon.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
 namespace ops {
-
-enum ActivationType {
-  NOOP = 0,
-  RELU = 1,
-  RELUX = 2,
-  PRELU = 3,
-  TANH = 4,
-  SIGMOID = 5,
-  LEAKYRELU = 6,
-};
 
 inline ActivationType StringToActivationType(const std::string type) {
   if (type == "RELU") {

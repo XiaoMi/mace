@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/ops/activation.h"
+#include "mace/ops/common/activation_type.h"
 
 namespace mace {
 

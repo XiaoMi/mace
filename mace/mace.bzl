@@ -42,6 +42,12 @@ def if_neon_enabled(a):
       "//conditions:default": [],
   })
 
+def if_neon_enabled_str(a):
+  return select({
+      "//mace:neon_enabled": a,
+      "//conditions:default": "",
+  })
+
 def if_hexagon_enabled(a):
   return select({
       "//mace:hexagon_enabled": a,

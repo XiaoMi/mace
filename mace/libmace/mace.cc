@@ -26,7 +26,7 @@
 #include "mace/core/memory_optimizer.h"
 #include "mace/core/net.h"
 #include "mace/ops/ops_registry.h"
-#include "mace/ops/transpose.h"
+#include "mace/ops/common/transpose.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
