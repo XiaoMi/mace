@@ -331,8 +331,8 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
       ops::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 1, 1, 1, 5}, {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-    ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
-    {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
+      ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
       ops::EltwiseType::FLOOR_DIV,
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
