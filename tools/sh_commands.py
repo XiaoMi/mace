@@ -641,6 +641,7 @@ def validate_model(abi,
                    device,
                    model_file_path,
                    weight_file_path,
+                   docker_image_tag,
                    dockerfile_path,
                    platform,
                    device_type,
@@ -684,8 +685,8 @@ def validate_model(abi,
                  validation_threshold, ",".join(input_data_types), backend,
                  log_file)
     elif platform == "caffe":
-        image_name = "mace-caffe:latest"
-        container_name = "mace_caffe_validator"
+        image_name = "mace-caffe:" + docker_image_tag
+        container_name = "mace_caffe_" + docker_image_tag + "_validator"
 
         if caffe_env == common.CaffeEnvType.LOCAL:
             try:

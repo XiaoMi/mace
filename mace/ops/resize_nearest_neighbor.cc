@@ -78,6 +78,7 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     const Tensor *size = this->Input(1);
+    Tensor::MappingGuard size_mapper(size);
     Tensor *output = this->Output(0);
 
     MACE_CHECK(input->dim_size() == 4 && size->dim_size() == 1,
@@ -95,7 +96,6 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
     Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard size_mapper(size);
     Tensor::MappingGuard output_mapper(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
