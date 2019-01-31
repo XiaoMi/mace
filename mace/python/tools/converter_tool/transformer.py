@@ -369,10 +369,10 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         for op in net.op:
             if op.type == MaceOp.Eltwise.name and len(op.input) == 2:
-                elttype = ConverterUtil.get_arg(
+                elt_type = ConverterUtil.get_arg(
                     op,
                     MaceKeyword.mace_element_type_str).i
-                if elttype == EltwiseType.SQR_DIFF.value and\
+                if elt_type == EltwiseType.SQR_DIFF.value and\
                         self.consumer_count(op.output[0]) == 1:
                     consumer_op = self._consumers[op.output[0]][0]
                     if consumer_op.type == MaceOp.Reduce.name:
@@ -385,7 +385,7 @@ class Transformer(base_converter.ConverterInterface):
                         reduce_type = ConverterUtil.get_arg(
                             consumer_op,
                             MaceKeyword.mace_reduce_type_str).i
-                        if reduce_type == ReduceType.MEAN and\
+                        if reduce_type == ReduceType.MEAN.value and\
                                 len(consumer_op.input) == 1 and\
                                 axis[0] == 1 and axis[1] == 2 and\
                                 keep_dims > 0:
