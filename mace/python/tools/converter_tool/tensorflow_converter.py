@@ -91,6 +91,7 @@ TFSupportedOps = [
     'Softmax',
     'ResizeBicubic',
     'ResizeBilinear',
+    'ResizeNearestNeighbor',
     'Placeholder',
     'SpaceToBatchND',
     'BatchToSpaceND',
@@ -239,6 +240,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Softmax.name: self.convert_softmax,
             TFOpType.ResizeBicubic.name: self.convert_resize_bicubic,
             TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
+            TFOpType.ResizeNearestNeighbor.name: self.convert_resize_nearest_neighbor,  # noqa
             TFOpType.Placeholder.name: self.convert_nop,
             TFOpType.SpaceToBatchND.name: self.convert_space_batch,
             TFOpType.BatchToSpaceND.name: self.convert_space_batch,
@@ -659,8 +661,15 @@ class TensorflowConverter(base_converter.ConverterInterface):
         align_corners_arg.name = MaceKeyword.mace_align_corners_str
         align_corners_arg.i = tf_op.get_attr(tf_align_corners)
 
-    def convert_space_batch(self, tf_op):
+    def convert_resize_nearest_neighbor(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.ResizeNearestNeighbor.name
 
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
+
+    def convert_space_batch(self, tf_op):
         op = self.convert_general_op(tf_op)
         del op.input[1:]
 
