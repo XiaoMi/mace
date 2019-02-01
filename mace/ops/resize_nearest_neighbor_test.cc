@@ -107,9 +107,7 @@ void TestRandomResizeNearestNeighbor() {
                                  {batch, in_height, in_width, channels});
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
-    net.AddInputFromArray<D, int32_t>("Size",
-                                 {2}, size);
-
+    net.AddInputFromArray<D, int32_t>("Size", {2}, size);
     OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
         .Input("InputNCHW")
         .Input("Size")

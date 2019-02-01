@@ -94,9 +94,7 @@ MaceStatus ResizeNearestNeighborKernel<T>::Compute(
   const index_t in_height = input->dim(1);
   const index_t in_width = input->dim(2);
   const index_t channels = input->dim(3);
-  Tensor::MappingGuard input_mapper(input);
   Tensor::MappingGuard size_mapper(size);
-  Tensor::MappingGuard output_mapper(output);
   const index_t out_height = size->data<int32_t>()[0];
   const index_t out_width = size->data<int32_t>()[1];
   const index_t channel_blocks = RoundUpDiv4(channels);
