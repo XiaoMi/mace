@@ -348,9 +348,10 @@ class Tensor {
       MACE_CHECK(image_shape[0] <= buffer_->shape()[0] &&
                      image_shape[1] <= buffer_->shape()[1],
                  "tensor (source op ", name_,
-                 "): current physical image shape: ", buffer_->shape()[0],
-                 ", ", buffer_->shape()[1], " < logical image shape: ",
-                 image_shape[0], ", ", image_shape[1]);
+                 "): current logical image shape:",
+                 image_shape[0], ", ", image_shape[1],
+                 " > physical image shape: ",
+                 buffer_->shape()[0], ", ", buffer_->shape()[1]);
       return MaceStatus::MACE_SUCCESS;
     }
   }
