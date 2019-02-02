@@ -20,12 +20,18 @@
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
-#include "mace/ops/gemm.h"
+
+#ifdef MACE_ENABLE_NEON
+
+#include "mace/ops/arm/fp32/gemv.h"
 
 #ifdef MACE_ENABLE_QUANTIZE
-#include "mace/ops/gemmlowp_util.h"
-#include "mace/ops/quantization_util.h"
+#include "mace/ops/arm/q8/gemv.h"
 #endif  // MACE_ENABLE_QUANTIZE
+
+#else
+#include "mace/ops/ref/gemv.h"
+#endif  // MACE_ENABLE_NEON
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -41,10 +47,10 @@ class FullyConnectedOpBase : public Operation {
       : Operation(context),
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
-                                                  "NOOP"))),
+                                                   "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
         leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-              "leakyrelu_coefficient", 0.0f)) {}
+            "leakyrelu_coefficient", 0.0f)) {}
  protected:
   const ActivationType activation_;
   const float relux_max_limit_;
@@ -54,10 +60,10 @@ class FullyConnectedOpBase : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class FullyConnectedOp;
 
-template <>
+template<>
 class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
@@ -84,38 +90,37 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
     }
     std::vector<index_t> output_shape = {input->dim(0), weight->dim(0), 1, 1};
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    const index_t N = output->dim(0);
+    const index_t batch = output->dim(0);
     const index_t input_size = weight->dim(1) * weight->dim(2) * weight->dim(3);
     const index_t output_size = weight->dim(0);
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_weight(weight);
+    gemv_.Compute(context,
+                  weight,
+                  input,
+                  bias,
+                  batch,
+                  output_size,
+                  input_size,
+                  false,
+                  output);
     Tensor::MappingGuard guard_output(output);
-    const float *input_ptr = input->data<float>();
-    const float *weight_ptr = weight->data<float>();
     float *output_ptr = output->mutable_data<float>();
-
-    Gemv(weight_ptr, input_ptr, N, input_size, output_size, output_ptr);
-
-    if (bias) {
-      Tensor::MappingGuard guard_bias(bias);
-      const float *bias_ptr = bias == nullptr ? nullptr : bias->data<float>();
-      for (int i = 0; i < N; ++i) {
-        for (int j = 0; j < output_size; ++j) {
-          output_ptr[j + i * output_size] += bias_ptr[j];
-        }
-      }
-    }
-
     DoActivation(output_ptr, output_ptr, output->size(), activation_,
                  relux_max_limit_, leakyrelu_coefficient_);
 
     return MaceStatus::MACE_SUCCESS;
   }
+
+ private:
+#ifdef MACE_ENABLE_NEON
+  arm::fp32::Gemv gemv_;
+#else
+  ref::Gemv<float> gemv_;
+#endif  // MACE_ENABLE_NEON
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
-template <>
+template<>
 class FullyConnectedOp<DeviceType::CPU, uint8_t>
     : public FullyConnectedOpBase {
  public:
@@ -145,44 +150,28 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
 
     std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    const int N = static_cast<int>(output->dim(0));
+    const int batch = static_cast<int>(output->dim(0));
     const int input_size =
         static_cast<int>(weight->dim(1) * weight->dim(2) * weight->dim(3));
     const int output_size = static_cast<int>(weight->dim(0));
-
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_weight(weight);
-    Tensor::MappingGuard guard_output(output);
-    auto input_ptr = input->data<uint8_t>();
-    auto weight_ptr = weight->data<uint8_t>();
-    auto output_ptr = output->mutable_data<uint8_t>();
-    auto bias_ptr = GetBiasData(bias,
-                                input->scale(),
-                                weight->scale(),
-                                output_size,
-                                &bias_);
-
-    gemmlowp::MatrixMap<const uint8_t, gemmlowp::MapOrder::RowMajor>
-        weight_matrix(weight_ptr, output_size, input_size);
-    gemmlowp::MatrixMap<const uint8_t, gemmlowp::MapOrder::ColMajor>
-        input_matrix(input_ptr, input_size, N);
-    gemmlowp::MatrixMap<uint8_t, gemmlowp::MapOrder::ColMajor>
-        output_matrix(output_ptr, output_size, N);
-
-    const auto &output_pipeline = GemmlowpOutputPipeline::Make(
-        bias_ptr, output_size, weight->scale(), input->scale(), output->scale(),
-        output->zero_point());
-
-    using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
-    gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
-        gemm_context, weight_matrix, input_matrix, &output_matrix,
-        -weight->zero_point(), -input->zero_point(), output_pipeline);
-
+    gemv_.Compute(context,
+                  weight,
+                  input,
+                  bias,
+                  batch,
+                  output_size,
+                  input_size,
+                  false,
+                  output);
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-  std::vector<int32_t> bias_;
+#ifdef MACE_ENABLE_NEON
+  ::mace::ops::arm::q8::Gemv<uint8_t> gemv_;
+#else
+  ref::Gemv<uint8_t> gemv_;
+#endif  // MACE_ENABLE_NEON
 };
 #endif  // MACE_ENABLE_QUANTIZE
 

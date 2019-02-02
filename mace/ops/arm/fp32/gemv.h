@@ -12,36 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_POOLING_H_
-#define MACE_OPS_OPENCL_POOLING_H_
+#ifndef MACE_OPS_ARM_FP32_GEMV_H_
+#define MACE_OPS_ARM_FP32_GEMV_H_
 
-#include <vector>
-
-#include "mace/ops/pooling.h"
-#include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/public/mace.h"
+#include "mace/core/tensor.h"
+#include "mace/core/op_context.h"
 
 namespace mace {
-
-class OpContext;
-class Tensor;
 namespace ops {
-class OpenCLPoolingKernel {
+namespace arm {
+namespace fp32 {
+
+class Gemv {
  public:
-  virtual MaceStatus Compute(
-      OpContext *context,
-      const Tensor *input,
-      const PoolingType pooling_type,
-      const int *kernels,
-      const int *strides,
-      const Padding &padding_type,
-      const std::vector<int> &padding_data,
-      const int *dilations,
-      const RoundType round_type,
-      Tensor *output) = 0;
-  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLPoolingKernel);
+  Gemv() {}
+  ~Gemv() {}
+  // Always row-major after transpose
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *lhs,
+      const Tensor *rhs,
+      const Tensor *bias,
+      const index_t batch,
+      const index_t lhs_height,
+      const index_t lhs_width,
+      const bool lhs_batched,
+      Tensor *output);
 };
 
+}  // namespace fp32
+}  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_POOLING_H_
+#endif  // MACE_OPS_ARM_FP32_GEMV_H_

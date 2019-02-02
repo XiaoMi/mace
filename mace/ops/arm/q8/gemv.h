@@ -12,22 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_TRANSPOSE_H_
-#define MACE_OPS_TRANSPOSE_H_
-
-#include <vector>
+#ifndef MACE_OPS_ARM_Q8_GEMV_H_
+#define MACE_OPS_ARM_Q8_GEMV_H_
 
 #include "mace/public/mace.h"
+#include "mace/core/tensor.h"
+#include "mace/core/op_context.h"
 
 namespace mace {
 namespace ops {
+namespace arm {
+namespace q8 {
 
-MaceStatus Transpose(const float *input,
-                     const std::vector<int64_t> &input_shape,
-                     const std::vector<int> &dst_dims,
-                     float *output);
+template<typename OUTPUT_TYPE>
+class Gemv {
+ public:
+  Gemv() {}
+  ~Gemv() {}
+  // Always row-major after transpose
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *lhs,
+      const Tensor *rhs,
+      const Tensor *bias,
+      const index_t batch,
+      const index_t lhs_height,
+      const index_t lhs_width,
+      const bool lhs_batched,
+      Tensor *output);
+};
 
+}  // namespace q8
+}  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_TRANSPOSE_H_
+#endif  // MACE_OPS_ARM_Q8_GEMV_H_

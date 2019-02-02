@@ -23,7 +23,7 @@ namespace test {
 class MatMulOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template<DeviceType D>
 void Simple(const std::vector<index_t> &A_shape,
             const std::vector<float> &A_value,
             const std::vector<index_t> &B_shape,
@@ -55,12 +55,12 @@ TEST_F(MatMulOpTest, SimpleCPU) {
   Simple<DeviceType::CPU>({1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 3, 2},
                           {1, 2, 3, 4, 5, 6}, {1, 2, 2}, {22, 28, 49, 64});
   Simple<DeviceType::CPU>(
-      {1, 5, 5}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+      {1, 5, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 5, 5}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+      {1, 5, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 5, 5}, {215,  230,  245,  260,  275,  490,  530,  570,  610,
-                  650,  765,  830,  895,  960,  1025, 1040, 1130, 1220,
+      {1, 5, 5}, {215, 230, 245, 260, 275, 490, 530, 570, 610,
+                  650, 765, 830, 895, 960, 1025, 1040, 1130, 1220,
                   1310, 1400, 1315, 1430, 1545, 1660, 1775});
 }
 
@@ -288,9 +288,6 @@ TEST_F(MatMulOpTest, QuantOutputInt32) {
   QuantOutputInt32({1}, 1, 30001, 253, false, true);
   QuantOutputInt32({2}, 253, 300, 1, false, false);
 }
-
-// TODO(liyin): test transpose after implementing gpu runtime
-// now transpose test is in kernels_test
 
 }  // namespace test
 }  // namespace ops

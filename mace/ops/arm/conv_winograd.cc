@@ -15,7 +15,6 @@
 #include <algorithm>
 
 #include "mace/ops/arm/conv_winograd.h"
-#include "mace/ops/gemm.h"
 
 namespace mace {
 namespace ops {

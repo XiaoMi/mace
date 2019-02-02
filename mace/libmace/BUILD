@@ -11,6 +11,7 @@ load(
     "//mace:mace.bzl",
     "if_android",
     "if_neon_enabled",
+    "if_neon_enabled_str",
     "if_openmp_enabled",
     "if_android_armv7",
     "if_hexagon_enabled",
@@ -41,8 +42,8 @@ cc_library(
         "-DMACE_ENABLE_HEXAGON",
     ]),
     deps = [
-        "//mace/public",
         "//mace/ops",
+        "//mace/public",
     ],
     alwayslink = 1,
 )
@@ -59,8 +60,8 @@ cc_binary(
     linkshared = 1,
     linkstatic = 0,
     deps = [
-        "//mace/libmace:mace_version_script.lds",
         "//mace/libmace",
+        "//mace/libmace:mace_version_script.lds",
     ],
 )
 
@@ -81,6 +82,8 @@ genrule(
     srcs = [
         "//mace/codegen:generated_version",
         "//mace/core",
+        "//mace/ops:common",
+        "//mace/ops:ref_kernels",
         "//mace/ops:internal_ops",
         "//mace/ops",
         "//mace/libmace",
@@ -88,13 +91,20 @@ genrule(
         "//mace/proto:mace_cc",
         "@com_google_protobuf//:protobuf_lite",
     ] + if_opencl_enabled([
+        "//mace/ops:opencl_kernels",
         "//mace/codegen:generated_opencl",
+    ]) + if_neon_enabled([
+        "//mace/ops:arm_neon_kernels",
     ]),
     outs = ["libmace.a"],
     cmd = "tmp_mri_file=$$(mktemp mace-static-lib-mri.XXXXXXXXXX);" +
           "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
           "$(locations //mace/codegen:generated_version) " +
           "$(locations //mace/core:core) " +
+          "$(locations //mace/ops:common) " +
+          "$(locations //mace/ops:ref_kernels) " +
+          if_neon_enabled_str("$(locations //mace/ops:arm_neon_kernels) ") +
+          if_opencl_enabled_str("$(locations //mace/ops:opencl_kernels) ") +
           "$(locations //mace/ops:internal_ops) " +
           "$(locations //mace/ops:ops) " +
           "$(locations //mace/libmace:libmace) " +

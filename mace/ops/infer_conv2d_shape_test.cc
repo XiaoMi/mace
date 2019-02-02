@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/conv_pool_2d_util.h"
+#include "mace/ops/common/conv_pool_2d_util.h"
 
 namespace mace {
 namespace ops {

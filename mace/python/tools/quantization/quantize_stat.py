@@ -31,6 +31,13 @@ class QuantizeStat(object):
             if not enhance or samples <= 1:
                 res[tensor_name] = (tensor_min, tensor_max)
             else:
+                """
+                Enhancement mode:
+                This policy eliminates outliers that cause long-tail
+                statistical range. We try to reduce as much range as it could
+                while retaining more samples. d(range)/d(sample_quantile) is
+                used to measure this qualitatively.
+                """
                 tensor_mins = np.sort(tensor_ranges[tensor_name][0])
                 tensor_maxs = np.sort(tensor_ranges[tensor_name][1])[::-1]
                 cur_min_idx = 0

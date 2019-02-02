@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_CONV_POOL_2D_UTIL_H_
-#define MACE_OPS_CONV_POOL_2D_UTIL_H_
+#ifndef MACE_OPS_COMMON_CONV_POOL_2D_UTIL_H_
+#define MACE_OPS_COMMON_CONV_POOL_2D_UTIL_H_
 
 #include "mace/core/tensor.h"
 
@@ -116,4 +116,4 @@ MaceStatus ConstructNHWCInputWithPadding(const Tensor *input,
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_CONV_POOL_2D_UTIL_H_
+#endif  // MACE_OPS_COMMON_CONV_POOL_2D_UTIL_H_
