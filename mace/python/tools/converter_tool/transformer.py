@@ -1790,31 +1790,35 @@ class Transformer(base_converter.ConverterInterface):
             if op.type == MaceOp.Reshape.name and \
                     len(op.input) == 1:
                 print("Transform Caffe Reshape")
-                if op.arg[3].name == 'dim':
+                dims = []
+                dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
+                axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
+                # transform caffe reshape op
+                if dim_arg:
+                    dims = dim_arg.ints
                     shape_tensor = net.tensors.add()
                     shape_tensor.name = op.name + '_shape'
                     shape_tensor.dims.append(len(op.output_shape[0].dims))
                     shape_tensor.data_type = mace_pb2.DT_INT32
-                    shape_tensor.int32_data.extend(op.arg[3].ints)
-                    op.input.append(shape_tensor.name)
-                else:
-                    axis = op.arg[3].i
-                    dims = [1] * len(op.output_shape[0].dims)
-                    end_axis = op.arg[4].i
-                    end_axis = end_axis if end_axis >= 0 else end_axis + len(dims)  # noqa
+                # transform caffe flatten op
+                elif axis_arg is not None:
+                    axis = axis_arg.i
                     for i in range(0, axis):
-                        dims[i] = 0
-                    for i in range(axis + 1, end_axis + 1):
-                        dims[i] = 1
-                    for i in range(end_axis + 1, len(dims)):
-                        dims[i] = 0
-                    dims[axis] = -1
+                        dims.append(0)
+                    dims.append(-1)
+                    for i in range(axis + 1, len(op.output_shape[0].dims)):
+                        dims.append(0)
                     shape_tensor = net.tensors.add()
                     shape_tensor.name = op.name + '_shape'
                     shape_tensor.dims.append(len(dims))
                     shape_tensor.data_type = mace_pb2.DT_INT32
-                    shape_tensor.int32_data.extend(dims)
-                    op.input.append(shape_tensor.name)
+                else:
+                    mace_check(False, "Only support reshape and flatten")
+                # NCHW -> NHWC
+                if len(dims) == 4:
+                    self.transpose_shape(dims, [0, 2, 3, 1])
+                shape_tensor.int32_data.extend(dims)
+                op.input.append(shape_tensor.name)
 
     def fold_fc_reshape(self):
         net = self._model

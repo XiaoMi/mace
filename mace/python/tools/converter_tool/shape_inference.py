@@ -276,18 +276,19 @@ class ShapeInference(object):
                 output_shape[idx] = input_size / product
             self.add_output_shape(op, [output_shape])
         else:
-            output_shape = list(self._output_shape_cache[op.input[0]])
+            output_shape = []
             axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
             end_axis = ConverterUtil.get_arg(op, MaceKeyword.mace_end_axis_str).i  # noqa
-            if end_axis < 0:
-                end_axis = len(output_shape) + end_axis
+            end_axis = end_axis if end_axis > 0 else end_axis + len(
+                list(self._output_shape_cache[op.input[0]]))
             dim = 1
             for i in range(0, axis):
-                output_shape[i] = self._output_shape_cache[op.input[0]][i]
+                output_shape.append(self._output_shape_cache[op.input[0]][i])
             for i in range(axis, end_axis + 1):
                 dim *= self._output_shape_cache[op.input[0]][i]
-                output_shape[i] = 1
-            for i in range(end_axis + 1, len(output_shape)):
-                output_shape[i] = self._output_shape_cache[op.input[0]][i]
+            output_shape.append(-1)
+            for i in range(end_axis + 1, len(
+                    list(self._output_shape_cache[op.input[0]]))):
+                output_shape.append(self._output_shape_cache[op.input[0]][i])
             output_shape[axis] = dim
             self.add_output_shape(op, [output_shape])
