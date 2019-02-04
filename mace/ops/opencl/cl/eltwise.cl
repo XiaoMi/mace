@@ -36,7 +36,7 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
 #elif INPUT_TYPE == 3
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, 0));
 #elif INPUT_TYPE == 4
-  DATA_TYPE4 tmp = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
+  DATA_TYPE4 tmp = READ_IMAGET(input1, SAMPLER, (int2)(width_idx, hb));
   DATA_TYPE4 in1 = (DATA_TYPE4)(tmp.x, tmp.x, tmp.x, tmp.x);
 #else
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
