@@ -32,8 +32,8 @@ Image *ScratchImageManager::Spawn(
   int image_count = static_cast<int>(reference_count_.size());
   for (int i = 0; i < image_count; ++i) {
     int count = reference_count_[i];
-    if (count == 0 && images_.at(count)->dtype() == dt) {
-      auto image_shape = images_.at(count)->shape();
+    if (count == 0 && images_.at(i)->dtype() == dt) {
+      auto image_shape = images_.at(i)->shape();
       if (image_shape[0] >= shape[0] && image_shape[1] >= shape[1]) {
         found_image_idx = i;
         break;
