@@ -805,25 +805,25 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcastGPU) {
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {0, 1, 4, 4, 9, 16});
 
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::SUM, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::SUM, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 5}, {1, 2, 3, 4, 5, 7, 8, 9, 10, 11});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::SUB, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::SUB, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 5}, {-1, 0, 1, 2, 3, 3, 4, 5, 6, 7});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::PROD, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::PROD, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 10, 12, 14, 16, 18});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::DIV, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::DIV, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 2.5, 3, 3.5, 4, 4.5});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::MIN, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::MIN, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {3, 4}, {1, 1, 2, 5}, {0, 1, 2, 3, 3, 4, 4, 4, 4, 4});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::MAX, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::MAX, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {3, 4}, {1, 1, 2, 5}, {3, 3, 3, 3, 4, 5, 6, 7, 8, 9});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      ops::EltwiseType::SQR_DIFF, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 
+      ops::EltwiseType::SQR_DIFF, {1, 1, 2, 5}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
       {1, 1, 2, 1}, {2, 3}, {1, 1, 2, 5}, {4, 1, 0, 1, 4, 4, 9, 16, 25, 36});
 }
 
