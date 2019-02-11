@@ -113,6 +113,7 @@ TFSupportedOps = [
     'ArgMax',
     'Split',
     'FakeQuantWithMinMaxVars',
+    'Sqrt',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -187,6 +188,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
         TFOpType.Square.name: EltwiseType.POW,
         TFOpType.Rsqrt.name: EltwiseType.POW,
+        TFOpType.Sqrt.name: EltwiseType.POW,
         TFOpType.Equal.name: EltwiseType.EQUAL,
     }
 
@@ -262,6 +264,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.Split.name: self.convert_split,
             TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
+            TFOpType.Sqrt.name: self.convert_elementwise,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -509,6 +512,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
             value_arg = op.arg.add()
             value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = -0.5
+        elif tf_op.type == TFOpType.Sqrt:
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_scalar_input_str
+            value_arg.f = 0.5
 
         if type_arg.i != EltwiseType.NEG.value \
                 and type_arg.i != EltwiseType.ABS.value:
