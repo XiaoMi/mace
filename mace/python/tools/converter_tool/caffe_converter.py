@@ -137,7 +137,6 @@ class CaffeNet(object):
             layer.top[i] = new_name
             self._alias_op_output_name[old_name] = new_name
             self._used_op_output_name.update([new_name])
-
         for input_tensor in layer.bottom:
             if input_tensor not in self._consumers:
                 self._consumers[input_tensor] = []
@@ -248,7 +247,8 @@ class CaffeConverter(base_converter.ConverterInterface):
         for op in ops:
             for i in six.moves.range(len(op.output)):
                 original_output_name = op.output[i].split('#')[0]
-                if original_output_name not in visited:
+                if original_output_name not in visited and\
+                        original_output_name not in self._option.input_nodes:
                     self.replace_input_name(
                         consumers.get(op.output[i], []),
                         op.output[i],

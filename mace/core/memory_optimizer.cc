@@ -222,7 +222,11 @@ void MemoryOptimizer::Optimize(
           idle_blocks_.insert(mem_id);
         }
       } else {
-        MACE_CHECK(tensor_ref_count_.at(input_name) >= 0);
+        MACE_CHECK(tensor_ref_count_.at(input_name) >= 0,
+                   "Reference count of tensor ",
+                   input_name,
+                   " is ",
+                   tensor_ref_count_.at(input_name));
       }
     }
   }
