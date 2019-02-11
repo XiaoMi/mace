@@ -564,9 +564,11 @@ def get_model_files(model_file_path,
                     model_sha256_checksum,
                     model_output_dir,
                     weight_file_path="",
-                    weight_sha256_checksum=""):
+                    weight_sha256_checksum="",
+                    quantize_range_file_path=""):
     model_file = model_file_path
     weight_file = weight_file_path
+    quantize_range_file = quantize_range_file_path
 
     if model_file_path.startswith("http://") or \
             model_file_path.startswith("https://"):
@@ -598,7 +600,15 @@ def get_model_files(model_file_path,
             MaceLogger.error(ModuleName.MODEL_CONVERTER,
                              "weight file sha256checksum not match")
 
-    return model_file, weight_file
+    if quantize_range_file_path.startswith("http://") or \
+            quantize_range_file_path.startswith("https://"):
+        quantize_range_file = \
+            model_output_dir + "/" + md5sum(quantize_range_file_path) \
+            + ".range"
+        if not download_file(quantize_range_file_path, quantize_range_file):
+            MaceLogger.error(ModuleName.MODEL_CONVERTER,
+                             "Model range file download failed.")
+    return model_file, weight_file, quantize_range_file
 
 
 def convert_model(configs, cl_mem_type):
@@ -649,12 +659,14 @@ def convert_model(configs, cl_mem_type):
         else:
             model_config[YAMLKeyword.cl_mem_type] = "image"
 
-        model_file_path, weight_file_path = get_model_files(
-            model_config[YAMLKeyword.model_file_path],
-            model_config[YAMLKeyword.model_sha256_checksum],
-            BUILD_DOWNLOADS_DIR,
-            model_config[YAMLKeyword.weight_file_path],
-            model_config[YAMLKeyword.weight_sha256_checksum])
+        model_file_path, weight_file_path, quantize_range_file_path = \
+            get_model_files(
+                model_config[YAMLKeyword.model_file_path],
+                model_config[YAMLKeyword.model_sha256_checksum],
+                BUILD_DOWNLOADS_DIR,
+                model_config[YAMLKeyword.weight_file_path],
+                model_config[YAMLKeyword.weight_sha256_checksum],
+                model_config.get(YAMLKeyword.quantize_range_file, ""))
 
         data_type = model_config[YAMLKeyword.data_type]
         # TODO(liuqi): support multiple subgraphs
@@ -683,7 +695,7 @@ def convert_model(configs, cl_mem_type):
             embed_model_data,
             model_config[YAMLKeyword.winograd],
             model_config[YAMLKeyword.quantize],
-            model_config.get(YAMLKeyword.quantize_range_file, ""),
+            quantize_range_file_path,
             model_config[YAMLKeyword.change_concat_ranges],
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.model_graph_format],
@@ -1270,6 +1282,16 @@ def parse_args():
         parents=[all_type_parent_parser, run_bm_parent_parser],
         help='benchmark model for detail information')
     benchmark.set_defaults(func=benchmark_model)
+    benchmark.add_argument(
+        "--max_num_runs",
+        type=int,
+        default=100,
+        help="max number of runs.")
+    benchmark.add_argument(
+        "--max_seconds",
+        type=float,
+        default=10.0,
+        help="max number of seconds to run.")
     return parser.parse_known_args()
 
 

@@ -25,12 +25,12 @@ namespace test {
 namespace {
 template <DeviceType D, typename T>
 void ResizeBicubicBenchmark(int iters,
-                             int batch,
-                             int channels,
-                             int input_height,
-                             int input_width,
-                             int output_height,
-                             int output_width) {
+                            int batch,
+                            int channels,
+                            int input_height,
+                            int input_width,
+                            int output_height,
+                            int output_width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;

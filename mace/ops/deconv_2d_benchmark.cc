@@ -16,7 +16,7 @@
 
 #include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/ops/conv_pool_2d_util.h"
+#include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

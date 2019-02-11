@@ -36,7 +36,7 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
 #elif INPUT_TYPE == 3
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, 0));
 #elif INPUT_TYPE == 4
-  DATA_TYPE4 tmp = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
+  DATA_TYPE4 tmp = READ_IMAGET(input1, SAMPLER, (int2)(width_idx, hb));
   DATA_TYPE4 in1 = (DATA_TYPE4)(tmp.x, tmp.x, tmp.x, tmp.x);
 #else
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
@@ -89,21 +89,22 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   #endif
 #endif
 
-#if INPUT_TYPE == 1 || INPUT_TYPE == 4
-  #if ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||          \
-      ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9
-    const int remain_channel = channel - 4 * chan_idx;
-    if (remain_channel < 4) {
-      switch (remain_channel) {
-        case 1:
-          out.y = 0;
-        case 2:
-          out.z = 0;
-        case 3:
-          out.w = 0;
-      }
+#if ((INPUT_TYPE == 1 || INPUT_TYPE == 4) &&                            \
+     (ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||    \
+      ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9)) ||  \
+    ((INPUT_TYPE != 1 || INPUT_TYPE != 4) &&                            \
+     (ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9))
+  const int remain_channel = channel - 4 * chan_idx;
+  if (remain_channel < 4) {
+    switch (remain_channel) {
+      case 1:
+        out.y = 0;
+      case 2:
+        out.z = 0;
+      case 3:
+        out.w = 0;
     }
-  #endif
+  }
 #endif
 
   WRITE_IMAGET(output, (int2)(pos, hb), out);

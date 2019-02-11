@@ -27,7 +27,7 @@
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/conv_pool_2d_base.h"
-#include "mace/ops/conv_pool_2d_util.h"
+#include "mace/ops/common/conv_pool_2d_util.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/pooling.h"
 #include "mace/ops/opencl/buffer/pooling.h"

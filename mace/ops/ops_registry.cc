@@ -49,6 +49,7 @@ extern void RegisterPriorBox(OpRegistryBase *op_registry);
 extern void RegisterReshape(OpRegistryBase *op_registry);
 extern void RegisterResizeBicubic(OpRegistryBase *op_registry);
 extern void RegisterResizeBilinear(OpRegistryBase *op_registry);
+extern void RegisterResizeNearestNeighbor(OpRegistryBase *op_registry);
 extern void RegisterReverse(OpRegistryBase *op_registry);
 extern void RegisterScalarMath(OpRegistryBase *op_registry);
 extern void RegisterShape(OpRegistryBase *op_registry);
@@ -108,6 +109,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterReshape(this);
   ops::RegisterResizeBicubic(this);
   ops::RegisterResizeBilinear(this);
+  ops::RegisterResizeNearestNeighbor(this);
   ops::RegisterReverse(this);
   ops::RegisterScalarMath(this);
   ops::RegisterShape(this);

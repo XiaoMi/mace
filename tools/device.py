@@ -192,6 +192,14 @@ class DeviceWrapper:
         if model_graph_format == ModelFormat.file:
             mace_model_path = layers_validate_file if layers_validate_file \
                 else "%s/%s.pb" % (mace_model_dir, model_tag)
+
+        model_data_file = ""
+        if not embed_model_data:
+            if self.system == SystemType.host:
+                model_data_file = "%s/%s.data" % (mace_model_dir, model_tag)
+            else:
+                model_data_file = "%s/%s.data" % (self.data_dir, model_tag)
+
         if self.system == SystemType.host:
             libmace_dynamic_lib_path = \
                 os.path.dirname(libmace_dynamic_library_path)
@@ -214,8 +222,7 @@ class DeviceWrapper:
                                              output_file_name),
                     "--input_dir=%s" % input_dir,
                     "--output_dir=%s" % output_dir,
-                    "--model_data_file=%s/%s.data" % (mace_model_dir,
-                                                      model_tag),
+                    "--model_data_file=%s" % model_data_file,
                     "--device=%s" % device_type,
                     "--round=%s" % running_round,
                     "--restart_round=%s" % restart_round,
@@ -229,7 +236,7 @@ class DeviceWrapper:
                 stdout=subprocess.PIPE)
             out, err = p.communicate()
             self.stdout = err + out
-            six.print_(self.stdout)
+            six.print_(self.stdout.decode('UTF-8'))
             six.print_("Running finished!\n")
         elif self.system in [SystemType.android, SystemType.arm_linux]:
             self.rm(self.data_dir)
@@ -304,7 +311,7 @@ class DeviceWrapper:
                 "--output_file=%s/%s" % (self.data_dir, output_file_name),
                 "--input_dir=%s" % input_dir,
                 "--output_dir=%s" % output_dir,
-                "--model_data_file=%s/%s.data" % (self.data_dir, model_tag),
+                "--model_data_file=%s" % model_data_file,
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
                 "--restart_round=%s" % restart_round,
@@ -619,16 +626,21 @@ class DeviceWrapper:
                         if model_config[YAMLKeyword.quantize] == 1:
                             validate_type = device_type + '_QUANTIZE'
 
-                        dockerfile_path = get_dockerfile_file(
-                            model_config.get(YAMLKeyword.dockerfile_path),
-                            model_config.get(YAMLKeyword.dockerfile_sha256_checksum)  # noqa
-                        ) if YAMLKeyword.dockerfile_path in model_config else "third_party/caffe"  # noqa
+                        dockerfile_path, docker_image_tag = \
+                            get_dockerfile_info(
+                                model_config.get(YAMLKeyword.dockerfile_path),
+                                model_config.get(
+                                    YAMLKeyword.dockerfile_sha256_checksum),
+                                model_config.get(YAMLKeyword.docker_image_tag)
+                            ) if YAMLKeyword.dockerfile_path in model_config \
+                            else ("third_party/caffe", "lastest")
 
                         sh_commands.validate_model(
                             abi=target_abi,
                             device=self,
                             model_file_path=model_file_path,
                             weight_file_path=weight_file_path,
+                            docker_image_tag=docker_image_tag,
                             dockerfile_path=dockerfile_path,
                             platform=model_config[YAMLKeyword.platform],
                             device_type=device_type,
@@ -736,6 +748,8 @@ class DeviceWrapper:
                         output_nodes,
                         input_shapes,
                         output_shapes,
+                        max_num_runs,
+                        max_seconds,
                         model_tag,
                         device_type,
                         model_graph_format,
@@ -749,10 +763,17 @@ class DeviceWrapper:
                         input_file_name='model_input',
                         link_dynamic=False):
         six.print_('* Benchmark for %s' % model_tag)
-
         mace_model_path = ''
         if model_graph_format == ModelFormat.file:
             mace_model_path = '%s/%s.pb' % (mace_model_dir, model_tag)
+
+        model_data_file = ""
+        if not embed_model_data:
+            if self.system == SystemType.host:
+                model_data_file = "%s/%s.data" % (mace_model_dir, model_tag)
+            else:
+                model_data_file = "%s/%s.data" % (self.data_dir, model_tag)
+
         if abi == ABIType.host:
             libmace_dynamic_lib_dir_path = \
                 os.path.dirname(libmace_dynamic_library_path)
@@ -768,8 +789,9 @@ class DeviceWrapper:
                     '--input_shape=%s' % ':'.join(input_shapes),
                     '--output_shape=%s' % ':'.join(output_shapes),
                     '--input_file=%s/%s' % (model_output_dir, input_file_name),
-                    '--model_data_file=%s/%s.data' % (mace_model_dir,
-                                                      model_tag),
+                    "--model_data_file=%s" % model_data_file,
+                    '--max_num_runs=%d' % max_num_runs,
+                    '--max_seconds=%f' % max_seconds,
                     '--device=%s' % device_type,
                     '--omp_num_threads=%s' % omp_num_threads,
                     '--cpu_affinity_policy=%s' % cpu_affinity_policy,
@@ -822,7 +844,9 @@ class DeviceWrapper:
                 '--input_shape=%s' % ':'.join(input_shapes),
                 '--output_shape=%s' % ':'.join(output_shapes),
                 '--input_file=%s/%s' % (self.data_dir, input_file_name),
-                '--model_data_file=%s/%s.data' % (self.data_dir, model_tag),
+                "--model_data_file=%s" % model_data_file,
+                '--max_num_runs=%d' % max_num_runs,
+                '--max_seconds=%f' % max_seconds,
                 '--device=%s' % device_type,
                 '--omp_num_threads=%s' % omp_num_threads,
                 '--cpu_affinity_policy=%s' % cpu_affinity_policy,
@@ -918,6 +942,12 @@ class DeviceWrapper:
                 runtime_list.append(model_runtime)
             for runtime in runtime_list:
                 device_type = parse_device_type(runtime)
+                if not subgraphs[0][YAMLKeyword.check_tensors]:
+                    output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
+                    output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
+                else:
+                    output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
+                    output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
                 self.benchmark_model(
                     abi=target_abi,
                     benchmark_binary_dir=build_tmp_binary_dir,
@@ -926,9 +956,11 @@ class DeviceWrapper:
                     embed_model_data=embed_model_data,
                     model_output_dir=model_output_dir,
                     input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                    output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+                    output_nodes=output_nodes,
                     input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                    output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+                    output_shapes=output_shapes,
+                    max_num_runs=flags.max_num_runs,
+                    max_seconds=flags.max_seconds,
                     mace_model_dir=mace_model_dir,
                     model_tag=model_name,
                     device_type=device_type,
@@ -1027,6 +1059,8 @@ class DeviceManager:
         adb_list = [tuple(pair.split('\t')) for pair in adb_list]
         devices = []
         for adb in adb_list:
+            if adb[1].startswith("no permissions"):
+                continue
             prop = sh_commands.adb_getprop_by_serialno(adb[0])
             android = {
                 YAMLKeyword.device_name:

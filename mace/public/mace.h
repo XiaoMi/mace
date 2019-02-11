@@ -100,7 +100,44 @@ class RunMetadata {
   std::vector<OperatorStats> op_stats;
 };
 
-const char *MaceVersion();
+/// Consistent with Android NNAPI
+struct PerformanceInfo {
+  // Time of executing some workload.
+  // negative value for unsupported.
+  float exec_time;
+};
+
+struct Capability {
+  // Performance of running with float32 data type
+  // run time of the workload for CPU device,
+  // ratio of run time to execute same workload compared to the time the CPU
+  // execute same workload.
+  PerformanceInfo float32_performance;
+
+  // Performance of running with quantized-8 data type
+  // ratio compared with float32_performance
+  PerformanceInfo quantized8_performance;
+
+  // support or not
+  bool supported;
+};
+
+/// Get Devices Capacity
+///
+/// The float32_performance of CPU and GPU is tested using the workload of
+/// first 8 layer of mobilenet-v2 which contain Conv(1x1, 3x3),
+/// DepthwiseConv(3x3) and ElementWise Ops.
+/// The quantized8_performance is just a arbitrary value tested
+/// using mobilenet-v2 offline
+/// Actually, It's hard to test the precise performance, the result could be
+/// more accurate when your model is like with mobilenet-v2, otherwise the
+/// value is just a reference.
+///
+/// \return capability of the device
+MACE_API Capability GetCapability(DeviceType device_type,
+                                  float cpu_float32_exec_time = 1.f);
+
+MACE_API const char *MaceVersion();
 
 class MaceStatus {
  public:
@@ -282,8 +319,12 @@ class MACE_API MaceEngineConfig {
 
 // MACE input/output tensor
 class MACE_API MaceTensor {
+  friend class MaceEngine;
+
  public:
-  // shape - the shape of the tensor, with size n
+  // shape - the shape of the tensor, with size n, if shape is unknown
+  // in advance, it should be specified large enough to hold tensor of all
+  // possible size.
   // data - the buffer of the tensor, must not be null with size equals
   //        shape[0] * shape[1] * ... * shape[n-1].
   //        If you want to pass a buffer which is unsuitable to use the default
@@ -301,6 +342,7 @@ class MACE_API MaceTensor {
   MaceTensor &operator=(const MaceTensor &&other);
   ~MaceTensor();
 
+  // shape will be updated to the actual output shape after running.
   const std::vector<int64_t> &shape() const;
   const std::shared_ptr<float> data() const;
   std::shared_ptr<float> data();

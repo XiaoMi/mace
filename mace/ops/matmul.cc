@@ -21,13 +21,23 @@
 
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/gemm.h"
 #include "mace/ops/sgemm.h"
 #include "mace/utils/utils.h"
 
+#ifdef MACE_ENABLE_NEON
+
+#include "mace/ops/arm/fp32/gemv.h"
+
+#ifdef MACE_ENABLE_QUANTIZE
+#include "mace/ops/arm/q8/gemv.h"
+#endif  // MACE_ENABLE_QUANTIZE
+
+#else
+#include "mace/ops/ref/gemv.h"
+#endif  // MACE_ENABLE_NEON
+
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/gemmlowp_util.h"
-#include "mace/ops/arm/fixpoint_gemm.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
@@ -106,7 +116,6 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
     }
     batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
                             std::multiplies<index_t>());
-
     std::vector<index_t> c_shape = A->shape();
     c_shape[rank - 2] = height;
     c_shape[rank - 1] = width;
@@ -127,14 +136,6 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
 
     auto scratch_buffer = context->device()->scratch_buffer();
     scratch_buffer->Rewind();
-    index_t scratch_size = C->raw_max_size();
-    if (!A->is_weight()) {
-      scratch_size += A->raw_max_size();
-    }
-    if (!B->is_weight()) {
-      scratch_size += B->raw_max_size();
-    }
-    scratch_buffer->GrowSize(scratch_size);
 
     sgemm_.Run(a_ptr_base,
                b_ptr_base,
@@ -149,11 +150,17 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
                B->is_weight(),
                c_ptr_base,
                context->device()->scratch_buffer());
+
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
   SGemm sgemm_;
+#ifdef MACE_ENABLE_NEON
+  arm::fp32::Gemv gemv_;
+#else
+  ref::Gemv<float> gemv_;
+#endif  // MACE_ENABLE_NEON
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -171,38 +178,54 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
                   const index_t K,
                   const index_t width,
                   Tensor *C) {
-    Tensor::MappingGuard guarda(A);
-    Tensor::MappingGuard guardb(B);
-    Tensor::MappingGuard guardc(C);
-    auto a_ptr_base = A->data<uint8_t>();
-    auto b_ptr_base = B->data<uint8_t>();
-    auto c_ptr_base = C->mutable_data<uint8_t>();
     index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
                                     std::multiplies<index_t>());
-    auto gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
-    MACE_CHECK_NOTNULL(gemm_context);
 
-    index_t a_size = height * K;
-    index_t b_size = K * width;
-    index_t c_size = height * width;
+#if defined(MACE_ENABLE_NEON)
+    if (width == 1 && AOrder == gemmlowp::MapOrder::RowMajor) {
+      gemv_kernel_.Compute(context, A, B, nullptr, batch, height, K, true, C);
+    } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
+      gemv_kernel_.Compute(context, B, A, nullptr, batch, width, K, true, C);
+    } else {
+#endif  // MACE_ENABLE_NEON
+      Tensor::MappingGuard guarda(A);
+      Tensor::MappingGuard guardb(B);
+      Tensor::MappingGuard guardc(C);
+      auto a_ptr_base = A->data<uint8_t>();
+      auto b_ptr_base = B->data<uint8_t>();
+      auto c_ptr_base = C->mutable_data<uint8_t>();
 
-    const auto &output_pipeline = GemmlowpOutputPipeline::MakeNoBias(
-        A->scale(), B->scale(), C->scale(), C->zero_point());
+      auto gemm_context =
+          context->device()->cpu_runtime()->GetGemmlowpContext();
+      MACE_CHECK_NOTNULL(gemm_context);
 
-    for (index_t i = 0; i < batch; ++i) {
-      gemmlowp::MatrixMap<const uint8_t, AOrder>
-          a_matrix(a_ptr_base + i * a_size, height, K);
-      gemmlowp::MatrixMap<const uint8_t, BOrder>
-          b_matrix(b_ptr_base + i * b_size, K, width);
-      gemmlowp::MatrixMap <uint8_t, gemmlowp::MapOrder::RowMajor>
-          c_matrix(c_ptr_base + i * c_size, height, width);
+      index_t a_size = height * K;
+      index_t b_size = K * width;
+      index_t c_size = height * width;
 
-      using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
-      gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
-          gemm_context, a_matrix, b_matrix, &c_matrix, -A->zero_point(),
-          -B->zero_point(), output_pipeline);
+      const auto &output_pipeline = GemmlowpOutputPipeline::MakeNoBias(
+          A->scale(), B->scale(), C->scale(), C->zero_point());
+
+      for (index_t i = 0; i < batch; ++i) {
+        gemmlowp::MatrixMap<const uint8_t, AOrder>
+            a_matrix(a_ptr_base + i * a_size, height, K);
+        gemmlowp::MatrixMap<const uint8_t, BOrder>
+            b_matrix(b_ptr_base + i * b_size, K, width);
+        gemmlowp::MatrixMap <uint8_t, gemmlowp::MapOrder::RowMajor>
+            c_matrix(c_ptr_base + i * c_size, height, width);
+
+        using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
+        gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
+            gemm_context, a_matrix, b_matrix, &c_matrix, -A->zero_point(),
+            -B->zero_point(), output_pipeline);
+      }
     }
+#if defined(MACE_ENABLE_NEON)
   }
+
+ private:
+  arm::q8::Gemv<uint8_t> gemv_kernel_;
+#endif  // MACE_ENABLE_NEON
 };
 
 template<gemmlowp::MapOrder AOrder, gemmlowp::MapOrder BOrder>
@@ -215,38 +238,24 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
                   const index_t K,
                   const index_t width,
                   Tensor *C) {
-    Tensor::MappingGuard guarda(A);
-    Tensor::MappingGuard guardb(B);
-    Tensor::MappingGuard guardc(C);
-    auto a_ptr_base = A->data<uint8_t>();
-    auto b_ptr_base = B->data<uint8_t>();
-    auto c_ptr_base = C->mutable_data<int32_t>();
+    C->SetScale(A->scale() * B->scale());
+    C->SetZeroPoint(0);
     index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
                                     std::multiplies<index_t>());
 
+#if defined(MACE_ENABLE_NEON)
     if (width == 1 && AOrder == gemmlowp::MapOrder::RowMajor) {
-      // gemv
-      for (index_t i = 0; i < batch; ++i) {
-        FixPointGemv(a_ptr_base + i * height * K,
-                     b_ptr_base + i * K,
-                     A->zero_point(),
-                     B->zero_point(),
-                     height,
-                     K,
-                     c_ptr_base + i * height);
-      }
+      gemv_kernel_.Compute(context, A, B, nullptr, batch, height, K, true, C);
     } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
-      // gevm
-      for (index_t i = 0; i < batch; ++i) {
-        FixPointGemv(b_ptr_base + i * K * width,
-                     a_ptr_base + i * K,
-                     B->zero_point(),
-                     A->zero_point(),
-                     width,
-                     K,
-                     c_ptr_base + i * width);
-      }
+      gemv_kernel_.Compute(context, B, A, nullptr, batch, width, K, true, C);
     } else {
+#endif  // MACE_ENABLE_NEON
+      Tensor::MappingGuard guarda(A);
+      Tensor::MappingGuard guardb(B);
+      Tensor::MappingGuard guardc(C);
+      auto a_ptr_base = A->data<uint8_t>();
+      auto b_ptr_base = B->data<uint8_t>();
+      auto c_ptr_base = C->mutable_data<int32_t>();
       auto
           gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
       MACE_CHECK_NOTNULL(gemm_context);
@@ -272,9 +281,12 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
       }
     }
 
-    C->SetScale(A->scale() * B->scale());
-    C->SetZeroPoint(0);
+#if defined(MACE_ENABLE_NEON)
   }
+
+ private:
+  arm::q8::Gemv<int32_t> gemv_kernel_;
+#endif  // MACE_ENABLE_NEON
 };
 
 template <>

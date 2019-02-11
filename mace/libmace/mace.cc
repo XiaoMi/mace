@@ -18,13 +18,15 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <numeric>
 #include <memory>
 
 #include "mace/core/device_context.h"
 #include "mace/core/memory_optimizer.h"
 #include "mace/core/net.h"
 #include "mace/ops/ops_registry.h"
-#include "mace/ops/transpose.h"
+#include "mace/ops/common/transpose.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -313,6 +315,7 @@ class MaceTensor::Impl {
   std::vector<int64_t> shape;
   std::shared_ptr<float> data;
   DataFormat format;
+  int64_t buffer_size;
 };
 
 MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
@@ -323,6 +326,8 @@ MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
   impl_->shape = shape;
   impl_->data = data;
   impl_->format = format;
+  impl_->buffer_size =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<float>());
 }
 
 MaceTensor::MaceTensor() {
@@ -334,6 +339,7 @@ MaceTensor::MaceTensor(const MaceTensor &other) {
   impl_->shape = other.shape();
   impl_->data = other.data();
   impl_->format = other.data_format();
+  impl_->buffer_size = other.impl_->buffer_size;
 }
 
 MaceTensor::MaceTensor(const MaceTensor &&other) {
@@ -341,12 +347,14 @@ MaceTensor::MaceTensor(const MaceTensor &&other) {
   impl_->shape = other.shape();
   impl_->data = other.data();
   impl_->format = other.data_format();
+  impl_->buffer_size = other.impl_->buffer_size;
 }
 
 MaceTensor &MaceTensor::operator=(const MaceTensor &other) {
   impl_->shape = other.shape();
   impl_->data = other.data();
   impl_->format = other.data_format();
+  impl_->buffer_size = other.impl_->buffer_size;
   return *this;
 }
 
@@ -354,6 +362,7 @@ MaceTensor &MaceTensor::operator=(const MaceTensor &&other) {
   impl_->shape = other.shape();
   impl_->data = other.data();
   impl_->format = other.data_format();
+  impl_->buffer_size = other.impl_->buffer_size;
   return *this;
 }
 
@@ -484,7 +493,14 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
-    ws_->CreateTensor(input_name, device_->allocator(), DT_FLOAT);
+    Tensor *input_tensor =
+        ws_->CreateTensor(input_name, device_->allocator(), DT_FLOAT);
+    // Resize to possible largest shape to avoid resize during running.
+    std::vector<index_t> shape(input_info_map_[input_name].dims_size());
+    for (int i = 0; i < input_info_map_[input_name].dims_size(); ++i) {
+      shape[i] = input_info_map_[input_name].dims(i);
+    }
+    input_tensor->Resize(shape);
   }
   for (auto output_name : output_nodes) {
     if (output_info_map_.find(output_name) == output_info_map_.end()) {
@@ -637,10 +653,13 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
       std::vector<index_t> shape =
           TransposeShape<index_t, index_t>(output_tensor->shape(),
                                            dst_dims);
-      MACE_CHECK(shape == output->second.shape())
-        << "Output shape mismatch: "
-        << MakeString<int64_t>(shape) << " != "
-        << MakeString<int64_t>(output->second.shape());
+      int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
+                                            std::multiplies<int64_t>());
+      MACE_CHECK(output_size <= output->second.impl_->buffer_size)
+        << "Output size exceeds buffer size: shape"
+        << MakeString<int64_t>(shape) << " vs buffer size "
+        << output->second.impl_->buffer_size;
+      output->second.impl_->shape = shape;
       Tensor::MappingGuard output_guard(output_tensor);
       const float *output_data = output_tensor->data<float>();
       return ops::Transpose(output_data,
@@ -660,10 +679,13 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
       std::vector<index_t> shape =
           TransposeShape<index_t, index_t>(output_tensor->shape(),
                                            dst_dims);
-      MACE_CHECK(shape == output->second.shape())
-        << "Output shape mismatch: "
-        << MakeString<int64_t>(shape) << " != "
-        << MakeString<int64_t>(output->second.shape());
+      int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
+                                            std::multiplies<int64_t>());
+      MACE_CHECK(output_size <= output->second.impl_->buffer_size)
+        << "Output size exceeds buffer size: shape"
+        << MakeString<int64_t>(shape) << " vs buffer size "
+        << output->second.impl_->buffer_size;
+      output->second.impl_->shape = shape;
       Tensor::MappingGuard output_guard(output_tensor);
       const float *output_data = output_tensor->data<float>();
       return ops::Transpose(output_data,
@@ -675,10 +697,11 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
       auto shape = output_tensor->shape();
       int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
                                             std::multiplies<int64_t>());
-      MACE_CHECK(shape == output->second.shape())
-        << "Output shape mismatch: "
-        << MakeString<int64_t>(shape) << " != "
-        << MakeString<int64_t>(output->second.shape());
+      MACE_CHECK(output_size <= output->second.impl_->buffer_size)
+        << "Output size exceeds buffer size: shape"
+        << MakeString<int64_t>(shape) << " vs buffer size "
+        << output->second.impl_->buffer_size;
+      output->second.impl_->shape = shape;
       std::memcpy(output->second.data().get(), output_tensor->data<float>(),
                   output_size * sizeof(float));
       return MaceStatus::MACE_SUCCESS;

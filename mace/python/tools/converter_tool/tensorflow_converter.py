@@ -91,6 +91,7 @@ TFSupportedOps = [
     'Softmax',
     'ResizeBicubic',
     'ResizeBilinear',
+    'ResizeNearestNeighbor',
     'Placeholder',
     'SpaceToBatchND',
     'BatchToSpaceND',
@@ -113,6 +114,7 @@ TFSupportedOps = [
     'Split',
     'FakeQuantWithMinMaxVars',
     'FloorDiv',
+    'Sqrt',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -188,6 +190,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
         TFOpType.Square.name: EltwiseType.POW,
         TFOpType.Rsqrt.name: EltwiseType.POW,
+        TFOpType.Sqrt.name: EltwiseType.POW,
         TFOpType.Equal.name: EltwiseType.EQUAL,
     }
 
@@ -241,6 +244,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Softmax.name: self.convert_softmax,
             TFOpType.ResizeBicubic.name: self.convert_resize_bicubic,
             TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
+            TFOpType.ResizeNearestNeighbor.name: self.convert_resize_nearest_neighbor,  # noqa
             TFOpType.Placeholder.name: self.convert_nop,
             TFOpType.SpaceToBatchND.name: self.convert_space_batch,
             TFOpType.BatchToSpaceND.name: self.convert_space_batch,
@@ -263,6 +267,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Split.name: self.convert_split,
             TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
             TFOpType.FloorDiv.name: self.convert_elementwise,
+            TFOpType.Sqrt.name: self.convert_elementwise,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -510,6 +515,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
             value_arg = op.arg.add()
             value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = -0.5
+        elif tf_op.type == TFOpType.Sqrt:
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_scalar_input_str
+            value_arg.f = 0.5
 
         if type_arg.i != EltwiseType.NEG.value \
                 and type_arg.i != EltwiseType.ABS.value:
@@ -662,8 +671,15 @@ class TensorflowConverter(base_converter.ConverterInterface):
         align_corners_arg.name = MaceKeyword.mace_align_corners_str
         align_corners_arg.i = tf_op.get_attr(tf_align_corners)
 
-    def convert_space_batch(self, tf_op):
+    def convert_resize_nearest_neighbor(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.ResizeNearestNeighbor.name
 
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
+
+    def convert_space_batch(self, tf_op):
         op = self.convert_general_op(tf_op)
         del op.input[1:]
 

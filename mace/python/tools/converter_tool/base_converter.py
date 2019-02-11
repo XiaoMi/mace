@@ -131,6 +131,7 @@ MaceSupportedOps = [
     'Reshape',
     'ResizeBicubic',
     'ResizeBilinear',
+    'ResizeNearestNeighbor',
     'Reverse',
     'ScalarMath',
     'Split',

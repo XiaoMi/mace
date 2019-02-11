@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_TRANSPOSE_H_
-#define MACE_OPS_TRANSPOSE_H_
+#ifndef MACE_OPS_RESIZE_NEAREST_NEIGHBOR_H_
+#define MACE_OPS_RESIZE_NEAREST_NEIGHBOR_H_
 
-#include <vector>
-
-#include "mace/public/mace.h"
+#include "mace/core/types.h"
 
 namespace mace {
 namespace ops {
-
-MaceStatus Transpose(const float *input,
-                     const std::vector<int64_t> &input_shape,
-                     const std::vector<int> &dst_dims,
-                     float *output);
-
+namespace resize_nearest_neighbor {
+inline float CalculateResizeScale(index_t in_size,
+                                  index_t out_size,
+                                  bool align_corners) {
+  return (align_corners && out_size > 1)
+         ? (in_size - 1) / static_cast<float>(out_size - 1)
+         : in_size / static_cast<float>(out_size);
+}
+}  // namespace resize_nearest_neighbor
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_TRANSPOSE_H_
+#endif  // MACE_OPS_RESIZE_NEAREST_NEIGHBOR_H_

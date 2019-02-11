@@ -56,7 +56,7 @@ void SGemm::operator()(const MatrixMap<const float> &lhs,
                        const MatrixMap<const float> &rhs,
                        MatrixMap<float> *result,
                        ScratchBuffer *scratch_buffer) {
-  if (rhs.col() < lhs.row()) {
+  if (lhs.is_const() && !rhs.is_const()) {
     MatrixMap<const float> lhs_transpose = lhs.transpose();
     MatrixMap<const float> rhs_transpose = rhs.transpose();
     MatrixMap<float> result_transpose = result->transpose();
