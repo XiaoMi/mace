@@ -93,7 +93,7 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
      (ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||    \
       ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9)) ||  \
     ((INPUT_TYPE != 1 || INPUT_TYPE != 4) &&                            \
-     (ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9))
+     (ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9 || ELTWISE_TYPE == 11))
   const int remain_channel = channel - 4 * chan_idx;
   if (remain_channel < 4) {
     switch (remain_channel) {
