@@ -81,13 +81,19 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   #else
     out = pow(in0, in1);
   #endif
+#elif ELTWISE_TYPE == 11
+  #ifdef SWAPPED
+    out = floor(in1 / in0);
+  #else
+    out = floor(in0 / in1);
+  #endif
 #endif
 
 #if ((INPUT_TYPE == 1 || INPUT_TYPE == 4) &&                            \
      (ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||    \
       ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9)) ||  \
     ((INPUT_TYPE != 1 || INPUT_TYPE != 4) &&                            \
-     (ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9))
+     (ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9 || ELTWISE_TYPE == 11))
   const int remain_channel = channel - 4 * chan_idx;
   if (remain_channel < 4) {
     switch (remain_channel) {

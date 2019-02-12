@@ -30,7 +30,8 @@ enum EltwiseType {
   SQR_DIFF = 8,
   POW = 9,
   EQUAL = 10,
-  NONE = 11,
+  FLOOR_DIV = 11,
+  NONE = 12,
 };
 
 inline bool IsLogicalType(EltwiseType type) { return type == EQUAL; }

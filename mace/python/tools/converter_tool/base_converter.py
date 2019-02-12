@@ -79,6 +79,7 @@ class EltwiseType(Enum):
     SQR_DIFF = 8
     POW = 9
     EQUAL = 10
+    FLOOR_DIV = 11
 
 
 class ReduceType(Enum):
