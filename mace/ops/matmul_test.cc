@@ -15,6 +15,7 @@
 #include <fstream>
 
 #include "mace/ops/ops_test_util.h"
+#include "mace/ops/ref/gemm.h"
 
 namespace mace {
 namespace ops {
@@ -71,34 +72,121 @@ TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
 }
 
 namespace {
-void QuantOutputUint8(const std::vector<index_t> &batch,
-                      const index_t height,
-                      const index_t channels,
-                      const index_t out_width,
-                      const bool transpose_a,
-                      const bool transpose_b) {
+
+template<DeviceType D>
+void Complex(const std::vector<index_t> &batch,
+             const index_t rows,
+             const index_t depth,
+             const index_t cols,
+             const bool transpose_lhs,
+             const bool transpose_rhs,
+             const bool lhs_batched,
+             const bool rhs_batched) {
   // Construct graph
   OpsTestNet net;
 
   // Add input data
-  index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
-                                        std::multiplies<index_t>());
-  if (transpose_a) {
-    net.AddRandomInput<CPU, float>("A", {batch_count, channels, height});
-  } else {
-    net.AddRandomInput<CPU, float>("A", {batch_count, height, channels});
+  index_t lhs_rows = transpose_lhs ? depth : rows;
+  index_t lhs_cols = transpose_lhs ? rows : depth;
+  index_t rhs_rows = transpose_rhs ? cols : depth;
+  index_t rhs_cols = transpose_rhs ? depth : cols;
+  std::vector<index_t> lhs_shape = {lhs_rows, lhs_cols};
+  std::vector<index_t> rhs_shape = {rhs_rows, rhs_cols};
+  if (lhs_batched) {
+    lhs_shape.insert(lhs_shape.begin(), batch.begin(), batch.end());
   }
-  if (transpose_b) {
-    net.AddRandomInput<CPU, float>("B", {batch_count, out_width, channels});
-  } else {
-    net.AddRandomInput<CPU, float>("B", {batch_count, channels, out_width});
+  if (rhs_batched) {
+    rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
+  net.AddRandomInput<CPU, float>("A", lhs_shape);
+  net.AddRandomInput<CPU, float>("B", rhs_shape);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
-      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
       .Input("B")
-      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
+      .Output("Output")
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  ref::Gemm<float> gemm;
+  Tensor expected_output_tensor;
+  std::vector<index_t> expected_output_shape({rows, cols});
+  expected_output_shape.insert(expected_output_shape.begin(),
+                               batch.begin(),
+                               batch.end());
+  expected_output_tensor.Resize(expected_output_shape);
+  index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
+                                        std::multiplies<index_t>());
+  gemm.Compute(nullptr,
+               net.GetTensor("A"),
+               net.GetTensor("B"),
+               batch_count,
+               lhs_rows,
+               lhs_cols,
+               rhs_rows,
+               rhs_cols,
+               transpose_lhs,
+               transpose_rhs,
+               false,
+               lhs_batched,
+               rhs_batched,
+               &expected_output_tensor);
+
+  ExpectTensorNear<float>(expected_output_tensor, *net.GetTensor("Output"));
+}
+}  // namespace
+
+TEST_F(MatMulOpTest, ComplexCPUWithBatch) {
+  Complex<DeviceType::CPU>({1}, 3, 3, 3, false, false, true, true);
+  Complex<DeviceType::CPU>({}, 3, 3, 3, false, false, true, true);
+  Complex<DeviceType::CPU>({16}, 31, 61, 67, false, true, true, true);
+  Complex<DeviceType::CPU>({31}, 31, 61, 67, true, false, true, true);
+  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, true, true);
+  Complex<DeviceType::CPU>({1}, 1, 30001, 253, false, true, true, true);
+  Complex<DeviceType::CPU>({2}, 253, 300, 1, false, false, true, true);
+  // test one-side batched
+  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, false, true);
+  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, true, false);
+  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, false, true);
+}
+
+namespace {
+void QuantOutputUint8(const std::vector<index_t> &batch,
+                      const index_t rows,
+                      const index_t depth,
+                      const index_t cols,
+                      const bool transpose_lhs,
+                      const bool transpose_rhs,
+                      const bool lhs_batched = true,
+                      const bool rhs_batched = true) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  // Add input data
+  index_t lhs_rows = transpose_lhs ? depth : rows;
+  index_t lhs_cols = transpose_lhs ? rows : depth;
+  index_t rhs_rows = transpose_rhs ? cols : depth;
+  index_t rhs_cols = transpose_rhs ? depth : cols;
+  std::vector<index_t> lhs_shape = {lhs_rows, lhs_cols};
+  std::vector<index_t> rhs_shape = {rhs_rows, rhs_cols};
+  if (lhs_batched) {
+    lhs_shape.insert(lhs_shape.begin(), batch.begin(), batch.end());
+  }
+  if (rhs_batched) {
+    rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
+  }
+  net.AddRandomInput<CPU, float>("A", lhs_shape);
+  net.AddRandomInput<CPU, float>("B", rhs_shape);
+
+  OpDefBuilder("MatMul", "MatMulTest")
+      .Input("A")
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
+      .Input("B")
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
       .Output("Output")
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
@@ -133,9 +221,9 @@ void QuantOutputUint8(const std::vector<index_t> &batch,
 
   OpDefBuilder("MatMul", "QuantizeMatMulTest")
       .Input("QuantizedA")
-      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
       .Input("QuantizedB")
-      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
       .Output("QuantizedOutput")
       .AddIntArg("T", DT_UINT8)
       .OutputType({DT_UINT8})
@@ -161,39 +249,38 @@ void QuantOutputUint8(const std::vector<index_t> &batch,
 }
 
 void QuantOutputInt32(const std::vector<index_t> &batch,
-                      const index_t height,
-                      const index_t channels,
-                      const index_t out_width,
-                      const bool transpose_a,
-                      const bool transpose_b) {
+                      const index_t rows,
+                      const index_t depth,
+                      const index_t cols,
+                      const bool transpose_lhs,
+                      const bool transpose_rhs,
+                      const bool lhs_batched = true,
+                      const bool rhs_batched = true) {
   // Construct graph
   OpsTestNet net;
 
   // Add input data
-  index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
-                                        std::multiplies<index_t>());
-  if (transpose_a) {
-    net.AddRandomInput<CPU, float>("A", {batch_count, channels, height},
-                                   false);
-  } else {
-    net.AddRandomInput<CPU, float>("A", {batch_count, height, channels},
-                                   false);
+  // Add input data
+  index_t lhs_rows = transpose_lhs ? depth : rows;
+  index_t lhs_cols = transpose_lhs ? rows : depth;
+  index_t rhs_rows = transpose_rhs ? cols : depth;
+  index_t rhs_cols = transpose_rhs ? depth : cols;
+  std::vector<index_t> lhs_shape = {lhs_rows, lhs_cols};
+  std::vector<index_t> rhs_shape = {rhs_rows, rhs_cols};
+  if (lhs_batched) {
+    lhs_shape.insert(lhs_shape.begin(), batch.begin(), batch.end());
   }
-  if (transpose_b) {
-    net.AddRandomInput<CPU, float>("B",
-                                   {batch_count, out_width, channels},
-                                   false);
-  } else {
-    net.AddRandomInput<CPU, float>("B",
-                                   {batch_count, channels, out_width},
-                                   false);
+  if (rhs_batched) {
+    rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
+  net.AddRandomInput<CPU, float>("A", lhs_shape);
+  net.AddRandomInput<CPU, float>("B", rhs_shape);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
-      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
       .Input("B")
-      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
       .Output("Output")
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
@@ -219,9 +306,9 @@ void QuantOutputInt32(const std::vector<index_t> &batch,
 
   OpDefBuilder("MatMul", "QuantizeMatMulTest")
       .Input("QuantizedA")
-      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
       .Input("QuantizedB")
-      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
       .Output("QuantizedOutput")
       .AddIntArg("T", DT_UINT8)
       .OutputType({DT_INT32})
@@ -256,10 +343,12 @@ TEST_F(MatMulOpTest, QuantOutputUint8) {
   QuantOutputUint8({1}, 64, 32, 128, true, true);
   QuantOutputUint8({2, 3}, 64, 32, 128, true, true);
   // UnAligned
-  QuantOutputUint8({2}, 3, 3, 3, false, false);
   QuantOutputUint8({16}, 31, 61, 67, false, true);
   QuantOutputUint8({31}, 31, 61, 67, true, false);
   QuantOutputUint8({2, 3}, 31, 61, 67, true, true);
+
+  QuantOutputUint8({2, 3}, 31, 61, 67, true, true, true, false);
+  QuantOutputUint8({2, 3}, 31, 61, 67, true, true, false, true);
 }
 
 TEST_F(MatMulOpTest, QuantOutputInt32) {
@@ -281,12 +370,14 @@ TEST_F(MatMulOpTest, QuantOutputInt32) {
   QuantOutputInt32({3}, 128, 256, 1, false, false);
 
   // UnAligned
-  QuantOutputInt32({2}, 3, 3, 3, false, false);
   QuantOutputInt32({16}, 31, 61, 67, false, true);
   QuantOutputInt32({31}, 31, 61, 67, true, false);
   QuantOutputInt32({2, 3}, 31, 61, 67, true, true);
   QuantOutputInt32({1}, 1, 30001, 253, false, true);
   QuantOutputInt32({2}, 253, 300, 1, false, false);
+
+  QuantOutputInt32({2, 3}, 31, 61, 67, true, true, true, false);
+  QuantOutputInt32({2, 3}, 31, 61, 67, true, true, false, true);
 }
 
 }  // namespace test

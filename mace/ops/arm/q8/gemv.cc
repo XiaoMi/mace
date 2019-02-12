@@ -43,6 +43,7 @@ MaceStatus Gemv<OUTPUT_TYPE>::Compute(const OpContext *context,
                                       const index_t lhs_height,
                                       const index_t lhs_width,
                                       const bool lhs_batched,
+                                      const bool rhs_batched,
                                       Tensor *output) {
   MACE_UNUSED(context);
 
@@ -100,7 +101,8 @@ MaceStatus Gemv<OUTPUT_TYPE>::Compute(const OpContext *context,
           *lhs_ptr = lhs_data
           + static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
           + lhs_width * h_block_idx * h_block_size;
-      const uint8_t *rhs_ptr = rhs_data + b * lhs_width;
+      const uint8_t *rhs_ptr =
+          rhs_data + static_cast<index_t>(rhs_batched) * b * lhs_width;
       OUTPUT_TYPE
           *ret_ptr = output_data + b * lhs_height + h_block_idx * h_block_size;
 

@@ -12,31 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_CORE_OP_CONTEXT_H_
-#define MACE_CORE_OP_CONTEXT_H_
+#ifndef MACE_OPS_ARM_FP32_CONV_2D_1X1_H_
+#define MACE_OPS_ARM_FP32_CONV_2D_1X1_H_
 
-#include "mace/core/device.h"
-#include "mace/core/workspace.h"
-#include "mace/core/future.h"
+#include "mace/public/mace.h"
+#include "mace/core/tensor.h"
+#include "mace/core/op_context.h"
+#include "mace/ops/arm/fp32/gemm.h"
+#include "mace/ops/arm/fp32/conv_2d.h"
 
 namespace mace {
+namespace ops {
+namespace arm {
+namespace fp32 {
 
-class OpContext {
+class Conv2dK1x1 : public Conv2dBase {
  public:
-  OpContext(Workspace *ws, Device *device);
-  ~OpContext();
-  void set_device(Device *device);
-  Device *device() const;
-  Workspace *workspace() const;
+  Conv2dK1x1() : gemm_(true) {}
+  virtual ~Conv2dK1x1() {}
 
-  void set_future(StatsFuture *future);
-  StatsFuture *future() const;
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output);
+
  private:
-  Device *device_;
-  Workspace *ws_;
-  StatsFuture *future_;
-  // metadata
+  Gemm gemm_;
 };
 
+}  // namespace fp32
+}  // namespace arm
+}  // namespace ops
 }  // namespace mace
-#endif  // MACE_CORE_OP_CONTEXT_H_
+
+#endif  // MACE_OPS_ARM_FP32_CONV_2D_1X1_H_

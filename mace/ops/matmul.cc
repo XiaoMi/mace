@@ -25,7 +25,7 @@
 #include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_NEON
-
+#include "mace/ops/arm/fp32/gemm.h"
 #include "mace/ops/arm/fp32/gemv.h"
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -33,6 +33,7 @@
 #endif  // MACE_ENABLE_QUANTIZE
 
 #else
+#include "mace/ops/ref/gemm.h"
 #include "mace/ops/ref/gemv.h"
 #endif  // MACE_ENABLE_NEON
 
@@ -58,35 +59,45 @@ class MatMulOpBase : public Operation {
   inline void Validate() {
     const Tensor *A = this->Input(INPUT_A);
     const Tensor *B = this->Input(INPUT_B);
-    MACE_CHECK(A->dim_size() == B->dim_size() && A->dim_size() >= 2,
-               "rank(A) should be equal to rank(B), rank should be greater "
-               "than or equal to 2");
-    index_t rank = A->dim_size();
-    for (index_t i = 0; i < rank - 2; ++i) {
-      MACE_CHECK(A->dim(i) == B->dim(i),
-                 "batch dimensions are not equal: ",
-                 A->dim(i),
-                 " vs. ",
-                 B->dim(i));
+    const index_t lhs_rank = A->dim_size();
+    const index_t rhs_rank = B->dim_size();
+
+    MACE_CHECK(lhs_rank >= 2 && rhs_rank >= 2,
+               "rank should be greater than or equal to 2");
+    if (lhs_rank == rhs_rank) {
+      for (index_t i = 0; i < A->dim_size() - 2; ++i) {
+        MACE_CHECK(A->dim(i) == B->dim(i),
+                   "batch dimensions are not equal: ",
+                   A->dim(i),
+                   " vs. ",
+                   B->dim(i));
+      }
+    } else {
+      MACE_CHECK(lhs_rank == 2 || rhs_rank == 2,
+                 "Either lhs or rhs matrix should has rank 2 "
+                     "for non-batched matrix multiplication");
     }
-    index_t ak = transpose_a_ ? A->dim(rank - 2) : A->dim(rank - 1);
-    index_t bk = transpose_b_ ? B->dim(rank - 1) : B->dim(rank - 2);
-    MACE_CHECK(ak == bk, "the number of A's column ", ak,
-               " must be equal to B's row ", bk);
+
+    index_t
+        lhs_depth = transpose_a_ ? A->dim(lhs_rank - 2) : A->dim(lhs_rank - 1);
+    index_t
+        rhs_depth = transpose_b_ ? B->dim(rhs_rank - 1) : B->dim(rhs_rank - 2);
+    MACE_CHECK(lhs_depth == rhs_depth, "the number of A's column ", lhs_depth,
+               " must be equal to B's row ", rhs_depth);
   }
 
  protected:
-  MACE_OP_INPUT_TAGS(INPUT_A, INPUT_B);
+  MACE_OP_INPUT_TAGS(INPUT_A, INPUT_B, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 
   bool transpose_a_;
   bool transpose_b_;
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class MatMulOp;
 
-template <>
+template<>
 class MatMulOp<CPU, float> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
@@ -94,72 +105,116 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
 
   MaceStatus Run(OpContext *context) override {
     Validate();
-    const Tensor *A = this->Input(INPUT_A);
-    const Tensor *B = this->Input(INPUT_B);
+    const Tensor *lhs = this->Input(INPUT_A);
+    const Tensor *rhs = this->Input(INPUT_B);
+    const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *C = this->Output(OUTPUT);
 
-    index_t batch;
-    index_t height;
-    index_t K;
-    index_t width;
+    const index_t lhs_rank = lhs->dim_size();
+    const index_t lhs_rows = lhs->dim(lhs_rank - 2);
+    const index_t lhs_cols = lhs->dim(lhs_rank - 1);
+    const index_t rhs_rank = rhs->dim_size();
+    const index_t rhs_rows = rhs->dim(rhs_rank - 2);
+    const index_t rhs_cols = rhs->dim(rhs_rank - 1);
 
-    index_t rank = A->dim_size();
-    height = A->dim(rank - 2);
-    K = A->dim(rank - 1);
-    if (transpose_a_) {
-      std::swap(height, K);
-    }
-    if (transpose_b_) {
-      width = B->dim(rank - 2);
+    const index_t rows = transpose_a_ ? lhs_cols : lhs_rows;
+    const index_t cols = transpose_b_ ? rhs_rows : rhs_cols;
+    const index_t depth = transpose_a_ ? lhs_rows : lhs_cols;
+    const index_t
+        lhs_batch =
+        std::accumulate(lhs->shape().begin(), lhs->shape().end() - 2, 1,
+                        std::multiplies<index_t>());
+    const index_t
+        rhs_batch =
+        std::accumulate(rhs->shape().begin(), rhs->shape().end() - 2, 1,
+                        std::multiplies<index_t>());
+    index_t batch = 1;
+    std::vector<index_t> output_shape;
+    if (lhs_rank >= rhs_rank) {
+      output_shape = lhs->shape();
+      output_shape[lhs_rank - 2] = rows;
+      output_shape[lhs_rank - 1] = cols;
+      batch = lhs_batch;
     } else {
-      width = B->dim(rank - 1);
+      output_shape = rhs->shape();
+      output_shape[rhs_rank - 2] = rows;
+      output_shape[rhs_rank - 1] = cols;
+      batch = rhs_batch;
     }
-    batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
-                            std::multiplies<index_t>());
-    std::vector<index_t> c_shape = A->shape();
-    c_shape[rank - 2] = height;
-    c_shape[rank - 1] = width;
+    bool lhs_batched = true;
+    bool rhs_batched = true;
+    if (lhs_rank < rhs_rank) {
+      lhs_batched = false;
+    } else if (rhs_rank < lhs_rank) {
+      rhs_batched = false;
+    }
 
-    MACE_RETURN_IF_ERROR(C->Resize(c_shape));
+    MACE_RETURN_IF_ERROR(C->Resize(output_shape));
 
-    Tensor::MappingGuard guarda(A);
-    Tensor::MappingGuard guardb(B);
-    Tensor::MappingGuard guardc(C);
-    const float *a_ptr_base = A->data<float>();
-    const float *b_ptr_base = B->data<float>();
-    float *c_ptr_base = C->mutable_data<float>();
+    if (rows == 1 && transpose_b_) {
+      return gemv_.Compute(context,
+                           rhs,
+                           lhs,
+                           bias,
+                           batch,
+                           cols,
+                           depth,
+                           rhs_batched,
+                           lhs_batched,
+                           C);
+    } else if (cols == 1 && !transpose_a_) {
+      return gemv_.Compute(context,
+                           lhs,
+                           rhs,
+                           bias,
+                           batch,
+                           rows,
+                           depth,
+                           lhs_batched,
+                           rhs_batched,
+                           C);
+    } else {
+      context->device()->scratch_buffer()->Rewind();
+      MaceStatus ret = gemm_.Compute(context,
+                                     lhs,
+                                     rhs,
+                                     batch,
+                                     lhs_rows,
+                                     lhs_cols,
+                                     rhs_rows,
+                                     rhs_cols,
+                                     transpose_a_,
+                                     transpose_b_,
+                                     false,
+                                     lhs_batched,
+                                     rhs_batched,
+                                     C);
+      if (bias != nullptr) {
+        MACE_CHECK(bias->dim_size() == 1 && bias->dim(0) == cols,
+                   "bias' dim should be <= 2.");
+        Tensor::MappingGuard bias_guard(bias);
+        Tensor::MappingGuard c_guard(C);
+        const float *bias_data = bias->data<float>();
+        float *c_data = C->mutable_data<float>();
+#pragma omp parallel for collapse(2) schedule(runtime)
+        for (index_t i = 0; i < batch * rows; ++i) {
+          for (index_t w = 0; w < cols; ++w) {
+            c_data[i * cols + w] += bias_data[w];
+          }
+        }
+      }
 
-    const index_t height_a = A->dim(rank - 2);
-    const index_t width_a = A->dim(rank - 1);
-    const index_t height_b = B->dim(rank - 2);
-    const index_t width_b = B->dim(rank - 1);
-
-    auto scratch_buffer = context->device()->scratch_buffer();
-    scratch_buffer->Rewind();
-
-    sgemm_.Run(a_ptr_base,
-               b_ptr_base,
-               batch,
-               height_a,
-               width_a,
-               height_b,
-               width_b,
-               transpose_a_,
-               transpose_b_,
-               A->is_weight(),
-               B->is_weight(),
-               c_ptr_base,
-               context->device()->scratch_buffer());
-
-    return MaceStatus::MACE_SUCCESS;
+      return ret;
+    }
   }
 
  private:
-  SGemm sgemm_;
 #ifdef MACE_ENABLE_NEON
+  arm::fp32::Gemm gemm_;
   arm::fp32::Gemv gemv_;
 #else
   ref::Gemv<float> gemv_;
+  ref::Gemm<float> gemm_;
 #endif  // MACE_ENABLE_NEON
 };
 
@@ -174,18 +229,36 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
   void operator()(OpContext *context,
                   const Tensor *A,
                   const Tensor *B,
+                  const index_t batch,
                   const index_t height,
                   const index_t K,
                   const index_t width,
+                  const bool lhs_bached,
+                  const bool rhs_bached,
                   Tensor *C) {
-    index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
-                                    std::multiplies<index_t>());
-
 #if defined(MACE_ENABLE_NEON)
     if (width == 1 && AOrder == gemmlowp::MapOrder::RowMajor) {
-      gemv_kernel_.Compute(context, A, B, nullptr, batch, height, K, true, C);
+      gemv_kernel_.Compute(context,
+                           A,
+                           B,
+                           nullptr,
+                           batch,
+                           height,
+                           K,
+                           true,
+                           true,
+                           C);
     } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
-      gemv_kernel_.Compute(context, B, A, nullptr, batch, width, K, true, C);
+      gemv_kernel_.Compute(context,
+                           B,
+                           A,
+                           nullptr,
+                           batch,
+                           width,
+                           K,
+                           true,
+                           true,
+                           C);
     } else {
 #endif  // MACE_ENABLE_NEON
       Tensor::MappingGuard guarda(A);
@@ -208,9 +281,13 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
 
       for (index_t i = 0; i < batch; ++i) {
         gemmlowp::MatrixMap<const uint8_t, AOrder>
-            a_matrix(a_ptr_base + i * a_size, height, K);
+            a_matrix(a_ptr_base + static_cast<index_t>(lhs_bached) * i * a_size,
+                     height,
+                     K);
         gemmlowp::MatrixMap<const uint8_t, BOrder>
-            b_matrix(b_ptr_base + i * b_size, K, width);
+            b_matrix(b_ptr_base + static_cast<index_t>(rhs_bached) * i * b_size,
+                     K,
+                     width);
         gemmlowp::MatrixMap <uint8_t, gemmlowp::MapOrder::RowMajor>
             c_matrix(c_ptr_base + i * c_size, height, width);
 
@@ -234,20 +311,39 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
   void operator()(OpContext *context,
                   const Tensor *A,
                   const Tensor *B,
+                  const index_t batch,
                   const index_t height,
                   const index_t K,
                   const index_t width,
+                  const bool lhs_bached,
+                  const bool rhs_bached,
                   Tensor *C) {
     C->SetScale(A->scale() * B->scale());
     C->SetZeroPoint(0);
-    index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
-                                    std::multiplies<index_t>());
 
 #if defined(MACE_ENABLE_NEON)
     if (width == 1 && AOrder == gemmlowp::MapOrder::RowMajor) {
-      gemv_kernel_.Compute(context, A, B, nullptr, batch, height, K, true, C);
+      gemv_kernel_.Compute(context,
+                           A,
+                           B,
+                           nullptr,
+                           batch,
+                           height,
+                           K,
+                           lhs_bached,
+                           rhs_bached,
+                           C);
     } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
-      gemv_kernel_.Compute(context, B, A, nullptr, batch, width, K, true, C);
+      gemv_kernel_.Compute(context,
+                           B,
+                           A,
+                           nullptr,
+                           batch,
+                           width,
+                           K,
+                           lhs_bached,
+                           rhs_bached,
+                           C);
     } else {
 #endif  // MACE_ENABLE_NEON
       Tensor::MappingGuard guarda(A);
@@ -257,7 +353,8 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
       auto b_ptr_base = B->data<uint8_t>();
       auto c_ptr_base = C->mutable_data<int32_t>();
       auto
-          gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
+          gemm_context =
+          context->device()->cpu_runtime()->GetGemmlowpContext();
       MACE_CHECK_NOTNULL(gemm_context);
 
       index_t a_size = height * K;
@@ -268,9 +365,15 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
 
       for (index_t i = 0; i < batch; ++i) {
         gemmlowp::MatrixMap<const uint8_t, AOrder>
-            a_matrix(a_ptr_base + i * a_size, height, K);
+            a_matrix
+            (a_ptr_base + static_cast<index_t>(lhs_bached) * i * a_size,
+             height,
+             K);
         gemmlowp::MatrixMap<const uint8_t, BOrder>
-            b_matrix(b_ptr_base + i * b_size, K, width);
+            b_matrix
+            (b_ptr_base + static_cast<index_t>(rhs_bached) * i * b_size,
+             K,
+             width);
         gemmlowp::MatrixMap <int32_t, gemmlowp::MapOrder::RowMajor>
             c_matrix(c_ptr_base + i * c_size, height, width);
 
@@ -280,7 +383,6 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
             -B->zero_point(), output_pipeline);
       }
     }
-
 #if defined(MACE_ENABLE_NEON)
   }
 
@@ -289,44 +391,65 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
 #endif  // MACE_ENABLE_NEON
 };
 
-template <>
-class MatMulOp<DeviceType::CPU, uint8_t>: public MatMulOpBase {
+template<>
+class MatMulOp<DeviceType::CPU, uint8_t> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context) {}
 
   MaceStatus Run(OpContext *context) override {
     Validate();
-    const Tensor *A = this->Input(INPUT_A);
-    const Tensor *B = this->Input(INPUT_B);
+    const Tensor *lhs = this->Input(INPUT_A);
+    const Tensor *rhs = this->Input(INPUT_B);
     Tensor *C = this->Output(OUTPUT);
 
-    index_t rank = A->dim_size();
-    index_t height = A->dim(rank - 2);
-    index_t K = A->dim(rank - 1);
-    index_t width;
+    const index_t lhs_rank = lhs->dim_size();
+    const index_t lhs_rows = lhs->dim(lhs_rank - 2);
+    const index_t lhs_cols = lhs->dim(lhs_rank - 1);
+    const index_t rhs_rank = rhs->dim_size();
+    const index_t rhs_rows = rhs->dim(rhs_rank - 2);
+    const index_t rhs_cols = rhs->dim(rhs_rank - 1);
 
-    if (transpose_a_) {
-      std::swap(height, K);
-    }
-    if (transpose_b_) {
-      width = B->dim(rank - 2);
+    const index_t rows = transpose_a_ ? lhs_cols : lhs_rows;
+    const index_t cols = transpose_b_ ? rhs_rows : rhs_cols;
+    const index_t depth = transpose_a_ ? lhs_rows : lhs_cols;
+    const index_t
+        lhs_batch =
+        std::accumulate(lhs->shape().begin(), lhs->shape().end() - 2, 1,
+                        std::multiplies<index_t>());
+    const index_t
+        rhs_batch =
+        std::accumulate(rhs->shape().begin(), rhs->shape().end() - 2, 1,
+                        std::multiplies<index_t>());
+    index_t batch = 1;
+    std::vector<index_t> output_shape;
+    if (lhs_rank >= rhs_rank) {
+      output_shape = lhs->shape();
+      output_shape[lhs_rank - 2] = rows;
+      output_shape[lhs_rank - 1] = cols;
+      batch = lhs_batch;
     } else {
-      width = B->dim(rank - 1);
+      output_shape = rhs->shape();
+      output_shape[rhs_rank - 2] = rows;
+      output_shape[rhs_rank - 1] = cols;
+      batch = rhs_batch;
+    }
+    bool lhs_batched = true;
+    bool rhs_batched = true;
+    if (lhs_rank < rhs_rank) {
+      lhs_batched = false;
+    } else if (rhs_rank < lhs_rank) {
+      rhs_batched = false;
     }
 
-    std::vector<index_t> c_shape = A->shape();
-    c_shape[rank - 2] = height;
-    c_shape[rank - 1] = width;
-
-    MACE_RETURN_IF_ERROR(C->Resize(c_shape));
+    MACE_RETURN_IF_ERROR(C->Resize(output_shape));
 
     constexpr gemmlowp::MapOrder kRowMajor = gemmlowp::MapOrder::RowMajor;
     constexpr gemmlowp::MapOrder kColMajor = gemmlowp::MapOrder::ColMajor;
 
 #define MATMUL_FIXPOINT_IMPL(AOrder, BOrder, OutType)           \
     MatMulFixpointImpl<AOrder, BOrder, OutType>()(              \
-      context, A, B, height, K, width, C);
+      context, lhs, rhs, batch, rows, depth, cols, lhs_batched, rhs_batched, C);
 
 #define MATMUL_FIXPOINT_IMPL_TRANSPOSE_OR_NOT(OutType)          \
     if (transpose_a_) {                                         \
@@ -379,7 +502,6 @@ class MatMulOp<DeviceType::GPU, T> : public MatMulOpBase {
   std::unique_ptr<OpenCLMatMulKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
-
 
 void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,

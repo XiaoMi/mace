@@ -101,11 +101,14 @@ void MatmulBenchmark_Mace_SGemm(int iters, int m, int k, int n) {
   std::vector<float> rhs(k * n);
   std::vector<float> result(m * n);
 
-  ops::MatrixMap<const float> matrix_lhs(1, m, k, RowMajor, lhs.data(),
-                                             true);
-  ops::MatrixMap<const float> matrix_rhs(1, k, n, RowMajor, rhs.data(),
-                                             true);
-  ops::MatrixMap<float> matrix_result(1, m, n, RowMajor, result.data());
+  ops::SGemmMatrixMap<const float>
+      matrix_lhs(1, m, k, SGemmRowMajor, lhs.data(),
+                 true);
+  ops::SGemmMatrixMap<const float>
+      matrix_rhs(1, k, n, SGemmRowMajor, rhs.data(),
+                 true);
+  ops::SGemmMatrixMap<float>
+      matrix_result(1, m, n, SGemmRowMajor, result.data());
 
   ops::SGemm sgemm;
 
@@ -395,6 +398,7 @@ void MatMulTransposeBenchmark(
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 
 MACE_BM_MATMUL_OP(1, 30000, 256, 1);
+MACE_BM_MATMUL_OP(1, 128, 256, 128);
 MACE_BM_MATMUL_OP(2, 128, 128, 49);
 MACE_BM_MATMUL_OP(3, 128, 128, 49);
 MACE_BM_MATMUL_OP(4, 128, 128, 49);

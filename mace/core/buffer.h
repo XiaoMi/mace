@@ -384,7 +384,7 @@ class BufferSlice : public BufferBase {
   BufferSlice(const BufferSlice &other)
       : BufferSlice(other.buffer_, other.offset_, other.size_) {}
 
-  ~BufferSlice() {
+  virtual ~BufferSlice() {
     if (buffer_ != nullptr && mapped_buf_ != nullptr) {
       UnMap();
     }
@@ -506,7 +506,7 @@ class ScratchBuffer: public Buffer {
 
   virtual ~ScratchBuffer() {}
 
-  MaceStatus GrowSize(index_t size) {
+  MaceStatus GrowSize(const index_t size) {
     if (size > size_) {
       VLOG(1) << "Grow scratch size to: " << size;
       MACE_CHECK(offset_ == 0, "scratch is being used, cannot grow size");

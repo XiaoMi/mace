@@ -22,6 +22,9 @@
 #define vaddvq_f32(v) ((v)[0] + (v)[1] + (v)[2] + (v)[3])
 #endif
 
+// Disable unroll by default, since cache set conflict could be significant
+// #define MACE_GEMV_UNROLL 1
+
 namespace mace {
 namespace ops {
 namespace arm {
@@ -35,13 +38,25 @@ MaceStatus Gemv::Compute(const OpContext *context,
                          const index_t lhs_height,
                          const index_t lhs_width,
                          const bool lhs_batched,
+                         const bool rhs_batched,
                          Tensor *output) {
   MACE_UNUSED(context);
+
+  MACE_CHECK(output->size() == batch * lhs_height,
+             "Need resize output tensor before call gemv.");
 
   Tensor::MappingGuard lhs_guard(lhs);
   Tensor::MappingGuard rhs_guard(rhs);
   Tensor::MappingGuard bias_guard(bias);
   Tensor::MappingGuard output_guard(output);
+
+  const float *lhs_data = lhs->data<float>();
+  const float *rhs_data = rhs->data<float>();
+  const float *bias_data = nullptr;
+  if (bias) {
+    bias_data = bias->data<float>();
+  }
+  float *output_data = output->mutable_data<float>();
 
   const index_t h_block_size = 4;
   const index_t h_block_count = RoundUpDiv(lhs_height, h_block_size);
@@ -52,28 +67,20 @@ MaceStatus Gemv::Compute(const OpContext *context,
 #pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < batch; ++b) {
     for (index_t h_block_idx = 0; h_block_idx < h_block_count; ++h_block_idx) {
-      // TODO(liyin): it can be put it outside the loop,
-      // but openmp limits param count
-      const float *lhs_data = lhs->data<float>();
-      const float *rhs_data = rhs->data<float>();
-      const float *bias_data = nullptr;
-      if (bias) {
-        bias_data = bias->data<float>();
-      }
-      float *output_data = output->mutable_data<float>();
-
+      const index_t h_start = h_block_idx * h_block_size;
       const float
           *lhs_ptr = lhs_data
           + static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
-          + lhs_width * h_block_idx * h_block_size;
-      const float *rhs_ptr = rhs_data + b * lhs_width;
+          + lhs_width * h_start;
+      const float *rhs_ptr =
+          rhs_data + static_cast<index_t>(rhs_batched) * b * lhs_width;
       float
-          *ret_ptr = output_data + b * lhs_height + h_block_idx * h_block_size;
+          *ret_ptr = output_data + b * lhs_height + h_start;
 
       const index_t h_block_len =
-          std::min(h_block_size, lhs_height - h_block_idx * h_block_size);
-      const index_t h_offset = h_block_idx * h_block_size;
+          std::min(h_block_size, lhs_height - h_start);
 
+#ifdef MACE_GEMV_UNROLL
       if (h_block_len == 4) {
         float32x4_t vo0 = vdupq_n_f32(0);
         float32x4_t vo1 = vdupq_n_f32(0);
@@ -149,6 +156,11 @@ MaceStatus Gemv::Compute(const OpContext *context,
         "vmla.f32 %q[vo2], q4, q8\n"
         "vmla.f32 %q[vo3], q6, q8\n"
 
+        "vld1.f32 {d0-d1}, [r1]!\n"
+        "vld1.f32 {d4-d5}, [r2]!\n"
+        "vld1.f32 {d8-d9}, [r3]!\n"
+        "vld1.f32 {d12-d13}, [r4]!\n"
+        "vld1.f32 {d16-d17}, [r0]!\n"
 
         "vmla.f32 %q[vo0], q1, q9\n"
         "vmla.f32 %q[vo1], q3, q9\n"
@@ -156,13 +168,6 @@ MaceStatus Gemv::Compute(const OpContext *context,
         "vmla.f32 %q[vo3], q7, q9\n"
 
         "subs %[r_w_block_count], #1\n"
-
-
-        "vld1.f32 {d0-d1}, [r1]!\n"
-        "vld1.f32 {d4-d5}, [r2]!\n"
-        "vld1.f32 {d8-d9}, [r3]!\n"
-        "vld1.f32 {d12-d13}, [r4]!\n"
-        "vld1.f32 {d16-d17}, [r0]!\n"
 
         "vld1.f32 {d2-d3}, [r1]!\n"
         "vld1.f32 {d6-d7}, [r2]!\n"
@@ -257,26 +262,30 @@ MaceStatus Gemv::Compute(const OpContext *context,
         vo = vaddq_f32(vo, vbias);
         vst1q_f32(ret_ptr, vo);
       } else {  // h_block_len < 4
-        // TODO(liyin): handle here case by case (1,2,3) to accelerate
+#endif  // MACE_GEMV_UNROLL
         const float *tmp_lhs_ptr = lhs_ptr;
         const float *tmp_rhs_ptr = rhs_ptr;
         for (index_t h = 0; h < h_block_len; ++h) {
           lhs_ptr = tmp_lhs_ptr + h * lhs_width;
           rhs_ptr = tmp_rhs_ptr;
           float32x4_t vo0 = vdupq_n_f32(0);
+          float32x4_t vo0n = vdupq_n_f32(0);
           for (index_t w = 0; w < w_block_count; ++w) {
             float32x4_t vr0 = vld1q_f32(rhs_ptr);
             float32x4_t vr0n = vld1q_f32(rhs_ptr + 4);
 
             float32x4_t vl0 = vld1q_f32(lhs_ptr);
             float32x4_t vl0n = vld1q_f32(lhs_ptr + 4);
+
+            // may cause some precision error depending on the compute order
             vo0 = vmlaq_f32(vo0, vl0, vr0);
-            vo0 = vmlaq_f32(vo0, vl0n, vr0n);
+            vo0n = vmlaq_f32(vo0n, vl0n, vr0n);
 
             lhs_ptr += 8;
             rhs_ptr += 8;
           }  // w
-          float s0 = vaddvq_f32(vo0) + (bias ? bias_data[h_offset + h] : 0);
+          vo0 = vaddq_f32(vo0, vo0n);
+          float s0 = vaddvq_f32(vo0) + (bias ? bias_data[h_start + h] : 0);
           for (index_t w = 0; w < w_remain; ++w) {
             s0 += lhs_ptr[0] * rhs_ptr[0];
             ++lhs_ptr;
@@ -285,7 +294,9 @@ MaceStatus Gemv::Compute(const OpContext *context,
 
           ret_ptr[h] = s0;
         }  // h
+#ifdef MACE_GEMV_UNROLL
       }  // if
+#endif  // MACE_GEMV_UNROLL
     }  // h_block_idx
   }  // b
 

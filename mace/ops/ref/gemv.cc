@@ -31,6 +31,7 @@ MaceStatus Gemv<float>::Compute(const OpContext *context,
                                 const index_t lhs_height,
                                 const index_t lhs_width,
                                 const bool lhs_batched,
+                                const bool rhs_batched,
                                 Tensor *output) {
   MACE_UNUSED(context);
 
@@ -52,9 +53,9 @@ MaceStatus Gemv<float>::Compute(const OpContext *context,
       float sum = bias ? bias_data[h] : 0;
       for (index_t w = 0; w < lhs_width; ++w) {
         sum += lhs_data[
-          static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
-            + h * lhs_width + w]
-          * rhs_data[b * lhs_width + w];
+            static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
+                + h * lhs_width + w]
+            * rhs_data[static_cast<index_t>(rhs_batched) * b * lhs_width + w];
       }  // w
 
       output_data[b * lhs_height + h] = sum;
@@ -73,6 +74,7 @@ MaceStatus Gemv<uint8_t>::Compute(const OpContext *context,
                                   const index_t lhs_height,
                                   const index_t lhs_width,
                                   const bool lhs_batched,
+                                  const bool rhs_batched,
                                   Tensor *output) {
   MACE_UNUSED(context);
 
@@ -102,7 +104,8 @@ MaceStatus Gemv<uint8_t>::Compute(const OpContext *context,
         sum += (lhs_data[
             static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
                 + h * lhs_width + w] - lhs_zero)
-            * (rhs_data[b * lhs_width + w] - rhs_zero);
+            * (rhs_data[static_cast<index_t>(rhs_batched) * b * lhs_width + w]
+                - rhs_zero);
       }  // w
 
       output_data[b * lhs_height + h] =
@@ -120,6 +123,7 @@ MaceStatus Gemv<int32_t>::Compute(const OpContext *context,
                                   const index_t lhs_height,
                                   const index_t lhs_width,
                                   const bool lhs_batched,
+                                  const bool rhs_batched,
                                   Tensor *output) {
   MACE_UNUSED(context);
 
@@ -146,7 +150,8 @@ MaceStatus Gemv<int32_t>::Compute(const OpContext *context,
         sum += (lhs_data[
             static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
                 + h * lhs_width + w] - lhs_zero)
-            * (rhs_data[b * lhs_width + w] - rhs_zero);
+            * (rhs_data[static_cast<index_t>(rhs_batched) * b * lhs_width + w]
+                - rhs_zero);
       }  // w
 
       output_data[b * lhs_height + h] = sum;

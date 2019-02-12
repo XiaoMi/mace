@@ -25,11 +25,11 @@ void OpContext::set_device(Device *device) {
   device_ = device;
 }
 
-Device* OpContext::device() {
+Device* OpContext::device() const {
   return device_;
 }
 
-Workspace* OpContext::workspace() {
+Workspace* OpContext::workspace() const {
   return ws_;
 }
 
@@ -37,7 +37,7 @@ void OpContext::set_future(StatsFuture *future) {
   future_ = future;
 }
 
-StatsFuture *OpContext::future() {
+StatsFuture *OpContext::future() const {
   return future_;
 }
 

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This implementation is deprecated. use mace/ops/arm/fp32/gemm.h instead.
+
 #ifndef MACE_OPS_SGEMM_H_
 #define MACE_OPS_SGEMM_H_
 
@@ -30,16 +32,16 @@ namespace mace {
 namespace ops {
 
 enum Major {
-  RowMajor,
-  ColMajor
+  SGemmRowMajor,
+  SGemmColMajor
 };
 
 template<typename T>
-class MatrixMap {
+class SGemmMatrixMap {
  public:
-  MatrixMap() {}
+  SGemmMatrixMap() {}
 
-  MatrixMap(const index_t batch,
+  SGemmMatrixMap(const index_t batch,
             const index_t row,
             const index_t col,
             const Major major,
@@ -48,14 +50,20 @@ class MatrixMap {
       batch_(batch),
       row_(row),
       col_(col),
-      stride_(major == RowMajor ? col : row),
+      stride_(major == SGemmRowMajor ? col : row),
       major_(major),
       data_(data),
       is_const_(is_const) {}
 
-  MatrixMap transpose() const {
-    Major transpose_major = major_ == RowMajor ? ColMajor : RowMajor;
-    return MatrixMap(batch_, col_, row_, transpose_major, data_, is_const_);
+  SGemmMatrixMap transpose() const {
+    Major transpose_major =
+        major_ == SGemmRowMajor ? SGemmColMajor : SGemmRowMajor;
+    return SGemmMatrixMap(batch_,
+                          col_,
+                          row_,
+                          transpose_major,
+                          data_,
+                          is_const_);
   }
 
   index_t batch() const {
@@ -114,9 +122,9 @@ class SGemm {
         packed_rhs_(nullptr),
         packed_(false) {}
 
-  void operator()(const MatrixMap<const float> &lhs,
-                  const MatrixMap<const float> &rhs,
-                  MatrixMap<float> *result,
+  void operator()(const SGemmMatrixMap<const float> &lhs,
+                  const SGemmMatrixMap<const float> &rhs,
+                  SGemmMatrixMap<float> *result,
                   ScratchBuffer *scratch_buffer = nullptr);
 
   void Run(const float *A,
@@ -133,28 +141,28 @@ class SGemm {
            float *C,
            ScratchBuffer *scratch_buffer = nullptr);
 
-  void PackLhs(const MatrixMap<const float> &lhs,
+  void PackLhs(const SGemmMatrixMap<const float> &lhs,
                PackedBlock *packed_block);
 
-  void PackRhs(const MatrixMap<const float> &rhs,
+  void PackRhs(const SGemmMatrixMap<const float> &rhs,
                PackedBlock *packed_block);
 
   void UnPack(const PackedBlock &packed_result,
-              MatrixMap<float> *matrix_map);
+              SGemmMatrixMap<float> *matrix_map);
 
  private:
-  void Pack(const MatrixMap<const float> &src,
+  void Pack(const SGemmMatrixMap<const float> &src,
             const PackOrder order,
             PackedBlock *packed_block);
 
-  void PackPerBatch(const MatrixMap<const float> &src,
+  void PackPerBatch(const SGemmMatrixMap<const float> &src,
                     const PackOrder order,
                     const index_t batch_index,
                     float *packed_data);
 
   void UnPackPerBatch(const float *packed_data,
                       const index_t batch_index,
-                      MatrixMap<float> *matrix_map);
+                      SGemmMatrixMap<float> *matrix_map);
 
   void RunInternal(const PackedBlock &lhs,
                    const PackedBlock &rhs,
