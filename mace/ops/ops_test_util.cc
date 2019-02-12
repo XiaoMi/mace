@@ -159,16 +159,16 @@ void OpTestContext::SetOCLImageAndBufferTestFlag() {
 
 bool OpsTestNet::Setup(mace::DeviceType device) {
   NetDef net_def;
-  for (auto &op_def_ : op_defs_) {
-    net_def.add_op()->CopyFrom(op_def_);
+  for (auto &op_def : op_defs_) {
+    net_def.add_op()->CopyFrom(op_def);
 
-    for (auto input : op_def_.input()) {
+    for (auto input : op_def.input()) {
       if (ws_.GetTensor(input) != nullptr &&
           !ws_.GetTensor(input)->is_weight()) {
         auto input_info = net_def.add_input_info();
         input_info->set_name(input);
         auto data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            op_def_, "data_format", DataFormat::DF_NONE);
+            op_def, "data_format", DataFormat::DF_NONE);
         input_info->set_data_format(data_format);
         auto &shape = ws_.GetTensor(input)->shape();
         for (auto d : shape) {
@@ -176,16 +176,16 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
         }
       }
     }
-
-    for (int i = 0; i < op_def_.output_size(); ++i) {
-      ws_.RemoveTensor(op_def_.output(i));
-      auto output_info = net_def.add_output_info();
-      output_info->set_name(op_def_.output(i));
-      if (op_def_.output_type_size() == op_def_.output_size()) {
-        output_info->set_data_type(op_def_.output_type(i));
-      } else {
-        output_info->set_data_type(DataType::DT_FLOAT);
-      }
+  }
+  auto op_def = op_defs_.back();
+  for (int i = 0; i < op_def.output_size(); ++i) {
+    ws_.RemoveTensor(op_def.output(i));
+    auto output_info = net_def.add_output_info();
+    output_info->set_name(op_def.output(i));
+    if (op_def.output_type_size() == op_def.output_size()) {
+      output_info->set_data_type(op_def.output_type(i));
+    } else {
+      output_info->set_data_type(DataType::DT_FLOAT);
     }
   }
   MemoryOptimizer mem_optimizer;

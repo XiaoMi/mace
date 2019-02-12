@@ -14,6 +14,7 @@
 
 #include <vector>
 
+#include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/eltwise.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -529,6 +530,100 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorTensor) {
       ops::EltwiseType::SQR_DIFF, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
+}
+
+namespace {
+template <typename T>
+void GPUOverflowTest(const ops::EltwiseType type,
+                     const std::vector<index_t> &shape0,
+                     const std::vector<T> &input0,
+                     const std::vector<index_t> &shape1,
+                     const std::vector<T> &input1,
+                     const std::vector<index_t> &output_shape,
+                     const std::vector<T> &output) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<DeviceType::GPU, T>("Input0", shape0, input0);
+  net.AddInputFromArray<DeviceType::GPU, T>("Input1", shape1, input1);
+
+  OpDefBuilder("Eltwise", "EltwiseTest")
+      .AddIntArg("T", DataTypeToEnum<T>::v())
+      .Input("Input0")
+      .Input("Input1")
+      .AddIntArg("type", static_cast<int>(type))
+      .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+      .Output("EltOutput")
+      .OutputShape(output_shape)
+      .Finalize(net.AddNewOperatorDef());
+  net.AddInputFromArray<DeviceType::GPU, T>(
+      "Filter",
+      {output_shape.back(), shape0.back(), 3, 3},
+      std::vector<float>(output_shape.back() * shape0.back() * 9, 1));
+  OpDefBuilder("Conv2D", "Conv2D")
+      .AddIntArg("T", DataTypeToEnum<T>::v())
+      .Input("EltOutput")
+      .Input("Filter")
+      .Output("Output")
+      .OutputShape(output_shape)
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.AddNewOperatorDef());
+
+  // Run
+  net.RunOp(DeviceType::GPU);
+
+  auto expected = net.CreateTensor<T>(output_shape, output);
+  ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+}  // namespace
+TEST_F(EltwiseOpTest, GPUOverflowTest) {
+  GPUOverflowTest<float>(
+      ops::EltwiseType::SUM, {1, 2, 2, 2}, std::vector<float>(8, 1),
+      {1, 1, 1, 2}, {1, 1},
+      {1, 2, 2, 1}, {16, 16, 16, 16});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::SUB, {2, 2, 2, 2}, std::vector<float>(16, 1),
+      {2, 1, 1, 2}, {1, 1, 2, 2},
+      {2, 2, 2, 1}, {0, 0, 0, 0, -8, -8, -8, -8});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::PROD, {1, 3, 2, 1}, std::vector<float>(6, 1),
+      {1, 3, 2, 1}, std::vector<float>(6, 1),
+      {1, 3, 2, 1}, {4, 4, 6, 6, 4, 4});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::DIV, {2, 3, 2, 1}, std::vector<float>(12, 1),
+      {2, 3, 2, 1}, std::vector<float>(12, 1),
+      {2, 3, 2, 1}, {4, 4, 6, 6, 4, 4, 4, 4, 6, 6, 4, 4});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::MIN, {1, 2, 2, 2}, std::vector<float>(8, 1),
+      {1, 1, 1, 2}, {1, 1},
+      {1, 2, 2, 1}, {8, 8, 8, 8});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::MAX, {2, 2, 2, 2}, std::vector<float>(16, 1),
+      {2, 1, 1, 2}, {1, 1, 2, 2},
+      {2, 2, 2, 1}, {8, 8, 8, 8, 16, 16, 16, 16});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::NEG, {1, 3, 2, 1}, std::vector<float>(6, 1),
+      {1, 1, 1, 1}, {0},
+      {1, 3, 2, 1}, {-4, -4, -6, -6, -4, -4});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::ABS, {2, 3, 2, 1}, std::vector<float>(12, -1),
+      {1, 1, 1, 1}, {0},
+      {2, 3, 2, 1}, {4, 4, 6, 6, 4, 4, 4, 4, 6, 6, 4, 4});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::SQR_DIFF, {2, 2, 2, 2}, std::vector<float>(16, 1),
+      {2, 1, 1, 2}, {1, 1, 2, 2},
+      {2, 2, 2, 1}, {0, 0, 0, 0, 8, 8, 8, 8});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::POW, {1, 3, 2, 1}, std::vector<float>(6, 1),
+      {1, 3, 2, 1}, std::vector<float>(6, 1),
+      {1, 3, 2, 1}, {4, 4, 6, 6, 4, 4});
+  GPUOverflowTest<float>(
+      ops::EltwiseType::FLOOR_DIV, {2, 2, 2, 2}, std::vector<float>(16, 1),
+      {2, 1, 1, 2}, {1, 1, 2, 2},
+      {2, 2, 2, 1}, {8, 8, 8, 8, 0, 0, 0, 0});
 }
 
 namespace {

@@ -67,25 +67,52 @@ MaceStatus EltwiseKernel<T>::Compute(
     const Tensor *input1,
     Tensor *output) {
   bool swapped = false;
-  if (input1 != nullptr) {
+  std::string input1_type = "";
+  if (input1 == nullptr) {
+    input1_type = "INPUT_SCALAR";
+  } else {
     MACE_CHECK(input0->dim_size() == input1->dim_size() ||
         input0->dim_size() == 1 || input1->dim_size() == 1)
       << "Inputs of Eltwise op must be same shape";
+    MACE_CHECK(type_ != EltwiseType::EQUAL)
+      << "Eltwise op on GPU does not support EQUAL";
+    // broadcast
     if (input0->size() != input1->size()) {
       if (input0->size() < input1->size()) {
         std::swap(input0, input1);
         swapped = true;
       }
-      if (input1->dim_size() == 1) {
-        MACE_CHECK(input0->dim(3) == input1->dim(0))
-          << "Element-Wise op support broadcast on only-channel or non-channel dimension";  // NOLINT(whitespace/line_length)
-      } else {
-        MACE_CHECK(((input0->dim(0) == input1->dim(0) || input1->dim(0) == 1)
-            && input0->dim(3) == input1->dim(3) && input1->dim(1) == 1 &&
-            input1->dim(2) == 1) || (input0->dim(0) == input1->dim(0) &&
-            input0->dim(1) == input1->dim(1) && input0->dim(2) == input1->dim(2)
-            && input1->dim(3) == 1))
-          << "Element-Wise op support broadcast on only-channel or non-channel dimension";  // NOLINT(whitespace/line_length)
+      if (input1->dim_size() == 1
+          || (input1->dim(0) == 1 && input1->dim(1) == 1
+              && input1->dim(2) == 1)) {
+        // Tensor-Vector element wise
+        if (input0->dim(3) == input1->dim(input1->dim_size()-1)) {
+          input1_type = "INPUT_VECTOR";
+        } else {
+          LOG(FATAL) << "Inputs not match the broadcast logic, "
+                     << MakeString(input0->shape()) << " vs "
+                     << MakeString(input1->shape());
+        }
+      } else {  // must be 4-D
+        if (input0->dim(0) == input1->dim(0)
+            && input1->dim(1) == 1
+            && input1->dim(2) == 1
+            && input0->dim(3) == input1->dim(3)) {
+          input1_type = "INPUT_BATCH_VECTOR";
+        } else if (input0->dim(0) == input1->dim(0)
+            && input0->dim(1) == input1->dim(1)
+            && input0->dim(2) == input1->dim(2)
+            && input1->dim(3) == 1) {
+          // broadcast on channel dimension
+          input1_type = "INPUT_TENSOR_BC_CHAN";
+        } else {
+          LOG(FATAL) << "Element-Wise op only support broadcast on"
+                        " channel dimension:"
+                        "Tensor-BatchVector(4D-[N,1,1,C]) "
+                        "and Tensor-Tensor(4D-[N,H,W,1]). but got "
+                     << MakeString(input0->shape()) << " vs "
+                     << MakeString(input1->shape());
+        }
       }
     }
   }
@@ -129,20 +156,11 @@ MaceStatus EltwiseKernel<T>::Compute(
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
     built_options.emplace(MakeString("-DELTWISE_TYPE=", type_));
-    if (input1 == nullptr) {
-      built_options.emplace("-DINPUT_TYPE=1");
-    } else if (input0->size() != input1->size()) {
-      if (input0->dim(0) == input1->dim(0) && input0->dim(1) == input1->dim(1)
-          && input0->dim(2) == input1->dim(2) && input1->dim(3) == 1) {
-        // only broadcast on channel
-        built_options.emplace("-DINPUT_TYPE=4");
-      } else if (input1->dim(0) == 1 || input1->dim_size() == 1) {
-        built_options.emplace("-DINPUT_TYPE=3");
-      } else {
-        built_options.emplace("-DINPUT_TYPE=2");
-      }
-      if (swapped) built_options.emplace("-DSWAPPED");
+    if (!input1_type.empty()) {
+      built_options.emplace("-D" + input1_type);
     }
+    if (swapped) built_options.emplace("-DSWAPPED");
+    if (channels % 4 != 0) built_options.emplace("-DNOT_DIVISIBLE_FOUR");
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("eltwise", kernel_name,
                                               built_options, &kernel_));

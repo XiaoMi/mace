@@ -3,7 +3,7 @@
 __kernel void eltwise(OUT_OF_RANGE_PARAMS
                       GLOBAL_WORK_GROUP_SIZE_DIM3
                       __read_only image2d_t input0,
-#if INPUT_TYPE == 1
+#if defined(INPUT_SCALAR)
                       __private const float value,
 #else
                       __read_only image2d_t input1,
@@ -28,14 +28,14 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
 
   const int pos = mad24(chan_idx, width, width_idx);
   DATA_TYPE4 in0 = READ_IMAGET(input0, SAMPLER, (int2)(pos, hb));
-#if INPUT_TYPE == 1
+#if defined(INPUT_SCALAR)
   DATA_TYPE4 in1 = (DATA_TYPE4)(value, value, value, value);
-#elif INPUT_TYPE == 2
+#elif defined(INPUT_VECTOR)
+  DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, 0));
+#elif defined(INPUT_BATCH_VECTOR)
   const int batch_idx = hb / height;
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, batch_idx));
-#elif INPUT_TYPE == 3
-  DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, 0));
-#elif INPUT_TYPE == 4
+#elif defined(INPUT_TENSOR_BC_CHAN)
   DATA_TYPE4 tmp = READ_IMAGET(input1, SAMPLER, (int2)(width_idx, hb));
   DATA_TYPE4 in1 = (DATA_TYPE4)(tmp.x, tmp.x, tmp.x, tmp.x);
 #else
@@ -89,11 +89,11 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   #endif
 #endif
 
-#if ((INPUT_TYPE == 1 || INPUT_TYPE == 4) &&                            \
-     (ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||    \
-      ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9)) ||  \
-    ((INPUT_TYPE != 1 || INPUT_TYPE != 4) &&                            \
-     (ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9 || ELTWISE_TYPE == 11))
+#if defined(NOT_DIVISIBLE_FOUR) &&                                       \
+    ((ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9 || ELTWISE_TYPE == 11)      \
+     || ((defined(INPUT_SCALAR) || defined(INPUT_TENSOR_BC_CHAN)) &&     \
+         (ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 || \
+          ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8)))
   const int remain_channel = channel - 4 * chan_idx;
   if (remain_channel < 4) {
     switch (remain_channel) {
