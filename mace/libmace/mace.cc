@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <errno.h>
-#include <fcntl.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
 #include <algorithm>
 #include <numeric>
 #include <memory>
@@ -41,33 +35,6 @@
 
 namespace mace {
 namespace {
-const unsigned char *LoadModelData(const std::string &model_data_file,
-                                   const size_t &data_size) {
-  int fd = open(model_data_file.c_str(), O_RDONLY);
-  MACE_CHECK(fd >= 0, "Failed to open model data file ",
-             model_data_file, ", error code: ", strerror(errno));
-
-  const unsigned char *model_data = static_cast<const unsigned char *>(
-      mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, fd, 0));
-  MACE_CHECK(model_data != MAP_FAILED, "Failed to map model data file ",
-             model_data_file, ", error code: ", strerror(errno));
-
-  int ret = close(fd);
-  MACE_CHECK(ret == 0, "Failed to close model data file ",
-             model_data_file, ", error code: ", strerror(errno));
-
-  return model_data;
-}
-
-void UnloadModelData(const unsigned char *model_data,
-                     const size_t &data_size) {
-  MACE_CHECK(model_data != nullptr && data_size > 0,
-             "model_data is null or data_size is 0");
-  int ret = munmap(const_cast<unsigned char *>(model_data),
-                   data_size);
-  MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ",
-             strerror(errno));
-}
 
 #ifdef MACE_ENABLE_OPENCL
 MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
@@ -557,20 +524,14 @@ MaceStatus MaceEngine::Impl::Init(
     const std::vector<std::string> &output_nodes,
     const std::string &model_data_file) {
   LOG(INFO) << "Loading Model Data";
-  for (auto &const_tensor : net_def->tensors()) {
-    model_data_size_ = std::max(
-        model_data_size_,
-        static_cast<size_t>(const_tensor.offset() +
-            const_tensor.data_size() *
-                GetEnumTypeSize(const_tensor.data_type())));
-  }
-  model_data_ = LoadModelData(model_data_file, model_data_size_);
+
+  MemoryMap(model_data_file, &model_data_, &model_data_size_);
 
   MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes, model_data_));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
       (device_type_ == DeviceType::CPU && ws_->diffused_buffer())) {
-    UnloadModelData(model_data_, model_data_size_);
+    MemoryUnMap(model_data_, model_data_size_);
     model_data_ = nullptr;
   }
   return MaceStatus::MACE_SUCCESS;
@@ -579,7 +540,7 @@ MaceStatus MaceEngine::Impl::Init(
 MaceEngine::Impl::~Impl() {
   LOG(INFO) << "Destroying MaceEngine";
   if (model_data_ != nullptr) {
-    UnloadModelData(model_data_, model_data_size_);
+    MemoryUnMap(model_data_, model_data_size_);
   }
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {

@@ -7,14 +7,22 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android")
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_openmp_enabled",
+)
 
 cc_library(
     name = "utils",
-    srcs = [
-        "logging.cc",
-        "string_util.cc",
-    ],
+    srcs = glob(
+        [
+            "*.cc",
+        ],
+        exclude = [
+            "tuner_test.cc",
+        ],
+    ),
     hdrs = glob([
         "*.h",
     ]),
@@ -22,7 +30,9 @@ cc_library(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ],
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkopts = if_android([
         "-llog",
     ]),

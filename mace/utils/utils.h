@@ -15,12 +15,9 @@
 #ifndef MACE_UTILS_UTILS_H_
 #define MACE_UTILS_UTILS_H_
 
-#include <fstream>
-#include <map>
-#include <sstream>
-#include <string>
 #include <cstdlib>
-#include <utility>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace mace {
@@ -70,51 +67,12 @@ Integer CeilQuotient(Integer a, Integer b) {
   return (a + b - 1) / b;
 }
 
-inline std::string ObfuscateString(const std::string &src,
-                                   const std::string &lookup_table) {
-  std::string dest;
-  dest.resize(src.size());
-  for (size_t i = 0; i < src.size(); i++) {
-    dest[i] = src[i] ^ lookup_table[i % lookup_table.size()];
-  }
-  return dest;
-}
+std::string ObfuscateString(const std::string &src,
+                            const std::string &lookup_table);
 
-// ObfuscateString(ObfuscateString(str)) ==> str
-inline std::string ObfuscateString(const std::string &src) {
-  // Keep consistent with obfuscation in python tools
-  return ObfuscateString(src, "Mobile-AI-Compute-Engine");
-}
+std::string ObfuscateString(const std::string &src);
 
-// Obfuscate synbol or path string
-inline std::string ObfuscateSymbol(const std::string &src) {
-  std::string dest = src;
-  if (dest.empty()) {
-    return dest;
-  }
-  dest[0] = src[0];  // avoid invalid symbol which starts from 0-9
-  const std::string encode_dict =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
-  for (size_t i = 1; i < src.size(); i++) {
-    char ch = src[i];
-    int idx;
-    if (ch >= '0' && ch <= '9') {
-      idx = ch - '0';
-    } else if (ch >= 'a' && ch <= 'z') {
-      idx = 10 + ch - 'a';
-    } else if (ch >= 'A' && ch <= 'Z') {
-      idx = 10 + 26 + ch - 'a';
-    } else if (ch == '_') {
-      idx = 10 + 26 + 26;
-    } else {
-      dest[i] = ch;
-      continue;
-    }
-    // There is no collision if it's true for every char at every position
-    dest[i] = encode_dict[(idx + i + 31) % encode_dict.size()];
-  }
-  return dest;
-}
+std::string ObfuscateSymbol(const std::string &src);
 
 #ifdef MACE_OBFUSCATE_LITERALS
 #define MACE_OBFUSCATE_STRING(str) ObfuscateString(str)
@@ -124,41 +82,17 @@ inline std::string ObfuscateSymbol(const std::string &src) {
 #define MACE_OBFUSCATE_SYMBOL(str) (str)
 #endif
 
-inline std::vector<std::string> Split(const std::string &str, char delims) {
-  std::vector<std::string> result;
-  std::string tmp = str;
-  while (!tmp.empty()) {
-    size_t next_offset = tmp.find(delims);
-    result.push_back(tmp.substr(0, next_offset));
-    if (next_offset == std::string::npos) {
-      break;
-    } else {
-      tmp = tmp.substr(next_offset + 1);
-    }
-  }
-  return result;
-}
+std::vector<std::string> Split(const std::string &str, char delims);
 
-inline bool ReadBinaryFile(std::vector<unsigned char> *data,
-                           const std::string &filename) {
-  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
-  if (!ifs.is_open()) {
-    return false;
-  }
-  ifs.seekg(0, ifs.end);
-  size_t length = ifs.tellg();
-  ifs.seekg(0, ifs.beg);
+bool ReadBinaryFile(std::vector<unsigned char> *data,
+                    const std::string &filename);
 
-  data->reserve(length);
-  data->insert(data->begin(), std::istreambuf_iterator<char>(ifs),
-               std::istreambuf_iterator<char>());
-  if (ifs.fail()) {
-    return false;
-  }
-  ifs.close();
+void MemoryMap(const std::string &file,
+               const unsigned char **data,
+               size_t *size);
 
-  return true;
-}
+void MemoryUnMap(const unsigned char *data,
+                 const size_t &size);
 
 template <typename T>
 std::vector<std::string> MapKeys(const std::map<std::string, T> &data) {
