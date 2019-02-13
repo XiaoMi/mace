@@ -75,8 +75,17 @@ class ReshapeOp : public Operation {
           << "Input size not match reshaped tensor size";
       out_shape[unknown_idx] = missing;
     }
-
     Tensor *output = this->Output(OUTPUT);
+    // NHWC -> NCHW
+    auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
+        "data_format", DataFormat::DF_NONE));
+    if (df == DataFormat::NHWC && D == DeviceType::CPU
+        && out_shape.size() == 4 && shape->is_weight()) {
+      std::vector<int> dst_dims = {0, 3, 1, 2};
+      std::vector<index_t> out_shape_gpu = TransposeShape<index_t, index_t>(
+          out_shape, dst_dims);
+      out_shape = out_shape_gpu;
+    }
 
     output->ReuseTensorBuffer(*input);
     output->Reshape(out_shape);
