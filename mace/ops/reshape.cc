@@ -103,27 +103,6 @@ void RegisterReshape(OpRegistryBase *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
                    DeviceType::CPU, int32_t);
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
-                   DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
-
-  MACE_REGISTER_OP_CONDITION(
-      op_registry,
-      OpConditionBuilder("Reshape")
-          .SetDevicePlacerFunc(
-              [](OpConstructContext *context) -> std::set<DeviceType> {
-                auto op = context->operator_def();
-                if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
-                }
-                if (op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
-                }
-                return { DeviceType::CPU, DeviceType::GPU };
-              }));
 }
 
 }  // namespace ops

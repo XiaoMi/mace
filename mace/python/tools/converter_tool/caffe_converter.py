@@ -717,14 +717,25 @@ class CaffeConverter(base_converter.ConverterInterface):
         max_size_arg = op.arg.add()
         max_size_arg.name = MaceKeyword.mace_max_size_str
         max_size_arg.floats.extend(list(param.max_size))
-        aspect_ratio_arg = op.arg.add()
-        aspect_ratio_arg.name = MaceKeyword.mace_aspect_ratio_str
-        aspect_ratio_arg.floats.extend(list(param.aspect_ratio))
         flip_arg = op.arg.add()
         flip_arg.name = MaceKeyword.mace_flip_str
         flip_arg.i = 1
         if param.HasField('flip'):
             flip_arg.i = int(param.flip)
+        aspect_ratio = [1.0]
+        for i in param.aspect_ratio:
+            already_exist = False
+            for ar in aspect_ratio:
+                if abs(i - ar) < 1e-6:
+                    already_exist = True
+                    break
+            if not already_exist:
+                aspect_ratio.append(i)
+                if flip_arg.i:
+                    aspect_ratio.append(1.0 / i)
+        aspect_ratio_arg = op.arg.add()
+        aspect_ratio_arg.name = MaceKeyword.mace_aspect_ratio_str
+        aspect_ratio_arg.floats.extend(list(aspect_ratio))
         clip_arg = op.arg.add()
         clip_arg.name = MaceKeyword.mace_clip_str
         clip_arg.i = 0
