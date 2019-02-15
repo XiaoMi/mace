@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/ops_test_util.h"
-#include "mace/ops/pad.h"
 #include <functional>
 #include <string>
 #include <vector>
+
+#include "mace/ops/ops_test_util.h"
+#include "mace/ops/pad.h"
 
 namespace mace {
 namespace ops {
