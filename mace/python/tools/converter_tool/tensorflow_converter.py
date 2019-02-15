@@ -205,8 +205,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
     }
 
     pad_type = {
-        'CONSTANT' : PadType.CONSTANT,
-        'REFLECT'  : PadType.REFLECT,
+        'CONSTANT':  PadType.CONSTANT,
+        'REFLECT':   PadType.REFLECT,
         'SYMMETRIC': PadType.SYMMETRIC
     }
 
@@ -740,7 +740,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             if len(tf_op.inputs) == 3:
                 constant_value_arg = op.arg.add()
                 constant_value_arg.name = MaceKeyword.mace_constant_value_str
-                constant_value = tf_op.inputs[2].eval().astype(np.int32).flat[0]
+                constant_value = tf_op.inputs[2].eval().astype(np.int32) \
+                    .flat[0]
                 constant_value_arg.i = constant_value
                 self._skip_tensor.add(tf_op.inputs[2].name)
 
