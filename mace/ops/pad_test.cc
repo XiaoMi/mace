@@ -14,6 +14,9 @@
 
 #include "mace/ops/ops_test_util.h"
 #include "mace/ops/pad.h"
+#include <functional>
+#include <string>
+#include <vector>
 
 namespace mace {
 namespace ops {
