@@ -23,6 +23,7 @@
 
 #include "mace/core/op_context.h"
 #include "mace/core/tensor.h"
+#include "mace/ops/pad.h"
 #include "mace/ops/opencl/helper.h"
 
 namespace mace {
@@ -33,9 +34,10 @@ namespace image {
 template <typename T>
 class PadKernel : public OpenCLPadKernel {
  public:
-  PadKernel(const std::vector<int> &paddings,
+  PadKernel(const PadType type,
+            const std::vector<int> &paddings,
             const float constant_value)
-      : paddings_(paddings), constant_value_(constant_value) {}
+      : type_(type), paddings_(paddings), constant_value_(constant_value) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -43,6 +45,7 @@ class PadKernel : public OpenCLPadKernel {
       Tensor *output) override;
 
  private:
+  PadType type_;
   std::vector<int> paddings_;
   float constant_value_;
   cl::Kernel kernel_;
@@ -60,7 +63,23 @@ MaceStatus PadKernel<T>::Compute(
   MACE_CHECK((this->paddings_[0] == 0) && (this->paddings_[1] == 0) &&
       (this->paddings_[6] == 0) && (this->paddings_[7] == 0))
     << "Mace only support height/width dimension now";
+  for (int i = 2; i <= 5; ++i) {
+    MACE_CHECK(paddings_[i] >= 0);
+  }
   auto input_shape = input->shape();
+  if (type_ == PadType::REFLECT) {
+    MACE_CHECK(paddings_[2] < input_shape[1] &&
+               paddings_[3] < input_shape[1] &&
+               paddings_[4] < input_shape[2] &&
+               paddings_[5] < input_shape[2]);
+  } else if (type_ == PadType::SYMMETRIC) {
+    MACE_CHECK(paddings_[2] <= input_shape[1] &&
+               paddings_[3] <= input_shape[1] &&
+               paddings_[4] <= input_shape[2] &&
+               paddings_[5] <= input_shape[2]);
+  } else {
+    MACE_CHECK(type_ == PadType::CONSTANT);
+  }
   std::vector<index_t> output_shape = {
       input_shape[0] + this->paddings_[0] + this->paddings_[1],
       input_shape[1] + this->paddings_[2] + this->paddings_[3],
@@ -92,6 +111,7 @@ MaceStatus PadKernel<T>::Compute(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+    built_options.emplace(MakeString("-DPAD_TYPE=", type_));
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("pad", kernel_name,
                                               built_options, &kernel_));
 
@@ -110,7 +130,9 @@ MaceStatus PadKernel<T>::Compute(
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, this->constant_value_);
+    if (type_ == PadType::CONSTANT) {
+      kernel_.setArg(idx++, this->constant_value_);
+    }
     kernel_.setArg(idx++, static_cast<int32_t>(input_shape[1]));
     kernel_.setArg(idx++, static_cast<int32_t>(input_shape[2]));
     kernel_.setArg(idx++, static_cast<int32_t>(output_shape[1]));

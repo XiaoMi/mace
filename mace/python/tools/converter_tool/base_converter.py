@@ -89,6 +89,12 @@ class ReduceType(Enum):
     PROD = 3
 
 
+class PadType(Enum):
+    CONSTANT = 0
+    REFLECT = 1
+    SYMMETRIC = 2
+
+
 class FrameworkType(Enum):
     TENSORFLOW = 0
     CAFFE = 1
@@ -221,6 +227,7 @@ class MaceKeyword(object):
     mace_step_h_str = 'step_h'
     mace_step_w_str = 'step_w'
     mace_find_range_every_time = 'find_range_every_time'
+    mace_pad_type_str = 'pad_type'
 
 
 class TransformerRule(Enum):

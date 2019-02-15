@@ -25,6 +25,7 @@ from mace.python.tools.converter_tool.base_converter import PoolingType
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
+from mace.python.tools.converter_tool.base_converter import PadType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import DataFormat
@@ -115,6 +116,7 @@ TFSupportedOps = [
     'FakeQuantWithMinMaxVars',
     'FloorDiv',
     'Sqrt',
+    'MirrorPad',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -202,6 +204,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.LeakyRelu.name: ActivationType.LEAKYRELU,
     }
 
+    pad_type = {
+        'CONSTANT' : PadType.CONSTANT,
+        'REFLECT'  : PadType.REFLECT,
+        'SYMMETRIC': PadType.SYMMETRIC
+    }
+
     def __init__(self, option, src_model_file):
         self._op_converters = {
             TFOpType.Conv2D.name: self.convert_conv2d,
@@ -268,6 +276,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
             TFOpType.FloorDiv.name: self.convert_elementwise,
             TFOpType.Sqrt.name: self.convert_elementwise,
+            TFOpType.MirrorPad.name: self.convert_pad,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -724,12 +733,21 @@ class TensorflowConverter(base_converter.ConverterInterface):
         paddings_arg.ints.extend(paddings_value)
         self._skip_tensor.add(tf_op.inputs[1].name)
 
-        if len(tf_op.inputs) == 3:
-            constant_value_arg = op.arg.add()
-            constant_value_arg.name = MaceKeyword.mace_constant_value_str
-            constant_value = tf_op.inputs[2].eval().astype(np.int32).flat[0]
-            constant_value_arg.i = constant_value
-            self._skip_tensor.add(tf_op.inputs[2].name)
+        pad_type_arg = op.arg.add()
+        pad_type_arg.name = MaceKeyword.mace_pad_type_str
+
+        if tf_op.type == TFOpType.Pad:
+            if len(tf_op.inputs) == 3:
+                constant_value_arg = op.arg.add()
+                constant_value_arg.name = MaceKeyword.mace_constant_value_str
+                constant_value = tf_op.inputs[2].eval().astype(np.int32).flat[0]
+                constant_value_arg.i = constant_value
+                self._skip_tensor.add(tf_op.inputs[2].name)
+
+            pad_type_arg.i = PadType.CONSTANT.value
+
+        elif tf_op.type == TFOpType.MirrorPad:
+            pad_type_arg.i = self.pad_type[tf_op.get_attr('mode')].value
 
     def convert_concat(self, tf_op):
         op = self.convert_general_op(tf_op)

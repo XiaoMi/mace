@@ -14,6 +14,7 @@
 
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/ops/pad.h"
 
 namespace mace {
 namespace ops {
@@ -22,7 +23,7 @@ namespace test {
 namespace {
 template <DeviceType D, typename T>
 void Pad(int iters, int batch, int height,
-         int width, int channels, int pad) {
+         int width, int channels, int pad, int pad_type) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -35,6 +36,7 @@ void Pad(int iters, int batch, int height,
       .Input("Input")
       .Output("Output")
       .AddIntsArg("paddings", paddings)
+      .AddIntArg("pad_type", pad_type)
       .AddFloatArg("constant_value", 1.0)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
@@ -53,19 +55,26 @@ void Pad(int iters, int batch, int height,
 }
 }  // namespace
 
-#define MACE_BM_PAD_MACRO(N, H, W, C, PAD, TYPE, DEVICE)                     \
-  static void MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE( \
+#define MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, TYPE, DEVICE)               \
+  static void MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##MODE##_##TYPE    \
+              ##_##DEVICE(                                                   \
       int iters) {                                                           \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
-    Pad<DEVICE, TYPE>(iters, N, H, W, C, PAD);                               \
+    Pad<DEVICE, TYPE>(iters, N, H, W, C, PAD, MODE);                         \
   }                                                                          \
-  MACE_BENCHMARK(MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##MODE##_##TYPE \
+                 ##_##DEVICE)
 
-#define MACE_BM_PAD(N, H, W, C, PAD)                 \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, float, CPU);    \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, float, GPU);    \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, half, GPU);
+#define MACE_BM_PAD_MODE(N, H, W, C, PAD, MODE)            \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, CPU);    \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, GPU);    \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, half, GPU);
+
+#define MACE_BM_PAD(N, H, W, C, PAD)              \
+  MACE_BM_PAD_MODE(N, H, W, C, PAD, CONSTANT);    \
+  MACE_BM_PAD_MODE(N, H, W, C, PAD, REFLECT);     \
+  MACE_BM_PAD_MODE(N, H, W, C, PAD, SYMMETRIC);
 
 MACE_BM_PAD(1, 512, 512, 1, 2);
 MACE_BM_PAD(1, 112, 112, 64, 1);
