@@ -15,15 +15,14 @@
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
-
 namespace mace {
 namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 void PriorBox(
-    int iters, float min_size, float max_size, float aspect_ratio, int flip,
+    int iters, float min_size, float max_size, float aspect_ratio,
     int clip, float variance0, float variance1, float offset, int h) {
   mace::testing::StopTiming();
 
@@ -40,7 +39,6 @@ void PriorBox(
       .AddFloatsArg("min_size", {min_size})
       .AddFloatsArg("max_size", {max_size})
       .AddFloatsArg("aspect_ratio", {aspect_ratio})
-      .AddIntArg("flip", flip)
       .AddIntArg("clip", clip)
       .AddFloatsArg("variance", {variance0, variance0, variance1, variance1})
       .AddFloatArg("offset", offset)
@@ -59,16 +57,16 @@ void PriorBox(
 }
 }  // namespace
 
-#define MACE_BM_PRIOR_BOX(MIN, MAX, AR, FLIP, CLIP, V0, V1, OFFSET, H)         \
-  static void MACE_BM_PRIOR_BOX_##MIN##_##MAX##_##AR##_##FLIP##_##CLIP##_##V0##\
-      _##V1##_##OFFSET##_##H(int iters) {                                      \
-    PriorBox<DeviceType::CPU, float>(iters, MIN, MAX, AR, FLIP, CLIP, V0, V1,  \
-        OFFSET, H);                                                            \
-  }                                                                            \
-  MACE_BENCHMARK(MACE_BM_PRIOR_BOX_##MIN##_##MAX##_##AR##_##FLIP##_##CLIP##_## \
-      V0##_##V1##_##OFFSET##_##H)
+#define MACE_BM_PRIOR_BOX(MIN, MAX, AR, CLIP, V0, V1, OFFSET, H)              \
+  static void MACE_BM_PRIOR_BOX_##MIN##_##MAX##_##AR##_##CLIP##_##V0##_##V1##_\
+      ##OFFSET##_##H(int iters) {                                             \
+    PriorBox<DeviceType::CPU, float>(iters, MIN, MAX, AR, CLIP, V0, V1,       \
+        OFFSET, H);                                                           \
+  }                                                                           \
+  MACE_BENCHMARK(MACE_BM_PRIOR_BOX_##MIN##_##MAX##_##AR##_##CLIP##_##V0##_    \
+      ##V1##_##OFFSET##_##H)
 
-MACE_BM_PRIOR_BOX(285, 300, 2, 1, 0, 1, 2, 1, 128);
+MACE_BM_PRIOR_BOX(285, 300, 2, 0, 1, 2, 1, 128);
 
 }  // namespace test
 }  // namespace ops

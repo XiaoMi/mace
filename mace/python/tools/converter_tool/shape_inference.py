@@ -246,11 +246,8 @@ class ShapeInference(object):
         min_size = ConverterUtil.get_arg(op, MaceKeyword.mace_min_size_str).floats  # noqa
         max_size = ConverterUtil.get_arg(op, MaceKeyword.mace_max_size_str).floats  # noqa
         aspect_ratio = ConverterUtil.get_arg(op, MaceKeyword.mace_aspect_ratio_str).floats  # noqa
-        flip = ConverterUtil.get_arg(op, MaceKeyword.mace_flip_str).i  # noqa
-        num_prior = (len(min_size) * len(aspect_ratio) +
-                     len(min_size) + len(max_size))
-        if flip:
-            num_prior = num_prior + len(min_size) * len(aspect_ratio)
+        num_prior = len(aspect_ratio) * len(min_size) + len(max_size)
+
         output_shape[2] = num_prior * input_h * input_w * 4
         self.add_output_shape(op, [output_shape])
 

@@ -31,7 +31,6 @@ class PriorBoxOp : public Operation {
         min_size_(Operation::GetRepeatedArgs<float>("min_size")),
         max_size_(Operation::GetRepeatedArgs<float>("max_size")),
         aspect_ratio_(Operation::GetRepeatedArgs<float>("aspect_ratio")),
-        flip_(Operation::GetOptionalArg<bool>("flip", true)),
         clip_(Operation::GetOptionalArg<bool>("clip", false)),
         variance_(Operation::GetRepeatedArgs<float>("variance")),
         offset_(Operation::GetOptionalArg<float>("offset", 0.5)) {}
@@ -43,28 +42,30 @@ class PriorBoxOp : public Operation {
     Tensor *output = this->Output(OUTPUT);
     const std::vector<index_t> &input_shape = input->shape();
     const std::vector<index_t> &data_shape = data->shape();
-    const index_t input_w = input_shape[3];
     const index_t input_h = input_shape[2];
-    const index_t image_w = data_shape[3];
+    const index_t input_w = input_shape[3];
     const index_t image_h = data_shape[2];
-    float step_h = static_cast<float>(image_h) / static_cast<float>(input_h);
-    float step_w = static_cast<float>(image_w) / static_cast<float>(input_w);
-    if (Operation::GetOptionalArg<float>("step_h", 0) != 0 &&
-        Operation::GetOptionalArg<float>("step_w", 0) != 0) {
-      step_h = Operation::GetOptionalArg<float>("step_h", 0);
-      step_w = Operation::GetOptionalArg<float>("step_w", 0);
+    const index_t image_w = data_shape[3];
+    float step_h = Operation::GetOptionalArg<float>("step_h", 0);
+    float step_w = Operation::GetOptionalArg<float>("step_w", 0);
+    if (step_h <= 1e-6 || step_w <= 1e-6) {
+      step_h = static_cast<float>(image_h) / static_cast<float>(input_h);
+      step_w = static_cast<float>(image_w) / static_cast<float>(input_w);
     }
-
     const index_t num_min_size = min_size_.size();
     MACE_CHECK(num_min_size > 0, "min_size is required!");
     const index_t num_max_size = max_size_.size();
     const index_t num_aspect_ratio = aspect_ratio_.size();
-    MACE_CHECK(num_aspect_ratio > 0, "aspect_ratio is required!");
 
-    index_t num_prior = num_min_size * num_aspect_ratio +
-        num_min_size + num_max_size;
-    if (flip_)
-      num_prior += num_min_size * num_aspect_ratio;
+    index_t num_prior = num_min_size * num_aspect_ratio;
+    if (num_max_size > 0) {
+      MACE_CHECK(max_size_.size() == min_size_.size());
+      for (size_t i = 0; i < max_size_.size(); ++i) {
+        MACE_CHECK(max_size_[i] > min_size_[i],
+                   "max_size must be greater than min_size.");
+        num_prior += 1;
+      }
+    }
 
     index_t dim = 4 * input_w * input_h * num_prior;
     std::vector<index_t> output_shape = {1, 2, dim};
@@ -79,7 +80,7 @@ class PriorBoxOp : public Operation {
         float center_x = (offset_ + j) * step_w;
         for (index_t k = 0; k < num_min_size; ++k) {
           float min_s = min_size_[k];
-          box_w = box_h = min_s * 0.5;
+          box_w = box_h = min_s * 0.5f;
           output_data[idx + 0] = (center_x - box_w) / image_w;
           output_data[idx + 1] = (center_y - box_h) / image_h;
           output_data[idx + 2] = (center_x + box_w) / image_w;
@@ -96,6 +97,9 @@ class PriorBoxOp : public Operation {
           }
           for (int l = 0; l < num_aspect_ratio; ++l) {
             float ar = aspect_ratio_[l];
+            if (fabsf(ar - 1.f) < 1e-6) {
+              continue;
+            }
             box_w = min_s * sqrt(ar) * 0.5f;
             box_h = min_s / sqrt(ar) * 0.5f;
             output_data[idx + 0] = (center_x - box_w) / image_w;
@@ -103,13 +107,6 @@ class PriorBoxOp : public Operation {
             output_data[idx + 2] = (center_x + box_w) / image_w;
             output_data[idx + 3] = (center_y + box_h) / image_h;
             idx += 4;
-            if (flip_) {
-              output_data[idx + 0] = (center_x - box_h) / image_w;
-              output_data[idx + 1] = (center_y - box_w) / image_h;
-              output_data[idx + 2] = (center_x + box_h) / image_w;
-              output_data[idx + 3] = (center_y + box_w) / image_h;
-              idx += 4;
-            }
           }
         }
       }
@@ -140,7 +137,6 @@ class PriorBoxOp : public Operation {
   std::vector<float> min_size_;
   std::vector<float> max_size_;
   std::vector<float> aspect_ratio_;
-  bool flip_;
   bool clip_;
   std::vector<float> variance_;
   const float offset_;
