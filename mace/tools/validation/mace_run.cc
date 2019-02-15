@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <numeric>
 
@@ -208,6 +209,8 @@ bool RunModel(const std::string &model_name,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes) {
   DeviceType device_type = ParseDeviceType(FLAGS_device);
+
+  int64_t t0 = NowMicros();
   // config runtime
   MaceStatus status;
   MaceEngineConfig config(device_type);
@@ -247,17 +250,18 @@ bool RunModel(const std::string &model_name,
     }
   }
 
-  std::vector<unsigned char> model_weights_data;
+  const unsigned char *model_weights_data = nullptr;
+  size_t model_weights_data_size = 0;
   if (FLAGS_model_data_file != "") {
-    if (!mace::ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
-      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
-    }
+    MemoryMap(FLAGS_model_data_file,
+              &model_weights_data,
+              &model_weights_data_size);
+    MACE_CHECK(model_weights_data != nullptr && model_weights_data_size != 0);
   }
 
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
 
-  double init_millis;
   while (true) {
     // Create Engine
     int64_t t0 = NowMicros();
@@ -275,8 +279,8 @@ bool RunModel(const std::string &model_name,
     create_engine_status =
         CreateMaceEngineFromProto(model_graph_data.data(),
                                   model_graph_data.size(),
-                                  model_weights_data.data(),
-                                  model_weights_data.size(),
+                                  model_weights_data,
+                                  model_weights_data_size,
                                   input_names,
                                   output_names,
                                   config,
@@ -288,11 +292,15 @@ bool RunModel(const std::string &model_name,
       LOG(ERROR) << "Create engine runtime error, retry ... errcode: "
                  << create_engine_status.information();
     } else {
-      init_millis = (t1 - t0) / 1000.0;
-      LOG(INFO) << "Total init latency: " << init_millis << " ms";
+      double create_engine_millis = (t1 - t0) / 1000.0;
+      LOG(INFO) << "Create Mace Engine latency: " << create_engine_millis
+                << " ms";
       break;
     }
   }
+  int64_t t1 = NowMicros();
+  double init_millis = (t1 - t0) / 1000.0;
+  LOG(INFO) << "Total init latency: " << init_millis << " ms";
 
   const size_t input_count = input_names.size();
   const size_t output_count = output_names.size();
@@ -351,8 +359,8 @@ bool RunModel(const std::string &model_name,
         create_engine_status =
             CreateMaceEngineFromProto(model_graph_data.data(),
                                       model_graph_data.size(),
-                                      model_weights_data.data(),
-                                      model_weights_data.size(),
+                                      model_weights_data,
+                                      model_weights_data_size,
                                       input_names,
                                       output_names,
                                       config,
@@ -394,8 +402,8 @@ bool RunModel(const std::string &model_name,
             create_engine_status =
                 CreateMaceEngineFromProto(model_graph_data.data(),
                                           model_graph_data.size(),
-                                          model_weights_data.data(),
-                                          model_weights_data.size(),
+                                          model_weights_data,
+                                          model_weights_data_size,
                                           input_names,
                                           output_names,
                                           config,
@@ -439,6 +447,10 @@ bool RunModel(const std::string &model_name,
     out_file.close();
     LOG(INFO) << "Write output file " << output_name << " with size "
               << output_size << " done.";
+  }
+
+  if (model_weights_data != nullptr) {
+    MemoryUnMap(model_weights_data, model_weights_data_size);
   }
 
   return true;

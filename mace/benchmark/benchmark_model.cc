@@ -280,11 +280,13 @@ int Main(int argc, char **argv) {
     }
   }
 
-  std::vector<unsigned char> model_weights_data;
+  const unsigned char *model_weights_data = nullptr;
+  size_t model_weights_data_size = 0;
   if (FLAGS_model_data_file != "") {
-    if (!mace::ReadBinaryFile(&model_weights_data, FLAGS_model_data_file)) {
-      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
-    }
+    MemoryMap(FLAGS_model_data_file,
+              &model_weights_data,
+              &model_weights_data_size);
+    MACE_CHECK(model_weights_data != nullptr && model_weights_data_size != 0);
   }
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
@@ -300,8 +302,8 @@ int Main(int argc, char **argv) {
   create_engine_status =
       CreateMaceEngineFromProto(model_graph_data.data(),
                                 model_graph_data.size(),
-                                model_weights_data.data(),
-                                model_weights_data.size(),
+                                model_weights_data,
+                                model_weights_data_size,
                                 input_names,
                                 output_names,
                                 config,
@@ -377,6 +379,10 @@ int Main(int argc, char **argv) {
   }
 
   statistician->PrintStat();
+
+  if (model_weights_data != nullptr) {
+    MemoryUnMap(model_weights_data, model_weights_data_size);
+  }
 
   return 0;
 }
