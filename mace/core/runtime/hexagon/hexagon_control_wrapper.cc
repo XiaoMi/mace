@@ -238,9 +238,8 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
   // input info
   num_inputs_ = 0;
   for (const InputInfo &input_info : net_def.input_info()) {
-    std::vector<index_t> input_shape;
-    input_shape.insert(input_shape.begin(), input_info.dims().begin(),
-                       input_info.dims().end());
+    std::vector<index_t> input_shape(input_info.dims().begin(),
+                                     input_info.dims().end());
     while (input_shape.size() < 4) {
       input_shape.insert(input_shape.begin(), 1);
     }
@@ -252,9 +251,8 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
   // output info
   num_outputs_ = 0;
   for (const OutputInfo &output_info : net_def.output_info()) {
-    std::vector<index_t> output_shape;
-    output_shape.insert(output_shape.begin(), output_info.dims().begin(),
-                        output_info.dims().end());
+    std::vector<index_t> output_shape(output_info.dims().begin(),
+                                      output_info.dims().end());
     while (output_shape.size() < 4) {
       output_shape.insert(output_shape.begin(), 1);
     }
@@ -478,12 +476,11 @@ bool HexagonControlWrapper::ExecuteGraphNew(
                       &outputs[index + 3]);
   }
 
-  int res =
-      hexagon_nn_execute_new(nn_id_,
-                             inputs.data(),
-                             num_inputs * NUM_METADATA,
-                             outputs.data(),
-                             num_outputs * NUM_METADATA);
+  int res = hexagon_nn_execute_new(nn_id_,
+                                   inputs.data(),
+                                   num_inputs * NUM_METADATA,
+                                   outputs.data(),
+                                   num_outputs * NUM_METADATA);
 
   for (size_t i = 0; i < num_outputs; ++i) {
     size_t index = i * NUM_METADATA;
