@@ -40,6 +40,10 @@ constexpr size_t kMaceAlignment = 64;
 constexpr size_t kMaceAlignment = 32;
 #endif
 
+inline index_t PadAlignSize(index_t size) {
+  return (size + kMaceAlignment - 1) & (~(kMaceAlignment - 1));
+}
+
 class Allocator {
  public:
   Allocator() {}
@@ -139,6 +143,8 @@ class CPUAllocator : public Allocator {
 
 // Global CPU allocator used for CPU/GPU/DSP
 Allocator *GetCPUAllocator();
+
+void AdviseFree(void *addr, size_t length);
 
 }  // namespace mace
 

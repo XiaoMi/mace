@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This implements matrix-vector multiplication described as
+// https://github.com/google/gemmlowp/blob/master/todo/fast-gemv.txt
+
 #ifndef MACE_OPS_ARM_Q8_GEMV_H_
 #define MACE_OPS_ARM_Q8_GEMV_H_
 
@@ -39,6 +42,7 @@ class Gemv {
       const index_t lhs_height,
       const index_t lhs_width,
       const bool lhs_batched,
+      const bool rhs_batched,
       Tensor *output);
 };
 

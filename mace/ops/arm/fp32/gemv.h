@@ -38,6 +38,7 @@ class Gemv {
       const index_t lhs_height,
       const index_t lhs_width,
       const bool lhs_batched,
+      const bool rhs_batched,
       Tensor *output);
 };
 

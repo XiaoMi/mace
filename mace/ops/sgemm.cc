@@ -27,39 +27,17 @@
 #define vaddvq_f32(v) ((v)[0] + (v)[1] + (v)[2] + (v)[3])
 #endif
 
-namespace {
-
-inline void AdviseFree(void *addr, size_t length) {
-  int page_size = sysconf(_SC_PAGESIZE);
-  void *addr_aligned =
-      reinterpret_cast<void *>(
-          (reinterpret_cast<uintptr_t>(addr) + page_size - 1)
-              & (~(page_size - 1)));
-  uintptr_t delta =
-      reinterpret_cast<uintptr_t>(addr_aligned)
-          - reinterpret_cast<uintptr_t>(addr);
-  if (length >= delta + page_size) {
-    size_t len_aligned = (length - delta) & (~(page_size - 1));
-    int ret = madvise(addr_aligned, len_aligned, MADV_DONTNEED);
-    if (ret != 0) {
-      LOG(ERROR) << "Advise free failed: " << strerror(errno);
-    }
-  }
-}
-
-}  // namespace
-
 namespace mace {
 namespace ops {
 
-void SGemm::operator()(const MatrixMap<const float> &lhs,
-                       const MatrixMap<const float> &rhs,
-                       MatrixMap<float> *result,
+void SGemm::operator()(const SGemmMatrixMap<const float> &lhs,
+                       const SGemmMatrixMap<const float> &rhs,
+                       SGemmMatrixMap<float> *result,
                        ScratchBuffer *scratch_buffer) {
   if (lhs.is_const() && !rhs.is_const()) {
-    MatrixMap<const float> lhs_transpose = lhs.transpose();
-    MatrixMap<const float> rhs_transpose = rhs.transpose();
-    MatrixMap<float> result_transpose = result->transpose();
+    SGemmMatrixMap<const float> lhs_transpose = lhs.transpose();
+    SGemmMatrixMap<const float> rhs_transpose = rhs.transpose();
+    SGemmMatrixMap<float> result_transpose = result->transpose();
     return operator()(rhs_transpose,
                       lhs_transpose,
                       &result_transpose,
@@ -150,18 +128,18 @@ void SGemm::Run(const float *A,
     width_c = height_b;
   }
 
-  MatrixMap<const float> matrix_a =
-      MatrixMap<const float>(batch,
+  SGemmMatrixMap<const float> matrix_a =
+      SGemmMatrixMap<const float>(batch,
                              height_a,
                              width_a,
-                             ops::RowMajor,
+                             ops::SGemmRowMajor,
                              A,
                              is_a_weight);
-  MatrixMap<const float> matrix_b =
-      ops::MatrixMap<const float>(batch,
+  SGemmMatrixMap<const float> matrix_b =
+      ops::SGemmMatrixMap<const float>(batch,
                                   height_b,
                                   width_b,
-                                  ops::RowMajor,
+                                  ops::SGemmRowMajor,
                                   B,
                                   is_b_weight);
   if (transpose_a) {
@@ -170,7 +148,8 @@ void SGemm::Run(const float *A,
   if (transpose_b) {
     matrix_b = matrix_b.transpose();
   }
-  MatrixMap<float> matrix_c(batch, height_c, width_c, ops::RowMajor, C);
+  SGemmMatrixMap<float>
+      matrix_c(batch, height_c, width_c, ops::SGemmRowMajor, C);
   operator()(matrix_a, matrix_b, &matrix_c, scratch_buffer);
 }
 
@@ -930,17 +909,17 @@ void SGemm::RunPerBatch(const float *lhs_data,
   }  // bw
 }
 
-void SGemm::PackLhs(const MatrixMap<const float> &lhs,
+void SGemm::PackLhs(const SGemmMatrixMap<const float> &lhs,
                     PackedBlock *packed_block) {
-  Pack(lhs, PackOrder::ColMajor, packed_block);
+  Pack(lhs, PackOrder::SGemmColMajor, packed_block);
 }
 
-void SGemm::PackRhs(const MatrixMap<const float> &rhs,
+void SGemm::PackRhs(const SGemmMatrixMap<const float> &rhs,
                     PackedBlock *packed_block) {
-  Pack(rhs, PackOrder::RowMajor, packed_block);
+  Pack(rhs, PackOrder::SGemmRowMajor, packed_block);
 }
 
-void SGemm::Pack(const MatrixMap<const float> &src,
+void SGemm::Pack(const SGemmMatrixMap<const float> &src,
                  const PackOrder order,
                  PackedBlock *packed_block) {
   MACE_CHECK_NOTNULL(packed_block);
@@ -963,7 +942,7 @@ void SGemm::Pack(const MatrixMap<const float> &src,
 }
 
 void SGemm::UnPack(const PackedBlock &packed_result,
-                   MatrixMap<float> *matrix_map) {
+                   SGemmMatrixMap<float> *matrix_map) {
   MACE_CHECK_NOTNULL(matrix_map);
 
   const index_t height = matrix_map->row();
@@ -984,7 +963,7 @@ void SGemm::UnPack(const PackedBlock &packed_result,
 #undef MACE_SGEMM_UNPACK_PER_BATCH
 }
 
-void SGemm::PackPerBatch(const MatrixMap<const float> &src,
+void SGemm::PackPerBatch(const SGemmMatrixMap<const float> &src,
                          const PackOrder order,
                          const index_t batch_index,
                          float *packed_data) {
@@ -994,7 +973,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
   const index_t width = src.col();
   auto src_data = src.batch_data(batch_index);
 
-  if (src.map_major() == Major::RowMajor && order == PackOrder::ColMajor) {
+  if (src.map_major() == Major::SGemmRowMajor
+      && order == PackOrder::SGemmColMajor) {
     // This is for packing no-transpose lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1040,8 +1020,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     for (index_t ih = h; ih < height; ++ih) {
       std::copy_n(src_data + ih * width, width, packed_data + ih * width);
     }
-  } else if (src.map_major() == Major::ColMajor &&
-      order == PackOrder::ColMajor) {
+  } else if (src.map_major() == Major::SGemmColMajor &&
+      order == PackOrder::SGemmColMajor) {
     // This is for packing transpose-needed lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1082,8 +1062,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
         packed_data_ptr[w] = src_data_ptr[w * height];
       }
     }
-  } else if (src.map_major() == Major::RowMajor &&
-      order == PackOrder::RowMajor) {
+  } else if (src.map_major() == Major::SGemmRowMajor &&
+      order == PackOrder::SGemmRowMajor) {
     // This is for packing no-transpose rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1108,8 +1088,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
         packed_data_ptr[h] = src_data_ptr[h * width];
       }
     }
-  } else if (src.map_major() == Major::ColMajor &&
-      order == PackOrder::RowMajor) {
+  } else if (src.map_major() == Major::SGemmColMajor &&
+      order == PackOrder::SGemmRowMajor) {
     // This is for packing transpose-needed rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1138,14 +1118,14 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
 
 void SGemm::UnPackPerBatch(const float *packed_data,
                            const index_t batch_index,
-                           MatrixMap<float> *matrix_map) {
+                           SGemmMatrixMap<float> *matrix_map) {
   MACE_CHECK_NOTNULL(matrix_map);
 
   const index_t height = matrix_map->row();
   const index_t width = matrix_map->col();
   auto unpacked_data = matrix_map->batch_data(batch_index);
 
-  if (matrix_map->map_major() == Major::RowMajor) {
+  if (matrix_map->map_major() == Major::SGemmRowMajor) {
     // This is for non-transposed result
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)

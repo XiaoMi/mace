@@ -102,6 +102,7 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
                   output_size,
                   input_size,
                   false,
+                  true,
                   output);
     Tensor::MappingGuard guard_output(output);
     float *output_ptr = output->mutable_data<float>();
@@ -162,6 +163,7 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
                   output_size,
                   input_size,
                   false,
+                  true,
                   output);
     return MaceStatus::MACE_SUCCESS;
   }

@@ -31,10 +31,11 @@ void TestPack(const std::vector<float> &data,
               Major src_order,
               PackOrder pack_order) {
   SGemm sg;
-  MatrixMap<const float> src_matrix(1, height, width, src_order, data.data());
+  SGemmMatrixMap<const float>
+      src_matrix(1, height, width, src_order, data.data());
   PackedBlock packed;
   packed.Resize({height, width});
-  if (pack_order == PackOrder::ColMajor) {
+  if (pack_order == PackOrder::SGemmColMajor) {
     sg.PackLhs(src_matrix, &packed);
   } else {
     sg.PackRhs(src_matrix, &packed);
@@ -57,18 +58,19 @@ void TestUnPack(const index_t height,
     data[i] = rand_r(&seed);
   }
 
-  MatrixMap<const float> src_matrix(1, height, width, src_order, data.data());
+  SGemmMatrixMap<const float>
+      src_matrix(1, height, width, src_order, data.data());
   PackedBlock packed;
   packed.Resize({height, width});
   SGemm sg;
-  if (pack_order == PackOrder::ColMajor) {
+  if (pack_order == PackOrder::SGemmColMajor) {
     sg.PackLhs(src_matrix, &packed);
   } else {
     sg.PackRhs(src_matrix, &packed);
   }
 
   std::vector<float> unpacked(matrix_size);
-  MatrixMap<float>
+  SGemmMatrixMap<float>
       unpacked_matrix(1, height, width, src_order, unpacked.data());
   sg.UnPack(packed, &unpacked_matrix);
   auto unpacked_data = unpacked.data();
@@ -87,78 +89,78 @@ TEST(SGemmPackTest, Pack) {
   // For no-transpose lhs
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
-           3, 4, Major::RowMajor, PackOrder::ColMajor);
+           3, 4, Major::SGemmRowMajor, PackOrder::SGemmColMajor);
 #if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16},
-           4, 4, Major::RowMajor, PackOrder::ColMajor);
+           4, 4, Major::SGemmRowMajor, PackOrder::SGemmColMajor);
   TestPack(data,
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16, 17, 18, 19,
             20},
-           5, 4, Major::RowMajor, PackOrder::ColMajor);
+           5, 4, Major::SGemmRowMajor, PackOrder::SGemmColMajor);
 #if defined(__aarch64__)
   TestPack(data,
            {1, 5, 9, 13, 17, 21, 25, 29, 2, 6, 10, 14, 18, 22, 26, 30, 3, 7, 11,
             15, 19, 23, 27, 31, 4, 8, 12, 16, 20, 24, 28, 32, 33, 34, 35, 36},
-           9, 4, Major::RowMajor, PackOrder::ColMajor);
+           9, 4, Major::SGemmRowMajor, PackOrder::SGemmColMajor);
 #endif
 #endif
   // For transpose-needed lhs
   TestPack(data,
            {1, 4, 7, 10, 2, 5, 8, 11, 3, 6, 9, 12},
-           3, 4, Major::ColMajor, PackOrder::ColMajor);
+           3, 4, Major::SGemmColMajor, PackOrder::SGemmColMajor);
 #if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
-           4, 4, Major::ColMajor, PackOrder::ColMajor);
+           4, 4, Major::SGemmColMajor, PackOrder::SGemmColMajor);
   TestPack(data,
            {1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 5, 10, 15,
             20},
-           5, 4, Major::ColMajor, PackOrder::ColMajor);
+           5, 4, Major::SGemmColMajor, PackOrder::SGemmColMajor);
 #if defined(__aarch64__)
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21,
             22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33, 34, 35, 9, 18, 27, 36},
-           9, 4, Major::ColMajor, PackOrder::ColMajor);
+           9, 4, Major::SGemmColMajor, PackOrder::SGemmColMajor);
 #endif
 #endif
   // For no-transpose rhs
   TestPack(data,
            {1, 4, 7, 10, 2, 5, 8, 11, 3, 6, 9, 12},
-           4, 3, Major::RowMajor, PackOrder::RowMajor);
+           4, 3, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
 #if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
-           4, 4, Major::RowMajor, PackOrder::RowMajor);
+           4, 4, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
   TestPack(data,
            {1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 5, 10, 15,
             20},
-           4, 5, Major::RowMajor, PackOrder::RowMajor);
+           4, 5, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
 #endif
   // For transpose-needed rhs
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
-           4, 3, Major::ColMajor, PackOrder::RowMajor);
+           4, 3, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
 #if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16},
-           4, 4, Major::ColMajor, PackOrder::RowMajor);
+           4, 4, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
   TestPack(data,
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16, 17, 18, 19,
             20},
-           4, 5, Major::ColMajor, PackOrder::RowMajor);
+           4, 5, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
 #endif
 }
 
 TEST(SGemmPackTest, UnPack) {
-  TestUnPack(4, 3, Major::RowMajor, PackOrder::RowMajor);
-  TestUnPack(4, 4, Major::RowMajor, PackOrder::RowMajor);
-  TestUnPack(4, 5, Major::RowMajor, PackOrder::RowMajor);
-  TestUnPack(4, 100, Major::RowMajor, PackOrder::RowMajor);
-  TestUnPack(4, 3, Major::ColMajor, PackOrder::RowMajor);
-  TestUnPack(4, 4, Major::ColMajor, PackOrder::RowMajor);
-  TestUnPack(4, 5, Major::ColMajor, PackOrder::RowMajor);
-  TestUnPack(4, 100, Major::ColMajor, PackOrder::RowMajor);
+  TestUnPack(4, 3, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 4, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 5, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 100, Major::SGemmRowMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 3, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 4, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 5, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
+  TestUnPack(4, 100, Major::SGemmColMajor, PackOrder::SGemmRowMajor);
 }
 
 }  // namespace test

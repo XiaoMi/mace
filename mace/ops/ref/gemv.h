@@ -39,6 +39,7 @@ class Gemv {
     const index_t lhs_height,
     const index_t lhs_width,
     const bool lhs_batched,
+    const bool rhs_batched,
     Tensor *output);
 };
 
@@ -57,6 +58,7 @@ class Gemv<float> {
     const index_t lhs_height,
     const index_t lhs_width,
     const bool lhs_batched,
+    const bool rhs_batched,
     Tensor *output);
 };
 
@@ -76,6 +78,7 @@ class Gemv<uint8_t> {
       const index_t lhs_height,
       const index_t lhs_width,
       const bool lhs_batched,
+      const bool rhs_batched,
       Tensor *output);
 };
 
@@ -94,6 +97,7 @@ class Gemv<int32_t> {
       const index_t lhs_height,
       const index_t lhs_width,
       const bool lhs_batched,
+      const bool rhs_batched,
       Tensor *output);
 };
 #endif  // MACE_ENABLE_QUANTIZE

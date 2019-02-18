@@ -28,7 +28,8 @@ namespace test {
 void TestGemvInt32(const index_t batch,
                    const index_t height,
                    const index_t width,
-                   const bool lhs_batched) {
+                   const bool lhs_batched,
+                   const bool rhs_batched) {
   Tensor lhs(GetCPUAllocator(), DataType::DT_UINT8);
   Tensor rhs(GetCPUAllocator(), DataType::DT_UINT8);
   Tensor bias(GetCPUAllocator(), DataType::DT_INT32);
@@ -38,7 +39,7 @@ void TestGemvInt32(const index_t batch,
   lhs.SetZeroPoint(0);
   rhs.SetZeroPoint(0);
   lhs.Resize({lhs_batched ? batch : 1, height, width});
-  rhs.Resize({batch, width});
+  rhs.Resize({rhs_batched ? batch : 1, batch, width});
   bias.Resize({height});
   output.Resize({batch, height});
   {
@@ -62,6 +63,7 @@ void TestGemvInt32(const index_t batch,
                height,
                width,
                lhs_batched,
+               rhs_batched,
                &output);
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_INT32);
@@ -75,6 +77,7 @@ void TestGemvInt32(const index_t batch,
                    height,
                    width,
                    lhs_batched,
+                   rhs_batched,
                    &expected_output);
 
   Tensor::MappingGuard output_guard(&output);
@@ -90,7 +93,8 @@ void TestGemvInt32(const index_t batch,
 void TestGemvUint8(const index_t batch,
                    const index_t height,
                    const index_t width,
-                   const bool lhs_batched) {
+                   const bool lhs_batched,
+                   const bool rhs_batched) {
   Tensor lhs(GetCPUAllocator(), DataType::DT_UINT8);
   Tensor rhs(GetCPUAllocator(), DataType::DT_UINT8);
   Tensor bias(GetCPUAllocator(), DataType::DT_INT32);
@@ -127,6 +131,7 @@ void TestGemvUint8(const index_t batch,
                height,
                width,
                lhs_batched,
+               rhs_batched,
                &output);
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_INT32);
@@ -142,6 +147,7 @@ void TestGemvUint8(const index_t batch,
                    height,
                    width,
                    lhs_batched,
+                   rhs_batched,
                    &expected_output);
 
   Tensor::MappingGuard output_guard(&output);
@@ -155,27 +161,27 @@ void TestGemvUint8(const index_t batch,
 }
 
 TEST(ArmGemv, TestGemvInt32) {
-  TestGemvInt32(1, 16, 4, true);
-  TestGemvInt32(1, 16, 256, true);
-  TestGemvInt32(2, 16, 256, true);
-  TestGemvInt32(3, 63, 257, true);
+  TestGemvInt32(1, 16, 4, true, true);
+  TestGemvInt32(1, 16, 256, true, true);
+  TestGemvInt32(2, 16, 256, true, true);
+  TestGemvInt32(3, 63, 257, true, true);
 
-  TestGemvInt32(1, 16, 4, false);
-  TestGemvInt32(1, 16, 256, false);
-  TestGemvInt32(2, 16, 256, false);
-  TestGemvInt32(3, 63, 257, false);
+  TestGemvInt32(2, 16, 256, false, true);
+  TestGemvInt32(3, 63, 257, false, true);
+  TestGemvInt32(2, 16, 256, true, false);
+  TestGemvInt32(3, 63, 257, true, false);
 }
 
 TEST(ArmGemv, TestGemvUint8) {
-  TestGemvUint8(1, 16, 4, true);
-  TestGemvUint8(1, 16, 256, true);
-  TestGemvUint8(2, 16, 256, true);
-  TestGemvUint8(3, 63, 257, true);
+  TestGemvUint8(1, 16, 4, true, true);
+  TestGemvUint8(1, 16, 256, true, true);
+  TestGemvUint8(2, 16, 256, true, true);
+  TestGemvUint8(3, 63, 257, true, true);
 
-  TestGemvUint8(1, 16, 4, false);
-  TestGemvUint8(1, 16, 256, false);
-  TestGemvUint8(2, 16, 256, false);
-  TestGemvUint8(3, 63, 257, false);
+  TestGemvUint8(2, 16, 256, false, true);
+  TestGemvUint8(3, 63, 257, false, true);
+  TestGemvUint8(2, 16, 256, true, false);
+  TestGemvUint8(3, 63, 257, true, false);
 }
 
 }  // namespace test

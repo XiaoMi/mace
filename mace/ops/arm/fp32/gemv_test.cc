@@ -28,13 +28,14 @@ namespace test {
 void TestGemvFloat32(const index_t batch,
                      const index_t height,
                      const index_t width,
-                     const bool lhs_batched) {
+                     const bool lhs_batched,
+                     const bool rhs_batched) {
   Tensor lhs(GetCPUAllocator(), DataType::DT_FLOAT);
   Tensor rhs(GetCPUAllocator(), DataType::DT_FLOAT);
   Tensor bias(GetCPUAllocator(), DataType::DT_FLOAT);
   Tensor output(GetCPUAllocator(), DataType::DT_FLOAT);
   lhs.Resize({lhs_batched ? batch : 1, height, width});
-  rhs.Resize({batch, width});
+  rhs.Resize({rhs_batched ? batch : 1, width});
   bias.Resize({height});
   output.Resize({batch, height});
   {
@@ -57,6 +58,7 @@ void TestGemvFloat32(const index_t batch,
                height,
                width,
                lhs_batched,
+               rhs_batched,
                &output);
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_FLOAT);
@@ -70,28 +72,22 @@ void TestGemvFloat32(const index_t batch,
                    height,
                    width,
                    lhs_batched,
+                   rhs_batched,
                    &expected_output);
 
-  Tensor::MappingGuard output_guard(&output);
-  Tensor::MappingGuard expected_guard(&expected_output);
-  const float *output_data = output.data<float>();
-  const float *expected_data = expected_output.data<float>();
-
-  for (index_t i = 0; i < output.size(); ++i) {
-    EXPECT_NEAR(expected_data[i], output_data[i], 0.001);
-  }
+  ExpectTensorNear<float>(expected_output, output);
 }
 
 TEST(ArmGemv, TestGemvFloat32) {
-  TestGemvFloat32(1, 16, 4, true);
-  TestGemvFloat32(1, 16, 256, true);
-  TestGemvFloat32(2, 16, 256, true);
-  TestGemvFloat32(3, 63, 257, true);
+  TestGemvFloat32(1, 16, 4, true, true);
+  TestGemvFloat32(1, 16, 256, true, true);
+  TestGemvFloat32(2, 16, 256, true, true);
+  TestGemvFloat32(3, 63, 257, true, true);
 
-  TestGemvFloat32(1, 16, 4, false);
-  TestGemvFloat32(1, 16, 256, false);
-  TestGemvFloat32(2, 16, 256, false);
-  TestGemvFloat32(3, 63, 257, false);
+  TestGemvFloat32(2, 16, 256, false, true);
+  TestGemvFloat32(3, 63, 257, false, true);
+  TestGemvFloat32(2, 16, 256, true, false);
+  TestGemvFloat32(3, 63, 257, true, false);
 }
 
 }  // namespace test
