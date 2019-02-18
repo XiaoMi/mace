@@ -138,6 +138,7 @@ inline bool IsSameSize(const Tensor &x, const Tensor &y) {
 
 inline std::string ShapeToString(const Tensor &x) {
   std::stringstream stream;
+  stream << "[";
   for (int i = 0; i < x.dim_size(); i++) {
     if (i > 0) stream << ",";
     int64_t dim = x.dim(i);
@@ -174,8 +175,8 @@ inline void ExpectEqual<double>(const double &a, const double &b) {
 }
 
 inline void AssertSameDims(const Tensor &x, const Tensor &y) {
-  ASSERT_TRUE(IsSameSize(x, y)) << "x.shape [" << ShapeToString(x) << "] vs "
-                                << "y.shape [ " << ShapeToString(y) << "]";
+  ASSERT_TRUE(IsSameSize(x, y)) << "x.shape " << ShapeToString(x) << " vs "
+                                << "y.shape " << ShapeToString(y);
 }
 
 template<typename EXP_TYPE,
@@ -282,7 +283,7 @@ void ExpectTensorNear(const Tensor &x,
 template<typename T>
 void ExpectTensorSimilar(const Tensor &x,
                          const Tensor &y,
-                         const double abs_err = 1e-5) {
+                         const double rel_err = 1e-5) {
   AssertSameDims(x, y);
   Tensor::MappingGuard x_mapper(&x);
   Tensor::MappingGuard y_mapper(&y);
@@ -294,8 +295,11 @@ void ExpectTensorSimilar(const Tensor &x,
     x_norm += x_data[i] * x_data[i];
     y_norm += y_data[i] * y_data[i];
   }
-  double similarity = dot_product / (sqrt(x_norm) * sqrt(y_norm));
-  EXPECT_NEAR(1.0, similarity, abs_err);
+  double norm_product = sqrt(x_norm) * sqrt(y_norm);
+  double error = rel_err * std::abs(dot_product);
+
+  EXPECT_NEAR(dot_product, norm_product, error)
+            << "Shape " << ShapeToString(x);
 }
 
 }  // namespace test
