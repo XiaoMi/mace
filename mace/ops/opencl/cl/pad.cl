@@ -53,16 +53,15 @@ __kernel void pad(OUT_OF_RANGE_PARAMS
   } else {
     const int diff_right = width_idx - input_padded_width;
 
-    if (diff_right >= 0) {
+    w = select(
+        -diff_left,
 #if PAD_TYPE == 1
-      w = input_width - diff_right - 2;
+        input_width - diff_right - 2,
 #else
-      w = input_width - diff_right - 1;
+        input_width - diff_right - 1,
 #endif
-
-    } else {
-      w = -diff_left;
-    }
+      diff_right >= 0
+    );
   }
 
   const int diff_up = height_padding - height_idx;
@@ -77,16 +76,15 @@ __kernel void pad(OUT_OF_RANGE_PARAMS
   } else {
     const int diff_down = height_idx - input_padded_height;
 
-    if (diff_down >= 0) {
+    h = select(
+        -diff_up,
 #if PAD_TYPE == 1
-      h = input_height - diff_down - 2;
+        input_height - diff_down - 2,
 #else
-      h = input_height - diff_down - 1;
+        input_height - diff_down - 1,
 #endif
-
-    } else {
-      h = -diff_up;
-    }
+        diff_down >= 0
+    );
   }
 
   const int in_hb_idx = mad24(batch_idx, input_height, h);
