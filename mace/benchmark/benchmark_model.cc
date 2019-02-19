@@ -292,8 +292,8 @@ int Main(int argc, char **argv) {
 #ifdef MODEL_GRAPH_FORMAT_CODE
   create_engine_status =
         CreateMaceEngineFromCode(FLAGS_model_name,
-                                 model_weights_data.data(),
-                                 model_weights_data.size(),
+                                 model_weights_data,
+                                 model_weights_data_size,
                                  input_names,
                                  output_names,
                                  config,

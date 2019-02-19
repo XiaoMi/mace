@@ -252,7 +252,8 @@ Convert model(s) to C++ code
             // Create Engine from compiled code
             create_engine_status =
                 CreateMaceEngineFromCode(model_name.c_str(),
-                                         model_data_file, // empty string if model_data_format is code
+                                         model_data_ptr, // nullptr if model_data_format is code
+                                         model_data_size, // 0 if model_data_format is code
                                          input_names,
                                          output_names,
                                          device_type,

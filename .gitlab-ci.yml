@@ -146,6 +146,12 @@ model_tests:
       python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --example --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py benchmark --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=code --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=code --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --example --round=1 --validate --model_graph_format=code --model_data_format=file || exit 1;
+      python tools/converter.py benchmark --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=code --model_data_format=file || exit 1;
+ 
     - rm -rf mace-models
 
 quantization_tests:

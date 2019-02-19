@@ -158,7 +158,8 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
 
   mace::MaceStatus create_engine_status =
       CreateMaceEngineFromCode(mace_context.model_name,
-                               std::string(),
+                               nullptr,
+                               0,
                                input_names,
                                output_names,
                                config,
