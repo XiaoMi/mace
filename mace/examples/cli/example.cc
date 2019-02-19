@@ -285,8 +285,8 @@ bool RunModel(const std::vector<std::string> &input_names,
   // to model_data_file parameter.
   create_engine_status =
       CreateMaceEngineFromCode(FLAGS_model_name,
-                               model_weights_data.data(),
-                               model_weights_data.size(),
+                               model_weights_data,
+                               model_weights_data_size,
                                input_names,
                                output_names,
                                config,
