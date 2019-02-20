@@ -40,19 +40,18 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
     const index_t rank = input->dim_size();
     MACE_CHECK(rank >= 1)
       << "The input dim size should >= 1";
+    const index_t input_dim = input->dim(rank - 1);
     MACE_CHECK(starts_.size() == 1 && ends_.size() == 1 && axes_.size() == 1,
                "only support slicing at one axis.");
     MACE_CHECK(axes_[0] == -1 || axes_[0] == rank - 1,
                "only support slicing at the last axis.");
-    const index_t input_dim = input->dim(rank - 1);
-    const index_t offset = starts_[0];
-    const index_t output_dim = ends_[0] - starts_[0];
-
-    MACE_CHECK(output_dim >= 0, "output_dim should >= 0");
-    MACE_CHECK(starts_[0] < input_dim
-                   && output_dim <= input_dim
+    MACE_CHECK(starts_[0] < input_dim && starts_[0] >= 0
+                   && ends_[0] >= 0
                    && ends_[0] <= input_dim)
       << "The starts and ends caused over range error.";
+    const index_t offset = starts_[0];
+    const index_t output_dim = ends_[0] - starts_[0];
+    MACE_CHECK(output_dim >= 0, "output_dim should >= 0");
 
     const index_t  frames =
         std::accumulate(input->shape().begin(), input->shape().end() - 1, 1,

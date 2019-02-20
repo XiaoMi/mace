@@ -60,25 +60,22 @@ inline Integer Clamp(Integer in, Integer low, Integer high) {
   return std::max<Integer>(low, std::min<Integer>(in, high));
 }
 
-template <typename T>
-inline T ScalarSigmoid(T in) {
-  if (in > static_cast<T>(0)) {
-    return static_cast<T>(1) / (static_cast<T>(1) + std::exp(-in));
+inline float ScalarSigmoid(float in) {
+  if (in > 0) {
+    return 1 / (1 + std::exp(-in));
   } else {
-    T x = std::exp(in);
-    return x / (x + static_cast<T>(1));
+    float x = std::exp(in);
+    return x / (x + 1.f);
   }
 }
 
-template <typename T>
-inline T ScalarTanh(T in) {
-  if (in > static_cast<T>(0)) {
-    T inv_expa = std::exp(-in);
-    return -static_cast<T>(1) +
-        static_cast<T>(2) / (static_cast<T>(1) + inv_expa * inv_expa);
+inline float ScalarTanh(float in) {
+  if (in > 0) {
+    float x = std::exp(-in);
+    return -1.f + 2.f / (1.f + x * x);
   } else {
-    T x = std::exp(in);
-    return x / (x + static_cast<T>(1));
+    float x = std::exp(in);
+    return 1.f - 2.f / (1.f + x * x);
   }
 }
 

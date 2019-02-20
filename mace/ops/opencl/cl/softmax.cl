@@ -73,13 +73,25 @@ __kernel void softmax(OUT_OF_RANGE_PARAMS
   switch(exceeded) {
     case 1:
       data.z = native_exp(data.z) / sum;
+#ifdef USE_LOG
+      data.z = native_log(data.z);
+#endif
     case 2:
       data.y = native_exp(data.y) / sum;
+#ifdef USE_LOG
+      data.y = native_log(data.y);
+#endif
     case 3:
       data.x = native_exp(data.x) / sum;
+#ifdef USE_LOG
+      data.x = native_log(data.x);
+#endif
       break;
     default:
       data = native_exp(data) / sum;
+#ifdef USE_LOG
+      data = native_log(data);
+#endif
   }
 
   WRITE_IMAGET(output, (int2)(pos, hb_idx), data);

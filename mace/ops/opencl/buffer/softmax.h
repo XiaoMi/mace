@@ -32,12 +32,16 @@ namespace buffer {
 template <typename T>
 class SoftmaxKernel : public OpenCLSoftmaxKernel {
  public:
+  explicit SoftmaxKernel(bool use_log)
+      : use_log_(use_log) {}
+
   MaceStatus Compute(
       OpContext *context,
       const Tensor *logits,
       Tensor *output) override;
 
  private:
+  bool use_log_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
@@ -88,6 +92,7 @@ MaceStatus SoftmaxKernel<T>::Compute(
     built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(logits->dtype()));
     built_options.emplace("-DOUT_DATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
+    if (use_log_) built_options.emplace("-DUSE_LOG");
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("softmax_buffer", kernel_name,
                                               built_options, &kernel_));
 

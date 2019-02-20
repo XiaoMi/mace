@@ -21,34 +21,22 @@ namespace test {
 
 namespace {
 template<DeviceType D, typename T>
-void BMSpliceHelper(int iters,
-                    const std::vector<index_t> &input_shape,
-                    const int left_context,
-                    const int right_context,
-                    const int const_component_dim) {
+void PadContextBM(int iters,
+                  const std::vector<index_t> &input_shape,
+                  const int left_context,
+                  const int right_context) {
   mace::testing::StopTiming();
 
   // Construct graph
   OpsTestNet net;
 
-  const index_t num_splice = left_context + right_context + 1;
-  std::vector<int> contexts(num_splice);
-  for (int i = 0; i < num_splice; ++i) {
-    contexts[i] = left_context + i;
-  }
-  const index_t input_size = std::accumulate(input_shape.begin(),
-                                             input_shape.end(),
-                                             1,
-                                             std::multiplies<index_t>());
-  std::vector<float> input_data(input_size);
-  GenerateRandomRealTypeData(input_shape, &input_data);
-  net.AddInputFromArray<D, float>("Input", input_shape, input_data);
+  net.AddRandomInput<D, float>("Input", input_shape);
 
-  OpDefBuilder("Splice", "SpliceBM")
+  OpDefBuilder("PadContext", "PadContextBM")
       .Input("Input")
       .Output("Output")
-      .AddIntsArg("context", contexts)
-      .AddIntArg("const_component_dim", const_component_dim)
+      .AddIntArg("left_context", left_context)
+      .AddIntArg("right_context", right_context)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
@@ -66,25 +54,25 @@ void BMSpliceHelper(int iters,
 }
 }  // namespace
 
-#define MACE_BM_SPLICE_MACRO(N, H, W, L, R, C, TYPE, DEVICE)  \
+#define MACE_BM_PAD_CONTEXT_MACRO(N, H, W, L, R, TYPE, DEVICE)  \
   static void                                                                \
-      MACE_BM_SPLICE_##N##_##H##_##W##_##L##_##R##_##C##_##TYPE##_##DEVICE(  \
+      MACE_BM_PAD_CONTEXT_##N##_##H##_##W##_##L##_##R##_##TYPE##_##DEVICE(   \
           int iters) {                                                       \
         const int64_t tot = static_cast<int64_t>(iters) * N * H * W;         \
         mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
-        BMSpliceHelper<DEVICE, TYPE>(iters, {N, H, W}, L, R, C);             \
+        PadContextBM<DEVICE, TYPE>(iters, {N, H, W}, L, R);             \
       }                                                                      \
       MACE_BENCHMARK(                                                        \
-          MACE_BM_SPLICE_##N##_##H##_##W##_##L##_##R##_##C##_##TYPE##_##DEVICE)
+          MACE_BM_PAD_CONTEXT_##N##_##H##_##W##_##L##_##R##_##TYPE##_##DEVICE)
 
-#define MACE_BM_SPLICE(N, H, W, L, R, C)                 \
-  MACE_BM_SPLICE_MACRO(N, H, W, L, R, C, float, CPU);
+#define MACE_BM_PAD_CONTEXT(N, H, W, L, R)                 \
+  MACE_BM_PAD_CONTEXT_MACRO(N, H, W, L, R, float, CPU);
 
-MACE_BM_SPLICE(1, 32, 32, 5, 5, 10);
-MACE_BM_SPLICE(1, 32, 32, 7, 7, 5);
-MACE_BM_SPLICE(1, 32, 32, 3, 3, 20);
-MACE_BM_SPLICE(1, 128, 128, 9, 9, 100);
-MACE_BM_SPLICE(1, 128, 128, 7, 7, 100);
+MACE_BM_PAD_CONTEXT(1, 32, 32, 5, 5);
+MACE_BM_PAD_CONTEXT(2, 32, 32, 7, 7);
+MACE_BM_PAD_CONTEXT(1, 32, 32, 3, 3);
+MACE_BM_PAD_CONTEXT(1, 128, 128, 9, 9);
+MACE_BM_PAD_CONTEXT(3, 128, 128, 7, 7);
 
 }  // namespace test
 }  // namespace ops

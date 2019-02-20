@@ -57,7 +57,7 @@ void PNormBenchmark(int iters, int n, int h, int w, int p, int ow) {
           int iters) {                                           \
     const int64_t tot = static_cast<int64_t>(iters) * N * H * W; \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));          \
-    PNormBenchmark<DEVICE, TYPE>(iters, N, H, W, P, OW);   \
+    PNormBenchmark<DEVICE, TYPE>(iters, N, H, W, P, OW);         \
   }                                                              \
   MACE_BENCHMARK(                                                \
       MACE_BM_PNORM_##N##_##H##_##W##_##P##_##OW##_##TYPE##_##DEVICE)

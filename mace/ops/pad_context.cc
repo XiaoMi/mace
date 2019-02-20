@@ -25,14 +25,15 @@ namespace mace {
 namespace ops {
 
 template <DeviceType D, typename T>
-class TimeOffsetOp;
+class PadContextOp;
 
 template <typename T>
-class TimeOffsetOp<DeviceType::CPU, T> : public Operation {
+class PadContextOp<DeviceType::CPU, T> : public Operation {
  public:
-  explicit TimeOffsetOp(OpConstructContext *context)
+  explicit PadContextOp(OpConstructContext *context)
       : Operation(context),
-        offset_(Operation::GetOptionalArg<int>("offset", 0)) {}
+        left_context_(Operation::GetOptionalArg<int>("left_context", 0)),
+        right_context_(Operation::GetOptionalArg<int>("right_context", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -41,27 +42,38 @@ class TimeOffsetOp<DeviceType::CPU, T> : public Operation {
 
     index_t rank = input->dim_size();
     MACE_CHECK(rank >= 2, "input's rank should >= 2.");
+    MACE_CHECK(left_context_ > 0 && right_context_ > 0,
+               "left context and right context should be greater than zero");
     const std::vector<index_t> &input_shape = input->shape();
     const index_t batch =
         std::accumulate(input_shape.begin(), input_shape.end() - 2, 1,
                         std::multiplies<index_t>());
-    const index_t frames = input_shape[rank - 2];
-    const index_t input_dim = input_shape[rank - 1];
-    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
+    const index_t chunk = input_shape[rank - 2];
+    const index_t dim = input_shape[rank - 1];
+    const index_t output_chunk = chunk + left_context_ + right_context_;
+    std::vector<index_t> output_shape = input->shape();
+    output_shape[rank - 2] = output_chunk;
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t i = 0; i < batch; ++i) {
-      for (index_t j = 0; j < frames; ++j) {
-        index_t time_index = offset_ + j;
-        index_t index = Clamp<index_t>(time_index, 0, frames - 1);
-        T *output_base = output_data + (i * frames + j) * input_dim;
-        const T *input_base = input_data + (i * frames + index) * input_dim;
-        memcpy(output_base, input_base, input_dim * sizeof(T));
+      T *out_base = output_data + i * output_chunk * dim;
+      const T *in_base = input_data + i * chunk * dim;
+#pragma omp parallel for schedule(runtime)
+      for (index_t j = 0; j < left_context_; ++j) {
+        memcpy(out_base + j * dim, in_base, dim * sizeof(T));
+      }
+      out_base = out_base + left_context_ * dim;
+      memcpy(out_base, in_base, chunk * dim * sizeof(T));
+      out_base = out_base + chunk * dim;
+      in_base = in_base + (chunk -1) * dim;
+#pragma omp parallel for schedule(runtime)
+      for (index_t j = 0; j < right_context_; ++j) {
+        memcpy(out_base + j * dim, in_base, dim * sizeof(T));
       }
     }
 
@@ -69,11 +81,12 @@ class TimeOffsetOp<DeviceType::CPU, T> : public Operation {
   }
 
  private:
-  int offset_;
+  int left_context_;
+  int right_context_;
 };
 
-void RegisterTimeOffset(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "TimeOffset", TimeOffsetOp,
+void RegisterPadContext(OpRegistryBase *op_registry) {
+  MACE_REGISTER_OP(op_registry, "PadContext", PadContextOp,
                    DeviceType::CPU, float);
 }
 

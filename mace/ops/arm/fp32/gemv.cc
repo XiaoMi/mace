@@ -48,8 +48,8 @@ MaceStatus Gemv::Compute(const OpContext *context,
                          Tensor *output) {
   MACE_UNUSED(context);
 
-  MACE_CHECK(output->size() == batch * lhs_height,
-             "Need resize output tensor before call gemv.");
+  MACE_CHECK(output->size() >= batch * lhs_height,
+             "Output buffer is not large enough for computing gemv.");
 
   Tensor::MappingGuard lhs_guard(lhs);
   Tensor::MappingGuard rhs_guard(rhs);
