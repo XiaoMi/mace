@@ -68,10 +68,12 @@ MemoryBlock MemoryOptimizer::CreateMemoryBlock(
 #ifdef MACE_ENABLE_OPENCL
   if (mem_type == MemoryType::GPU_IMAGE) {
     std::vector<size_t> image_shape;
-    if (shape.size() == 2) {
+    if (shape.size() == 1) {
+      shape = {shape[0], 1, 1, 1};
+    } else if (shape.size() == 2) {
       shape = {shape[0], 1, 1, shape[1]};
     } else {
-      MACE_CHECK(shape.size() == 4) << "GPU only support 2D/4D input";
+      MACE_CHECK(shape.size() == 4) << "GPU only support 1D/2D/4D input";
     }
     OpenCLUtil::CalImage2DShape(shape,
                                 OpenCLBufferType::IN_OUT_CHANNEL,

@@ -128,6 +128,7 @@ MaceSupportedOps = [
     'LocalResponseNorm',
     'LSTMCell',
     'MatMul',
+    'OneHot',
     'Pad',
     'Pooling',
     'PriorBox',

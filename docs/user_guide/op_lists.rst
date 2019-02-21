@@ -33,6 +33,7 @@ Operator lists
     "LSTM","",""
     "MATMUL","Y","Only CPU is supported."
     "MAX_POOL_2D","Y",""
+    "ONE_HOT","Y","Only TensorFlow model is supported."
     "PAD","Y",""
     "PSROI_ALIGN","Y",""
     "PRELU","Y","Only Caffe model is supported"
