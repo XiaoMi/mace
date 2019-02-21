@@ -12,17 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ELTWISE_H_
-#define MACE_OPS_ELTWISE_H_
-
-#include "mace/ops/common/eltwise_type.h"
+#ifndef MACE_OPS_COMMON_ELTWISE_TYPE_H_
+#define MACE_OPS_COMMON_ELTWISE_TYPE_H_
 
 namespace mace {
 namespace ops {
 
-inline bool IsLogicalType(EltwiseType type) { return type == EQUAL; }
+enum EltwiseType {
+  SUM = 0,
+  SUB = 1,
+  PROD = 2,
+  DIV = 3,
+  MIN = 4,
+  MAX = 5,
+  NEG = 6,
+  ABS = 7,
+  SQR_DIFF = 8,
+  POW = 9,
+  EQUAL = 10,
+  FLOOR_DIV = 11,
+  NONE = 12,
+};
 
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ELTWISE_H_
+#endif  // MACE_OPS_COMMON_ELTWISE_TYPE_H_

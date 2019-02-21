@@ -84,7 +84,7 @@ cc_library(
     ]),
     deps = [
         "//mace/core",
-        "@gtest//:gtest",
+        "@gtest",
     ],
 )
 
@@ -254,7 +254,7 @@ cc_library(
         ":arm_neon_kernels",
         ":ref_kernels",
         ":testing",
-        "@gtest//:gtest",
+        "@gtest",
     ],
     alwayslink = 1,
 )
@@ -289,7 +289,7 @@ cc_library(
         ":opencl_kernels",
         ":ref_kernels",
         ":testing",
-        "@gtest//:gtest",
+        "@gtest",
     ],
     alwayslink = 1,
 )
@@ -329,12 +329,12 @@ cc_library(
             "ops_registry.h",
             "ops_test_util.h",
             "fixpoint.h",
-            "gemmlowp_util.h",
+            "common/gemmlowp_util.h",
             "quantization_util.h",
         ],
     ) + if_quantize_enabled(glob([
         "fixpoint.h",
-        "gemmlowp_util.h",
+        "common/gemmlowp_util.h",
         "quantization_util.h",
     ])),
     copts = [

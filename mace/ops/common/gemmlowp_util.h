@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_GEMMLOWP_UTIL_H_
-#define MACE_OPS_GEMMLOWP_UTIL_H_
+#ifndef MACE_OPS_COMMON_GEMMLOWP_UTIL_H_
+#define MACE_OPS_COMMON_GEMMLOWP_UTIL_H_
 
 #include <tuple>
 
@@ -75,4 +75,4 @@ struct GemmlowpOutputPipeline {
 };
 }  // namespace mace
 
-#endif  // MACE_OPS_GEMMLOWP_UTIL_H_
+#endif  // MACE_OPS_COMMON_GEMMLOWP_UTIL_H_
