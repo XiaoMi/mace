@@ -3,6 +3,7 @@ load(
     "//mace:mace.bzl",
     "if_android",
     "if_hexagon_enabled",
+    "if_hta_enabled",
     "if_opencl_enabled",
     "if_openmp_enabled",
 )
@@ -36,6 +37,8 @@ cc_binary(
         "//mace/utils:utils_hdrs",
     ] + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
+    ]) + if_hta_enabled([
+        "//third_party/hta",
     ]),
 )
 

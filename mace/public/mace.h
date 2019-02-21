@@ -32,7 +32,7 @@ namespace mace {
 
 class NetDef;
 
-enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
+enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, HTA = 4 };
 
 enum DataFormat { DF_NONE = 0, NHWC = 1, NCHW = 2};
 

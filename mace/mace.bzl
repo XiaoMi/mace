@@ -60,6 +60,19 @@ def if_not_hexagon_enabled(a):
       "//conditions:default": a,
   })
 
+def if_hta_enabled(a):
+  return select({
+      "//mace:hta_enabled": a,
+      "//conditions:default": [],
+  })
+
+def if_hexagon_or_hta_enabled(a):
+  return select({
+      "//mace:hexagon_enabled": a,
+      "//mace:hta_enabled": a,
+      "//conditions:default": [],
+  })
+
 def if_openmp_enabled(a):
   return select({
       "//mace:openmp_enabled": a,

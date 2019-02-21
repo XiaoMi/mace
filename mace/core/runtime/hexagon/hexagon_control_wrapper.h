@@ -16,50 +16,67 @@
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
-#include "third_party/nnlib/hexagon_nn.h"
 
 namespace mace {
 
+struct InOutInfo {
+  InOutInfo(const std::vector<index_t> &shape,
+            const DataType data_type,
+            const float scale,
+            const int32_t zero_point,
+            std::unique_ptr<Tensor> tensor_u8)
+      :  shape(shape),
+         data_type(data_type),
+         scale(scale),
+         zero_point(zero_point),
+         tensor_u8(std::move(tensor_u8)) {}
+
+  std::vector<index_t> shape;
+  DataType data_type;
+  float scale;
+  int32_t zero_point;
+  std::unique_ptr<Tensor> tensor_u8;
+};
+
 class HexagonControlWrapper {
  public:
-  HexagonControlWrapper() {}
-  int GetVersion();
-  bool Config();
-  bool Init();
-  bool Finalize();
-  bool SetupGraph(const NetDef &net_def, const unsigned char *model_data);
-  bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
-  bool ExecuteGraphNew(const std::vector<Tensor *> &input_tensors,
-                       std::vector<Tensor *> *output_tensors,
-                       bool hexagon_quantize);
+  HexagonControlWrapper() = default;
+  virtual ~HexagonControlWrapper() = default;
 
-  bool TeardownGraph();
-  void PrintLog();
-  void PrintGraph();
-  void GetPerfInfo();
-  void ResetPerfInfo();
-  void SetDebugLevel(int level);
+  virtual int GetVersion() = 0;
+  virtual bool Config() = 0;
+  virtual bool Init() = 0;
+  virtual bool Finalize() = 0;
+  virtual bool SetupGraph(const NetDef &net_def,
+                          const unsigned char *model_data) = 0;
+  virtual bool ExecuteGraph(const Tensor &input_tensor,
+                            Tensor *output_tensor) = 0;
+  virtual bool ExecuteGraphNew(const std::vector<Tensor *> &input_tensors,
+                               std::vector<Tensor *> *output_tensors) = 0;
+  virtual bool TeardownGraph() = 0;
+  virtual void PrintLog() = 0;
+  virtual void PrintGraph() = 0;
+  virtual void GetPerfInfo() = 0;
+  virtual void ResetPerfInfo() = 0;
+  virtual void SetDebugLevel(int level) = 0;
 
- private:
-  static constexpr int NODE_ID_OFFSET = 10000;
-  static constexpr int NUM_METADATA = 4;
+ protected:
+  static constexpr int kNodeIdOffset = 10000;
+  static constexpr int kNumMetaData = 4;
 
-  inline uint32_t node_id(uint32_t nodeid) { return NODE_ID_OFFSET + nodeid; }
+  inline uint32_t node_id(uint32_t nodeid) { return kNodeIdOffset + nodeid; }
 
   int nn_id_;
 
-  std::vector<std::vector<index_t>> input_shapes_;
-  std::vector<std::vector<index_t>> output_shapes_;
-  std::vector<DataType> input_data_types_;
-  std::vector<DataType> output_data_types_;
-  uint32_t num_inputs_;
-  uint32_t num_outputs_;
-  std::vector<std::unique_ptr<Tensor>> input_tensors_u8_;
-  std::vector<std::unique_ptr<Tensor>> output_tensors_u8_;
+  std::vector<InOutInfo> input_info_;
+  std::vector<InOutInfo> output_info_;
+  int num_inputs_;
+  int num_outputs_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };

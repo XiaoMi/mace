@@ -33,10 +33,9 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL
 
-#ifdef MACE_ENABLE_HEXAGON
-#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
 #include "mace/core/runtime/hexagon/hexagon_device.h"
-#endif  // MACE_ENABLE_HEXAGON
+#endif
 
 namespace mace {
 namespace {
@@ -387,11 +386,11 @@ class MaceEngine::Impl {
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
   bool is_quantized_model_;
-#ifdef MACE_ENABLE_HEXAGON
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
-  std::map<std::string, mace::InputInfo> input_info_map_;
-  std::map<std::string, mace::OutputInfo> output_info_map_;
+  std::map<std::string, mace::InputOutputInfo> input_info_map_;
+  std::map<std::string, mace::InputOutputInfo> output_info_map_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };
@@ -404,7 +403,7 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
       ws_(new Workspace()),
       net_(nullptr),
       is_quantized_model_(false)
-#ifdef MACE_ENABLE_HEXAGON
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
       , hexagon_controller_(nullptr)
 #endif
 {
@@ -427,9 +426,9 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
         config.impl_->use_gemmlowp()));
   }
 #endif
-#ifdef MACE_ENABLE_HEXAGON
-  if (device_type_ == DeviceType::HEXAGON) {
-    device_.reset(new HexagonDevice());
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  if (device_type_ == DeviceType::HEXAGON || device_type_ == DeviceType::HTA) {
+    device_.reset(new HexagonDevice(device_type_));
   }
 #endif
   MACE_CHECK_NOTNULL(device_);
@@ -481,13 +480,13 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's outputs "
                  << MakeString(MapKeys(output_info_map_));
     }
-#ifdef MACE_ENABLE_HEXAGON
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
     ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
 #endif
   }
-#ifdef MACE_ENABLE_HEXAGON
-  if (device_type_ == HEXAGON) {
-    hexagon_controller_.reset(new HexagonControlWrapper());
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  if (device_type_ == HEXAGON || device_type_ == HTA) {
+    hexagon_controller_ = CreateHexagonControlWrapper(device_type_);
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
@@ -519,7 +518,7 @@ MaceStatus MaceEngine::Impl::Init(
       ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
     }
     MACE_RETURN_IF_ERROR(net_->Init());
-#ifdef MACE_ENABLE_HEXAGON
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
 
@@ -541,6 +540,7 @@ MaceStatus MaceEngine::Impl::Init(
         reinterpret_cast<const unsigned char *>(model_data_->data())));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
+      device_type_ == DeviceType::HTA ||
       (device_type_ == DeviceType::CPU && ws_->diffused_buffer())) {
     model_data_.reset();
   }
@@ -549,8 +549,8 @@ MaceStatus MaceEngine::Impl::Init(
 
 MaceEngine::Impl::~Impl() {
   LOG(INFO) << "Destroying MaceEngine";
-#ifdef MACE_ENABLE_HEXAGON
-  if (device_type_ == HEXAGON) {
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  if (device_type_ == HEXAGON || device_type_ == HTA) {
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->GetPerfInfo();
       hexagon_controller_->PrintLog();
@@ -699,15 +699,15 @@ MaceStatus MaceEngine::Impl::Run(
     Tensor *output_tensor = ws_->GetTensor(output.first);
     output_tensors.push_back(output_tensor);
   }
-#ifdef MACE_ENABLE_HEXAGON
-  if (device_type_ == HEXAGON) {
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  if (device_type_ == HEXAGON || device_type_ == HTA) {
     MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
                "HEXAGON not support multiple inputs and outputs yet.");
-    hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors, true);
+    hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif
     MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
-#ifdef MACE_ENABLE_HEXAGON
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
 

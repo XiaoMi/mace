@@ -142,7 +142,7 @@ void BMNet::SetUp() {
 
   // Add input and output information
   for (size_t i = 0; i < input_names_.size(); ++i) {
-    InputInfo *info = net_.add_input_info();
+    InputOutputInfo *info = net_.add_input_info();
     info->set_data_format(DataFormat::NHWC);
     info->set_name(input_names_[i]);
     for (auto d : input_shapes_[i]) {
@@ -150,7 +150,7 @@ void BMNet::SetUp() {
     }
   }
   for (auto output_name : output_names_) {
-    OutputInfo *info = net_.add_output_info();
+    InputOutputInfo *info = net_.add_output_info();
     info->set_name(output_name);
   }
   // allocate weight data

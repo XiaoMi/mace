@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_NN_OPS_H_
-#define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_NN_OPS_H_
+#ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DSP_OPS_H_
+#define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DSP_OPS_H_
 
 #include <string>
 #include <unordered_map>
@@ -57,4 +57,4 @@ class OpMap {
 };
 }  // namespace mace
 
-#endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_NN_OPS_H_
+#endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DSP_OPS_H_

@@ -11,6 +11,7 @@ load(
     "if_openmp_enabled",
     "if_android_armv7",
     "if_hexagon_enabled",
+    "if_hta_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
 )
@@ -45,6 +46,8 @@ cc_test(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
@@ -78,6 +81,8 @@ cc_test(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
@@ -111,6 +116,8 @@ cc_test(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
@@ -143,6 +150,8 @@ cc_test(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
     ]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,

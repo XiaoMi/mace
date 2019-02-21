@@ -86,21 +86,15 @@ message OperatorDef {
 }
 
 // for hexagon mace-nnlib
-message InputInfo {
+message InputOutputInfo {
   optional string name = 1;
   optional int32 node_id = 2;
   repeated int32 dims = 3;
   optional int32 max_byte_size = 4;  // only support 32-bit len
   optional DataType data_type = 5 [default = DT_FLOAT];
   optional int32 data_format = 6 [default = 1];  // NHWC
-}
-message OutputInfo {
-  optional string name = 1;
-  optional int32 node_id = 2;
-  repeated int32 dims = 3;
-  optional int32 max_byte_size = 4;  // only support 32-bit len
-  optional DataType data_type = 5 [default = DT_FLOAT];
-  optional int32 data_format = 6 [default = 1];  // NHWC
+  optional float scale = 7;
+  optional int32 zero_point = 8;
 }
 
 message NetDef {
@@ -109,6 +103,6 @@ message NetDef {
   repeated ConstTensor tensors = 3;
 
   // for hexagon mace-nnlib
-  repeated InputInfo input_info = 100;
-  repeated OutputInfo output_info = 101;
+  repeated InputOutputInfo input_info = 100;
+  repeated InputOutputInfo output_info = 101;
 }

@@ -22,6 +22,7 @@ class DeviceType(Enum):
     CPU = 0
     GPU = 2
     HEXAGON = 3
+    HTA = 4
 
 
 class DataFormat(Enum):
