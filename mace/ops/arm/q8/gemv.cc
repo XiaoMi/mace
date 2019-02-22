@@ -376,11 +376,11 @@ MaceStatus Gemv<OUTPUT_TYPE>::Compute(const OpContext *context,
           ++rhs_ptr;
         }
 
-        int32x4_t vbias = vdupq_n_s32(0);
         if (bias) {
+          int32x4_t vbias = vdupq_n_s32(0);
           vbias = vld1q_s32(bias_data + h_offset);
+          vo = vaddq_s32(vo, vbias);
         }
-        vo = vaddq_s32(vo, vbias);
 
         if (is_output_type_uint8) {
           int32x4_t vo_mul = vqrdmulhq_s32(vo, voutput_multiplier);

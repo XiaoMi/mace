@@ -15,7 +15,9 @@
 #ifndef MACE_UTILS_UTILS_H_
 #define MACE_UTILS_UTILS_H_
 
+#include <algorithm>
 #include <cstdlib>
+#include <cmath>
 #include <map>
 #include <string>
 #include <vector>
@@ -69,6 +71,32 @@ Integer CeilQuotient(Integer a, Integer b) {
 
 std::string ObfuscateString(const std::string &src,
                             const std::string &lookup_table);
+template <typename Integer>
+inline Integer Clamp(Integer in, Integer low, Integer high) {
+  return std::max<Integer>(low, std::min<Integer>(in, high));
+}
+
+template <typename T>
+inline T ScalarSigmoid(T in) {
+  if (in > static_cast<T>(0)) {
+    return static_cast<T>(1) / (static_cast<T>(1) + std::exp(-in));
+  } else {
+    T x = std::exp(in);
+    return x / (x + static_cast<T>(1));
+  }
+}
+
+template <typename T>
+inline T ScalarTanh(T in) {
+  if (in > static_cast<T>(0)) {
+    T inv_expa = std::exp(-in);
+    return -static_cast<T>(1) +
+        static_cast<T>(2) / (static_cast<T>(1) + inv_expa * inv_expa);
+  } else {
+    T x = std::exp(in);
+    return x / (x + static_cast<T>(1));
+  }
+}
 
 std::string ObfuscateString(const std::string &src);
 

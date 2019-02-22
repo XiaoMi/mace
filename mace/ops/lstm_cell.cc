@@ -25,6 +25,7 @@ namespace ops {
 template <DeviceType D, class T>
 class LSTMCellOp;
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 class LSTMCellOp<DeviceType::GPU, T> : public Operation {
  public:
@@ -88,6 +89,7 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
   MACE_OP_INPUT_TAGS(INPUT, PRE_OUTPUT, WEIGHT, BIAS, PRE_CELL);
   MACE_OP_OUTPUT_TAGS(CELL, OUTPUT);
 };
+#endif
 
 void RegisterLSTMCell(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "LSTMCell", LSTMCellOp,

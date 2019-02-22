@@ -104,6 +104,7 @@ class FrameworkType(Enum):
 MaceSupportedOps = [
     'Activation',
     'AddN',
+    'Affine',
     'ArgMax',
     'BatchNorm',
     'BatchToSpaceND',
@@ -127,8 +128,10 @@ MaceSupportedOps = [
     'InferConv2dShape',
     'LocalResponseNorm',
     'LSTMCell',
+    # 'LstmNonlinear',
     'MatMul',
     'Pad',
+    'PNorm',
     'Pooling',
     'PriorBox',
     'Proposal',
@@ -140,6 +143,8 @@ MaceSupportedOps = [
     'ResizeNearestNeighbor',
     'Reverse',
     'ScalarMath',
+    'Slice',
+    'Splice',
     'Split',
     'Shape',
     'Squeeze',
@@ -150,6 +155,9 @@ MaceSupportedOps = [
     'SpaceToBatchND',
     'SpaceToDepth',
     'SqrDiffMean',
+    'SumGroup',
+    'TargetRMSNorm',
+    'TimeOffset',
     'Transpose',
     'WinogradInverseTransform',
     'WinogradTransform',
@@ -165,6 +173,7 @@ class MaceKeyword(object):
     mace_buffer_type = 'buffer_type'
     # arg related str
     mace_padding_str = 'padding'
+    mace_padding_type_str = 'padding'
     mace_padding_values_str = 'padding_values'
     mace_strides_str = 'strides'
     mace_dilations_str = 'dilations'
@@ -480,6 +489,7 @@ class ConverterOption(object):
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
+                TransformerRule.TRANSPOSE_MATMUL_WEIGHT,
                 # Add winograd argument
                 TransformerRule.ADD_WINOGRAD_ARG,
                 # Mace model structure related transformation
