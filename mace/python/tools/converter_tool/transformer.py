@@ -1298,7 +1298,8 @@ class Transformer(base_converter.ConverterInterface):
 
             # transform `fc1(2D) -> matmul` to `fc1(2D) -> fc1(2D)`
             if op.type == MaceOp.MatMul.name and \
-                    filter_format == FilterFormat.HWIO:
+                    filter_format == FilterFormat.HWIO and \
+                    op.input[1] in self._consts:
                 producer = self._producer[op.input[0]]
                 weight = self._consts[op.input[1]]
                 if len(weight.dims) == 2 and self.is_after_fc(op) and \
