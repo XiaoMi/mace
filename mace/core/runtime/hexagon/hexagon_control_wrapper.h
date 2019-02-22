@@ -15,9 +15,9 @@
 #ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
 
+#include <memory>
 #include <vector>
 
-#include "mace/core/runtime/hexagon/quantize.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
 #include "third_party/nnlib/hexagon_nn.h"
@@ -34,7 +34,8 @@ class HexagonControlWrapper {
   bool SetupGraph(const NetDef &net_def, const unsigned char *model_data);
   bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
   bool ExecuteGraphNew(const std::vector<Tensor *> &input_tensors,
-                       std::vector<Tensor *> *output_tensors);
+                       std::vector<Tensor *> *output_tensors,
+                       bool hexagon_quantize);
 
   bool TeardownGraph();
   void PrintLog();
@@ -50,7 +51,6 @@ class HexagonControlWrapper {
   inline uint32_t node_id(uint32_t nodeid) { return NODE_ID_OFFSET + nodeid; }
 
   int nn_id_;
-  Quantizer quantizer_;
 
   std::vector<std::vector<index_t>> input_shapes_;
   std::vector<std::vector<index_t>> output_shapes_;
@@ -58,6 +58,8 @@ class HexagonControlWrapper {
   std::vector<DataType> output_data_types_;
   uint32_t num_inputs_;
   uint32_t num_outputs_;
+  std::vector<std::unique_ptr<Tensor>> input_tensors_u8_;
+  std::vector<std::unique_ptr<Tensor>> output_tensors_u8_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };
