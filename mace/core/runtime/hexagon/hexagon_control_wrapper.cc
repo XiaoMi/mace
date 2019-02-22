@@ -24,6 +24,7 @@
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
 #include "mace/core/types.h"
+#include "mace/utils/quantize.h"
 
 namespace {
 inline int64_t NowMicros() {
@@ -247,6 +248,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
     input_data_types_.push_back(input_info.data_type());
     num_inputs_ += 1;
   }
+  input_tensors_u8_.reserve(num_inputs_);
 
   // output info
   num_outputs_ = 0;
@@ -264,6 +266,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
             << " " << output_shape[2] << " " << output_shape[3]
             << "\n\t type: " << output_info.data_type();
   }
+  output_tensors_u8_.reserve(num_outputs_);
 
   int64_t t1 = NowMicros();
 
@@ -431,7 +434,8 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
 
 bool HexagonControlWrapper::ExecuteGraphNew(
     const std::vector<Tensor *> &input_tensors,
-    std::vector<Tensor *> *output_tensors) {
+    std::vector<Tensor *> *output_tensors,
+    bool hexagon_quantize) {
   VLOG(2) << "Execute graph new: " << nn_id_;
   uint32_t num_inputs = static_cast<uint32_t>(input_tensors.size());
   uint32_t num_outputs = static_cast<uint32_t>(output_tensors->size());
@@ -443,6 +447,7 @@ bool HexagonControlWrapper::ExecuteGraphNew(
   std::vector<InputOutputMetadata> input_metadata(num_inputs);
   std::vector<InputOutputMetadata> output_metadata(num_outputs);
 
+  // transform mace input to hexagon input
   for (size_t i = 0; i < num_inputs; ++i) {
     std::vector<index_t> input_shape = input_tensors[i]->shape();
     size_t index = i * NUM_METADATA;
@@ -450,38 +455,81 @@ bool HexagonControlWrapper::ExecuteGraphNew(
     inputs[index].height = static_cast<uint32_t>(input_shape[1]);
     inputs[index].width = static_cast<uint32_t>(input_shape[2]);
     inputs[index].depth = static_cast<uint32_t>(input_shape[3]);
-    inputs[index].data = const_cast<unsigned char *>(
-        reinterpret_cast<const unsigned char *>(input_tensors[i]->raw_data()));
-    inputs[index].dataLen = static_cast<int>(input_tensors[i]->raw_size());
-    inputs[index].data_valid_len = static_cast<uint32_t>(
-        input_tensors[i]->raw_size());
+    if (hexagon_quantize) {
+      inputs[index].data =
+          const_cast<unsigned char *>(reinterpret_cast<const unsigned char *>(
+              input_tensors[i]->raw_data()));
+      inputs[index].dataLen = static_cast<int>(input_tensors[i]->raw_size());
+      inputs[index].data_valid_len =
+          static_cast<uint32_t>(input_tensors[i]->raw_size());
+      input_metadata[i].Init(.0f, .0f, 1);
+    } else {
+      if (input_tensors_u8_.size() < i + 1) {
+        input_tensors_u8_.emplace_back(new Tensor());
+        input_tensors_u8_[i]->SetDtype(DT_UINT8);
+        input_tensors_u8_[i]->Resize(input_shape);
+      }
+
+      Quantize<uint8_t>(*input_tensors[i],
+                        input_tensors_u8_[i].get(),
+                        &input_metadata[i].min_val,
+                        &input_metadata[i].max_val);
+
+      inputs[index].data =
+          const_cast<unsigned char *>(reinterpret_cast<const unsigned char *>(
+              input_tensors_u8_[i]->raw_data()));
+      inputs[index].dataLen =
+          static_cast<int>(input_tensors_u8_[i]->raw_size());
+      inputs[index].data_valid_len =
+          static_cast<uint32_t>(input_tensors_u8_[i]->raw_size());
+      input_metadata[i].needs_quantization = 0;
+    }
     inputs[index].unused = 0;
-    input_metadata[i].Init(.0f, .0f, 1);
     AddInputMetadata(input_metadata[i].min_val, &inputs[index + 1]);
     AddInputMetadata(input_metadata[i].max_val, &inputs[index + 2]);
     AddInputMetadata(input_metadata[i].needs_quantization, &inputs[index + 3]);
   }
 
+  // transform mace output to hexagon output
   for (size_t i = 0; i < num_outputs; ++i) {
     size_t index = i * NUM_METADATA;
     (*output_tensors)[i]->SetDtype(output_data_types_[i]);
     (*output_tensors)[i]->Resize(output_shapes_[i]);
-    outputs[index].data = reinterpret_cast<unsigned char *>(
-        (*output_tensors)[i]->raw_mutable_data());
-    outputs[index].dataLen = static_cast<int>((*output_tensors)[i]->raw_size());
-    output_metadata[i].Init(.0f, .0f, 1);
+
+    if (hexagon_quantize) {
+      outputs[index].data = reinterpret_cast<unsigned char *>(
+          (*output_tensors)[i]->raw_mutable_data());
+      outputs[index].dataLen =
+          static_cast<int>((*output_tensors)[i]->raw_size());
+      output_metadata[i].Init(.0f, .0f, 1);
+    } else {
+      if (output_tensors_u8_.size() < i + 1) {
+        output_tensors_u8_.emplace_back(new Tensor());
+        output_tensors_u8_[i]->SetDtype(DT_UINT8);
+        output_tensors_u8_[i]->Resize(output_shapes_[i]);
+      }
+
+      outputs[index].data = reinterpret_cast<unsigned char *>(
+          output_tensors_u8_[i]->raw_mutable_data());
+      outputs[index].dataLen =
+          static_cast<int>(output_tensors_u8_[i]->raw_size());
+      output_metadata[i].Init(.0f, .0f, 0);
+    }
+
     AddOutputMetadata(output_metadata[i].min_val, &outputs[index + 1]);
     AddOutputMetadata(output_metadata[i].max_val, &outputs[index + 2]);
     AddOutputMetadata(output_metadata[i].needs_quantization,
                       &outputs[index + 3]);
   }
 
+  // Execute graph
   int res = hexagon_nn_execute_new(nn_id_,
                                    inputs.data(),
                                    num_inputs * NUM_METADATA,
                                    outputs.data(),
                                    num_outputs * NUM_METADATA);
 
+  // handle hexagon output
   for (size_t i = 0; i < num_outputs; ++i) {
     size_t index = i * NUM_METADATA;
     std::vector<uint32_t> output_shape{
@@ -494,9 +542,21 @@ bool HexagonControlWrapper::ExecuteGraphNew(
                       == output_shapes_[i][j],
                   "wrong output shape inferred");
     }
-    MACE_ASSERT(static_cast<index_t>(outputs[index].data_valid_len)
-                    == (*output_tensors)[i]->raw_size(),
-                "wrong output bytes inferred.");
+
+    if (hexagon_quantize) {
+      MACE_ASSERT(static_cast<index_t>(outputs[index].data_valid_len)
+                      == (*output_tensors)[i]->raw_size(),
+                  "wrong output bytes inferred.");
+    } else {
+      MACE_ASSERT(static_cast<index_t>(outputs[index].data_valid_len)
+                      == output_tensors_u8_[i]->raw_size(),
+                  "wrong output bytes inferred.");
+
+      DeQuantize<uint8_t>(*output_tensors_u8_[i],
+                          output_metadata[i].min_val,
+                          output_metadata[i].max_val,
+                          (*output_tensors)[i]);
+    }
   }
 
   return res == 0;

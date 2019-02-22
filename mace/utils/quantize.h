@@ -124,6 +124,25 @@ inline void Quantize(const float *input,
 }
 
 template<typename T>
+inline void Quantize(const Tensor &input,
+                     Tensor *output,
+                     float *min_out,
+                     float *max_out) {
+  MACE_CHECK(input.size() != 0);
+  Tensor::MappingGuard input_guard(&input);
+  Tensor::MappingGuard output_guard(output);
+  auto *input_data = input.data<float>();
+  auto *output_data = output->mutable_data<T>();
+  float scale;
+  int32_t zero_point;
+
+  Quantize(input_data, input.size(), false, output_data, &scale, &zero_point);
+
+  *min_out = scale * (std::numeric_limits<T>::lowest() - zero_point);
+  *max_out = scale * (std::numeric_limits<T>::max() - zero_point);
+}
+
+template<typename T>
 inline void Dequantize(const T *input,
                        const index_t size,
                        const float scale,
@@ -133,6 +152,24 @@ inline void Dequantize(const T *input,
   for (int i = 0; i < size; ++i) {
     output[i] = scale * (input[i] - zero_point);
   }
+}
+
+template<typename T>
+inline void DeQuantize(const Tensor &input,
+                       const float min_in,
+                       const float max_in,
+                       Tensor *output) {
+  MACE_CHECK(input.size() != 0);
+  Tensor::MappingGuard input_guard(&input);
+  Tensor::MappingGuard output_guard(output);
+  auto *input_data = input.data<T>();
+  auto *output_data = output->mutable_data<float>();
+  float scale;
+  int32_t zero_point;
+
+  AdjustRange<T>(min_in, max_in, false, &scale, &zero_point);
+
+  Dequantize(input_data, input.size(), scale, zero_point, output_data);
 }
 
 inline void QuantizeMultiplier(double multiplier,
