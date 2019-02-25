@@ -22,7 +22,7 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/fixpoint.h"
-#include "mace/ops/gemmlowp_util.h"
+#include "mace/ops/common/gemmlowp_util.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL

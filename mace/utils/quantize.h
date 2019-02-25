@@ -19,6 +19,8 @@
 #include <cmath>
 #include <limits>
 
+#include "mace/utils/logging.h"
+
 namespace mace {
 
 template<typename T>
@@ -175,11 +177,6 @@ inline void DeQuantize(const Tensor &input,
 inline void QuantizeMultiplier(double multiplier,
                                int32_t* output_multiplier,
                                int32_t* shift) {
-  if (multiplier == 0.f) {
-    *output_multiplier = 0;
-    *shift = 0;
-    return;
-  }
   const double q = std::frexp(multiplier, shift);
   auto qint = static_cast<int64_t>(roundl(q * (1ll << 31)));
   if (qint == (1ll << 31)) {

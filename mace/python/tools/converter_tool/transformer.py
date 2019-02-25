@@ -1424,8 +1424,9 @@ class Transformer(base_converter.ConverterInterface):
             else:
                 mace_check(op.type == MaceOp.Quantize.name,
                            "Quantization only support float ops, "
-                           "but get %s(%s)"
-                           % (op.name, op.type))
+                           "but get %s(%s, %s)"
+                           % (op.name, op.type,
+                              mace_pb2.DataType.Name(data_type_arg.i)))
 
         for input_node in self._option.input_nodes.values():
             new_input_name = self.input_name_map[input_node.name]
@@ -1726,18 +1727,29 @@ class Transformer(base_converter.ConverterInterface):
                     self.add_quantize_info(op, 0.0, 1.0)
                 self._quantize_activation_info[op.output[0]] = quantize_info
             elif (op.type == MaceOp.Eltwise.name
-                  and ConverterUtil.get_arg(op, MaceKeyword.mace_element_type_str).i == EltwiseType.SUM.value  # noqa
                   and not op.quantize_info
                   and len(op.input) == 2
                   and len(op.input[0]) not in self._consts
                   and len(op.input[1]) not in self._consts):
-                del op.quantize_info[:]
                 producer_op0 = self._producer[op.input[0]]
                 producer_op1 = self._producer[op.input[1]]
-                minval = producer_op0.quantize_info[0].minval \
-                    + producer_op1.quantize_info[0].minval
-                maxval = producer_op0.quantize_info[0].maxval \
-                    + producer_op1.quantize_info[0].maxval
+                if ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i \
+                        == EltwiseType.SUM.value:
+                    minval = producer_op0.quantize_info[0].minval \
+                        + producer_op1.quantize_info[0].minval
+                    maxval = producer_op0.quantize_info[0].maxval \
+                        + producer_op1.quantize_info[0].maxval
+                elif ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i \
+                        == EltwiseType.SUB.value:
+                    minval = producer_op0.quantize_info[0].minval \
+                        - producer_op1.quantize_info[0].maxval
+                    maxval = producer_op0.quantize_info[0].maxval \
+                        - producer_op1.quantize_info[0].minval
+                else:
+                    mace_check(False, "Quantized Elementwise only support:"
+                                      " SUM and SUB now.")
                 quantize_info = \
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
