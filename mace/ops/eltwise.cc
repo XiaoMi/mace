@@ -1171,12 +1171,23 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     for (int i = 0; i < input_size; ++i) {
       if (ws->HasTensor(operator_def_->input(i)) &&
           ws->GetTensor(operator_def_->input(i))->is_weight()) {
-        MACE_CHECK(TransformFilter<T>(
-            context,
-            operator_def_.get(),
-            i,
-            OpenCLBufferType::ARGUMENT,
-            mem_type) == MaceStatus::MACE_SUCCESS);
+        if (ws->GetTensor(operator_def_->input(i))->dim_size() == 1) {
+          MACE_CHECK(TransformFilter<T>(
+              context,
+              operator_def_.get(),
+              i,
+              OpenCLBufferType::ARGUMENT,
+              mem_type) == MaceStatus::MACE_SUCCESS);
+        } else if (ws->GetTensor(operator_def_->input(i))->dim_size() == 4) {
+          MACE_CHECK(TransformFilter<T>(
+              context,
+              operator_def_.get(),
+              i,
+              OpenCLBufferType::IN_OUT_CHANNEL,
+              mem_type) == MaceStatus::MACE_SUCCESS);
+        } else {
+          MACE_NOT_IMPLEMENTED;
+        }
       }
     }
   }
