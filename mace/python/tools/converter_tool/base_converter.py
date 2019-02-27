@@ -236,6 +236,7 @@ class MaceKeyword(object):
     mace_step_h_str = 'step_h'
     mace_step_w_str = 'step_w'
     mace_find_range_every_time = 'find_range_every_time'
+    mace_non_zero = 'non_zero'
     mace_pad_type_str = 'pad_type'
 
 
@@ -279,6 +280,7 @@ class TransformerRule(Enum):
     FOLD_FC_RESHAPE = 37
     TRANSFORM_CHANNEL_SHUFFLE = 38
     UPDATE_DATA_FORMAT = 39
+    QUANTIZE_MATMUL_ONLY = 40
 
 
 class ConverterInterface(object):

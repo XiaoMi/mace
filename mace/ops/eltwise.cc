@@ -926,7 +926,9 @@ class EltwiseOp : public Operation {
                        const Tensor *input1,
                        Tensor *output) {
     bool swapped = false;
-    if (input0->size() < input1->size()) {
+    if (input0->dim_size() < input1->dim_size()
+        || (input0->dim_size() == input1->dim_size()
+            && input0->size() < input1->size())) {
       std::swap(input0, input1);
       swapped = true;
     }
