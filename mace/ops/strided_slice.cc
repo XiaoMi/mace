@@ -32,13 +32,52 @@ class StridedSliceOp : public Operation {
         new_axis_mask_(Operation::GetOptionalArg<int>("new_axis_mask", 0)),
         shrink_axis_mask_(
             Operation::GetOptionalArg<int>("shrink_axis_mask", 0)),
-        is_slice_(Operation::GetOptionalArg<bool>("slice", false)) {
+        is_slice_(Operation::GetOptionalArg<bool>("slice", false)),
+        checked_(false) {
     MACE_CHECK(ellipsis_mask_ == 0 && new_axis_mask_ == 0,
                "ellipsis_mask and new_axis_mask are not supported yet.");
   }
 
+  void TransposeMaskValueFromNHWCToNCHW(int* mask_value) {
+    size_t dims[4];
+    int count;
+    for (count = 0; count < 4; ++count) {
+      dims[count] = *mask_value & 1;
+      *mask_value >>= 1;
+    }
+    size_t new_dims[4] = {dims[0], dims[3], dims[1], dims[2]};
+    for (count = 3; count >= 0; --count) {
+      *mask_value <<= 1;
+      *mask_value += new_dims[count];
+    }
+  }
+
+  void TransposeDimsFromNHWCToNCHW(std::vector<int32_t>* dims) {
+    int32_t h = (*dims)[1];
+    int32_t w = (*dims)[2];
+    int32_t c = (*dims)[3];
+
+    (*dims)[1] = c;
+    (*dims)[2] = h;
+    (*dims)[3] = w;
+  }
+
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
+
+    auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
+          "data_format", DataFormat::DF_NONE));
+
+    if (!checked_) {
+      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+        TransposeMaskValueFromNHWCToNCHW(&begin_mask_);
+        TransposeMaskValueFromNHWCToNCHW(&end_mask_);
+        TransposeMaskValueFromNHWCToNCHW(&ellipsis_mask_);
+        TransposeMaskValueFromNHWCToNCHW(&new_axis_mask_);
+        TransposeMaskValueFromNHWCToNCHW(&shrink_axis_mask_);
+      }
+      checked_ = true;
+    }
     const Tensor *input = this->Input(INPUT);
     const Tensor *begin_indices = this->Input(BEGIN);
     const Tensor *end_indices = this->Input(END);
@@ -76,9 +115,28 @@ class StridedSliceOp : public Operation {
       for (index_t i = begin_indices->size(); i < input->dim_size(); ++i) {
         pad_end_indices[i] = input->dim(i);
       }
+
       begin_indices_data = pad_begin_indices.data();
       end_indices_data = pad_end_indices.data();
       strides_data = pad_strides_indices.data();
+    }
+
+    std::vector<int32_t> transpose_begin_indices(input->dim_size(), 0);
+    std::vector<int32_t> transpose_end_indices(input->dim_size(), 0);
+    std::vector<int32_t> transpose_strides_indices(input->dim_size(), 1);
+    if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+      for (index_t i = 0; i < begin_indices->size(); ++i) {
+        transpose_begin_indices[i] = begin_indices_data[i];
+        transpose_end_indices[i] = end_indices_data[i];
+        transpose_strides_indices[i] = strides_data[i];
+      }
+      TransposeDimsFromNHWCToNCHW(&transpose_begin_indices);
+      TransposeDimsFromNHWCToNCHW(&transpose_end_indices);
+      TransposeDimsFromNHWCToNCHW(&transpose_strides_indices);
+
+      begin_indices_data = transpose_begin_indices.data();
+      end_indices_data = transpose_end_indices.data();
+      strides_data = transpose_strides_indices.data();
     }
 
     std::vector<int32_t> slice_end_data;
@@ -193,6 +251,30 @@ class StridedSliceOp : public Operation {
             }
           }
         }
+      } else if (input->dim_size() == 4) {
+        for (index_t i = real_begin_indices[0];
+             strides_data[0] > 0 ? i < real_end_indices[0]
+                                 : i > real_end_indices[0];
+             i += strides_data[0]) {
+          for (index_t j = real_begin_indices[1];
+               strides_data[1] > 0 ? j < real_end_indices[1]
+                                   : j > real_end_indices[1];
+               j += strides_data[1]) {
+            for (index_t k = real_begin_indices[2];
+                 strides_data[2] > 0 ? k < real_end_indices[2]
+                                     : k > real_end_indices[2];
+                 k += strides_data[2]) {
+              for (index_t l = real_begin_indices[3];
+                   strides_data[3] > 0 ? l < real_end_indices[3]
+                                       : l > real_end_indices[3];
+                   l += strides_data[3]) {
+                *output_data++ =
+                    input_data[((i * input->dim(1) + j) * input->dim(2) + k)
+                               * input->dim(3) + l];
+              }
+            }
+          }
+        }
       } else {
         MACE_NOT_IMPLEMENTED;
       }
@@ -207,6 +289,7 @@ class StridedSliceOp : public Operation {
   int new_axis_mask_;
   int shrink_axis_mask_;
   bool is_slice_;
+  bool checked_;
   Tensor tmp_strides_tensor_;
 
   MACE_OP_INPUT_TAGS(INPUT, BEGIN, END, STRIDES);

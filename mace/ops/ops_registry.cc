@@ -29,6 +29,7 @@ extern void RegisterChannelShuffle(OpRegistryBase *op_registry);
 extern void RegisterConcat(OpRegistryBase *op_registry);
 extern void RegisterConv2D(OpRegistryBase *op_registry);
 extern void RegisterCrop(OpRegistryBase *op_registry);
+extern void RegisterCumsum(OpRegistryBase *op_registry);
 extern void RegisterDeconv2D(OpRegistryBase *op_registry);
 extern void RegisterDepthToSpace(OpRegistryBase *op_registry);
 extern void RegisterDepthwiseConv2d(OpRegistryBase *op_registry);
@@ -95,6 +96,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterConcat(this);
   ops::RegisterConv2D(this);
   ops::RegisterCrop(this);
+  ops::RegisterCumsum(this);
   ops::RegisterDeconv2D(this);
   ops::RegisterDepthToSpace(this);
   ops::RegisterDepthwiseConv2d(this);
