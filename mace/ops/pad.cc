@@ -20,6 +20,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/pad.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -182,8 +183,8 @@ class PadOp<DeviceType::GPU, T> : public Operation {
     float constant_value = Operation::GetOptionalArg<float>(
         "constant_value", 0.0);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::PadKernel<T>(
-          type, paddings, constant_value));
+      kernel_ = make_unique<opencl::image::PadKernel<T>>(
+          type, paddings, constant_value);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

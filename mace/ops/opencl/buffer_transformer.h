@@ -24,6 +24,7 @@
 #include "mace/ops/opencl/image/image_to_buffer.h"
 #include "mace/ops/opencl/buffer/buffer_transform.h"
 #include "mace/ops/common/transpose.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -34,11 +35,11 @@ class OpenCLBufferTransformer {
   OpenCLBufferTransformer(const MemoryType in_mem_type,
                           const MemoryType out_mem_type) {
     if (out_mem_type == MemoryType::GPU_IMAGE) {
-      kernel_.reset(new opencl::image::BufferToImage<T>);
+      kernel_ = make_unique<opencl::image::BufferToImage<T>>();
     } else if (in_mem_type == MemoryType::GPU_IMAGE) {
-      kernel_.reset(new opencl::image::ImageToBuffer<T>);
+      kernel_ = make_unique<opencl::image::ImageToBuffer<T>>();
     } else {
-      kernel_.reset(new opencl::buffer::BufferTransform<T>);
+      kernel_ = make_unique<opencl::buffer::BufferTransform<T>>();
     }
   }
 

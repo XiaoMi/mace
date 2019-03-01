@@ -30,6 +30,7 @@
 #include "mace/core/future.h"
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -1160,8 +1161,8 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_.reset(new opencl::image::EltwiseKernel<T>(
-          type, coeff, scalar_input, scalar_input_index));
+      kernel_ = make_unique<opencl::image::EltwiseKernel<T>>(
+          type, coeff, scalar_input, scalar_input_index);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

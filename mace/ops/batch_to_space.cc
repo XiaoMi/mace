@@ -19,6 +19,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/batch_to_space.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -266,7 +267,7 @@ class BatchToSpaceNDOp<DeviceType::GPU, T> : public BatchToSpaceOpBase {
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::BatchToSpaceKernel<T>);
+      kernel_ = make_unique<opencl::image::BatchToSpaceKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

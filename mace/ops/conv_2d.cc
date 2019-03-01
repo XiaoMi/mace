@@ -31,6 +31,7 @@
 #include "mace/ops/arm/conv_winograd.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_NEON
@@ -129,7 +130,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
         && dilation_h == 1 && dilation_w == 1) {
       if (conv2d_delegator_.get() == nullptr) {
-        conv2d_delegator_.reset(new arm::fp32::Conv2dK1x1());
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x1>();
       }
       conv2d_delegator_->Compute(context, input, filter, output);
     } else {
@@ -354,7 +355,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
             *transformed_output_data = transformed_output.mutable_data<float>();
 
         conv_func = [=](const float *pad_input, float *pad_output) {
-          WinoGradConv3x3s1(pad_input,
+          WinogradConv3x3s1(pad_input,
                             transformed_filter_data,
                             batch,
                             extra_input_height,
@@ -508,12 +509,12 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     }
 #else
     if (conv2d_delegator_.get() == nullptr) {
-      conv2d_delegator_.reset(new ref::Conv2d<float>(paddings[0],
-                                                     paddings[1],
-                                                     stride_h,
-                                                     stride_w,
-                                                     dilation_h,
-                                                     dilation_w));
+      conv2d_delegator_ = make_unique<ref::Conv2d<float>>(paddings[0],
+                                                          paddings[1],
+                                                          stride_h,
+                                                          stride_w,
+                                                          dilation_h,
+                                                          dilation_w);
     }
     conv2d_delegator_->Compute(context, input, filter, output);
 #endif
@@ -848,7 +849,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
       ScratchBuffer *scratch = context->device()->scratch_buffer();
       scratch->Rewind();
       scratch->GrowSize(im2col_size);
-      im2col.reset(new Tensor(scratch->Scratch(im2col_size), DT_UINT8));
+      im2col = make_unique<Tensor>(scratch->Scratch(im2col_size), DT_UINT8);
       uint8_t *im2col_data = im2col->mutable_data<uint8_t>();
       Im2col(input_data, input->shape(), filter_h, filter_w, stride_h,
              stride_w, static_cast<uint8_t>(input->zero_point()),
@@ -993,10 +994,10 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_.reset(new opencl::image::Conv2dKernel<T>);
+      kernel_ = make_unique<opencl::image::Conv2dKernel<T>>();
     } else {
       mem_type = MemoryType::GPU_BUFFER;
-      kernel_.reset(new opencl::buffer::Conv2dKernel<T>);
+      kernel_ = make_unique<opencl::buffer::Conv2dKernel<T>>();
     }
     context->set_output_mem_type(mem_type);
     // Transform filter tensor to target format

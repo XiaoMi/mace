@@ -66,7 +66,7 @@ TEST(ConvWinogradTest, winograd) {
                         in_channels, out_channels, output_data_ref);
 
   SGemm sgemm;
-  ops::WinoGradConv3x3s1(input_data, filter_data, batch, in_height,
+  ops::WinogradConv3x3s1(input_data, filter_data, batch, in_height,
                              in_width, in_channels, out_channels, 6,
                              output_data, &sgemm, nullptr);
 

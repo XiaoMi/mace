@@ -22,6 +22,7 @@
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/bias_add.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -103,7 +104,7 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_.reset(new opencl::image::BiasAddKernel<T>);
+      kernel_ = make_unique<opencl::image::BiasAddKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

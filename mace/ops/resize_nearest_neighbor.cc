@@ -22,6 +22,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_nearest_neighbor.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -142,8 +143,8 @@ class ResizeNearestNeighborOp<DeviceType::GPU, T> : public Operation {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ResizeNearestNeighborKernel<T>(
-          align_corners));
+      kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel<T>>(
+          align_corners);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

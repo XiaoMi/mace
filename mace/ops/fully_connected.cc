@@ -38,6 +38,8 @@
 #include "mace/ops/opencl/image/fully_connected.h"
 #endif  // MACE_ENABLE_OPENCL
 
+#include "mace/utils/memory.h"
+
 namespace mace {
 namespace ops {
 
@@ -186,7 +188,7 @@ class FullyConnectedOp<DeviceType::GPU, T> : public FullyConnectedOpBase {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_.reset(new opencl::image::FullyConnectedKernel<T>);
+      kernel_ = make_unique<opencl::image::FullyConnectedKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

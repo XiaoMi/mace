@@ -18,6 +18,7 @@
 
 #include "mace/ops/sgemm.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
+#include "mace/utils/memory.h"
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
@@ -55,27 +56,27 @@ void SGemm::operator()(const SGemmMatrixMap<const float> &lhs,
     scratch_buffer->GrowSize(total_size * sizeof(float));
 
     if (!lhs.is_const()) {
-      packed_lhs_.reset(new Tensor(scratch_buffer->Scratch(
-          lhs.size() * sizeof(float)), DT_FLOAT));
+      packed_lhs_ = make_unique<Tensor>(scratch_buffer->Scratch(
+          lhs.size() * sizeof(float)), DT_FLOAT);
     }
     if (!rhs.is_const()) {
-      packed_rhs_.reset(new Tensor(scratch_buffer->Scratch(
-          rhs.size() * sizeof(float)), DT_FLOAT));
+      packed_rhs_ = make_unique<Tensor>(scratch_buffer->Scratch(
+          rhs.size() * sizeof(float)), DT_FLOAT);
     }
-    packed_result_.reset(new Tensor(scratch_buffer->Scratch(
-        result->size() * sizeof(float)), DT_FLOAT));
+    packed_result_ = make_unique<Tensor>(scratch_buffer->Scratch(
+        result->size() * sizeof(float)), DT_FLOAT);
   }
 
   if (packed_lhs_.get() == nullptr) {
-    packed_lhs_.reset(new Tensor(GetCPUAllocator(), DT_FLOAT));
+    packed_lhs_ = make_unique<Tensor>(GetCPUAllocator(), DT_FLOAT);
     packed_lhs_->Resize({lhs.size()});
   }
   if (packed_rhs_.get() == nullptr) {
-    packed_rhs_.reset(new Tensor(GetCPUAllocator(), DT_FLOAT));
+    packed_rhs_ = make_unique<Tensor>(GetCPUAllocator(), DT_FLOAT);
     packed_rhs_->Resize({rhs.size()});
   }
   if (packed_result_.get() == nullptr) {
-    packed_result_.reset(new Tensor(GetCPUAllocator(), DT_FLOAT));
+    packed_result_ = make_unique<Tensor>(GetCPUAllocator(), DT_FLOAT);
     packed_result_->Resize({result->size()});
   }
 

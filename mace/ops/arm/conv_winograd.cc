@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "mace/ops/arm/conv_winograd.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -607,7 +608,7 @@ void TransformFilter8x8(const float *filter,
   }
 }
 
-void WinoGradConv3x3s1(const float *input,
+void WinogradConv3x3s1(const float *input,
                        const float *transformed_filter,
                        const index_t batch,
                        const index_t in_height,
@@ -659,7 +660,7 @@ void WinoGradConv3x3s1(const float *input,
   }
 }
 
-void WinoGradConv3x3s1(const float *input,
+void WinogradConv3x3s1(const float *input,
                        const float *filter,
                        const index_t batch,
                        const index_t in_height,
@@ -684,28 +685,30 @@ void WinoGradConv3x3s1(const float *input,
   index_t transformed_output_size =
       in_tile_area * batch * out_channels * tile_count;
 
-  float *transformed_input = new float[transformed_input_size];    // TNCB
-  float *transformed_filter = new float[transformed_filter_size];  // TOC
-  float *transformed_output = new float[transformed_output_size];
+  auto transformed_input =
+    make_unique<float[]>(transformed_input_size);  // TNCB NOLINT
+  auto transformed_filter =
+    make_unique<float[]>(transformed_filter_size);  // TOC NOLINT
+  auto transformed_output =
+    make_unique<float[]>(transformed_output_size);  // NOLINT
 
   switch (out_tile_size) {
     case 2:
-      TransformFilter4x4(filter, in_channels, out_channels, transformed_filter);
+      TransformFilter4x4(filter, in_channels, out_channels,
+                         transformed_filter.get());
       break;
     case 6:
-      TransformFilter8x8(filter, in_channels, out_channels, transformed_filter);
+      TransformFilter8x8(filter, in_channels, out_channels,
+                         transformed_filter.get());
       break;
     default:
       MACE_NOT_IMPLEMENTED;
   }
 
-  WinoGradConv3x3s1(input, transformed_filter, batch, in_height, in_width,
-                    in_channels, out_channels, out_tile_size, transformed_input,
-                    transformed_output, output, sgemm, scratch_buffer);
-
-  delete[] transformed_input;
-  delete[] transformed_filter;
-  delete[] transformed_output;
+  WinogradConv3x3s1(input, transformed_filter.get(), batch, in_height,
+                    in_width, in_channels, out_channels, out_tile_size,
+                    transformed_input.get(), transformed_output.get(),
+                    output, sgemm, scratch_buffer);
 }
 
 void ConvRef3x3s1(const float *input,

@@ -18,6 +18,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/crop.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -114,8 +115,8 @@ class CropOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     const int axis = Operation::GetOptionalArg<int>("axis", 2);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::CropKernel<T>(
-          axis, Operation::GetRepeatedArgs<int>("offset")));
+      kernel_ = make_unique<opencl::image::CropKernel<T>>(
+          axis, Operation::GetRepeatedArgs<int>("offset"));
     } else {
       MACE_NOT_IMPLEMENTED;
     }
