@@ -5,7 +5,7 @@ How to build
 ---------------
 
 ```sh
-cd mace/exampls/android
+cd mace/examples/android
 ./build.sh dynamic
 # if libmace.a is needed, update `macelibrary/CMakeLists.txt` and run with `./build.sh static`.
 ```
