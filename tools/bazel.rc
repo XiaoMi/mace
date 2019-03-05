@@ -27,7 +27,7 @@ build:arm_linux_gnueabihf --spawn_strategy=standalone
 build:arm_linux_gnueabihf --distinct_host_configuration=true
 build:arm_linux_gnueabihf --crosstool_top=//tools/arm_compiler:toolchain
 build:arm_linux_gnueabihf --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
-build:arm_linux_gnueabihf --cpu=armeabi-v7a
+build:arm_linux_gnueabihf --cpu=armhf
 build:arm_linux_gnueabihf --copt -mfloat-abi=hard
 build:arm_linux_gnueabihf --copt -mfpu=neon
 build:arm_linux_gnueabihf --copt -Wno-ignored-attributes
