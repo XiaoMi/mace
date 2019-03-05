@@ -25,6 +25,7 @@
 #include "mace/core/tensor.h"
 #include "mace/ops/opencl/helper.h"
 
+
 namespace mace {
 namespace ops {
 namespace opencl {
