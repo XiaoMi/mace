@@ -30,6 +30,8 @@
 #include "mace/ops/opencl/buffer/softmax.h"
 #endif  // MACE_ENABLE_OPENCL
 
+#include "mace/utils/memory.h"
+
 namespace mace {
 namespace ops {
 
@@ -374,10 +376,10 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::SoftmaxKernel<T>);
+      kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>();
     } else {
       context->set_output_mem_type(MemoryType::GPU_BUFFER);
-      kernel_.reset(new opencl::buffer::SoftmaxKernel<T>);
+      kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>();
     }
   }
   MaceStatus Run(OpContext *context) override {

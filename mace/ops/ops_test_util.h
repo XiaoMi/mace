@@ -34,6 +34,7 @@
 #include "mace/core/workspace.h"
 #include "mace/ops/ops_registry.h"
 #include "mace/public/mace.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/utils.h"
 #include "mace/utils/quantize.h"
 #include "mace/ops/testing/test_utils.h"
@@ -97,7 +98,7 @@ class OpTestContext {
 class OpsTestNet {
  public:
   OpsTestNet() :
-    op_registry_(new OpRegistry()) {}
+    op_registry_(make_unique<OpRegistry>()) {}
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -355,9 +356,9 @@ class OpsTestNet {
   std::unique_ptr<Tensor> CreateTensor(
       const std::vector<index_t> &shape = {},
       const std::vector<T> &data = {}) {
-    std::unique_ptr<Tensor> res(
-        new Tensor(OpTestContext::Get()->GetDevice(D)->allocator(),
-                   DataTypeToEnum<T>::v()));
+    std::unique_ptr<Tensor> res = make_unique<Tensor>(
+        OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<T>::v());
     if (!data.empty()) {
       res->Resize(shape);
       T *input_data = res->mutable_data<T>();

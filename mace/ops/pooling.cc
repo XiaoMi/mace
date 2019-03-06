@@ -32,6 +32,7 @@
 #include "mace/ops/opencl/image/pooling.h"
 #include "mace/ops/opencl/buffer/pooling.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -433,10 +434,10 @@ class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::PoolingKernel<T>);
+      kernel_ = make_unique<opencl::image::PoolingKernel<T>>();
     } else {
       context->set_output_mem_type(MemoryType::GPU_BUFFER);
-      kernel_.reset(new opencl::buffer::PoolingKernel<T>);
+      kernel_ = make_unique<opencl::buffer::PoolingKernel<T>>();
     }
   }
   MaceStatus Run(OpContext *context) override {

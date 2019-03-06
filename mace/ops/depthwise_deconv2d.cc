@@ -28,6 +28,7 @@
 #include "mace/ops/arm/depthwise_deconv2d_neon.h"
 #include "mace/utils/utils.h"
 #include "mace/public/mace.h"
+#include "mace/utils/memory.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/depthwise_deconv2d.h"
@@ -412,7 +413,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::DepthwiseDeconv2dKernel<T>);
+      kernel_ = make_unique<opencl::image::DepthwiseDeconv2dKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

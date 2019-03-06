@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "mace/core/operator.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bilinear.h"
@@ -332,9 +333,8 @@ class ResizeBilinearOp<DeviceType::GPU, T> : public Operation {
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ResizeBilinearKernel<T>(align_corners,
-                                                               size[0],
-                                                               size[1]));
+      kernel_ = make_unique<opencl::image::ResizeBilinearKernel<T>>(
+          align_corners, size[0], size[1]);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

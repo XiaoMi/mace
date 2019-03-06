@@ -33,6 +33,8 @@
 #include "mace/core/runtime/hexagon/hexagon_device.h"
 #endif  // MACE_ENABLE_HEXAGON
 
+#include "mace/utils/memory.h"
+
 namespace mace {
 namespace {
 
@@ -289,7 +291,7 @@ MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
                        std::shared_ptr<float> data,
                        const DataFormat format) {
   MACE_CHECK_NOTNULL(data.get());
-  impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
+  impl_ = make_unique<MaceTensor::Impl>();
   impl_->shape = shape;
   impl_->data = data;
   impl_->format = format;
@@ -298,11 +300,11 @@ MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
 }
 
 MaceTensor::MaceTensor() {
-  impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
+  impl_ = make_unique<MaceTensor::Impl>();
 }
 
 MaceTensor::MaceTensor(const MaceTensor &other) {
-  impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
+  impl_ = make_unique<MaceTensor::Impl>();
   impl_->shape = other.shape();
   impl_->data = other.data();
   impl_->format = other.data_format();
@@ -310,7 +312,7 @@ MaceTensor::MaceTensor(const MaceTensor &other) {
 }
 
 MaceTensor::MaceTensor(const MaceTensor &&other) {
-  impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
+  impl_ = make_unique<MaceTensor::Impl>();
   impl_->shape = other.shape();
   impl_->data = other.data();
   impl_->format = other.data_format();
@@ -725,7 +727,7 @@ MaceStatus MaceEngine::Impl::Run(
 }
 
 MaceEngine::MaceEngine(const MaceEngineConfig &config):
-    impl_(new MaceEngine::Impl(config)) {}
+    impl_(make_unique<MaceEngine::Impl>(config)) {}
 
 MaceEngine::~MaceEngine() = default;
 

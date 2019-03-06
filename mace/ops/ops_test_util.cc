@@ -14,6 +14,7 @@
 
 #include "mace/ops/ops_test_util.h"
 #include "mace/core/memory_optimizer.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -120,17 +121,15 @@ OpTestContext *OpTestContext::Get(int num_threads,
 OpTestContext::OpTestContext(int num_threads,
                              CPUAffinityPolicy cpu_affinity_policy,
                              bool use_gemmlowp)
-    : gpu_context_(new GPUContext(GetStoragePathFromEnv())),
+    : gpu_context_(std::make_shared<GPUContext>(GetStoragePathFromEnv())),
       opencl_mem_types_({MemoryType::GPU_IMAGE}) {
-  device_map_[DeviceType::CPU] = std::unique_ptr<Device>(
-      new CPUDevice(num_threads,
-                    cpu_affinity_policy,
-                    use_gemmlowp));
+  device_map_[DeviceType::CPU] = make_unique<CPUDevice>(
+      num_threads, cpu_affinity_policy, use_gemmlowp);
 
-  device_map_[DeviceType::GPU] = std::unique_ptr<Device>(
-      new GPUDevice(gpu_context_->opencl_tuner(),
-                    gpu_context_->opencl_cache_storage(),
-                    GPUPriorityHint::PRIORITY_NORMAL));
+  device_map_[DeviceType::GPU] = make_unique<GPUDevice>(
+      gpu_context_->opencl_tuner(),
+      gpu_context_->opencl_cache_storage(),
+      GPUPriorityHint::PRIORITY_NORMAL);
 }
 
 std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
@@ -189,12 +188,12 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
     }
   }
   MemoryOptimizer mem_optimizer;
-  net_ = std::unique_ptr<NetBase>(new SerialNet(
+  net_ = make_unique<SerialNet>(
       op_registry_.get(),
       &net_def,
       &ws_,
       OpTestContext::Get()->GetDevice(device),
-      &mem_optimizer));
+      &mem_optimizer);
   MaceStatus status = (ws_.PreallocateOutputTensor(
       net_def,
       &mem_optimizer,
@@ -236,12 +235,12 @@ MaceStatus OpsTestNet::RunNet(const mace::NetDef &net_def,
                               const mace::DeviceType device) {
   device_type_ = device;
   MemoryOptimizer mem_optimizer;
-  net_ = std::unique_ptr<NetBase>(new SerialNet(
+  net_ = make_unique<SerialNet>(
       op_registry_.get(),
       &net_def,
       &ws_,
       OpTestContext::Get()->GetDevice(device),
-      &mem_optimizer));
+      &mem_optimizer);
   MACE_RETURN_IF_ERROR(ws_.PreallocateOutputTensor(
       net_def,
       &mem_optimizer,

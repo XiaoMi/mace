@@ -16,6 +16,7 @@
 
 #include "mace/core/operator.h"
 #include "mace/utils/quantize.h"
+#include "mace/utils/memory.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/concat.h"
@@ -199,7 +200,7 @@ class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ConcatKernel<T>(axis_));
+      kernel_ = make_unique<opencl::image::ConcatKernel<T>>(axis_);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

@@ -17,6 +17,7 @@
 #include "mace/ops/common/activation_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/opencl/helper.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
@@ -264,9 +265,9 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                               OpenCLBufferType::IN_OUT_HEIGHT,
                               &t_input_image_shape);
   ScratchImage transformed_input_image(scratch_manager);
-  std::unique_ptr<Tensor> transformed_input(new Tensor(
+  std::unique_ptr<Tensor> transformed_input = make_unique<Tensor>(
       transformed_input_image.Scratch(context->device()->allocator(),
-                                      t_input_image_shape, dt), dt));
+                                      t_input_image_shape, dt), dt);
   MACE_RETURN_IF_ERROR(transformed_input->ResizeImage(t_input_shape,
                                                       t_input_image_shape));
   MACE_RETURN_IF_ERROR(WinogradInputTransform(
@@ -289,9 +290,9 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                               &mm_output_image_shape);
 
   ScratchImage mm_output_image(scratch_manager);
-  std::unique_ptr<Tensor> mm_output(new Tensor(
+  std::unique_ptr<Tensor> mm_output = make_unique<Tensor>(
       mm_output_image.Scratch(context->device()->allocator(),
-                              mm_output_image_shape, dt), dt));
+                              mm_output_image_shape, dt), dt);
   MACE_RETURN_IF_ERROR(mm_output->ResizeImage(mm_output_shape,
                                               mm_output_image_shape));
 

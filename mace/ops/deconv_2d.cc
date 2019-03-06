@@ -28,6 +28,7 @@
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
 #include "mace/ops/arm/deconv_2d_neon.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -362,7 +363,7 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::Deconv2dKernel<T>);
+      kernel_ = make_unique<opencl::image::Deconv2dKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

@@ -24,6 +24,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/addn.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -107,7 +108,7 @@ class AddNOp<DeviceType::GPU, T> : public Operation {
   explicit AddNOp(OpConstructContext *context)
       : Operation(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::AddNKernel<T>);
+      kernel_ = make_unique<opencl::image::AddNKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

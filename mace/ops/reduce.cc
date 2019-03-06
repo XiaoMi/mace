@@ -25,6 +25,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/reduce.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -847,9 +848,9 @@ class ReduceOp<DeviceType::GPU, T> : public ReduceOpBase {
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ReduceKernel<T>(reduce_type_,
-                                                       axis_,
-                                                       keep_dims_));
+      kernel_ = make_unique<opencl::image::ReduceKernel<T>>(reduce_type_,
+                                                            axis_,
+                                                            keep_dims_);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

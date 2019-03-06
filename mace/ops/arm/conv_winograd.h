@@ -35,7 +35,7 @@ void TransformFilter8x8(const float *filter,
                         const index_t out_channels,
                         float *output);
 
-void WinoGradConv3x3s1(const float *input,
+void WinogradConv3x3s1(const float *input,
                        const float *filter,
                        const index_t batch,
                        const index_t in_height,
@@ -47,7 +47,7 @@ void WinoGradConv3x3s1(const float *input,
                        SGemm *sgemm,
                        ScratchBuffer *scratch_buffer);
 
-void WinoGradConv3x3s1(const float *input,
+void WinogradConv3x3s1(const float *input,
                        const float *transformed_filter,
                        const index_t batch,
                        const index_t in_height,

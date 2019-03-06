@@ -19,6 +19,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/split.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -108,7 +109,7 @@ class SplitOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     int32_t axis = Operation::GetOptionalArg<int>("axis", 3);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::SplitKernel<T>(axis));
+      kernel_ = make_unique<opencl::image::SplitKernel<T>>(axis);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
