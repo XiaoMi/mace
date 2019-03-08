@@ -11,7 +11,7 @@
 filegroup(
     name = "toolchain_fg",
     srcs = [
-        ":cc-compiler-armeabi-v7a",
+        ":cc-compiler-armhf",
         ":linaro_linux_all_files",
         "@gcc_linaro_7_3_1_arm_linux_gnueabihf//:compiler_components",
     ],
@@ -29,7 +29,7 @@ cc_toolchain_suite(
     name = "toolchain",
     # target_cpu | compiler
     toolchains = {
-        "armeabi-v7a|gcc": "cc-compiler-armeabi-v7a",
+        "armhf|gcc": "cc-compiler-armhf",
     },
 )
 
@@ -66,10 +66,10 @@ filegroup(
 )
 
 cc_toolchain(
-    name = "cc-compiler-armeabi-v7a",
+    name = "cc-compiler-armhf",
     all_files = ":linaro_linux_all_files",
     compiler_files = ":linaro_linux_compiler_files",
-    cpu = "armeabi-v7a",
+    cpu = "armhf",
     dwp_files = ":empty",
     dynamic_runtime_libs = [":empty"],
     linker_files = ":linaro_linux_linker_files",

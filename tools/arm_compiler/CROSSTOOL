@@ -1,9 +1,9 @@
 major_version: "local"
 minor_version: ""
-default_target_cpu: "armeabi-v7a"
+default_target_cpu: "armhf"
 
 default_toolchain {
-  cpu: "armeabi-v7a"
+  cpu: "armhf"
   toolchain_identifier: "arm-linux-gnueabihf"
 }
 
@@ -12,7 +12,7 @@ toolchain {
   abi_libc_version: ""
   builtin_sysroot: ""
   compiler: "gcc"
-  host_system_name: "armeabi-v7a"
+  host_system_name: "armhf"
   needsPic: true
   supports_gold_linker: true
   supports_incremental_linker: false
@@ -22,7 +22,7 @@ toolchain {
   supports_start_end_lib: false
   supports_thin_archives: true
   target_libc: ""
-  target_cpu: "armeabi-v7a"
+  target_cpu: "armhf"
   target_system_name: ""
   toolchain_identifier: "arm-linux-gnueabihf"
 

@@ -127,7 +127,7 @@ class Transformer(base_converter.ConverterInterface):
                 self.construct_ops_and_consumers(key)
                 changed = transformer()
                 if not changed:
-                        break
+                    break
         self.delete_after_check_nodes()
         return self._model, self._quantize_activation_info
 
