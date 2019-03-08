@@ -111,7 +111,11 @@ Click node to see details at bottom of this page.
             var output_shapes = [];
             if (typeof node["outputShape"] !== "undefined") {
                 for (var j = 0; j < node["outputShape"].length; j++) {
-                    var output_shape = node["outputShape"][j].dims.join(",");
+                    var output_shape = "";
+                    if (typeof node["outputShape"][j].dims !== "undefined") {
+                        console.log(node["outputShape"][j].dims);
+                        output_shape = node["outputShape"][j].dims.join(",");
+                    }
                     output_shapes.push(output_shape);
                 }
             }
@@ -140,11 +144,15 @@ Click node to see details at bottom of this page.
                     " min=" + node["minval"] +
                     " max=" + node["maxval"];
             }
+            var dims = "";
+            if (typeof node["dims"] != "undefined") {
+                dims = node["dims"].join(",");
+            }
             tensor_data.push({
                 "idx": tensor_data.length,
                 "name": node["name"],
                 "data_type": node["dataType"],
-                "dims": node["dims"].join(","),
+                "dims": dims,
                 "quantize_info": quantize_info
 
             })
