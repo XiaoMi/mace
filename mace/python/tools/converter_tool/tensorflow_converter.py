@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import os
 import math
 import numpy as np
 import six
@@ -288,12 +288,11 @@ class TensorflowConverter(base_converter.ConverterInterface):
             tf_graph_def.ParseFromString(f.read())
 
         self._placeholders = {}
-        self.add_shape_info(tf_graph_def)
 
         print("Run transform_graph: %s" % TFTransformGraphOptions[
             option.device])
         try:
-            print ("output keys: ", option.output_nodes.keys())
+            print("output keys: ", option.output_nodes.keys())
             transformed_graph_def = TransformGraph(tf_graph_def,
                                                    option.input_nodes.keys(),
                                                    option.output_nodes.keys(),
@@ -302,6 +301,16 @@ class TensorflowConverter(base_converter.ConverterInterface):
         except Exception as ex:
             print("Failed to transform graph using tf tool: %s" % ex)
             transformed_graph_def = tf_graph_def
+
+        # To check optimized model, uncomment following code.
+        # tf.io.write_graph(
+        #     transformed_graph_def,
+        #     ".",
+        #     os.path.basename(src_model_file)[:-3] + "_opt.pb",
+        #     as_text=False
+        # )
+
+        self.add_shape_info(transformed_graph_def)
 
         with tf.Session() as session:
             with session.graph.as_default() as graph:

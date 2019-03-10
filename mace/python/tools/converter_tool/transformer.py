@@ -103,6 +103,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_caffe_reshape_and_flatten,
             TransformerRule.TRANSFORM_CHANNEL_SHUFFLE:
                 self.transform_channel_shuffle,
+            TransformerRule.QUANTIZE_MATMUL_ONLY:
+                self.quantize_matmul_only,
         }
 
         self._option = option
@@ -191,16 +193,23 @@ class Transformer(base_converter.ConverterInterface):
                     op = mace_pb2.OperatorDef()
                     op.name = self.normalize_op_name(input_node.name)
                     op.type = "Input"
+                    data_type_arg = op.arg.add()
+                    data_type_arg.name = MaceKeyword.mace_op_data_type_str
+                    data_type_arg.i = mace_pb2.DT_FLOAT
                     op.output.extend([input_node.name])
                     output_shape = op.output_shape.add()
                     output_shape.dims.extend(input_node.shape)
-                    if ConverterUtil.data_format(
-                            self._consumers[input_node.name][0]) \
-                            == DataFormat.NCHW:
-                        self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
-                        ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
-                    else:
-                        ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
+                    if input_node in self._consumers:
+                        if ConverterUtil.data_format(
+                                self._consumers[input_node.name][0]) \
+                                == DataFormat.NCHW:
+                            self.transpose_shape(output_shape.dims,
+                                                 [0, 3, 1, 2])
+                            ConverterUtil.add_data_format_arg(op,
+                                                              DataFormat.NCHW)
+                        else:
+                            ConverterUtil.add_data_format_arg(op,
+                                                              DataFormat.NHWC)
                     self._producer[op.output[0]] = op
 
     @staticmethod
@@ -221,10 +230,32 @@ class Transformer(base_converter.ConverterInterface):
         return name.replace(':', '_')
 
     def get_tensor_shape(self, tensor):
-        producer = self._producer[tensor]
-        for i in six.moves.range(len(producer.output)):
-            if producer.output[i] == tensor:
-                return list(producer.output_shape[i].dims)
+        if tensor in self._consts:
+            return list(self._consts[tensor].dims)
+        elif tensor in self._producer:
+            producer = self._producer[tensor]
+            for i in six.moves.range(len(producer.output)):
+                if producer.output[i] == tensor:
+                    return list(producer.output_shape[i].dims)
+        else:
+            return None
+
+    def get_tensor_data_type(self, tensor):
+        if tensor in self._consts:
+            return self._consts[tensor].data_type
+        elif tensor in self._producer:
+            producer = self._producer[tensor]
+            for i in six.moves.range(len(producer.output)):
+                if producer.output[i] == tensor:
+                    if i < len(producer.output_type):
+                        return producer.output_type[i]
+                    elif ConverterUtil.get_arg(producer, "T") is not None:
+                        return ConverterUtil.get_arg(producer, "T").i
+                    else:
+                        print("No data type filled: ", producer)
+                        return None
+        else:
+            return None
 
     def consumer_count(self, tensor_name):
         return len(self._consumers.get(tensor_name, []))
@@ -1374,6 +1405,7 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def update_data_format(self):
+        print("update data format")
         data_format_flag = DataFormat.NHWC.value
         for input_node in self._option.input_nodes.values():
             if input_node.data_format.value == DataFormat.DF_NONE.value:
@@ -1672,7 +1704,8 @@ class Transformer(base_converter.ConverterInterface):
                     quantize_util.adjust_range(input_node.range[0],
                                                input_node.range[1],
                                                non_zero=False)
-                quantize_info = mace_pb2.QuantizeActivationInfo()
+                quantize_info = \
+                    mace_pb2.QuantizeActivationInfo()
                 quantize_info.minval = minval
                 quantize_info.maxval = maxval
                 quantize_info.scale = scale
@@ -1893,3 +1926,111 @@ class Transformer(base_converter.ConverterInterface):
                             producer_op.output_shape[0].dims[:] = output_shape
 
                     return True
+
+    def quantize_matmul_only(self):
+        """
+        This transform rule is only used internally, we are not gonna make
+        things too complex for users
+        """
+        to_quantize_ops = [MaceOp.MatMul.name]
+        for op in self._model.op:
+            if (op.type not in to_quantize_ops or len(op.output) > 1
+                    or ConverterUtil.get_arg(op,
+                                             MaceKeyword.mace_op_data_type_str).i != mace_pb2.DT_FLOAT):  # noqa
+                # only support single output
+                continue
+
+            quantized_inputs_names = []
+            should_quantize = True
+            for idx, input_tensor in enumerate(op.input):
+                if self.get_tensor_data_type(input_tensor) \
+                        != mace_pb2.DT_FLOAT:
+                    should_quantize = False
+                    break
+
+            if not should_quantize:
+                continue
+
+            non_zero = self._option.device == DeviceType.CPU.value
+
+            for idx, input_tensor in enumerate(op.input):
+                quantized_inputs_names.append(input_tensor)
+
+                if input_tensor in self._consts:
+                    const_tensor = self._consts[input_tensor]
+                    quantized_tensor = quantize_util.quantize(
+                        const_tensor.float_data, non_zero)
+                    del const_tensor.float_data[:]
+                    const_tensor.int32_data.extend(quantized_tensor.data)
+                    const_tensor.data_type = mace_pb2.DT_UINT8
+                    const_tensor.scale = quantized_tensor.scale
+                    const_tensor.zero_point = quantized_tensor.zero
+                    const_tensor.minval = quantized_tensor.minval
+                    const_tensor.maxval = quantized_tensor.maxval
+                    const_tensor.quantized = True
+                else:
+                    input_shape = self.get_tensor_shape(input_tensor)
+                    quantize_op = self._model.op.add()
+                    quantize_op.name = self.normalize_op_name(
+                        input_tensor) + "_quant"
+                    quantize_op.type = MaceOp.Quantize.name
+                    quantize_op.input.extend([input_tensor])
+                    quantize_output_name = quantize_op.name + '_0'
+                    quantize_op.output.extend([quantize_output_name])
+                    output_shape = quantize_op.output_shape.add()
+                    output_shape.dims.extend(input_shape)
+                    quantize_op.output_type.extend([mace_pb2.DT_UINT8])
+                    data_type_arg = quantize_op.arg.add()
+                    data_type_arg.name = MaceKeyword.mace_op_data_type_str
+                    data_type_arg.i = mace_pb2.DT_UINT8
+
+                    data_type_arg = quantize_op.arg.add()
+                    data_type_arg.name = MaceKeyword.mace_non_zero
+                    if non_zero:
+                        data_type_arg.i = 1
+                    else:
+                        data_type_arg.i = 0
+
+                    find_range_arg = quantize_op.arg.add()
+                    find_range_arg.name = \
+                        MaceKeyword.mace_find_range_every_time
+                    find_range_arg.i = 1
+
+                    quantized_inputs_names[-1] = quantize_output_name
+
+                non_zero = False
+
+            del op.input[:]
+            op.input.extend(quantized_inputs_names)
+
+            orginal_output_name = op.output[0]
+            op.output[0] = orginal_output_name + "_quant"
+            op.output_type.extend([mace_pb2.DT_INT32])
+            data_type_arg = ConverterUtil.get_arg(op,
+                                                  MaceKeyword.mace_op_data_type_str)  # noqa
+            if data_type_arg is None:
+                data_type_arg = op.arg.add()
+                data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = mace_pb2.DT_UINT8
+
+            dequantize_op = self._model.op.add()
+            dequantize_op.name = op.name + "_dequant"
+            dequantize_op.type = MaceOp.Dequantize.name
+            dequantize_op.input.extend([op.output[0]])
+            dequantize_op.output.extend([orginal_output_name])
+            dequantize_op.output_shape.extend(op.output_shape)
+            dequantize_op.output_type.extend([mace_pb2.DT_FLOAT])
+            data_type_arg = dequantize_op.arg.add()
+            data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = mace_pb2.DT_INT32
+
+            quantize_flag_arg = ConverterUtil.get_arg(self._model,
+                                                      MaceKeyword.mace_quantize_flag_arg_str)  # noqa
+            if quantize_flag_arg is None:
+                quantize_flag_arg = self._model.arg.add()
+                quantize_flag_arg.name = MaceKeyword.mace_quantize_flag_arg_str
+                quantize_flag_arg.i = 1
+
+            return True
+
+        return False
