@@ -96,12 +96,8 @@ WinogradParameters = [0, 2, 4]
 DataFormatStrs = [
     "NONE",
     "NHWC",
+    "NCHW",
 ]
-
-
-class DataFormat(object):
-    NONE = "NONE"
-    NHWC = "NHWC"
 
 
 class DefaultValues(object):
@@ -371,6 +367,15 @@ def format_model_config(flags):
                 if not isinstance(value, list):
                     subgraph[key] = [value]
                 subgraph[key] = [str(v) for v in subgraph[key]]
+            input_size = len(subgraph[YAMLKeyword.input_tensors])
+            output_size = len(subgraph[YAMLKeyword.output_tensors])
+
+            mace_check(len(subgraph[YAMLKeyword.input_shapes]) == input_size,
+                       ModuleName.YAML_CONFIG,
+                       "input shapes' size not equal inputs' size.")
+            mace_check(len(subgraph[YAMLKeyword.output_shapes]) == output_size,
+                       ModuleName.YAML_CONFIG,
+                       "output shapes' size not equal outputs' size.")
 
             for key in [YAMLKeyword.check_tensors,
                         YAMLKeyword.check_shapes]:
@@ -399,13 +404,13 @@ def format_model_config(flags):
             if input_data_formats:
                 if not isinstance(input_data_formats, list):
                     subgraph[YAMLKeyword.input_data_formats] =\
-                        [input_data_formats]
+                        [input_data_formats] * input_size
                 else:
                     mace_check(len(input_data_formats)
-                               == len(subgraph[YAMLKeyword.input_tensors]),
+                               == input_size,
                                ModuleName.YAML_CONFIG,
                                "input_data_formats should match"
-                               " the size of input")
+                               " the size of input.")
                 for input_data_format in\
                         subgraph[YAMLKeyword.input_data_formats]:
                     mace_check(input_data_format in DataFormatStrs,
@@ -414,17 +419,18 @@ def format_model_config(flags):
                                + str(DataFormatStrs) + ", but got "
                                + input_data_format)
             else:
-                subgraph[YAMLKeyword.input_data_formats] = [DataFormat.NHWC]
+                subgraph[YAMLKeyword.input_data_formats] = \
+                    [DataFormat.NHWC] * input_size
 
             output_data_formats = subgraph.get(YAMLKeyword.output_data_formats,
                                                [])
             if output_data_formats:
                 if not isinstance(output_data_formats, list):
                     subgraph[YAMLKeyword.output_data_formats] = \
-                        [output_data_formats]
+                        [output_data_formats] * output_size
                 else:
                     mace_check(len(output_data_formats)
-                               == len(subgraph[YAMLKeyword.output_tensors]),
+                               == output_size,
                                ModuleName.YAML_CONFIG,
                                "output_data_formats should match"
                                " the size of output")
@@ -435,7 +441,8 @@ def format_model_config(flags):
                                "'output_data_formats' must be in "
                                + str(DataFormatStrs))
             else:
-                subgraph[YAMLKeyword.output_data_formats] = [DataFormat.NHWC]
+                subgraph[YAMLKeyword.output_data_formats] =\
+                    [DataFormat.NHWC] * output_size
 
             validation_threshold = subgraph.get(
                 YAMLKeyword.validation_threshold, {})

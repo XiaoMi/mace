@@ -181,6 +181,7 @@ class MaceKeyword(object):
     mace_global_pooling_str = 'global_pooling'
     mace_kernel_str = 'kernels'
     mace_data_format_str = 'data_format'
+    mace_has_data_format_str = 'has_data_format'
     mace_filter_format_str = 'filter_format'
     mace_element_type_str = 'type'
     mace_activation_type_str = 'activation'
@@ -524,6 +525,16 @@ class ConverterUtil(object):
             if arg.name == arg_name:
                 return arg
         return None
+
+    @staticmethod
+    def del_arg(op, arg_name):
+        found_idx = -1
+        for idx in range(len(op.arg)):
+            if op.arg[idx].name == arg_name:
+                found_idx = idx
+                break
+        if found_idx != -1:
+            del op.arg[found_idx]
 
     @staticmethod
     def add_data_format_arg(op, data_format):

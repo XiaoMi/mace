@@ -29,7 +29,11 @@ void Pad(int iters, int batch, int height,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
+  } else {
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  }
 
   const std::vector<int> paddings = {0, 0, pad, pad, pad, pad, 0, 0};
   OpDefBuilder("Pad", "PadTest")
@@ -37,6 +41,7 @@ void Pad(int iters, int batch, int height,
       .Output("Output")
       .AddIntsArg("paddings", paddings)
       .AddIntArg("pad_type", pad_type)
+      .AddIntArg("has_data_format", 1)
       .AddFloatArg("constant_value", 1.0)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());

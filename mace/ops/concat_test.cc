@@ -100,11 +100,12 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
   }
 }
 
-TEST_F(ConcatOpTest, CPURandom) {
+namespace {
+void CPURandomTest(int input_dim, int has_data_format) {
   static unsigned int seed = time(NULL);
-  int dim = 5;
+  int dim = input_dim;
   int num_inputs = 2 + rand_r(&seed) % 10;
-  int axis = 1;
+  int axis = 3;
   // Construct graph
   OpsTestNet net;
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -112,9 +113,13 @@ TEST_F(ConcatOpTest, CPURandom) {
     builder = builder.Input(MakeString("Input", i));
   }
   builder.AddIntArg("axis", axis)
+      .AddIntArg("has_data_format", has_data_format)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
+  if (has_data_format) {
+    axis = 1;
+  }
   std::vector<index_t> shape_data;
   GenerateRandomIntTypeData<index_t>({dim}, &shape_data, 1, dim);
   std::vector<std::vector<index_t>> input_shapes(num_inputs, shape_data);
@@ -152,6 +157,13 @@ TEST_F(ConcatOpTest, CPURandom) {
     }
   }
 }
+}  // namespace
+
+TEST_F(ConcatOpTest, CPURandom) {
+  CPURandomTest(5, 0);
+  CPURandomTest(4, 0);
+  CPURandomTest(4, 1);
+}
 
 TEST_F(ConcatOpTest, QuantizedCPURandom) {
   static unsigned int seed = time(NULL);
@@ -186,7 +198,7 @@ TEST_F(ConcatOpTest, QuantizedCPURandom) {
     builder = builder.Input(MakeString("Input", i));
   }
   builder.AddIntArg("axis", axis_arg)
-      .AddIntArg("data_format", DataFormat::NHWC)
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -248,7 +260,7 @@ namespace {
 template <typename T>
 void OpenCLRandomTest(const std::vector<std::vector<index_t>> &shapes,
                       const int axis,
-                      DataFormat data_format) {
+                      bool has_data_format) {
   srand(time(nullptr));
   int num_inputs = shapes.size();
   int concat_axis_size = 0;
@@ -275,7 +287,7 @@ void OpenCLRandomTest(const std::vector<std::vector<index_t>> &shapes,
   builder.AddIntArg("axis", axis)
       .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .AddIntArg("data_format", data_format)
+      .AddIntArg("has_data_format", has_data_format)
       .OutputShape(expected_shape)
       .Finalize(net.NewOperatorDef());
 
@@ -309,38 +321,37 @@ void OpenCLRandomTest(const std::vector<std::vector<index_t>> &shapes,
 }  // namespace
 
 TEST_F(ConcatOpTest, OPENCLAligned) {
-  OpenCLRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3,
-                          DataFormat::NHWC);
+  OpenCLRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3, 1);
 }
 
 TEST_F(ConcatOpTest, OPENCLHalfAligned) {
-  OpenCLRandomTest<half>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3,
-                         DataFormat::NHWC);
+  OpenCLRandomTest<half>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3, 1);
 }
 
 TEST_F(ConcatOpTest, OPENCLUnAligned) {
-  OpenCLRandomTest<float>({{3, 32, 32, 13}, {3, 32, 32, 17}}, 3,
-                          DataFormat::NHWC);
+  OpenCLRandomTest<float>({{3, 32, 32, 13}, {3, 32, 32, 17}}, 3, 1);
 }
 
 TEST_F(ConcatOpTest, OPENCLAlignedMultiInput) {
   OpenCLRandomTest<float>(
       {{3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}},
-      3, DataFormat::NHWC);
+      3, 1);
 }
 
 TEST_F(ConcatOpTest, GPUFallbackToCPU2DInput) {
-  OpenCLRandomTest<float>({{3, 4}, {3, 4}}, 1, DataFormat::DF_NONE);
+  OpenCLRandomTest<float>({{3, 4}, {3, 4}}, 1, 0);
 }
 
 TEST_F(ConcatOpTest, GPUFallbackToCPUChanNotDivisibleBy4) {
-  OpenCLRandomTest<float>({{1, 1, 4, 3}, {1, 1, 4, 3}}, 3,
-                          DataFormat::DF_NONE);
+  OpenCLRandomTest<float>({{1, 1, 4, 3}, {1, 1, 4, 3}}, 3, 0);
+}
+
+TEST_F(ConcatOpTest, GPUFallbackToCPUNoDataFormat) {
+  OpenCLRandomTest<float>({{1, 1, 4, 4}, {1, 1, 4, 4}}, 3, 0);
 }
 
 TEST_F(ConcatOpTest, GPUFallbackToCPUAxis2) {
-  OpenCLRandomTest<float>({{1, 1, 4, 3}, {1, 1, 4, 3}}, 2,
-                          DataFormat::DF_NONE);
+  OpenCLRandomTest<float>({{1, 1, 4, 3}, {1, 1, 4, 3}}, 2, 0);
 }
 
 }  // namespace test

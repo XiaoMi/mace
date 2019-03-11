@@ -32,9 +32,9 @@ class SqueezeOp : public Operation {
     MACE_UNUSED(context);
     if (!checked_ && D == DeviceType::CPU
         && DataTypeToEnum<T>::value != DT_UINT8) {
-      auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-          "data_format", DataFormat::DF_NONE));
-      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+      auto has_df = Operation::GetOptionalArg<int>(
+          "has_data_format", 0);
+      if (has_df && this->Input(0)->dim_size() == 4) {
         if (axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2) {
           axis_[0] = 2;
           axis_[1] = 3;

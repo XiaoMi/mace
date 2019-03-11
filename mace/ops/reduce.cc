@@ -94,9 +94,9 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
         int index = axis_[i] >= 0 ?
                           axis_[i] :
                           axis_[i] + input->dim_size();
-        auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", DataFormat::DF_NONE));
-        if (df == DataFormat::NHWC && DataTypeToEnum<T>::value != DT_UINT8
+        auto has_df = Operation::GetOptionalArg<int>(
+            "has_data_format", 0);
+        if (has_df && DataTypeToEnum<T>::value != DT_UINT8
             && input->dim_size() == 4) {
           if (index == 1 || index == 2) index = index + 1;
           else if (index == 3) index = 1;

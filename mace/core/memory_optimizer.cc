@@ -115,6 +115,8 @@ void MemoryOptimizer::Optimize(
       op_def->output_type_size());
   DataType dt;
 
+  bool has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+      *op_def, "has_data_format", 0) != 0;
   int output_size = op_def->output_size();
   for (int i = 0; i < output_size; ++i) {
     if (i < op_def->output_type_size()) {
@@ -134,7 +136,7 @@ void MemoryOptimizer::Optimize(
     MemoryBlock best_mem_block;
     if (IsMemoryReuseOp(op_def->type())) {
       if (tensor_mem_map_.count(op_def->input(0)) == 1) {
-        best_mem_id = tensor_mem_map_[op_def->input(0)].first;
+        best_mem_id = tensor_mem_map_.at(op_def->input(0)).mem_id;
       }
     } else {
       auto shape = std::vector<int64_t>(
@@ -204,7 +206,8 @@ void MemoryOptimizer::Optimize(
       } else {
         mem_ref_count_[best_mem_id] = 1;
       }
-      tensor_mem_map_[op_def->output(i)] = std::make_pair(best_mem_id, dt);
+      tensor_mem_map_.emplace(op_def->output(i), TensorMemInfo(best_mem_id,
+          dt, has_data_format));
     }
   }
 
@@ -216,7 +219,7 @@ void MemoryOptimizer::Optimize(
       tensor_ref_count_[input_name] -= 1;
       if (tensor_ref_count_.at(input_name) == 0 &&
           tensor_mem_map_.count(input_name) == 1) {
-        int mem_id = tensor_mem_map_.at(input_name).first;
+        int mem_id = tensor_mem_map_.at(input_name).mem_id;
         mem_ref_count_[mem_id] -= 1;
         if (mem_ref_count_.at(mem_id) == 0) {
           idle_blocks_.insert(mem_id);
@@ -236,7 +239,7 @@ const std::vector<MemoryBlock>& MemoryOptimizer::mem_blocks() const {
   return mem_blocks_;
 }
 
-const std::unordered_map<std::string, std::pair<int, DataType>>&
+const std::unordered_map<std::string, MemoryOptimizer::TensorMemInfo>&
     MemoryOptimizer::tensor_mem_map() const {
   return tensor_mem_map_;
 }

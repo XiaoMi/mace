@@ -57,8 +57,8 @@ void TestInferConv2dShapeOp(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(InferConv2dShapeOpTest, TestInferConv2dShape) {
-TestInferConv2dShapeOp({3, 640, 480, 16}, 1, {3, 640, 480, 3});
-TestInferConv2dShapeOp({3, 640, 480, 16}, 2, {3, 320, 240, 3});
+  TestInferConv2dShapeOp({3, 640, 480, 16}, 1, {3, 640, 480, 3});
+  TestInferConv2dShapeOp({3, 640, 480, 16}, 2, {3, 320, 240, 3});
 }
 
 }  // namespace test

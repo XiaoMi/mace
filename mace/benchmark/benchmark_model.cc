@@ -90,6 +90,16 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
+DataFormat ParseDataFormat(const std::string &data_format_str) {
+  if (data_format_str == "NHWC") {
+    return DataFormat::NHWC;
+  } else if (data_format_str == "NCHW") {
+    return DataFormat::NCHW;
+  } else {
+    return DataFormat::DF_NONE;
+  }
+}
+
 bool RunInference(MaceEngine *engine,
                   const std::map<std::string, mace::MaceTensor> &input_infos,
                   std::map<std::string, mace::MaceTensor> *output_infos,
@@ -168,6 +178,12 @@ DEFINE_string(output_node, "output_node0,output_node1",
               "output nodes, separated by comma");
 DEFINE_string(input_shape, "", "input shape, separated by colon and comma");
 DEFINE_string(output_shape, "", "output shape, separated by colon and comma");
+DEFINE_string(input_data_format,
+              "NHWC",
+              "input data formats, NONE|NHWC|NCHW");
+DEFINE_string(output_data_format,
+              "NHWC",
+              "output data formats, NONE|NHWC|NCHW");
 DEFINE_string(input_file, "", "input file name");
 DEFINE_int32(max_num_runs, 100, "max number of runs");
 DEFINE_double(max_seconds, 10.0, "max number of seconds to run");
@@ -231,6 +247,19 @@ int Main(int argc, char **argv) {
   }
   for (size_t i = 0; i < output_count; ++i) {
     ParseShape(output_shapes[i], &output_shape_vec[i]);
+  }
+
+  std::vector<std::string> raw_input_data_formats =
+      str_util::Split(FLAGS_input_data_format, ',');
+  std::vector<std::string> raw_output_data_formats =
+      str_util::Split(FLAGS_output_data_format, ',');
+  std::vector<DataFormat> input_data_formats(input_count);
+  std::vector<DataFormat> output_data_formats(output_count);
+  for (size_t i = 0; i < input_count; ++i) {
+    input_data_formats[i] = ParseDataFormat(raw_input_data_formats[i]);
+  }
+  for (size_t i = 0; i < output_count; ++i) {
+    output_data_formats[i] = ParseDataFormat(raw_output_data_formats[i]);
   }
 
   mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
@@ -333,7 +362,8 @@ int Main(int argc, char **argv) {
       LOG(INFO) << "Open input file failed";
       return -1;
     }
-    inputs[input_names[i]] = mace::MaceTensor(input_shape_vec[i], buffer_in);
+    inputs[input_names[i]] = mace::MaceTensor(input_shape_vec[i], buffer_in,
+        input_data_formats[i]);
   }
 
   for (size_t i = 0; i < output_count; ++i) {
@@ -344,7 +374,8 @@ int Main(int argc, char **argv) {
     auto buffer_out = std::shared_ptr<float>(new float[output_size],
                                              std::default_delete<float[]>());
     outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i],
-                                                buffer_out);
+                                                buffer_out,
+                                                output_data_formats[i]);
   }
 
   int64_t warmup_time_us = 0;

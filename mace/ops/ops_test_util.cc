@@ -166,9 +166,20 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
           !ws_.GetTensor(input)->is_weight()) {
         auto input_info = net_def.add_input_info();
         input_info->set_name(input);
-        auto data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            op_def, "data_format", DataFormat::DF_NONE);
-        input_info->set_data_format(data_format);
+        auto has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            op_def, "has_data_format", 1);
+        auto is_quantized_op = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            op_def, "T", static_cast<int>(DT_FLOAT))
+            == static_cast<int>(DT_UINT8);
+        if (has_data_format) {
+          if (is_quantized_op || device == DeviceType::GPU) {
+            input_info->set_data_format(NHWC);
+          } else {
+            input_info->set_data_format(NCHW);
+          }
+        } else {
+          input_info->set_data_format(DataFormat::DF_NONE);
+        }
         auto &shape = ws_.GetTensor(input)->shape();
         for (auto d : shape) {
           input_info->add_dims(static_cast<int>(d));

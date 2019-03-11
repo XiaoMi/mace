@@ -44,6 +44,7 @@ void EltwiseBenchmark(
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatsArg("coeff", {1.2, 2.1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
