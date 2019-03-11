@@ -421,11 +421,6 @@ the detailed information is in :doc:`benchmark`.
           - 3
           - ``run``/``benchmark``
           - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
-        * - --gpu_perf_hint
-          - int
-          - 3
-          - ``run``/``benchmark``
-          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
         * - --gpu_priority_hint
           - int
           - 3
