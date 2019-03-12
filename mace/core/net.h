@@ -59,7 +59,7 @@ class SerialNet : public NetBase {
       const OpRegistryBase *op_registry,
       OpConstructContext *construct_context,
       std::shared_ptr<OperatorDef> op_def,
-      DataFormat input_format,
+      bool has_data_format,
       bool is_quantize_model = false);
 
  protected:

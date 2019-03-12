@@ -40,9 +40,9 @@ class PadOp<DeviceType::CPU, T> : public Operation {
         constant_value_(Operation::GetOptionalArg<float>(
             "constant_value", 0.0)) {
     MACE_CHECK(paddings_.size() == 8);
-    auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-        "data_format", DataFormat::DF_NONE));
-    if (df == DataFormat::NHWC) {
+    auto has_df = Operation::GetOptionalArg<int>(
+        "has_data_format", 0);
+    if (has_df) {
       paddings_ = TransposeShape<int, int>(paddings_, {0, 1, 6, 7, 2, 3, 4, 5});
     }
   }
@@ -55,11 +55,9 @@ class PadOp<DeviceType::CPU, T> : public Operation {
         this->paddings_.size() == static_cast<size_t>(input->dim_size()) * 2);
     auto input_shape = input->shape();
     for (size_t i = 0; i < paddings_.size(); ++i) {
-      if (type_ == PadType::REFLECT) {
-        MACE_CHECK(paddings_[i] < input_shape[i / 2]);
-
-      } else if (type_ == PadType::SYMMETRIC) {
-        MACE_CHECK(paddings_[i] <= input_shape[i / 2]);
+      if (type_ == PadType::REFLECT || type_ == PadType::SYMMETRIC) {
+        MACE_CHECK(paddings_[i] < input_shape[i / 2], paddings_[i],
+                   " vs ", input_shape[i / 2]);
       }
       MACE_CHECK(paddings_[i] >= 0);
     }

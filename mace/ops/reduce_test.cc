@@ -44,7 +44,7 @@ void Simple(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", keepdims ? 1 : 0)
         .AddIntArg("reduce_type", type)
-        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("has_data_format", 1)
         .Output("OutputNCHW")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -56,7 +56,7 @@ void Simple(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", keepdims ? 1 : 0)
         .AddIntArg("reduce_type", type)
-        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("has_data_format", 1)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -84,7 +84,7 @@ void Simple3D(const std::vector<index_t> &input_shape,
       .AddIntsArg("axis", axis)
       .AddIntArg("keepdims", keepdims ? 1 : 0)
       .AddIntArg("reduce_type", type)
-      .AddIntArg("data_format", DataFormat::NHWC)
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -588,7 +588,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", 1)
         .AddIntArg("reduce_type", type)
-        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("has_data_format", 1)
         .Output("OutputNCHW")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -600,7 +600,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", 1)
         .AddIntArg("reduce_type", type)
-        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("has_data_format", 1)
         .Output("OPENCLOutput")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -662,7 +662,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", 1)
         .AddIntArg("reduce_type", type)
-        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("has_data_format", 1)
         .Output("OutputNCHW")
         .AddIntArg("T", DT_FLOAT)
         .Finalize(net.NewOperatorDef());
@@ -687,7 +687,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .AddIntsArg("axis", axis)
         .AddIntArg("keepdims", 1)
         .AddIntArg("reduce_type", type)
-        .AddIntArg("data_format", DataFormat::NHWC)
+        .AddIntArg("has_data_format", 1)
         .AddIntArg("T", DT_UINT8)
         .Finalize(net.NewOperatorDef());
     net.RunOp();

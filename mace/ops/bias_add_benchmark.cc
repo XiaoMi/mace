@@ -42,7 +42,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   OpDefBuilder("BiasAdd", "BiasAddBM")
       .Input("Input")
       .Input("Bias")
-      .AddIntArg("data_format", data_format)
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());

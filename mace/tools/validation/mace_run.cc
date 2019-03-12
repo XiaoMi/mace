@@ -103,6 +103,16 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
+DataFormat ParseDataFormat(const std::string &data_format_str) {
+  if (data_format_str == "NHWC") {
+    return DataFormat::NHWC;
+  } else if (data_format_str == "NCHW") {
+    return DataFormat::NCHW;
+  } else {
+    return DataFormat::DF_NONE;
+  }
+}
+
 struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   struct mallinfo curr = mallinfo();
   if (prev.arena != curr.arena) {
@@ -168,6 +178,12 @@ DEFINE_string(output_node,
 DEFINE_string(output_shape,
               "1,224,224,2:1,1,1,10",
               "output shapes, separated by colon and comma");
+DEFINE_string(input_data_format,
+              "NHWC",
+              "input data formats, NONE|NHWC|NCHW");
+DEFINE_string(output_data_format,
+              "NHWC",
+              "output data formats, NONE|NHWC|NCHW");
 DEFINE_string(input_file,
               "",
               "input file name | input file prefix for multiple inputs.");
@@ -206,8 +222,10 @@ DEFINE_int32(cpu_affinity_policy, 1,
 bool RunModel(const std::string &model_name,
               const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
+              const std::vector<DataFormat> &input_data_formats,
               const std::vector<std::string> &output_names,
-              const std::vector<std::vector<int64_t>> &output_shapes) {
+              const std::vector<std::vector<int64_t>> &output_shapes,
+              const std::vector<DataFormat> &output_data_formats) {
   DeviceType device_type = ParseDeviceType(FLAGS_device);
 
   int64_t t0 = NowMicros();
@@ -325,7 +343,8 @@ bool RunModel(const std::string &model_name,
       LOG(INFO) << "Open input file failed";
       return -1;
     }
-    inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in);
+    inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in,
+        input_data_formats[i]);
   }
 
   for (size_t i = 0; i < output_count; ++i) {
@@ -334,7 +353,8 @@ bool RunModel(const std::string &model_name,
                         std::multiplies<int64_t>());
     auto buffer_out = std::shared_ptr<float>(new float[output_size],
                                              std::default_delete<float[]>());
-    outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out);
+    outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out,
+        output_data_formats[i]);
   }
 
   LOG(INFO) << "Warm up run";
@@ -498,13 +518,27 @@ int Main(int argc, char **argv) {
   for (size_t i = 0; i < output_count; ++i) {
     ParseShape(output_shapes[i], &output_shape_vec[i]);
   }
+  std::vector<std::string> raw_input_data_formats =
+      str_util::Split(FLAGS_input_data_format, ',');
+  std::vector<std::string> raw_output_data_formats =
+      str_util::Split(FLAGS_output_data_format, ',');
+  std::vector<DataFormat> input_data_formats(input_count);
+  std::vector<DataFormat> output_data_formats(output_count);
+  for (size_t i = 0; i < input_count; ++i) {
+    input_data_formats[i] = ParseDataFormat(raw_input_data_formats[i]);
+  }
+  for (size_t i = 0; i < output_count; ++i) {
+    output_data_formats[i] = ParseDataFormat(raw_output_data_formats[i]);
+  }
+
 
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
     ret =
-        RunModel(FLAGS_model_name, input_names, input_shape_vec,
-                 output_names, output_shape_vec);
+        RunModel(FLAGS_model_name,
+                 input_names, input_shape_vec, input_data_formats,
+                 output_names, output_shape_vec, output_data_formats);
   }
   if (ret) {
     return 0;

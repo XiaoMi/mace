@@ -35,8 +35,8 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
-        data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-                     "data_format", NHWC))) {}
+        has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 0))
+  {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -57,7 +57,7 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
     const float *bias_ptr = bias->data<float>();
     float *output_ptr = output->mutable_data<float>();
 
-    if (input->dim_size() == 4 && data_format_ == NCHW) {
+    if (input->dim_size() == 4 && has_data_format_) {
       const index_t batch = input->dim(0);
       const index_t channels = input->dim(1);
       const index_t height_width = input->dim(2) * input->dim(3);
@@ -90,7 +90,7 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
   }
 
  private:
-  DataFormat data_format_;
+  int has_data_format_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -99,8 +99,7 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
-        data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", NHWC))) {
+        has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 1)) {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
@@ -121,13 +120,13 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
 
     Tensor *output = this->Output(0);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-    MACE_CHECK(input->dim_size() == 4 && data_format_ == NHWC,
+    MACE_CHECK(input->dim_size() == 4 && has_data_format_,
                "gpu only support biasadd for 4-dimensional NHWC format tensor");
     return kernel_->Compute(context, input, bias, output);
   }
 
  private:
-  DataFormat data_format_;
+  int has_data_format_;
   std::unique_ptr<OpenCLBiasAddKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL

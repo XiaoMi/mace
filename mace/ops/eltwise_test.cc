@@ -75,7 +75,7 @@ void SimpleTensorScalar(const ops::EltwiseType type,
         .AddIntArg("T", DataTypeToEnum<T>::v())
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatArg("scalar_input", x)
-        .AddIntArg("data_format", DataFormat::NCHW)
+        .AddIntArg("has_data_format", 1)
         .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
         .Output("TOutput")
         .Finalize(net.NewOperatorDef());
@@ -120,7 +120,7 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
             .AddIntArg("T", DataTypeToEnum<T>::v())
             .AddIntArg("type", static_cast<int>(type))
             .AddFloatsArg("coeff", coeff)
-            .AddIntArg("data_format", DataFormat::NCHW)
+            .AddIntArg("has_data_format", 1)
             .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
             .Output("TOutput");
     if (shape0.size() > 1) {
@@ -642,7 +642,7 @@ void RandomTensorScalar(const ops::EltwiseType type,
       .Input("TInput")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatArg("scalar_input", 0.1)
-      .AddIntArg("data_format", DataFormat::NCHW)
+      .AddIntArg("has_data_format", 1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -699,7 +699,7 @@ void RandomTensorEltwise(const ops::EltwiseType type,
       .Input("TInput1")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatsArg("coeff", coeff)
-      .AddIntArg("data_format", DataFormat::NCHW)
+      .AddIntArg("has_data_format", 1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
 
@@ -755,7 +755,7 @@ void Quantized(const std::vector<index_t> &shape,
       .Input("TInput0")
       .Input("TInput1")
       .AddIntArg("type", static_cast<int>(type))
-      .AddIntArg("data_format", DataFormat::NCHW)
+      .AddIntArg("has_data_format", 1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
 

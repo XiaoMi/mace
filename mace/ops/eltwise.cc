@@ -897,8 +897,8 @@ class EltwiseOp : public Operation {
         scalar_input_(Operation::GetOptionalArg<float>("scalar_input", 1.0)),
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
             "scalar_input_index", 1)),
-        data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", 0))) {}
+        has_data_format_(Operation::GetOptionalArg<int>(
+            "has_data_format", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -940,7 +940,7 @@ class EltwiseOp : public Operation {
     // check if we can broadcast tensor
     uint32_t rank_diff =
         static_cast<uint32_t>(input0->dim_size() - input1->dim_size());
-    if (data_format_ == NCHW) {
+    if (has_data_format_) {
       MACE_CHECK(
           (input0->dim_size() == 4) &&
               ((input1->dim_size() == 0) ||
@@ -965,7 +965,7 @@ class EltwiseOp : public Operation {
     const T *input0_ptr = input0->data<T>();
     const T *input1_ptr = input1->data<T>();
 
-    if (data_format_ == NCHW && input1->dim_size() > 0) {
+    if (has_data_format_ && input1->dim_size() > 0) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
       Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
@@ -1027,7 +1027,7 @@ class EltwiseOp : public Operation {
   std::vector<float> coeff_;
   float scalar_input_;
   int32_t scalar_input_index_;
-  DataFormat data_format_;
+  int has_data_format_;
   Tensor scalar_tensor_;
 };
 
@@ -1042,9 +1042,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
         coeff_(Operation::GetRepeatedArgs<float>("coeff")),
         scalar_input_(Operation::GetOptionalArg<float>("scalar_input", 1.0)),
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
-            "scalar_input_index", 1)),
-        data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", 0)))
+            "scalar_input_index", 1))
 #ifdef MACE_ENABLE_NEON
         , eltwise_(static_cast<ops::EltwiseType>(Operation::GetOptionalArg<int>(
             "type", static_cast<int>(ops::EltwiseType::NONE))))
@@ -1139,7 +1137,6 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
   std::vector<float> coeff_;
   float scalar_input_;
   int32_t scalar_input_index_;
-  DataFormat data_format_;
   Tensor scalar_tensor_;
 #ifdef MACE_ENABLE_NEON
   arm::q8::Eltwise eltwise_;

@@ -60,9 +60,9 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
     MACE_UNUSED(context);
     if (!checked_) {
       Validate();
-      auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-          "data_format", DataFormat::DF_NONE));
-      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+      auto has_df = Operation::GetOptionalArg<int>(
+          "has_data_format", 0);
+      if (has_df && this->Input(0)->dim_size() == 4) {
         if (axis_ == 3) axis_ = 1;
         else if (axis_ == 2) axis_ = 3;
         else if (axis_ == 1) axis_ = 2;
@@ -251,9 +251,12 @@ void RegisterConcat(OpRegistryBase *op_registry) {
               if (op->output_shape(0).dims_size() != 4) {
                 return { DeviceType::CPU };
               } else {
+                int has_data_format =
+                    ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                        *op, "has_data_format", 0);
                 int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "axis", 3);
-                if (axis != 3) {
+                if (!has_data_format || axis != 3) {
                   return { DeviceType::CPU };
                 }
                 bool divisible_four = true;

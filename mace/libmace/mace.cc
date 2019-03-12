@@ -470,6 +470,9 @@ MaceStatus MaceEngine::Impl::Init(
       shape[i] = input_info_map_[input_name].dims(i);
     }
     input_tensor->Resize(shape);
+    // Set to the default data format
+    input_tensor->set_data_format(static_cast<DataFormat>(
+        input_info_map_[input_name].data_format()));
   }
   for (auto output_name : output_nodes) {
     if (output_info_map_.find(output_name) == output_info_map_.end()) {
@@ -477,7 +480,9 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's outputs "
                  << MakeString(MapKeys(output_info_map_));
     }
+#ifdef MACE_ENABLE_HEXAGON
     ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
+#endif
   }
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
@@ -559,47 +564,51 @@ MaceEngine::Impl::~Impl() {
 MaceStatus MaceEngine::Impl::TransposeInput(
     const std::pair<const std::string, MaceTensor> &input,
     Tensor *input_tensor) {
-  if (device_->device_type() == DeviceType::CPU &&
-      input.second.shape().size() == 4 &&
-      input.second.data_format() == NHWC &&
-      !is_quantized_model_) {
-    VLOG(1) << "Transform input " << input.first << " from NHWC to NCHW";
-    input_tensor->set_data_format(DataFormat::NCHW);
-    std::vector<int> dst_dims = {0, 3, 1, 2};
-    std::vector<index_t> output_shape =
-        TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
-    MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
-    Tensor::MappingGuard input_guard(input_tensor);
-    float *input_data = input_tensor->mutable_data<float>();
-    return ops::Transpose(input.second.data().get(),
-                          input.second.shape(),
-                          dst_dims,
-                          input_data);
-  } else if (
-      (is_quantized_model_ || device_->device_type() == DeviceType::GPU) &&
-      input.second.shape().size() == 4 &&
-      input.second.data_format() == DataFormat::NCHW) {
-    VLOG(1) << "Transform input " << input.first << " from NCHW to NHWC";
-    std::vector<int> dst_dims = {0, 2, 3, 1};
-    input_tensor->set_data_format(DataFormat::NHWC);
-    std::vector<index_t> output_shape =
-        TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
-    MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
-    Tensor::MappingGuard input_guard(input_tensor);
-    float *input_data = input_tensor->mutable_data<float>();
-    return ops::Transpose(input.second.data().get(),
-                          input.second.shape(),
-                          dst_dims,
-                          input_data);
-  } else {
-    input_tensor->set_data_format(input.second.data_format());
-    MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
-    Tensor::MappingGuard input_guard(input_tensor);
-    float *input_data = input_tensor->mutable_data<float>();
-    memcpy(input_data, input.second.data().get(),
-           input_tensor->size() * sizeof(float));
-    return MaceStatus::MACE_SUCCESS;
+  bool has_data_format = input_tensor->data_format() != DataFormat::DF_NONE;
+  DataFormat data_format = DataFormat::DF_NONE;
+  if (has_data_format) {
+    if (device_->device_type() == DeviceType::CPU &&
+        input.second.shape().size() == 4 &&
+        input.second.data_format() == NHWC &&
+        !is_quantized_model_) {
+      VLOG(1) << "Transform input " << input.first << " from NHWC to NCHW";
+      input_tensor->set_data_format(DataFormat::NCHW);
+      std::vector<int> dst_dims = {0, 3, 1, 2};
+      std::vector<index_t> output_shape =
+          TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
+      MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
+      Tensor::MappingGuard input_guard(input_tensor);
+      float *input_data = input_tensor->mutable_data<float>();
+      return ops::Transpose(input.second.data().get(),
+                            input.second.shape(),
+                            dst_dims,
+                            input_data);
+    } else if (
+        (is_quantized_model_ || device_->device_type() == DeviceType::GPU) &&
+            input.second.shape().size() == 4 &&
+            input.second.data_format() == DataFormat::NCHW) {
+      VLOG(1) << "Transform input " << input.first << " from NCHW to NHWC";
+      std::vector<int> dst_dims = {0, 2, 3, 1};
+      input_tensor->set_data_format(DataFormat::NHWC);
+      std::vector<index_t> output_shape =
+          TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
+      MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
+      Tensor::MappingGuard input_guard(input_tensor);
+      float *input_data = input_tensor->mutable_data<float>();
+      return ops::Transpose(input.second.data().get(),
+                            input.second.shape(),
+                            dst_dims,
+                            input_data);
+    }
+    data_format = input.second.data_format();
   }
+  input_tensor->set_data_format(data_format);
+  MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
+  Tensor::MappingGuard input_guard(input_tensor);
+  float *input_data = input_tensor->mutable_data<float>();
+  memcpy(input_data, input.second.data().get(),
+         input_tensor->size() * sizeof(float));
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MaceEngine::Impl::TransposeOutput(
@@ -607,38 +616,28 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
     std::pair<const std::string, mace::MaceTensor> *output) {
   // save output
   if (output_tensor != nullptr && output->second.data() != nullptr) {
-    if (device_->device_type() == DeviceType::CPU &&
-        output->second.shape().size() == 4 &&
-        output->second.data_format() != output_tensor->data_format()) {
-      MACE_CHECK(output_tensor->data_format() == NCHW);
-      VLOG(1) << "Transform output " << output->first << " from NCHW to NHWC";
-      std::vector<int> dst_dims = {0, 2, 3, 1};
-      std::vector<index_t> shape =
-          TransposeShape<index_t, index_t>(output_tensor->shape(),
-                                           dst_dims);
-      int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
-                                            std::multiplies<int64_t>());
-      MACE_CHECK(output_size <= output->second.impl_->buffer_size)
-        << "Output size exceeds buffer size: shape"
-        << MakeString<int64_t>(shape) << " vs buffer size "
-        << output->second.impl_->buffer_size;
-      output->second.impl_->shape = shape;
-      Tensor::MappingGuard output_guard(output_tensor);
-      const float *output_data = output_tensor->data<float>();
-      return ops::Transpose(output_data,
-                            output_tensor->shape(),
-                            dst_dims,
-                            output->second.data().get());
-    } else if (device_->device_type() == DeviceType::GPU &&
+    if (output_tensor->data_format() != DataFormat::DF_NONE &&
+        output->second.data_format() != DataFormat::DF_NONE &&
         output->second.shape().size() == 4 &&
         output->second.data_format() != output_tensor->data_format()) {
       VLOG(1) << "Transform output " << output->first << " from "
               << output_tensor->data_format() << " to "
               << output->second.data_format();
-      std::vector<int> dst_dims = {0, 3, 1, 2};
-      if (output_tensor->data_format() == NCHW) {
+      std::vector<int> dst_dims;
+      if (output_tensor->data_format() == NCHW &&
+          output->second.data_format() == NHWC) {
         dst_dims = {0, 2, 3, 1};
+      } else if (output_tensor->data_format() == NHWC &&
+          output->second.data_format() == NCHW) {
+        dst_dims = {0, 3, 1, 2};
+      } else {
+        LOG(FATAL) <<"Not supported output data format: "
+                   << output->second.data_format() << " vs "
+                   << output_tensor->data_format();
       }
+      VLOG(1) << "Transform output " << output->first << " from "
+              << output_tensor->data_format() << " to "
+              << output->second.data_format();
       std::vector<index_t> shape =
           TransposeShape<index_t, index_t>(output_tensor->shape(),
                                            dst_dims);

@@ -44,6 +44,7 @@ void BMSplitHelper(int iters,
   }
   builder
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("has_data_format", 1)
       .Finalize(net.NewOperatorDef());
 
   // Warm-up

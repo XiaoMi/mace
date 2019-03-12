@@ -264,31 +264,35 @@ MaceStatus Workspace::PreallocateOutputTensor(
   bool is_quantize_model = IsQuantizedModel(net_def);
   for (auto &tensor_mem : mem_optimizer->tensor_mem_map()) {
     std::unique_ptr<Tensor> tensor
-        (new Tensor(preallocated_allocator_.GetBuffer(tensor_mem.second.first),
-                    tensor_mem.second.second,
+        (new Tensor(preallocated_allocator_.GetBuffer(tensor_mem.second.mem_id),
+                    tensor_mem.second.data_type,
                     false, tensor_mem.first));
-    if (mem_blocks[tensor_mem.second.first].mem_type()
-        == MemoryType::GPU_IMAGE) {
-      VLOG(1) << "Tensor: " << tensor_mem.first
-              << " Mem: " << tensor_mem.second.first
-              << " Data type: " << tensor->dtype()
-              << " Image shape: "
-              << tensor->UnderlyingBuffer()->shape()[0]
-              << ", "
-              << tensor->UnderlyingBuffer()->shape()[1];
-     tensor->set_data_format(DataFormat::NHWC);
-    } else {
-      VLOG(1) << "Tensor: " << tensor_mem.first
-              << " Mem: " << tensor_mem.second.first
-              << " Data type: " << tensor->dtype()
-              << ", Buffer size: " << tensor->UnderlyingBuffer()->size();
-      if (mem_blocks[tensor_mem.second.first].mem_type()
-          == MemoryType::GPU_BUFFER ||
-          is_quantize_model) {
+    if (tensor_mem.second.has_data_format) {
+      if (mem_blocks[tensor_mem.second.mem_id].mem_type()
+          == MemoryType::GPU_IMAGE) {
+        VLOG(1) << "Tensor: " << tensor_mem.first
+                << " Mem: " << tensor_mem.second.mem_id
+                << " Data type: " << tensor->dtype()
+                << " Image shape: "
+                << tensor->UnderlyingBuffer()->shape()[0]
+                << ", "
+                << tensor->UnderlyingBuffer()->shape()[1];
         tensor->set_data_format(DataFormat::NHWC);
       } else {
-        tensor->set_data_format(DataFormat::NCHW);
+        VLOG(1) << "Tensor: " << tensor_mem.first
+                << " Mem: " << tensor_mem.second.mem_id
+                << " Data type: " << tensor->dtype()
+                << ", Buffer size: " << tensor->UnderlyingBuffer()->size();
+        if (mem_blocks[tensor_mem.second.mem_id].mem_type()
+            == MemoryType::GPU_BUFFER ||
+            is_quantize_model) {
+          tensor->set_data_format(DataFormat::NHWC);
+        } else {
+          tensor->set_data_format(DataFormat::NCHW);
+        }
       }
+    } else {
+      tensor->set_data_format(DataFormat::DF_NONE);
     }
     tensor_map_[tensor_mem.first] = std::move(tensor);
   }

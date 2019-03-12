@@ -1406,21 +1406,17 @@ class Transformer(base_converter.ConverterInterface):
 
     def update_data_format(self):
         print("update data format")
-        data_format_flag = DataFormat.NHWC.value
+        data_format_flag = 1
         for input_node in self._option.input_nodes.values():
             if input_node.data_format.value == DataFormat.DF_NONE.value:
-                data_format_flag = DataFormat.DF_NONE.value
-
+                data_format_flag = 0
         net = self._model
         for op in net.op:
-            data_format_arg = ConverterUtil.get_arg(
+            ConverterUtil.del_arg(
                 op, MaceKeyword.mace_data_format_str)
-            if not data_format_arg:
-                data_format_arg = op.arg.add()
-                data_format_arg.name = MaceKeyword.mace_data_format_str
-                data_format_arg.i = data_format_flag
-            elif data_format_arg.i != data_format_flag:
-                data_format_arg.i = data_format_flag
+            has_data_format_arg = op.arg.add()
+            has_data_format_arg.name = MaceKeyword.mace_has_data_format_str
+            has_data_format_arg.i = data_format_flag
         return False
 
     def quantize_nodes(self):

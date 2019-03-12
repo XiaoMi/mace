@@ -148,10 +148,11 @@ def validate_with_file(platform, device_type,
                        value, validation_threshold, log_file)
 
 
-def validate_tf_model(platform, device_type, model_file, input_file,
-                      mace_out_file, input_names, input_shapes,
-                      output_names, validation_threshold, input_data_types,
-                      log_file):
+def validate_tf_model(platform, device_type, model_file,
+                      input_file, mace_out_file,
+                      input_names, input_shapes, input_data_formats,
+                      output_names, output_shapes, output_data_formats,
+                      validation_threshold, input_data_types, log_file):
     import tensorflow as tf
     if not os.path.isfile(model_file):
         common.MaceLogger.error(
@@ -174,6 +175,9 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                         common.formatted_file_name(input_file, input_names[i]),
                         input_data_types[i])
                     input_value = input_value.reshape(input_shapes[i])
+                    if input_data_formats[i] == common.DataFormat.NCHW and\
+                            len(input_shapes[i]) == 4:
+                        input_value = input_value.transpose((0, 2, 3, 1))
                     input_node = graph.get_tensor_by_name(
                         normalize_tf_tensor_name(input_names[i]))
                     input_dict[input_node] = input_value
@@ -188,15 +192,20 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                     output_file_name = common.formatted_file_name(
                         mace_out_file, output_names[i])
                     mace_out_value = load_data(output_file_name)
+                    if output_data_formats[i] == common.DataFormat.NCHW and\
+                            len(output_shapes[i]) == 4:
+                        mace_out_value = mace_out_value.\
+                            reshape(output_shapes[i]).transpose((0, 2, 3, 1))
                     compare_output(platform, device_type, output_names[i],
                                    mace_out_value, output_values[i],
                                    validation_threshold, log_file)
 
 
 def validate_caffe_model(platform, device_type, model_file, input_file,
-                         mace_out_file, weight_file, input_names, input_shapes,
-                         output_names, output_shapes, validation_threshold,
-                         log_file):
+                         mace_out_file, weight_file,
+                         input_names, input_shapes, input_data_formats,
+                         output_names, output_shapes, output_data_formats,
+                         validation_threshold, log_file):
     os.environ['GLOG_minloglevel'] = '1'  # suprress Caffe verbose prints
     import caffe
     if not os.path.isfile(model_file):
@@ -215,8 +224,10 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
     for i in range(len(input_names)):
         input_value = load_data(
             common.formatted_file_name(input_file, input_names[i]))
-        input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1,
-                                                                      2))
+        input_value = input_value.reshape(input_shapes[i])
+        if input_data_formats[i] == common.DataFormat.NHWC and \
+                len(input_shapes[i]) == 4:
+            input_value = input_value.transpose((0, 3, 1, 2))
         input_blob_name = input_names[i]
         try:
             if input_names[i] in net.top_names:
@@ -232,22 +243,23 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
 
     for i in range(len(output_names)):
         value = net.blobs[output_names[i]].data
-        out_shape = output_shapes[i]
-        if len(out_shape) == 4:
-            out_shape[1], out_shape[2], out_shape[3] = \
-                out_shape[3], out_shape[1], out_shape[2]
-            value = value.reshape(out_shape).transpose((0, 2, 3, 1))
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
+        if output_data_formats[i] == common.DataFormat.NHWC and \
+                len(output_shapes[i]) == 4:
+            mace_out_value = mace_out_value.reshape(output_shapes[i])\
+                .transpose((0, 3, 1, 2))
         compare_output(platform, device_type, output_names[i], mace_out_value,
                        value, validation_threshold, log_file)
 
 
-def validate_onnx_model(platform, device_type, model_file, input_file,
-                        mace_out_file, input_names, input_shapes,
-                        output_names, output_shapes, validation_threshold,
-                        input_data_types, backend, log_file):
+def validate_onnx_model(platform, device_type, model_file,
+                        input_file, mace_out_file,
+                        input_names, input_shapes, input_data_formats,
+                        output_names, output_shapes, output_data_formats,
+                        validation_threshold, input_data_types,
+                        backend, log_file):
     import onnx
     if backend == "tensorflow":
         from onnx_tf.backend import prepare
@@ -269,13 +281,16 @@ def validate_onnx_model(platform, device_type, model_file, input_file,
         input_value = load_data(common.formatted_file_name(input_file,
                                                            input_names[i]),
                                 input_data_types[i])
-        input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1,
-                                                                      2))
+        input_value = input_value.reshape(input_shapes[i])
+        if input_data_formats[i] == common.DataFormat.NHWC and \
+                len(input_shapes[i]) == 4:
+            input_value = input_value.transpose((0, 3, 1, 2))
         input_dict[input_names[i]] = input_value
     onnx_outputs = []
     for i in range(len(output_names)):
         out_shape = output_shapes[i]
-        if len(out_shape) == 4:
+        if output_data_formats[i] == common.DataFormat.NHWC and\
+                len(out_shape) == 4:
             out_shape[1], out_shape[2], out_shape[3] = \
                 out_shape[3], out_shape[1], out_shape[2]
         onnx_outputs.append(
@@ -289,25 +304,32 @@ def validate_onnx_model(platform, device_type, model_file, input_file,
     for i in range(len(output_names)):
         out_name = output_names[i]
         value = output_values[out_name].flatten()
-        out_shape = output_shapes[i]
-        if len(out_shape) == 4:
-            value = value.reshape(out_shape).transpose((0, 2, 3, 1))
         output_file_name = common.formatted_file_name(mace_out_file,
                                                       output_names[i])
         mace_out_value = load_data(output_file_name)
+        if output_data_formats[i] == common.DataFormat.NHWC and \
+                len(output_shapes[i]) == 4:
+            mace_out_value = mace_out_value.reshape(output_shapes[i]) \
+                .transpose((0, 3, 1, 2))
         compare_output(platform, device_type, output_names[i],
                        mace_out_value, value,
                        validation_threshold, log_file)
 
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
-             device_type, input_shape, output_shape, input_node, output_node,
+             device_type, input_shape, output_shape, input_data_format_str,
+             output_data_format_str, input_node, output_node,
              validation_threshold, input_data_type, backend,
              validation_outputs_data, log_file):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
                     for shape in input_shape_strs]
+    output_shape_strs = [shape for shape in output_shape.split(':')]
+    output_shapes = [[int(x) for x in shape.split(',')]
+                     for shape in output_shape_strs]
+    input_data_formats = [df for df in input_data_format_str.split(',')]
+    output_data_formats = [df for df in output_data_format_str.split(',')]
     if input_data_type:
         input_data_types = [data_type
                             for data_type in input_data_type.split(',')]
@@ -323,32 +345,27 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
     else:
         validation_outputs = validation_outputs_data
     if validation_outputs:
-        output_shape_strs = [shape for shape in output_shape.split(':')]
-        output_shapes = [[int(x) for x in shape.split(',')]
-                         for shape in output_shape_strs]
         validate_with_file(platform, device_type, output_names, output_shapes,
                            mace_out_file, validation_outputs,
                            validation_threshold, log_file)
     elif platform == 'tensorflow':
-        validate_tf_model(platform, device_type, model_file, input_file,
-                          mace_out_file, input_names, input_shapes,
-                          output_names, validation_threshold, input_data_types,
+        validate_tf_model(platform, device_type,
+                          model_file, input_file, mace_out_file,
+                          input_names, input_shapes, input_data_formats,
+                          output_names, output_shapes, output_data_formats,
+                          validation_threshold, input_data_types,
                           log_file)
     elif platform == 'caffe':
-        output_shape_strs = [shape for shape in output_shape.split(':')]
-        output_shapes = [[int(x) for x in shape.split(',')]
-                         for shape in output_shape_strs]
-        validate_caffe_model(platform, device_type, model_file, input_file,
-                             mace_out_file, weight_file, input_names,
-                             input_shapes, output_names, output_shapes,
+        validate_caffe_model(platform, device_type, model_file,
+                             input_file, mace_out_file, weight_file,
+                             input_names, input_shapes, input_data_formats,
+                             output_names, output_shapes, output_data_formats,
                              validation_threshold, log_file)
     elif platform == 'onnx':
-        output_shape_strs = [shape for shape in output_shape.split(':')]
-        output_shapes = [[int(x) for x in shape.split(',')]
-                         for shape in output_shape_strs]
-        validate_onnx_model(platform, device_type, model_file, input_file,
-                            mace_out_file, input_names, input_shapes,
-                            output_names, output_shapes,
+        validate_onnx_model(platform, device_type, model_file,
+                            input_file, mace_out_file,
+                            input_names, input_shapes, input_data_formats,
+                            output_names, output_shapes, output_data_formats,
                             validation_threshold,
                             input_data_types, backend, log_file)
 
@@ -380,7 +397,13 @@ def parse_args():
     parser.add_argument(
         "--input_shape", type=str, default="1,64,64,3", help="input shape.")
     parser.add_argument(
+        "--input_data_format", type=str, default="NHWC",
+        help="input data format.")
+    parser.add_argument(
         "--output_shape", type=str, default="1,64,64,2", help="output shape.")
+    parser.add_argument(
+        "--output_data_format", type=str, default="NHWC",
+        help="output data format.")
     parser.add_argument(
         "--input_node", type=str, default="input_node", help="input node")
     parser.add_argument(
@@ -417,6 +440,8 @@ if __name__ == '__main__':
              FLAGS.device_type,
              FLAGS.input_shape,
              FLAGS.output_shape,
+             FLAGS.input_data_format,
+             FLAGS.output_data_format,
              FLAGS.input_node,
              FLAGS.output_node,
              FLAGS.validation_threshold,

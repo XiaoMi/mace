@@ -131,6 +131,12 @@ class DeviceType(object):
     HEXAGON = 'HEXAGON'
 
 
+class DataFormat(object):
+    NONE = "NONE"
+    NHWC = "NHWC"
+    NCHW = "NCHW"
+
+
 ################################
 # Argument types
 ################################
