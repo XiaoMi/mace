@@ -24,7 +24,7 @@
 #include <vector>
 #include <utility>
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/core/kv_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/utils/tuner.h"
@@ -273,7 +273,7 @@ OpenCLRuntime::OpenCLRuntime(
     gpu_type_(UNKNOWN) {
   std::vector<cl::Platform> all_platforms;
   cl::Platform::get(&all_platforms);
-  if (all_platforms.size() == 0) {
+  if (all_platforms.empty()) {
     LOG(ERROR) << "No OpenCL platforms found";
     return;
   }
@@ -289,7 +289,7 @@ OpenCLRuntime::OpenCLRuntime(
   // get default device (CPUs, GPUs) of the default platform
   std::vector<cl::Device> all_devices;
   default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-  if (all_devices.size() == 0) {
+  if (all_devices.empty()) {
     LOG(ERROR) << "No OpenCL devices found";
     return;
   }

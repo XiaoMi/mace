@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "mace/public/mace.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 

@@ -18,7 +18,7 @@
 #include <arm_neon.h>
 #include <algorithm>
 
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #include "mace/utils/quantize.h"
 
 #if !defined(__aarch64__)

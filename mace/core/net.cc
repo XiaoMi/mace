@@ -19,14 +19,16 @@
 #include <utility>
 
 #include "mace/core/future.h"
-#include "mace/core/macros.h"
 #include "mace/core/memory_optimizer.h"
 #include "mace/core/net.h"
 #include "mace/core/op_context.h"
 #include "mace/public/mace.h"
-#include "mace/utils/memory_logging.h"
+#include "mace/port/env.h"
+#include "mace/utils/conf_util.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/macros.h"
+#include "mace/utils/math.h"
 #include "mace/utils/timer.h"
-#include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_util.h"
@@ -114,9 +116,8 @@ std::unique_ptr<Operation> SerialNet::CreateOperation(
       }
     }
   }
-  std::unique_ptr<Operation> op(
-      op_registry->CreateOperation(construct_context, device_type));
-  return std::move(op);
+
+  return op_registry->CreateOperation(construct_context, device_type);
 }
 
 SerialNet::SerialNet(const OpRegistryBase *op_registry,
@@ -148,15 +149,14 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
       continue;
     }
     for (int i = 0; i < op.output_size(); ++i) {
-      tensor_shape_map[op.output(i)] =
-          std::move(std::vector<index_t>(op.output_shape(i).dims().begin(),
-                                         op.output_shape(i).dims().end()));
+      tensor_shape_map[op.output(i)] = std::vector<index_t>(
+          op.output_shape(i).dims().begin(),
+          op.output_shape(i).dims().end());
     }
   }
   for (auto &tensor : net_def->tensors()) {
     tensor_shape_map[tensor.name()] =
-        std::move(std::vector<index_t>(tensor.dims().begin(),
-                                       tensor.dims().end()));
+      std::vector<index_t>(tensor.dims().begin(), tensor.dims().end());
   }
 
   bool has_data_format = false;
@@ -468,7 +468,7 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
     VLOG(3) << "Operator " << op->debug_def().name()
             << " has shape: " << MakeString(op->Output(0)->shape());
 
-    if (EnvEnabled("MACE_LOG_TENSOR_RANGE")) {
+    if (EnvConfEnabled("MACE_LOG_TENSOR_RANGE")) {
       for (int i = 0; i < op->OutputSize(); ++i) {
         if (op->debug_def().quantize_info_size() == 0) {
           int data_type = op->GetOptionalArg("T", static_cast<int>(DT_FLOAT));

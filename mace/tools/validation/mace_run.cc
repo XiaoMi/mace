@@ -24,8 +24,7 @@
  *          --model_data_file=model_data.data \
  *          --device=GPU
  */
-#include <malloc.h>
-#include <stdint.h>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -34,9 +33,9 @@
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
-#include "mace/utils/env_time.h"
+#include "mace/port/env.h"
 #include "mace/utils/logging.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/string_util.h"
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -45,29 +44,6 @@
 namespace mace {
 namespace tools {
 namespace validation {
-
-namespace str_util {
-
-std::vector<std::string> Split(const std::string &str, char delims) {
-  std::vector<std::string> result;
-  if (str.empty()) {
-    result.push_back("");
-    return result;
-  }
-  std::string tmp = str;
-  while (!tmp.empty()) {
-    size_t next_offset = tmp.find(delims);
-    result.push_back(tmp.substr(0, next_offset));
-    if (next_offset == std::string::npos) {
-      break;
-    } else {
-      tmp = tmp.substr(next_offset + 1);
-    }
-  }
-  return result;
-}
-
-}  // namespace str_util
 
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
@@ -500,13 +476,10 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;
   LOG(INFO) << "cpu_affinity_policy: " << FLAGS_cpu_affinity_policy;
 
-  std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
-  std::vector<std::string> output_names =
-      str_util::Split(FLAGS_output_node, ',');
-  std::vector<std::string> input_shapes =
-      str_util::Split(FLAGS_input_shape, ':');
-  std::vector<std::string> output_shapes =
-      str_util::Split(FLAGS_output_shape, ':');
+  std::vector<std::string> input_names = Split(FLAGS_input_node, ',');
+  std::vector<std::string> output_names = Split(FLAGS_output_node, ',');
+  std::vector<std::string> input_shapes = Split(FLAGS_input_shape, ':');
+  std::vector<std::string> output_shapes = Split(FLAGS_output_shape, ':');
 
   const size_t input_count = input_shapes.size();
   const size_t output_count = output_shapes.size();

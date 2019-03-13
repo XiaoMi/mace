@@ -16,7 +16,7 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/ops/arm/conv_2d_neon.h"
 
 namespace mace {

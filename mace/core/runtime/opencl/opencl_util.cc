@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "mace/utils/logging.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 

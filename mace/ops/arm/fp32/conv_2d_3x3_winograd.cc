@@ -16,6 +16,8 @@
 
 #include "mace/ops/arm/fp32/conv_2d_3x3_winograd.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/utils/memory.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {

@@ -21,8 +21,9 @@
 #include <unordered_set>
 
 #include "mace/core/arg_helper.h"
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/utils/logging.h"
+#include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_util.h"

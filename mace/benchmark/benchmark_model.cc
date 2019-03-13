@@ -23,7 +23,7 @@
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #include "mace/benchmark/statistics.h"
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"

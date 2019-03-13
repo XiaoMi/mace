@@ -35,7 +35,7 @@
 #include "mace/ops/ops_registry.h"
 #include "mace/public/mace.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #include "mace/utils/quantize.h"
 #include "mace/ops/testing/test_utils.h"
 

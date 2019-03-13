@@ -22,7 +22,7 @@
 #include "public/gemmlowp.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 

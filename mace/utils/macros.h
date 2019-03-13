@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_CORE_MACROS_H_
-#define MACE_CORE_MACROS_H_
+#ifndef MACE_UTILS_MACROS_H_
+#define MACE_UTILS_MACROS_H_
+
+namespace mace {
+
+// Disable the copy and assignment operator for a class.
+#ifndef MACE_DISABLE_COPY_AND_ASSIGN
+#define MACE_DISABLE_COPY_AND_ASSIGN(CLASSNAME)     \
+  CLASSNAME(const CLASSNAME &) = delete;            \
+  CLASSNAME &operator=(const CLASSNAME &) = delete;
+#endif
+
+#ifndef MACE_EMPTY_VIRTUAL_DESTRUCTOR
+#define MACE_EMPTY_VIRTUAL_DESTRUCTOR(CLASSNAME) \
+ public:                                         \
+  virtual ~CLASSNAME() {}
+#endif
+
+#define MACE_UNUSED(var) (void)(var)
+
+#define MACE_COMPUTE_KERNEL_SOURCE(...) #__VA_ARGS__
 
 // GCC can be told that a certain branch is not likely to be taken (for
 // instance, a CHECK failure), and use that information in static analysis.
@@ -27,6 +46,6 @@
 #define MACE_PREDICT_TRUE(x) (x)
 #endif
 
-#define MACE_UNUSED(var) (void)(var)
+}  // namespace mace
 
-#endif  // MACE_CORE_MACROS_H_
+#endif  // MACE_UTILS_MACROS_H_

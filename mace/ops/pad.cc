@@ -21,6 +21,7 @@
 #include "mace/ops/opencl/image/pad.h"
 #endif  // MACE_ENABLE_OPENCL
 #include "mace/utils/memory.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {

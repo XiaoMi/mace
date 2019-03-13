@@ -21,13 +21,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/core/types.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {

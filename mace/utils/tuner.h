@@ -14,12 +14,14 @@
 
 #ifndef MACE_UTILS_TUNER_H_
 #define MACE_UTILS_TUNER_H_
+
+// TODO(heliangliang) Fix portability
 #include <fcntl.h>
-#include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <functional>
@@ -30,8 +32,8 @@
 #include <vector>
 
 #include "mace/utils/logging.h"
+#include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
-#include "mace/utils/utils.h"
 
 namespace mace {
 
@@ -293,4 +295,5 @@ class Tuner {
 };
 
 }  // namespace mace
+
 #endif  // MACE_UTILS_TUNER_H_

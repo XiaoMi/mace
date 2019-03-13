@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
+
 #include "mace/public/mace.h"
 
 namespace mace {
@@ -26,10 +28,16 @@ class MaceStatus::Impl {
   void SetCode(const Code code) { code_ = code; }
   Code code() const { return code_; }
   void SetInformation(const std::string &info) { information_ = info; }
-  std::string information() const { return Code2Str() + ": " + information_; }
+  std::string information() const {
+    if (information_.empty()) {
+      return CodeToString();
+    } else {
+      return CodeToString() + ": " + information_;
+    }
+  }
 
  private:
-  std::string Code2Str() const {
+  std::string CodeToString() const {
     switch (code_) {
       case MaceStatus::MACE_SUCCESS:
         return "Success";
@@ -37,8 +45,14 @@ class MaceStatus::Impl {
         return "Invalid Arguments";
       case MaceStatus::MACE_OUT_OF_RESOURCES:
         return "Out of resources";
+      case MACE_UNSUPPORTED:
+        return "Unsupported";
+      case MACE_RUNTIME_ERROR:
+        return "Runtime error";
       default:
-        return "";
+        std::ostringstream os;
+        os << code_;
+        return os.str();
     }
   }
 

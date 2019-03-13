@@ -7,6 +7,22 @@ config_setting(
 )
 
 config_setting(
+    name = "linux",
+    define_values = {
+        "linux": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "darwin",
+    define_values = {
+        "darwin": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "android_armv7",
     values = {
         "crosstool_top": "//external:android/crosstool",

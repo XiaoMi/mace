@@ -1,15 +1,21 @@
 # -*- Python -*-
 
-def if_android(a):
+def if_android(a, default_value = []):
   return select({
       "//mace:android": a,
-      "//conditions:default": [],
+      "//conditions:default": default_value,
   })
 
-def if_not_android(a):
+def if_linux(a, default_value = []):
   return select({
-      "//mace:android": [],
-      "//conditions:default": a,
+      "//mace:linux": a,
+      "//conditions:default": default_value,
+  })
+
+def if_darwin(a, default_value = []):
+  return select({
+      "//mace:darwin": a,
+      "//conditions:default": default_value,
   })
 
 def if_android_armv7(a):
@@ -36,16 +42,10 @@ def if_arm_linux_armhf(a):
       "//conditions:default": []
   })
 
-def if_neon_enabled(a):
+def if_neon_enabled(a, default_value = []):
   return select({
       "//mace:neon_enabled": a,
-      "//conditions:default": [],
-  })
-
-def if_neon_enabled_str(a):
-  return select({
-      "//mace:neon_enabled": a,
-      "//conditions:default": "",
+      "//conditions:default": default_value,
   })
 
 def if_hexagon_enabled(a):
@@ -66,16 +66,10 @@ def if_openmp_enabled(a):
       "//conditions:default": [],
   })
 
-def if_opencl_enabled(a):
+def if_opencl_enabled(a, default_value = []):
   return select({
       "//mace:opencl_enabled": a,
-      "//conditions:default": [],
-  })
-
-def if_opencl_enabled_str(a):
-  return select({
-      "//mace:opencl_enabled": a,
-      "//conditions:default": "",
+      "//conditions:default": default_value,
   })
 
 def if_quantize_enabled(a):

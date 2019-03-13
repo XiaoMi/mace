@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_UTILS_ENV_TIME_H_
-#define MACE_UTILS_ENV_TIME_H_
+#include "mace/port/env.h"
 
-#include <stdint.h>
-#ifdef __hexagon__
-#include <HAP_perf.h>
-#else
-#include <sys/time.h>
-#endif
+#include <gtest/gtest.h>
 
 namespace mace {
+namespace {
 
-inline int64_t NowMicros() {
-#ifdef __hexagon__
-  return HAP_perf_get_time_us();
-#else
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
-#endif
+class EnvTest : public ::testing::Test {
+};
+
+TEST_F(EnvTest, NowMicros) {
+  EXPECT_GT(NowMicros(), 0);
 }
 
-}  // namespace mace
+TEST_F(EnvTest, GetFileSystem) {
+  GetFileSystem();
+}
 
-#endif  // MACE_UTILS_ENV_TIME_H_
+TEST_F(EnvTest, CpuInfo) {
+  std::vector<float> freq;
+  GetCpuMaxFreq(&freq);
+  std::vector<size_t> cpu_ids;
+  SchedSetAffinity(cpu_ids);
+}
+
+}  // namespace
+}  // namespace mace

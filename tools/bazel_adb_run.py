@@ -86,7 +86,7 @@ def parse_args():
         type=str,
         default="all",
         help="SoCs (ro.board.platform from getprop) to build, "
-             "comma seperated list or all/random")
+        "comma seperated list or all/random")
     parser.add_argument(
         "--target", type=str, default="//...", help="Bazel target to build")
     parser.add_argument(
@@ -118,8 +118,8 @@ def parse_args():
         '--device_yml',
         type=str,
         default='',
-        help='embedded linux device config yml file'
-    )
+        help='embedded linux device config yml file')
+    parser.add_argument('--vlog_level', type=int, default=0, help='vlog level')
     return parser.parse_known_args()
 
 
@@ -130,10 +130,12 @@ def main(unused_args):
 
     for target_abi in target_abis:
         toolchain = infer_toolchain(target_abi)
-        sh_commands.bazel_build(target, abi=target_abi,
-                                toolchain=toolchain,
-                                enable_neon=FLAGS.enable_neon,
-                                address_sanitizer=FLAGS.address_sanitizer)
+        sh_commands.bazel_build(
+            target,
+            abi=target_abi,
+            toolchain=toolchain,
+            enable_neon=FLAGS.enable_neon,
+            address_sanitizer=FLAGS.address_sanitizer)
         if FLAGS.run_target:
             target_devices = DeviceManager.list_devices(FLAGS.device_yml)
             if FLAGS.target_socs != TargetSOCTag.all and\
@@ -158,12 +160,11 @@ def main(unused_args):
                     bin_name,
                     args=FLAGS.args,
                     opencl_profiling=True,
-                    vlog_level=0,
+                    vlog_level=FLAGS.vlog_level,
                     out_of_range_check=True,
                     address_sanitizer=FLAGS.address_sanitizer,
                     simpleperf=FLAGS.simpleperf)
-                globals()[FLAGS.stdout_processor](stdouts, dev,
-                                                  target_abi)
+                globals()[FLAGS.stdout_processor](stdouts, dev, target_abi)
 
 
 if __name__ == "__main__":

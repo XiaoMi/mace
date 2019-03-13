@@ -17,7 +17,7 @@
 #endif
 
 #include "mace/ops/arm/conv_2d_neon.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {
