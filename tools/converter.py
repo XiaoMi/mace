@@ -14,12 +14,9 @@
 
 import argparse
 import glob
-import hashlib
-import os
-import re
 import sh
 import sys
-import urllib
+import time
 import yaml
 
 from enum import Enum
@@ -1006,8 +1003,11 @@ def run_mace(flags):
                                    flags.address_sanitizer,
                                    flags.mace_lib_type)
                 # run
+                start_time = time.time()
                 with device.lock():
                     device.run_specify_abi(flags, configs, target_abi)
+                elapse_minutes = (time.time() - start_time) / 60
+                print("Elapse time: %f minutes." % elapse_minutes)
             elif dev[YAMLKeyword.device_name] != SystemType.host:
                 six.print_('The device with soc %s do not support abi %s' %
                            (dev[YAMLKeyword.target_socs], target_abi),
@@ -1090,8 +1090,11 @@ def benchmark_model(flags):
                                       not flags.disable_openmp,
                                       flags.mace_lib_type)
                 device = DeviceWrapper(dev)
+                start_time = time.time()
                 with device.lock():
                     device.bm_specific_target(flags, configs, target_abi)
+                elapse_minutes = (time.time() - start_time) / 60
+                print("Elapse time: %f minutes." % elapse_minutes)
             else:
                 six.print_('There is no abi %s with soc %s' %
                            (target_abi, dev[YAMLKeyword.target_socs]),

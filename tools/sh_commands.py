@@ -69,7 +69,7 @@ def device_lock_path(serialno):
     return "/tmp/device-lock-%s" % serialno
 
 
-def device_lock(serialno, timeout=3600):
+def device_lock(serialno, timeout=7200):
     import filelock
     return filelock.FileLock(device_lock_path(serialno), timeout=timeout)
 
