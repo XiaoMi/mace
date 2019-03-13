@@ -92,8 +92,9 @@ class MemoryOptimizer {
   static bool IsMemoryReuseOp(const std::string &op_type);
   void UpdateTensorRef(const std::string &tensor_name);
   void UpdateTensorRef(const OperatorDef *op_def);
-  void Optimize(const OperatorDef *op_def,
-                const std::unordered_map<std::string, MemoryType> &mem_types);
+  void Optimize(
+      const OperatorDef *op_def,
+      const std::unordered_map<std::string, MemoryType> *mem_types = nullptr);
 
   const std::vector<MemoryBlock> &mem_blocks() const;
 
@@ -102,9 +103,11 @@ class MemoryOptimizer {
   std::string DebugInfo() const;
 
  private:
-  MemoryBlock CreateMemoryBlock(std::vector<int64_t> shape,
-                                DataType dt,
-                                MemoryType mem_type);
+  MemoryBlock CreateMemoryBlock(
+      const OperatorDef *op_def,
+      int output_idx,
+      DataType dt,
+      MemoryType mem_type);
 
  private:
   std::unordered_map<std::string, int> tensor_ref_count_;

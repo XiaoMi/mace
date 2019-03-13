@@ -20,7 +20,6 @@ import six
 
 from mace.python.tools.converter_tool.transformer import Transformer
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
@@ -129,7 +128,7 @@ class ShapeInference(object):
 
         output_shape[0] = input_shape[0]
         if ConverterUtil.data_format(op) == DataFormat.NCHW \
-                and ConverterUtil.filter_format(self._net) == FilterFormat.OIHW:  # noqa
+                and ConverterUtil.filter_format(self._net) == DataFormat.OIHW:  # noqa
             # filter format: OIHW
             if op.type == MaceOp.DepthwiseConv2d.name:
                 output_shape[1] = filter_shape[0] * filter_shape[1]
@@ -170,7 +169,7 @@ class ShapeInference(object):
                                           MaceKeyword.mace_group_str)
         output_shape[0] = input_shape[0]
         if ConverterUtil.data_format(op) == DataFormat.NCHW \
-                and ConverterUtil.filter_format(self._net) == FilterFormat.OIHW:  # noqa
+                and ConverterUtil.filter_format(self._net) == DataFormat.OIHW:  # noqa
             # filter format: IOHW
             output_shape[1] = filter_shape[1]
             if group_arg is not None and group_arg.i > 1:

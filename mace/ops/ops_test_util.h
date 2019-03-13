@@ -259,9 +259,9 @@ class OpsTestNet {
 
   template <DeviceType D, typename T>
   void TransformFilterDataFormat(const std::string &src_name,
-                                 const FilterDataFormat src_format,
+                                 const DataFormat src_format,
                                  const std::string &dst_name,
-                                 const FilterDataFormat dst_format) {
+                                 const DataFormat dst_format) {
     Tensor *input = ws_.GetTensor(src_name);
     Tensor *output = ws_.CreateTensor(
         dst_name,

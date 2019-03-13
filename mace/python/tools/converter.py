@@ -43,6 +43,7 @@ data_format_map = {
     'NONE': cvt.DataFormat.DF_NONE,
     'NHWC': cvt.DataFormat.NHWC,
     'NCHW': cvt.DataFormat.NCHW,
+    'OIHW': cvt.DataFormat.OIHW,
 }
 
 

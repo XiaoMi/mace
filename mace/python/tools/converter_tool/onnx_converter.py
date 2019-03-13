@@ -27,7 +27,6 @@ from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import RoundMode
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
@@ -370,7 +369,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
         self._data_format = DataFormat.NCHW
-        ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.OIHW)
+        ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         onnx_model = onnx.load(src_model_file)
 
         ir_version = onnx_model.ir_version
