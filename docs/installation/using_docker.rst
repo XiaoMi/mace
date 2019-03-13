@@ -15,18 +15,18 @@ In most cases, the ``lite edition`` image can satisfy developer's basic needs.
 
 .. code:: sh
 
-    # Pull lite edition docker image
+    # You can pull lite edition docker image from docker repo (recommended)
     docker pull registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite
-    # Build lite edition docker image
+    # Or build lite edition docker image by yourself
     docker build -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite ./docker/mace-dev-lite
 
 - ``full edition`` docker image (which contains multiple NDK versions and other dev tools).
 
 .. code:: sh
 
-    # Pull full edition docker image
+    # You can pull full edition docker image from docker repo (recommended)
     docker pull registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev
-    # Build full edition docker image
+    # Or build full edition docker image by yourself
     docker build -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev ./docker/mace-dev
 
 .. note::

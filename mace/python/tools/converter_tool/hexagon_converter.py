@@ -29,6 +29,8 @@ from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.convert_util import mace_check
 from mace.python.tools import graph_util
 
+from six.moves import reduce
+
 
 HexagonSupportedOps = [
     'BatchToSpaceND_8',
@@ -126,9 +128,9 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         self.add_input_output_node()
         if not self._option.check_nodes:
-            output_name = self._option.output_nodes.values()[0].name
+            output_name = list(self._option.output_nodes.values())[0].name
         else:
-            output_name = self._option.check_nodes.values()[0].name
+            output_name = list(self._option.check_nodes.values())[0].name
         output_name = normalize_name(output_name)
         self._model = graph_util.sort_mace_graph(self._model, output_name)
 
@@ -388,9 +390,9 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         output_node = None
         if not self._option.check_nodes:
-            output_name = self._option.output_nodes.values()[0].name
+            output_name = list(self._option.output_nodes.values())[0].name
         else:
-            output_name = self._option.check_nodes.values()[0].name
+            output_name = list(self._option.check_nodes.values())[0].name
         output_name = normalize_name(output_name)
         for op in self._model.op:
             if op.name == output_name:

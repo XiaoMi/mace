@@ -100,7 +100,7 @@ def cal_multiplier_and_shift(scale):
 
 
 def quantize_with_scale_and_zero(data, scale, zero):
-    output = np.round(zero + data / scale).astype(int)
+    output = np.round(zero + data / scale).astype(np.int32)
     quantized_data = QuantizedData()
     quantized_data.data = output
     quantized_data.scale = scale
@@ -114,7 +114,7 @@ def quantize(data, non_zero):
     in_max = np_data.max()
     scale, zero, out_min, out_max = adjust_range(in_min, in_max,
                                                  non_zero=non_zero)
-    output = np.clip((np.round(zero + data / scale).astype(int)), 0, 255)
+    output = np.clip((np.round(zero + data / scale).astype(np.int32)), 0, 255)
 
     quantized_data = QuantizedData()
     quantized_data.data = output
@@ -132,7 +132,7 @@ def quantize_bias_for_hexagon(data):
     in_max = max_val
     scale = (in_max - in_min) / 2**32
     zero = 0
-    output = np.clip((np.round(zero + data / scale).astype(long)),
+    output = np.clip((np.round(zero + data / scale).astype(np.int64)),
                      -2**31, 2**31 - 1)
 
     quantized_data = QuantizedData()
