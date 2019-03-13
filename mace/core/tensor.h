@@ -304,10 +304,14 @@ class Tensor {
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(),
                  name_, ": Cannot resize image, use ResizeImage.");
-      if (raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE > buffer_->size()) {
+      const index_t apply_size = raw_size()
+          + ((buffer_ != &buffer_slice_) ? MACE_EXTRA_BUFFER_PAD_SIZE : 0);
+      if (apply_size > buffer_->size()) {
         LOG(WARNING) << name_ << ": Resize buffer from size " << buffer_->size()
-                     << " to " << raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE;
-        return buffer_->Resize(raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE);
+                     << " to " << apply_size;
+        MACE_CHECK(buffer_ != &buffer_slice_,
+                   ": Cannot resize tensor with buffer slice");
+        return buffer_->Resize(apply_size);
       }
       return MaceStatus::MACE_SUCCESS;
     } else {

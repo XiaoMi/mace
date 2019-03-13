@@ -124,12 +124,11 @@ TEST_F(MaceAPITest, MultipleInputOutput) {
 }
 
 TEST_F(MaceAPITest, VariableInputShape) {
-  // TODO(liyin): there is a bug of cpu convolution
-//  MaceRun<CPU, float>(1,
-//                      {1, 32, 64, 16},
-//                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
-//                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
-//                      {16, 16, 3, 3});
+  MaceRun<CPU, float>(1,
+                      {1, 32, 64, 16},
+                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
+                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
+                      {16, 16, 3, 3});
   MaceRun<GPU, float>(1,
                       {1, 32, 64, 16},
                       {{1, 16, 32, 16}, {1, 32, 64, 16}},
