@@ -103,8 +103,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_caffe_reshape_and_flatten,
             TransformerRule.TRANSFORM_CHANNEL_SHUFFLE:
                 self.transform_channel_shuffle,
-            TransformerRule.QUANTIZE_MATMUL_ONLY:
-                self.quantize_matmul_only,
+            TransformerRule.QUANTIZE_SPECIFIC_OPS_ONLY:
+                self.quantize_specific_ops_only,
         }
 
         self._option = option
@@ -1118,7 +1118,7 @@ class Transformer(base_converter.ConverterInterface):
                 rhs = op.input[1]
                 if rhs in self._consts and len(self._consts[rhs].dims) == 2:
                     arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
-                    six.print_('transpose matmul weight')
+                    six.print_("Transpose matmul weight %s" % rhs)
                     if arg is None:
                         arg = op.arg.add()
                         arg.name = MaceKeyword.mace_transpose_b_str
@@ -1923,34 +1923,45 @@ class Transformer(base_converter.ConverterInterface):
 
                     return True
 
-    def quantize_matmul_only(self):
+    def quantize_specific_ops_only(self):
         """
         This transform rule is only used internally, we are not gonna make
         things too complex for users
         """
-        to_quantize_ops = [MaceOp.MatMul.name]
+        to_quantize_ops_output_type = {
+            MaceOp.MatMul.name: mace_pb2.DT_INT32,
+            MaceOp.Gather.name: mace_pb2.DT_UINT8,
+        }
+
         for op in self._model.op:
-            if (op.type not in to_quantize_ops or len(op.output) > 1
+            if (op.type not in to_quantize_ops_output_type
+                    or len(op.output) > 1
                     or ConverterUtil.get_arg(op,
                                              MaceKeyword.mace_op_data_type_str).i != mace_pb2.DT_FLOAT):  # noqa
                 # only support single output
                 continue
 
             quantized_inputs_names = []
-            should_quantize = True
+            should_quantize = False
             for idx, input_tensor in enumerate(op.input):
                 if self.get_tensor_data_type(input_tensor) \
-                        != mace_pb2.DT_FLOAT:
-                    should_quantize = False
+                        == mace_pb2.DT_FLOAT:
+                    should_quantize = True
                     break
 
             if not should_quantize:
                 continue
+            else:
+                print("Quantize op %s (%s)" % (op.name, op.type))
 
             non_zero = self._option.device == DeviceType.CPU.value
 
             for idx, input_tensor in enumerate(op.input):
                 quantized_inputs_names.append(input_tensor)
+
+                if self.get_tensor_data_type(input_tensor) \
+                        != mace_pb2.DT_FLOAT:
+                    continue
 
                 if input_tensor in self._consts:
                     const_tensor = self._consts[input_tensor]
@@ -2001,7 +2012,7 @@ class Transformer(base_converter.ConverterInterface):
 
             orginal_output_name = op.output[0]
             op.output[0] = orginal_output_name + "_quant"
-            op.output_type.extend([mace_pb2.DT_INT32])
+            op.output_type.extend([to_quantize_ops_output_type[op.type]])
             data_type_arg = ConverterUtil.get_arg(op,
                                                   MaceKeyword.mace_op_data_type_str)  # noqa
             if data_type_arg is None:
@@ -2018,7 +2029,7 @@ class Transformer(base_converter.ConverterInterface):
             dequantize_op.output_type.extend([mace_pb2.DT_FLOAT])
             data_type_arg = dequantize_op.arg.add()
             data_type_arg.name = MaceKeyword.mace_op_data_type_str
-            data_type_arg.i = mace_pb2.DT_INT32
+            data_type_arg.i = to_quantize_ops_output_type[op.type]
 
             quantize_flag_arg = ConverterUtil.get_arg(self._model,
                                                       MaceKeyword.mace_quantize_flag_arg_str)  # noqa

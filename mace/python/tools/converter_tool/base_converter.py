@@ -281,7 +281,7 @@ class TransformerRule(Enum):
     FOLD_FC_RESHAPE = 37
     TRANSFORM_CHANNEL_SHUFFLE = 38
     UPDATE_DATA_FORMAT = 39
-    QUANTIZE_MATMUL_ONLY = 40
+    QUANTIZE_SPECIFIC_OPS_ONLY = 40
 
 
 class ConverterInterface(object):
