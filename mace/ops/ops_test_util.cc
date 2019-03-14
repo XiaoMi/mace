@@ -129,7 +129,8 @@ OpTestContext::OpTestContext(int num_threads,
   device_map_[DeviceType::GPU] = make_unique<GPUDevice>(
       gpu_context_->opencl_tuner(),
       gpu_context_->opencl_cache_storage(),
-      GPUPriorityHint::PRIORITY_NORMAL);
+      GPUPriorityHint::PRIORITY_NORMAL,
+      GPUPerfHint::PERF_HIGH);
 }
 
 std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {

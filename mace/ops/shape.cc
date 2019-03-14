@@ -37,8 +37,8 @@ class ShapeOp : public Operation {
 
     auto has_df = Operation::GetOptionalArg<int>(
         "has_data_format", 0);
-    if (D == DeviceType::CPU &&
-        has_df && input->dim_size() == 4) {
+    if (has_df && input->data_format() == DataFormat::NCHW &&
+        input->dim_size() != 4) {
       // transpose NCHW to NHWC for cpu runtime
       output_data[0] = static_cast<int32_t>(input->dim(0));
       output_data[1] = static_cast<int32_t>(input->dim(2));
