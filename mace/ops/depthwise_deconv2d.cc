@@ -37,7 +37,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class DepthwiseDeconv2dOp;
 
 template<>
@@ -92,10 +92,11 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
     const index_t pad_top = out_paddings[1] / 2;
 
     index_t padded_out_size =
-        std::accumulate(padded_out_shape.begin(),
-                        padded_out_shape.end(),
-                        1,
-                        std::multiplies<index_t>()) * sizeof(float);
+        PadAlignSize(std::accumulate(padded_out_shape.begin(),
+                                     padded_out_shape.end(),
+                                     1,
+                                     std::multiplies<index_t>())
+                         * sizeof(float) + MACE_EXTRA_BUFFER_PAD_SIZE);
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     scratch->GrowSize(padded_out_size);
@@ -253,7 +254,6 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
                 padded_out_shape.data(),
                 out_data);
 
-
     if (!no_pad) {
       CropPadOut<float>(out_data,
                         padded_out_shape.data(),
@@ -384,7 +384,7 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
               const index_t out_offset =
                   i * strides[0] * out_width + j * strides[1];
               for (int q = 0; q < in_channels_g; ++q) {
-                const  index_t in_base =
+                const index_t in_base =
                     ((b * group + g) * in_channels_g + q) * in_img_size;
                 const index_t in_offset =
                     in_base + i * in_width + j;

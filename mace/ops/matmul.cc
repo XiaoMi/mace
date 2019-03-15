@@ -21,7 +21,6 @@
 
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/sgemm.h"
 #include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_NEON

@@ -434,16 +434,11 @@ class BufferSlice : public BufferBase {
   }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
-    MACE_UNUSED(offset);
-    MACE_UNUSED(length);
-    MACE_UNUSED(pitch);
-    MACE_NOT_IMPLEMENTED;
-    return nullptr;
+    return buffer_->Map(offset_ + offset, length, pitch);
   }
 
   void UnMap(void *mapped_ptr) const {
-    MACE_UNUSED(mapped_ptr);
-    MACE_NOT_IMPLEMENTED;
+    buffer_->UnMap(mapped_ptr);
   }
 
   void Map(std::vector<size_t> *pitch) {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+#if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
 #endif
 #include <algorithm>
@@ -28,7 +28,6 @@
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
 #include "mace/ops/arm/conv_2d_neon.h"
-#include "mace/ops/arm/conv_winograd.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/utils/memory.h"
@@ -37,6 +36,7 @@
 #ifdef MACE_ENABLE_NEON
 #include "mace/ops/arm/fp32/conv_2d.h"
 #include "mace/ops/arm/fp32/conv_2d_1x1.h"
+#include "mace/ops/arm/fp32/conv_2d_3x3_winograd.h"
 #else
 #include "mace/ops/ref/conv_2d.h"
 #endif  // MACE_ENABLE_NEON
@@ -55,21 +55,20 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class Conv2dOp;
 
-template <>
+template<>
 class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
-                                                  "NOOP"))),
+                                                   "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
         leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-              "leakyrelu_coefficient", 0.0f)),
-        is_filter_transformed_(false),
+            "leakyrelu_coefficient", 0.0f)),
         conv2d_delegator_(nullptr) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -127,10 +126,24 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     index_t filter_h = filter->dim(2);
     index_t filter_w = filter->dim(3);
 
+    int pad_top = paddings[0] >> 1;
+    int pad_bottom = paddings[0] - pad_top;
+    int pad_left = paddings[1] >> 1;
+    int pad_right = paddings[1] - pad_left;
+
     if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
         && dilation_h == 1 && dilation_w == 1) {
       if (conv2d_delegator_.get() == nullptr) {
         conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x1>();
+      }
+      conv2d_delegator_->Compute(context, input, filter, output);
+    } else if (filter_h == 3 && filter_w == 3
+        && stride_h == 1 && stride_w == 1 && dilation_h == 1
+        && dilation_w == 1
+        && input_channels >= 8 && channels >= 8) {
+      if (conv2d_delegator_.get() == nullptr) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3Winograd>(
+            pad_top, pad_bottom, pad_left, pad_right);
       }
       conv2d_delegator_->Compute(context, input, filter, output);
     } else {
@@ -157,11 +170,6 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
 
       std::function<void(const float *input, float *output)> conv_func;
 
-      bool
-          use_winograd = filter_h == 3 && filter_w == 3
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1
-          && input_channels >= 8 && channels >= 8;
       bool use_neon_3x3_s1 = filter_h == 3 && filter_w == 3
           && stride_h == 1 && stride_w == 1 && dilation_h == 1
           && dilation_w == 1;
@@ -193,122 +201,58 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
           && stride_h == 1 && stride_w == 1 && dilation_h == 1
           && dilation_w == 1;
 
-      std::vector<index_t> transformed_input_shape;
-      std::vector<index_t> transformed_output_shape;
-      std::vector<index_t> transformed_filter_shape;
-
-      // When size of input feature map is bigger than 16x16,
-      // set winograd out tile size to 6 to get higher performance.
-      index_t winograd_out_tile_size = 2;
-      if (input_height > 16 && input_width > 16) {
-        winograd_out_tile_size = 6;
-      }
-
-      if (use_winograd) {
-        extra_output_height = RoundUp<index_t>(height, winograd_out_tile_size);
-        extra_input_height =
-            std::max(padded_input_height, extra_output_height + 2);
-        extra_output_width = RoundUp<index_t>(width, winograd_out_tile_size);
-        extra_input_width =
-            std::max(padded_input_width, extra_output_width + 2);
-        if (extra_input_height != padded_input_height) {
-          pad_bottom += (extra_input_height - padded_input_height);
-        }
-        if (extra_input_width != padded_input_width) {
-          pad_right += (extra_input_width - padded_input_width);
-        }
-
-        index_t
-            tile_height_count = extra_output_height / winograd_out_tile_size;
-        index_t tile_width_count = extra_output_width / winograd_out_tile_size;
-        index_t tile_count = tile_height_count * tile_width_count;
-        index_t in_tile_area =
-            (winograd_out_tile_size + 2) * (winograd_out_tile_size + 2);
-
-        transformed_input_shape.insert(transformed_input_shape.end(),
-                                       {in_tile_area, batch, input_channels,
-                                        tile_count});
-        transformed_output_shape.insert(transformed_output_shape.end(),
-                                        {in_tile_area, batch, channels,
-                                         tile_count});
-        transformed_filter_shape.insert(transformed_filter_shape.end(),
-                                        {in_tile_area, channels,
-                                         input_channels});
+      index_t tile_h, tile_w;
+      if (use_neon_3x3_s1) {
+        tile_h = 2;
+        tile_w = 4;
+      } else if (use_neon_7x1_s1 || use_neon_15x1_s1) {
+        tile_h = 4;
+        tile_w = 1;
       } else {
-        index_t tile_h, tile_w;
-        if (use_neon_3x3_s1) {
-          tile_h = 2;
-          tile_w = 4;
-        } else if (use_neon_7x1_s1 || use_neon_15x1_s1) {
-          tile_h = 4;
-          tile_w = 1;
-        } else {
-          tile_h = 1;
-          tile_w = 4;
-        }
-        extra_output_height = RoundUp<index_t>(height, tile_h);
-        extra_input_height =
-            std::max(padded_input_height, (extra_output_height - 1) * stride_h
-                + (filter_h - 1) * dilation_h + 1);
-        extra_output_width = RoundUp<index_t>(width, tile_w);
-        extra_input_width =
-            std::max(padded_input_width, (extra_output_width - 1) * stride_w
-                + (filter_w - 1) * dilation_w + 1);
-        if (extra_input_height != padded_input_height) {
-          pad_bottom += (extra_input_height - padded_input_height);
-        }
-        if (extra_input_width != padded_input_width) {
-          pad_right += (extra_input_width - padded_input_width);
-        }
+        tile_h = 1;
+        tile_w = 4;
+      }
+      extra_output_height = RoundUp<index_t>(height, tile_h);
+      extra_input_height =
+          std::max(padded_input_height, (extra_output_height - 1) * stride_h
+              + (filter_h - 1) * dilation_h + 1);
+      extra_output_width = RoundUp<index_t>(width, tile_w);
+      extra_input_width =
+          std::max(padded_input_width, (extra_output_width - 1) * stride_w
+              + (filter_w - 1) * dilation_w + 1);
+      if (extra_input_height != padded_input_height) {
+        pad_bottom += (extra_input_height - padded_input_height);
+      }
+      if (extra_input_width != padded_input_width) {
+        pad_right += (extra_input_width - padded_input_width);
       }
 
       // decide scratch size before allocate it
       index_t total_scratch_size = 0;
-      index_t transformed_input_size = 0;
-      index_t transformed_output_size = 0;
       index_t padded_input_size = 0;
       index_t padded_output_size = 0;
-      if (use_winograd) {
-        transformed_input_size =
-            std::accumulate(transformed_input_shape.begin(),
-                            transformed_input_shape.end(),
-                            1,
-                            std::multiplies<index_t>()) * sizeof(float);
-        transformed_output_size =
-            std::accumulate(transformed_output_shape.begin(),
-                            transformed_output_shape.end(),
-                            1,
-                            std::multiplies<index_t>()) * sizeof(float);
-        total_scratch_size += transformed_input_size + transformed_output_size;
-      }
+
       if (extra_input_height != input_height
           || extra_input_width != input_width) {
         padded_input_size =
-            batch * input_channels * (input_height + pad_top + pad_bottom)
-                * (input_width + pad_left + pad_right) * sizeof(float) +
-                MACE_EXTRA_BUFFER_PAD_SIZE;
+            PadAlignSize(
+                batch * input_channels * (input_height + pad_top + pad_bottom)
+                    * (input_width + pad_left + pad_right) * sizeof(float) +
+                    MACE_EXTRA_BUFFER_PAD_SIZE);
         total_scratch_size += padded_input_size;
       }
       if (extra_output_height != height || extra_output_width != width) {
         padded_output_size =
-            batch * channels * extra_output_height * extra_output_width
-                * sizeof(float);
+            PadAlignSize(
+                batch * channels * extra_output_height * extra_output_width
+                    * sizeof(float) + MACE_EXTRA_BUFFER_PAD_SIZE);
         total_scratch_size += padded_output_size;
-      }
-
-      if (use_winograd) {
-        total_scratch_size += transformed_input_size + transformed_output_size;
       }
 
       // Init scratch buffer
       ScratchBuffer *scratch = context->device()->scratch_buffer();
       scratch->Rewind();
       scratch->GrowSize(total_scratch_size);
-      Tensor
-          transformed_input(scratch->Scratch(transformed_input_size), DT_FLOAT);
-      Tensor
-          transformed_output
-          (scratch->Scratch(transformed_output_size), DT_FLOAT);
       Tensor padded_input(scratch->Scratch(padded_input_size), DT_FLOAT);
       Tensor padded_output(scratch->Scratch(padded_output_size), DT_FLOAT);
       const index_t extra_input_shape[4] =
@@ -320,56 +264,8 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
       MACE_UNUSED(extra_input_shape);
       MACE_UNUSED(extra_output_shape);
 
-      Tensor transformed_filter;
-
       // decide which convolution function to call
-      if (use_winograd) {
-        transformed_input.Reshape(transformed_input_shape);
-        transformed_output.Reshape(transformed_output_shape);
-        const float *transformed_filter_data = nullptr;
-        // filter only needs to be transformed once, set transformed_filter_data
-        // to null after the first run.
-        if (!is_filter_transformed_) {
-          transformed_filter.Resize(transformed_filter_shape);
-          switch (winograd_out_tile_size) {
-            case 2:
-              TransformFilter4x4(filter_data,
-                                 filter_shape[1],
-                                 filter_shape[0],
-                                 transformed_filter.mutable_data<float>());
-              break;
-            case 6:
-              TransformFilter8x8(filter_data,
-                                 filter_shape[1],
-                                 filter_shape[0],
-                                 transformed_filter.mutable_data<float>());
-              break;
-            default:MACE_NOT_IMPLEMENTED;
-          }
-          transformed_filter_data = transformed_filter.data<float>();
-          is_filter_transformed_ = true;
-        }
-
-        float *transformed_input_data = transformed_input.mutable_data<float>();
-        float
-            *transformed_output_data = transformed_output.mutable_data<float>();
-
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          WinogradConv3x3s1(pad_input,
-                            transformed_filter_data,
-                            batch,
-                            extra_input_height,
-                            extra_input_width,
-                            input_channels,
-                            channels,
-                            winograd_out_tile_size,
-                            transformed_input_data,
-                            transformed_output_data,
-                            pad_output,
-                            &sgemm_,
-                            scratch);
-        };
-      } else if (use_neon_3x3_s1) {
+      if (use_neon_3x3_s1) {
         conv_func = [=](const float *pad_input, float *pad_output) {
           Conv2dNeonK3x3S1(pad_input,
                            filter_data,
@@ -732,8 +628,6 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
   const ActivationType activation_;
   const float relux_max_limit_;
   const float leakyrelu_coefficient_;
-  bool is_filter_transformed_;
-  SGemm sgemm_;
 #ifdef MACE_ENABLE_NEON
   std::unique_ptr<arm::fp32::Conv2dBase> conv2d_delegator_;
 #else
@@ -744,7 +638,6 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
-
 
 #ifdef MACE_ENABLE_QUANTIZE
 template <>
@@ -1051,7 +944,6 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 #endif  // MACE_ENABLE_OPENCL
-
 
 void RegisterConv2D(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,

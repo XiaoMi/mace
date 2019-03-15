@@ -16,21 +16,9 @@
 #define MACE_OPS_ARM_CONV_2D_NEON_H_
 
 #include "mace/core/types.h"
-#include "mace/ops/sgemm.h"
 
 namespace mace {
 namespace ops {
-
-void Conv2dNeonK1x1S1(const float *input,
-                      const float *filter,
-                      const index_t batch,
-                      const index_t height,
-                      const index_t width,
-                      const index_t in_channels,
-                      const index_t out_channels,
-                      float *output,
-                      SGemm *sgemm,
-                      ScratchBuffer *scratch_buffer);
 
 void Conv2dNeonK3x3S1(const float *input,
                       const float *filter,
