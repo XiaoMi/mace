@@ -33,6 +33,7 @@ cc_binary(
         "//mace/codegen:generated_libmace",
         "//mace/codegen:generated_opencl_binary",
         "//mace/codegen:generated_opencl_parameter",
+        "//mace/utils:utils_hdrs",
     ] + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),
@@ -63,5 +64,6 @@ cc_binary(
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_opencl_binary",
         "//mace/codegen:generated_opencl_parameter",
+        "//mace/utils:utils_hdrs",
     ],
 )

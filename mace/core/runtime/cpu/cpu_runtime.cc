@@ -47,10 +47,8 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   MaceOpenMPThreadCount = omp_num_threads;
 
 #ifdef MACE_ENABLE_OPENMP
-  if (VLOG_IS_ON(1)) {
-    VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
-            << ", CPU core IDs: " << MakeString(cpu_ids);
-  }
+  VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
+          << ", CPU core IDs: " << MakeString(cpu_ids);
   omp_set_schedule(omp_sched_guided, 1);
   omp_set_num_threads(omp_num_threads);
 #else
@@ -74,9 +72,7 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   return MaceStatus::MACE_SUCCESS;
 #else
   MaceStatus status = SchedSetAffinity(cpu_ids);
-  if (VLOG_IS_ON(1)) {
-    VLOG(1) << "Set affinity without OpenMP: " << MakeString(cpu_ids);
-  }
+  VLOG(1) << "Set affinity without OpenMP: " << MakeString(cpu_ids);
   return status;
 #endif
 }
@@ -89,7 +85,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     void *gemm_context) {
   // get cpu frequency info
   std::vector<float> cpu_max_freqs;
-  MACE_RETURN_IF_ERROR(GetCpuMaxFreq(&cpu_max_freqs));
+  MACE_RETURN_IF_ERROR(GetCPUMaxFreq(&cpu_max_freqs));
   if (cpu_max_freqs.empty()) {
     return MaceStatus::MACE_RUNTIME_ERROR;
   }

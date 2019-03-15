@@ -30,9 +30,9 @@ TEST_F(EnvTest, GetFileSystem) {
   GetFileSystem();
 }
 
-TEST_F(EnvTest, CpuInfo) {
+TEST_F(EnvTest, CPUInfo) {
   std::vector<float> freq;
-  GetCpuMaxFreq(&freq);
+  GetCPUMaxFreq(&freq);
   std::vector<size_t> cpu_ids;
   SchedSetAffinity(cpu_ids);
 }

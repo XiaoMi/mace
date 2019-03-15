@@ -48,7 +48,7 @@ void AndroidLogWriter::WriteLogMessage(const char *fname,
   const char *const partial_name = strrchr(fname, '/');
   ss << (partial_name != nullptr ? partial_name + 1 : fname) << ":" << line
      << " " << message;
-  __android_log_write(android_log_level, "CRT", ss.str().c_str());
+  __android_log_write(android_log_level, "MACE", ss.str().c_str());
 
   // Also log to stderr (for standalone Android apps) and abort.
   LogWriter::WriteLogMessage(fname, line, severity, message);

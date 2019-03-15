@@ -78,16 +78,14 @@ class Tuner {
       std::vector<param_type> opt_param = default_param;
       RetType res = Tune<RetType>(param_generator, func, timer, &opt_param);
       VLOG(3) << "Tuning " << param_key
-              << " retult: " << (VLOG_IS_ON(3) ? MakeString(opt_param) : "");
+              << " retult: " << MakeString(opt_param);
       param_table_[obfucated_param_key] = opt_param;
       return res;
     } else {
       // run
       if (param_table_.find(obfucated_param_key) != param_table_.end()) {
         VLOG(3) << param_key << ": "
-                << (VLOG_IS_ON(3)
-                        ? MakeString(param_table_[obfucated_param_key])
-                        : "");
+                << MakeString(param_table_[obfucated_param_key]);
         return func(param_table_[obfucated_param_key], nullptr, nullptr);
       } else {
         return func(default_param, nullptr, nullptr);
@@ -114,7 +112,7 @@ class Tuner {
                     sizeof(params_size));
 
           VLOG(3) << "Write tuning param: " << kp.first.c_str() << ": "
-                  << (VLOG_IS_ON(3) ? MakeString(params) : "");
+                  << MakeString(params);
           for (auto &param : params) {
             ofs.write(reinterpret_cast<char *>(&param), sizeof(params_size));
           }

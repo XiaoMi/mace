@@ -38,7 +38,7 @@ class LogWriter;
 class Env {
  public:
   virtual int64_t NowMicros() = 0;
-  virtual MaceStatus GetCpuMaxFreq(std::vector<float> *max_freqs);
+  virtual MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs);
   virtual MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids);
   virtual FileSystem *GetFileSystem() = 0;
   virtual LogWriter *GetLogWriter() = 0;
@@ -58,8 +58,8 @@ inline int64_t NowMicros() {
   return port::Env::Default()->NowMicros();
 }
 
-inline MaceStatus GetCpuMaxFreq(std::vector<float> *max_freqs) {
-  return port::Env::Default()->GetCpuMaxFreq(max_freqs);
+inline MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) {
+  return port::Env::Default()->GetCPUMaxFreq(max_freqs);
 }
 
 inline MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) {

@@ -61,7 +61,7 @@ LogWriter *AndroidEnv::GetLogWriter() {
 
 namespace {
 
-int GetCpuCount() {
+int GetCPUCount() {
   int cpu_count = 0;
   std::string cpu_sys_conf = "/proc/cpuinfo";
   std::ifstream f(cpu_sys_conf);
@@ -115,9 +115,9 @@ size_t BackTrace(void** buffer, size_t max) {
 
 }  // namespace
 
-MaceStatus AndroidEnv::GetCpuMaxFreq(std::vector<float> *max_freqs) {
+MaceStatus AndroidEnv::GetCPUMaxFreq(std::vector<float> *max_freqs) {
   MACE_CHECK_NOTNULL(max_freqs);
-  int cpu_count = GetCpuCount();
+  int cpu_count = GetCPUCount();
   if (cpu_count < 0) {
     return MaceStatus::MACE_RUNTIME_ERROR;
   }
@@ -142,7 +142,7 @@ MaceStatus AndroidEnv::GetCpuMaxFreq(std::vector<float> *max_freqs) {
     f.close();
   }
 
-  if (VLOG_IS_ON(1)) VLOG(1) << "CPU freq: " << MakeString(*max_freqs);
+  VLOG(1) << "CPU freq: " << MakeString(*max_freqs);
 
   return MaceStatus::MACE_SUCCESS;
 }

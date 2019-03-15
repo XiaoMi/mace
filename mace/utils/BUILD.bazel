@@ -8,15 +8,7 @@ package(
 licenses(["notice"])  # Apache 2.0
 
 cc_library(
-    name = "utils",
-    srcs = glob(
-        [
-            "*.cc",
-        ],
-        exclude = [
-            "*_test.cc",
-        ],
-    ),
+    name = "utils_hdrs",
     hdrs = glob([
         "*.h",
     ]),
@@ -29,6 +21,27 @@ cc_library(
         "//mace/port:port_api",
         "//mace/public",
     ],
+)
+
+cc_library(
+    name = "utils",
+    srcs = glob(
+        [
+            "*.cc",
+        ],
+        exclude = [
+            "*_test.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        ":utils_hdrs",
+    ],
+    alwayslink = 1,
 )
 
 cc_test(
@@ -44,7 +57,7 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ],
-    linkstatic = 0,
+    linkstatic = 1,
     deps = [
         ":utils",
         "//mace/port",

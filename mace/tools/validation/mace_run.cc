@@ -24,7 +24,8 @@
  *          --model_data_file=model_data.data \
  *          --device=GPU
  */
-#include <cstdint>
+#include <malloc.h>
+#include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -34,6 +35,7 @@
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
+#include "mace/port/file_system.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/string_util.h"
 
@@ -238,19 +240,24 @@ bool RunModel(const std::string &model_name,
   }
 #endif  // MACE_ENABLE_OPENCL
 
-  std::vector<unsigned char> model_graph_data;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data;
   if (FLAGS_model_file != "") {
-    if (!mace::ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
+    auto fs = GetFileSystem();
+    status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
+        &model_graph_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
   }
 
-  const unsigned char *model_weights_data = nullptr;
-  size_t model_weights_data_size = 0;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data;
   if (FLAGS_model_data_file != "") {
-    MemoryMap(FLAGS_model_data_file,
-              &model_weights_data,
-              &model_weights_data_size);
+    auto fs = GetFileSystem();
+    status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_data_file.c_str(),
+        &model_weights_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
+    }
   }
 
   std::shared_ptr<mace::MaceEngine> engine;
@@ -262,8 +269,9 @@ bool RunModel(const std::string &model_name,
 #ifdef MODEL_GRAPH_FORMAT_CODE
     create_engine_status =
           CreateMaceEngineFromCode(model_name,
-                                   model_weights_data,
-                                   model_weights_data_size,
+                                   reinterpret_cast<const unsigned char *>(
+                                     model_weights_data->data()),
+                                   model_weights_data->length(),
                                    input_names,
                                    output_names,
                                    config,
@@ -271,10 +279,12 @@ bool RunModel(const std::string &model_name,
 #else
     (void)(model_name);
     create_engine_status =
-        CreateMaceEngineFromProto(model_graph_data.data(),
-                                  model_graph_data.size(),
-                                  model_weights_data,
-                                  model_weights_data_size,
+        CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
+                                    model_graph_data->data()),
+                                  model_graph_data->length(),
+                                  reinterpret_cast<const unsigned char *>(
+                                    model_weights_data->data()),
+                                  model_weights_data->length(),
                                   input_names,
                                   output_names,
                                   config,
@@ -345,18 +355,21 @@ bool RunModel(const std::string &model_name,
 #ifdef MODEL_GRAPH_FORMAT_CODE
         create_engine_status =
           CreateMaceEngineFromCode(model_name,
-                                   model_weights_data,
-                                   model_weights_data_size,
+                                   reinterpret_cast<const unsigned char *>(
+                                     model_weights_data->data()),
+                                   model_weights_data->length(),
                                    input_names,
                                    output_names,
                                    config,
                                    &engine);
 #else
         create_engine_status =
-            CreateMaceEngineFromProto(model_graph_data.data(),
-                                      model_graph_data.size(),
-                                      model_weights_data,
-                                      model_weights_data_size,
+            CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
+                                        model_graph_data->data()),
+                                      model_graph_data->length(),
+                                      reinterpret_cast<const unsigned char *>(
+                                        model_weights_data->data()),
+                                      model_weights_data->length(),
                                       input_names,
                                       output_names,
                                       config,
@@ -388,22 +401,26 @@ bool RunModel(const std::string &model_name,
 #ifdef MODEL_GRAPH_FORMAT_CODE
             create_engine_status =
               CreateMaceEngineFromCode(model_name,
-                                       model_weights_data,
-                                       model_weights_data_size,
+                                       reinterpret_cast<const unsigned char *>(
+                                         model_weights_data->data()),
+                                       model_weights_data->length(),
                                        input_names,
                                        output_names,
                                        config,
                                        &engine);
 #else
             create_engine_status =
-                CreateMaceEngineFromProto(model_graph_data.data(),
-                                          model_graph_data.size(),
-                                          model_weights_data,
-                                          model_weights_data_size,
-                                          input_names,
-                                          output_names,
-                                          config,
-                                          &engine);
+                CreateMaceEngineFromProto(
+                    reinterpret_cast<const unsigned char *>(
+                      model_graph_data->data()),
+                    model_graph_data->length(),
+                    reinterpret_cast<const unsigned char *>(
+                      model_weights_data->data()),
+                    model_weights_data->length(),
+                    input_names,
+                    output_names,
+                    config,
+                    &engine);
 #endif
           } while (create_engine_status != MaceStatus::MACE_SUCCESS);
         } else {
@@ -443,10 +460,6 @@ bool RunModel(const std::string &model_name,
     out_file.close();
     LOG(INFO) << "Write output file " << output_name << " with size "
               << output_size << " done.";
-  }
-
-  if (model_weights_data != nullptr) {
-    MemoryUnMap(model_weights_data, model_weights_data_size);
   }
 
   return true;
@@ -492,9 +505,9 @@ int Main(int argc, char **argv) {
     ParseShape(output_shapes[i], &output_shape_vec[i]);
   }
   std::vector<std::string> raw_input_data_formats =
-      str_util::Split(FLAGS_input_data_format, ',');
+    Split(FLAGS_input_data_format, ',');
   std::vector<std::string> raw_output_data_formats =
-      str_util::Split(FLAGS_output_data_format, ',');
+    Split(FLAGS_output_data_format, ',');
   std::vector<DataFormat> input_data_formats(input_count);
   std::vector<DataFormat> output_data_formats(output_count);
   for (size_t i = 0; i < input_count; ++i) {

@@ -22,7 +22,7 @@
 namespace mace {
 namespace port {
 
-MaceStatus Env::GetCpuMaxFreq(std::vector<float> *max_freqs) {
+MaceStatus Env::GetCPUMaxFreq(std::vector<float> *max_freqs) {
   return MaceStatus::MACE_UNSUPPORTED;
 }
 

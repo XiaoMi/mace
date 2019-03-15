@@ -29,14 +29,12 @@ TEST_F(LoggingTest, Basic) {
 
   VLOG(1) << "vlog 1 logging";
   VLOG(2) << "vlog 2 logging";
-
-  if (VLOG_IS_ON(1)) {
-    VLOG(1) << "vlog 1 logging";
-  }
 }
 
 TEST_F(LoggingTest, LogFatal) {
+#ifdef GTEST_HAS_DEATH_TEST
   EXPECT_DEATH(do { LOG(FATAL) << "fatal logging"; } while (false), "");
+#endif
 }
 
 }  // namespace

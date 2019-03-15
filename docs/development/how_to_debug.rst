@@ -114,8 +114,6 @@ The threshold can be configured through environment variable, e.g. ``MACE_CPP_MI
 With VLOG, the lower the verbose level, the more likely messages are to be logged. For example, when the threshold is set
 to 2, both ``VLOG(1)``, ``VLOG(2)`` log messages will be printed, but ``VLOG(3)`` and highers won't. 
 
-All expensive logging with ``VLOG`` should be guarded with ``if(VLOG_IS_ON(lvl))`` check to avoid normal run overhead.
-
 By using ``mace_run`` tool, VLOG level can be easily set by option, e.g.,
 
 	.. code:: sh

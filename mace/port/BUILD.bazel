@@ -43,7 +43,7 @@ cc_test(
     srcs = glob([
         "*_test.cc",
     ]),
-    linkstatic = 0,
+    linkstatic = 1,
     deps = [
         ":port",
         "@gtest//:gtest",

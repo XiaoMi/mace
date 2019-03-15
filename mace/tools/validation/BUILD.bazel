@@ -29,14 +29,8 @@ cc_binary(
     ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = [
-        "-lm",
-    ] + if_openmp_enabled([
-        "-fopenmp"
-    ]) + if_android([
-        "-ldl",
-        "-pie",
-        "-llog",
+    linkopts = if_openmp_enabled([
+        "-fopenmp",
     ]),
     linkstatic = 0,
     deps = [

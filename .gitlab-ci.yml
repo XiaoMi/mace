@@ -195,7 +195,8 @@ extra_tests:
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
-    - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/utils:utils_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS || exit 1;
+    - python tools/bazel_adb_run.py --target="//mace/port:port_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS || exit 1;
 
 so_size_check:
   stage: so_size_check

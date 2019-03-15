@@ -34,7 +34,9 @@ class PosixReadOnlyMemoryRegion : public ReadOnlyMemoryRegion {
   PosixReadOnlyMemoryRegion(const void* addr, uint64_t length)
     : addr_(addr), length_(length) {}
   ~PosixReadOnlyMemoryRegion() override {
-    munmap(const_cast<void *>(addr_), length_);
+    if (length_ > 0) {
+      munmap(const_cast<void *>(addr_), length_);
+    }
   };
   const void *data() override { return addr_; };
   uint64_t length() override { return length_; };
@@ -56,15 +58,20 @@ MaceStatus PosixFileSystem::NewReadOnlyMemoryRegionFromFile(
   } else {
     struct stat st;
     fstat(fd, &st);
-    const void* address =
+    if (st.st_size > 0) {
+      const void* address =
         mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (address == MAP_FAILED) {
-      // TODO(heliangliang) check errno
-      s = MaceStatus(MaceStatus::MACE_RUNTIME_ERROR);
+      if (address == MAP_FAILED) {
+        // TODO(heliangliang) check errno
+        s = MaceStatus(MaceStatus::MACE_RUNTIME_ERROR);
+      } else {
+        *result = make_unique<PosixReadOnlyMemoryRegion>(address, st.st_size);
+      }
+      close(fd);
     } else {
-      *result = make_unique<PosixReadOnlyMemoryRegion>(address, st.st_size);
+      // Empty file: mmap returns EINVAL (since Linux 2.6.12) length was 0
+      *result = make_unique<PosixReadOnlyMemoryRegion>(nullptr, 0);
     }
-    close(fd);
   }
   return s;
 }
