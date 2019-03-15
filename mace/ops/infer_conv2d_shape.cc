@@ -36,7 +36,8 @@ class InferConv2dShapeOp : public Operation {
 
     auto has_data_format =
         Operation::GetOptionalArg<int>("has_data_format", 0);
-    const bool isNCHW = (has_data_format && D == DeviceType::CPU);
+    const bool isNCHW = (has_data_format &&
+        input->data_format() == DataFormat::NCHW);
 
     Padding padding_type =
         static_cast<Padding>(Operation::GetOptionalArg<int>(
