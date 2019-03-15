@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <sys/mman.h>
