@@ -531,3 +531,10 @@ class ToolchainType:
 class TargetSOCTag:
     all = 'all'
     random = 'random'
+
+
+def split_shape(shape):
+    if shape.strip() == "":
+        return []
+    else:
+        return shape.split(',')

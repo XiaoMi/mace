@@ -274,7 +274,6 @@ bool RunModel(const std::string &model_name,
     MemoryMap(FLAGS_model_data_file,
               &model_weights_data,
               &model_weights_data_size);
-    MACE_CHECK(model_weights_data != nullptr && model_weights_data_size != 0);
   }
 
   std::shared_ptr<mace::MaceEngine> engine;

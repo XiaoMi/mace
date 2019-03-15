@@ -59,7 +59,7 @@ def generate_input_data(input_file, input_node, input_shape, input_ranges,
 
     assert len(input_names) == len(input_shapes) == len(input_ranges) == len(input_data_types)  # noqa
     for i in range(len(input_names)):
-        shape = [int(x) for x in input_shapes[i].split(',')]
+        shape = [int(x) for x in common.split_shape(input_shapes[i])]
         input_range = [float(x) for x in input_ranges[i].split(',')]
         generate_data(input_names[i], shape, input_file, input_range,
                       input_data_types[i])
