@@ -394,12 +394,12 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
     const Tensor *filter = this->Input(1);
     const Tensor *bias = nullptr;
     const Tensor *output_shape_tensor = nullptr;
-    if (model_type_ == ops::CAFFE) {
-      bias = this->InputSize() >= 3 ? this->Input(2) : nullptr;
-    } else {
+    if (model_type_ == FrameworkType::TENSORFLOW) {
       output_shape_tensor =
           this->InputSize() >= 3 ? this->Input(2) : nullptr;
       bias = this->InputSize() >= 4 ? this->Input(3) : nullptr;
+    } else {
+      bias = this->InputSize() >= 3 ? this->Input(2) : nullptr;
     }
     Tensor *output = this->Output(0);
 
