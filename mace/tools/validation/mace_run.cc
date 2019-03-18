@@ -225,7 +225,8 @@ bool RunModel(const std::string &model_name,
               const std::vector<DataFormat> &input_data_formats,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes,
-              const std::vector<DataFormat> &output_data_formats) {
+              const std::vector<DataFormat> &output_data_formats,
+              float cpu_capability) {
   DeviceType device_type = ParseDeviceType(FLAGS_device);
 
   int64_t t0 = NowMicros();
@@ -446,11 +447,11 @@ bool RunModel(const std::string &model_name,
   }
 
   // Metrics reporting tools depends on the format, keep in consistent
-  printf("========================================\n");
-  printf("            init      warmup     run_avg\n");
-  printf("========================================\n");
-  printf("time %11.3f %11.3f %11.3f\n",
-         init_millis, warmup_millis, model_run_millis);
+  printf("========================================================\n");
+  printf("     capability(CPU)        init      warmup     run_avg\n");
+  printf("========================================================\n");
+  printf("time %15.3f %11.3f %11.3f %11.3f\n",
+         cpu_capability, init_millis, warmup_millis, model_run_millis);
 
 
   for (size_t i = 0; i < output_count; ++i) {
@@ -532,13 +533,16 @@ int Main(int argc, char **argv) {
   }
 
 
+  // get cpu capability
+  Capability cpu_capability = GetCapability(DeviceType::CPU);
+
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
-    ret =
-        RunModel(FLAGS_model_name,
-                 input_names, input_shape_vec, input_data_formats,
-                 output_names, output_shape_vec, output_data_formats);
+    ret = RunModel(FLAGS_model_name,
+        input_names, input_shape_vec, input_data_formats,
+        output_names, output_shape_vec, output_data_formats,
+        cpu_capability.float32_performance.exec_time);
   }
   if (ret) {
     return 0;

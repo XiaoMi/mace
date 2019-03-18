@@ -123,39 +123,16 @@ TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
 
 TFSupportedOps = [six.b(op) for op in TFSupportedOps]
 
-TFTransformGraphOptions = {
-    base_converter.DeviceType.CPU.value: [
-        'strip_unused_nodes',
-        'remove_nodes(op=Identity, op=CheckNumerics)',
-        'fold_constants(ignore_errors=true)',
-        'fold_batch_norms',
-        'fold_old_batch_norms',
-        'remove_control_dependencies',
-        'strip_unused_nodes',
-        'sort_by_execution_order'
-    ],
-    base_converter.DeviceType.GPU.value: [
-        'strip_unused_nodes',
-        'remove_nodes(op=Identity, op=CheckNumerics)',
-        'fold_constants(ignore_errors=true)',
-        'flatten_atrous_conv',
-        'fold_batch_norms',
-        'fold_old_batch_norms',
-        'remove_control_dependencies',
-        'strip_unused_nodes',
-        'sort_by_execution_order'
-    ],
-    base_converter.DeviceType.HEXAGON.value: [
-        'strip_unused_nodes',
-        'remove_nodes(op=Identity, op=CheckNumerics)',
-        'fold_constants(ignore_errors=true)',
-        'fold_batch_norms',
-        'fold_old_batch_norms',
-        'remove_control_dependencies',
-        'strip_unused_nodes',
-        'sort_by_execution_order'
-    ]
-}
+TFTransformGraphOptions = [
+    'strip_unused_nodes',
+    'remove_nodes(op=Identity, op=CheckNumerics)',
+    'fold_constants(ignore_errors=true)',
+    'fold_batch_norms',
+    'fold_old_batch_norms',
+    'remove_control_dependencies',
+    'strip_unused_nodes',
+    'sort_by_execution_order'
+]
 
 
 class TensorflowConverter(base_converter.ConverterInterface):
@@ -289,15 +266,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         self._placeholders = {}
 
-        print("Run transform_graph: %s" % TFTransformGraphOptions[
-            option.device])
+        print("Run transform_graph: %s" % TFTransformGraphOptions)
         try:
             print("output keys: ", option.output_nodes.keys())
             transformed_graph_def = TransformGraph(tf_graph_def,
                                                    option.input_nodes.keys(),
                                                    option.output_nodes.keys(),
-                                                   TFTransformGraphOptions[
-                                                       option.device])
+                                                   TFTransformGraphOptions)
         except Exception as ex:
             print("Failed to transform graph using tf tool: %s" % ex)
             transformed_graph_def = tf_graph_def

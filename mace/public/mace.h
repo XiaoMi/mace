@@ -102,7 +102,7 @@ class RunMetadata {
 
 /// Consistent with Android NNAPI
 struct PerformanceInfo {
-  // Time of executing some workload.
+  // Time of executing some workload(millisecond).
   // negative value for unsupported.
   float exec_time;
 };
