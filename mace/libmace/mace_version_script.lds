@@ -7,6 +7,7 @@ mace {
     *CreateMaceEngineFromProto*;
     *GetBigLittleCoreIDs*;
     *MaceVersion*;
+    *GetCapability*;
 
     # api for static library of models
     *mace*logging*LogMessage*;
