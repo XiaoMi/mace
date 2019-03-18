@@ -50,8 +50,6 @@ void FilterBufferToImage(int iters,
                    b2i_output);
   };
 
-  // Warm-up
-  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
     transform_func();
   }
