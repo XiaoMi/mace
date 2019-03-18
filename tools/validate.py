@@ -68,6 +68,8 @@ def calculate_similarity(u, v, data_type=np.float64):
 
 
 def calculate_pixel_accuracy(out_value, mace_out_value):
+    if len(out_value.shape) < 2:
+        return 1.0
     out_value = out_value.reshape((-1, out_value.shape[-1]))
     batches = out_value.shape[0]
     classes = out_value.shape[1]
@@ -323,10 +325,10 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
              validation_outputs_data, log_file):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
-    input_shapes = [[int(x) for x in shape.split(',')]
+    input_shapes = [[int(x) for x in common.split_shape(shape)]
                     for shape in input_shape_strs]
     output_shape_strs = [shape for shape in output_shape.split(':')]
-    output_shapes = [[int(x) for x in shape.split(',')]
+    output_shapes = [[int(x) for x in common.split_shape(shape)]
                      for shape in output_shape_strs]
     input_data_formats = [df for df in input_data_format_str.split(',')]
     output_data_formats = [df for df in output_data_format_str.split(',')]

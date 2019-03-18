@@ -122,6 +122,9 @@ void MemoryMap(const std::string &file,
   struct stat st;
   fstat(fd, &st);
   *size = static_cast<size_t>(st.st_size);
+  if (*size == 0) {
+    return;
+  }
 
   *data = static_cast<const unsigned char *>(
       mmap(nullptr, *size, PROT_READ, MAP_PRIVATE, fd, 0));
@@ -135,7 +138,10 @@ void MemoryMap(const std::string &file,
 
 void MemoryUnMap(const unsigned char *data,
                  const size_t &size) {
-  MACE_CHECK(data != nullptr && size > 0, "data is null or size is 0");
+  if (size == 0) {
+    return;
+  }
+  MACE_CHECK(data != nullptr, "data is null");
 
   int ret = munmap(const_cast<unsigned char *>(data), size);
 

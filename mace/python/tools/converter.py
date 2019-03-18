@@ -67,12 +67,19 @@ def file_checksum(fname):
     return hash_func.hexdigest()
 
 
+def split_shape(shape):
+    if shape.strip() == "":
+        return []
+    else:
+        return shape.split(',')
+
+
 def parse_int_array_from_str(ints_str):
-    return [int(int_str) for int_str in ints_str.split(',')]
+    return [int(i) for i in split_shape(ints_str)]
 
 
-def parse_float_array_from_str(ints_str):
-    return [float(int_str) for int_str in ints_str.split(',')]
+def parse_float_array_from_str(floats_str):
+    return [float(i) for i in floats_str.split(',')]
 
 
 def transpose_shape(shape, dst_order):

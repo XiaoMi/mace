@@ -265,6 +265,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             tf_graph_def.ParseFromString(f.read())
 
         self._placeholders = {}
+        self._skip_tensor = set()
+        self._output_shape = {}
 
         print("Run transform_graph: %s" % TFTransformGraphOptions)
         try:
@@ -291,10 +293,16 @@ class TensorflowConverter(base_converter.ConverterInterface):
             with session.graph.as_default() as graph:
                 tf.import_graph_def(transformed_graph_def, name='')
                 self._tf_graph = graph
+                self.update_output_shapes(session)
 
-        self._skip_tensor = set()
-        self._output_shape_list = []
-        self._output_shape_op_list = []
+        # we have polluted graph with 'shape' ops, so reset it and reload it
+        # again
+        tf.reset_default_graph()
+
+        with tf.Session() as session:
+            with session.graph.as_default() as graph:
+                tf.import_graph_def(transformed_graph_def, name='')
+                self._tf_graph = graph
 
     def run(self):
         with tf.Session() as session:
@@ -339,10 +347,17 @@ class TensorflowConverter(base_converter.ConverterInterface):
             return tensor_name[:idx]
 
     def update_output_shapes(self, sess):
-        output_shapes = sess.run(self._output_shape_op_list,
+        tensors = []
+        shape_tensors = []
+        for tf_op in self._tf_graph.get_operations():
+            for output in tf_op.outputs:
+                tensors.append(output.name)
+                shape_tensors.append(tf.shape(output))
+
+        tensor_shapes = sess.run(shape_tensors,
                                  feed_dict=self._placeholders)
-        for i in range(len(self._output_shape_list)):
-            self._output_shape_list[i].dims.extend(output_shapes[i])
+        for i in range(len(tensors)):
+            self._output_shape[tensors[i]] = tensor_shapes[i]
 
     def convert_ops(self, sess):
         for tf_op in self._tf_graph.get_operations():
@@ -350,7 +365,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
                        "Mace does not support tensorflow op type %s yet"
                        % tf_op.type)
             self._op_converters[tf_op.type](tf_op)
-        self.update_output_shapes(sess)
+
         self.convert_tensors()
 
     def convert_tensors(self):
@@ -384,18 +399,17 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     # this function tries to infer tensor shape, but some dimension shape
     # may be undefined due to variance of input length
-    def infer_tensor_shape(self, output_shape, tensor):
-        inferred_tensor_shape = tensor.shape.as_list()
-        inferred_success = True
-        for _, dim in enumerate(inferred_tensor_shape):
-            if dim is None:
-                inferred_success = False
-                break
-        if inferred_success:
-            output_shape.dims.extend(inferred_tensor_shape)
+    def infer_tensor_shape(self, tensor, output_shape=None):
+        shape = None
+        if tensor.name in self._output_shape:
+            shape = self._output_shape[tensor.name]
         else:
-            self._output_shape_list.append(output_shape)
-            self._output_shape_op_list.append(tf.shape(tensor))
+            shape = tensor.shape.as_list()
+
+        if output_shape:
+            output_shape.dims.extend(shape)
+
+        return shape
 
     def convert_nop(self, tf_op):
         pass
@@ -408,7 +422,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.output.extend([tf_output.name for tf_output in tf_op.outputs])
         for tf_output in tf_op.outputs:
             output_shape = op.output_shape.add()
-            self.infer_tensor_shape(output_shape, tf_output)
+            self.infer_tensor_shape(tf_output, output_shape)
 
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
@@ -491,10 +505,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         def check_is_scalar(tf_op):
             if len(tf_op.inputs) == 1:
-                return len(tf_op.inputs[0].shape) == 0
+                return len(self.infer_tensor_shape(tf_op.inputs[0])) == 0
             elif len(tf_op.inputs) == 2:
-                return len(tf_op.inputs[0].shape) == 0 and \
-                       len(tf_op.inputs[1].shape) == 0
+                return len(self.infer_tensor_shape(tf_op.inputs[0])) == 0 and \
+                       len(self.infer_tensor_shape(tf_op.inputs[1])) == 0
 
         if check_is_scalar(tf_op):
             op.type = MaceOp.ScalarMath.name
@@ -521,9 +535,9 @@ class TensorflowConverter(base_converter.ConverterInterface):
                         EltwiseType.SUM, EltwiseType.PROD,
                         EltwiseType.MAX, EltwiseType.MIN]
 
-                if len(tf_op.inputs) > 1 and \
-                        len(tf_op.inputs[1].shape) == 0 and \
-                        tf_op.inputs[1].op.type == TFOpType.Const.name:
+                if (len(tf_op.inputs) > 1 and
+                        len(self.infer_tensor_shape(tf_op.inputs[1])) == 0 and
+                        tf_op.inputs[1].op.type == TFOpType.Const.name):
                     scalar = tf_op.inputs[1].eval().astype(np.float32)
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
@@ -535,7 +549,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
                     value_index_arg.i = 1
                     self._skip_tensor.add(tf_op.inputs[1].name)
                     del op.input[1]
-                elif len(tf_op.inputs[0].shape) == 0 and \
+                elif len(self.infer_tensor_shape(tf_op.inputs[0])) == 0 and \
                         tf_op.inputs[0].op.type == TFOpType.Const.name and \
                         is_commutative(type_arg.i):
                     scalar = tf_op.inputs[0].eval().astype(np.float32)
