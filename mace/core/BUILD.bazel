@@ -10,11 +10,12 @@ licenses(["notice"])  # Apache 2.0
 load(
     "//mace:mace.bzl",
     "if_android",
+    "if_android_armv7",
     "if_hexagon_enabled",
-    "if_not_hexagon_enabled",
-    "if_openmp_enabled",
     "if_neon_enabled",
+    "if_not_hexagon_enabled",
     "if_opencl_enabled",
+    "if_openmp_enabled",
     "if_quantize_enabled",
 )
 
@@ -58,6 +59,9 @@ cc_library(
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+        "-mfloat-abi=softfp",
     ]),
     linkopts = ["-ldl"],
     deps = [

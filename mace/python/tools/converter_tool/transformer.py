@@ -1942,13 +1942,21 @@ class Transformer(base_converter.ConverterInterface):
                 continue
 
             quantized_inputs_names = []
+
             should_quantize = False
+            has_const = False
+            for idx, input_tensor in enumerate(op.input):
+                if input_tensor in self._consts:
+                    has_const = True
+                    break
+            if not has_const:
+                continue
+
             for idx, input_tensor in enumerate(op.input):
                 if self.get_tensor_data_type(input_tensor) \
                         == mace_pb2.DT_FLOAT:
                     should_quantize = True
                     break
-
             if not should_quantize:
                 continue
             else:
