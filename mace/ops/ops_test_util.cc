@@ -188,15 +188,17 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
       }
     }
   }
-  auto op_def = op_defs_.back();
-  for (int i = 0; i < op_def.output_size(); ++i) {
-    ws_.RemoveTensor(op_def.output(i));
-    auto output_info = net_def.add_output_info();
-    output_info->set_name(op_def.output(i));
-    if (op_def.output_type_size() == op_def.output_size()) {
-      output_info->set_data_type(op_def.output_type(i));
-    } else {
-      output_info->set_data_type(DataType::DT_FLOAT);
+  if (!op_defs_.empty()) {
+    auto op_def = op_defs_.back();
+    for (int i = 0; i < op_def.output_size(); ++i) {
+      ws_.RemoveTensor(op_def.output(i));
+      auto output_info = net_def.add_output_info();
+      output_info->set_name(op_def.output(i));
+      if (op_def.output_type_size() == op_def.output_size()) {
+        output_info->set_data_type(op_def.output_type(i));
+      } else {
+        output_info->set_data_type(DataType::DT_FLOAT);
+      }
     }
   }
   MemoryOptimizer mem_optimizer;
