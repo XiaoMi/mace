@@ -16,9 +16,12 @@
 #ifndef MACE_OPS_REF_CONV_2D_H_
 #define MACE_OPS_REF_CONV_2D_H_
 
+#include <vector>
+
 #include "mace/public/mace.h"
 #include "mace/core/tensor.h"
 #include "mace/core/op_context.h"
+#include "mace/ops/common/conv_pool_2d_util.h"
 
 namespace mace {
 namespace ops {
@@ -27,30 +30,39 @@ namespace ref {
 template<typename OUTPUT_TYPE>
 class Conv2d {
  public:
-  Conv2d(int stride_h, int stride_w, int dilation_h, int dilation_w);
+  Conv2d(const std::vector<int> strides,
+         const std::vector<int> dilations,
+         const std::vector<int> paddings,
+         const Padding padding_type)
+      : strides_(strides),
+        dilations_(dilations),
+        paddings_(paddings),
+        padding_type_(padding_type) {}
   ~Conv2d() {}
   MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       Tensor *output);
+
+ private:
+  const std::vector<int> strides_;
+  const std::vector<int> dilations_;
+  const std::vector<int> paddings_;
+  const Padding padding_type_;
 };
 
 template<>
 class Conv2d<float> {
  public:
-  Conv2d(int pad_h,
-         int pad_w,
-         int stride_h,
-         int stride_w,
-         int dilation_h,
-         int dilation_w)
-      : pad_h_(pad_h),
-        pad_w_(pad_w),
-        stride_h_(stride_h),
-        stride_w_(stride_w),
-        dilation_h_(dilation_h),
-        dilation_w_(dilation_w) {}
+  Conv2d(const std::vector<int> strides,
+         const std::vector<int> dilations,
+         const std::vector<int> paddings,
+         const Padding padding_type)
+      : strides_(strides),
+        dilations_(dilations),
+        paddings_(paddings),
+        padding_type_(padding_type) {}
   ~Conv2d() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -60,12 +72,10 @@ class Conv2d<float> {
       Tensor *output);
 
  private:
-  int pad_h_;
-  int pad_w_;
-  int stride_h_;
-  int stride_w_;
-  int dilation_h_;
-  int dilation_w_;
+  const std::vector<int> strides_;
+  const std::vector<int> dilations_;
+  const std::vector<int> paddings_;
+  const Padding padding_type_;
 };
 
 }  // namespace ref

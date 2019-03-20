@@ -27,7 +27,6 @@
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
-#include "mace/ops/arm/conv_2d_neon.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/utils/memory.h"
@@ -36,10 +35,15 @@
 #ifdef MACE_ENABLE_NEON
 #include "mace/ops/arm/fp32/conv_2d.h"
 #include "mace/ops/arm/fp32/conv_2d_1x1.h"
+#include "mace/ops/arm/fp32/conv_2d_3x3.h"
 #include "mace/ops/arm/fp32/conv_2d_3x3_winograd.h"
-#else
-#include "mace/ops/ref/conv_2d.h"
+#include "mace/ops/arm/fp32/conv_2d_5x5.h"
+#include "mace/ops/arm/fp32/conv_2d_7x7.h"
+#include "mace/ops/arm/fp32/conv_2d_1xn.h"
+#include "mace/ops/arm/fp32/conv_general.h"
 #endif  // MACE_ENABLE_NEON
+
+#include "mace/ops/ref/conv_2d.h"
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/common/gemmlowp_util.h"
@@ -68,8 +72,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
                                                    "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
         leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-            "leakyrelu_coefficient", 0.0f)),
-        conv2d_delegator_(nullptr) {}
+            "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
@@ -77,342 +80,99 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
 
-    index_t input_batch = input->dim(0);
-    index_t input_channels = input->dim(1);
-    std::vector<index_t> filter_shape(4);
-    filter_shape = filter->shape();
-
-    index_t stride_h = strides_[0];
-    index_t stride_w = strides_[1];
-
-    index_t dilation_h = dilations_[0];
-    index_t dilation_w = dilations_[1];
-
-    std::vector<index_t> output_shape(4);
-    std::vector<int> paddings(2);
-    if (paddings_.empty()) {
-      CalcNCHWPaddingAndOutputSize(input->shape().data(),
-                                   filter_shape.data(),
-                                   dilations_.data(),
-                                   strides_.data(),
-                                   padding_type_,
-                                   output_shape.data(),
-                                   paddings.data());
-    } else {
-      paddings = paddings_;
-      CalcNCHWOutputSize(input->shape().data(),
-                         filter_shape.data(),
-                         paddings_.data(),
-                         dilations_.data(),
-                         strides_.data(),
-                         RoundType::FLOOR,
-                         output_shape.data());
-    }
-    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-
-    index_t batch = output->dim(0);
-    index_t channels = output->dim(1);
-    index_t height = output->dim(2);
-    index_t width = output->dim(3);
-
-    MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
-    MACE_CHECK(filter_shape[0] == channels, filter_shape[0], " != ", channels);
-    MACE_CHECK(filter_shape[1] == input_channels, filter_shape[1], " != ",
-               input_channels);
+    const index_t channels = filter->dim(0);
 
 #ifdef MACE_ENABLE_NEON
-    index_t input_height = input->dim(2);
-    index_t input_width = input->dim(3);
-    index_t filter_h = filter->dim(2);
-    index_t filter_w = filter->dim(3);
+    // the following params are used to decide which conv delegator to use
+    const index_t stride_h = strides_[0];
+    const index_t stride_w = strides_[1];
+    const index_t dilation_h = dilations_[0];
+    const index_t dilation_w = dilations_[1];
+    const index_t filter_h = filter->dim(2);
+    const index_t filter_w = filter->dim(3);
+    const index_t input_channels = input->dim(1);
 
-    int pad_top = paddings[0] >> 1;
-    int pad_bottom = paddings[0] - pad_top;
-    int pad_left = paddings[1] >> 1;
-    int pad_right = paddings[1] - pad_left;
-
-    if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
-        && dilation_h == 1 && dilation_w == 1) {
-      if (conv2d_delegator_.get() == nullptr) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x1>();
-      }
-      conv2d_delegator_->Compute(context, input, filter, output);
-    } else if (filter_h == 3 && filter_w == 3
-        && stride_h == 1 && stride_w == 1 && dilation_h == 1
-        && dilation_w == 1
-        && input_channels >= 8 && channels >= 8) {
-      if (conv2d_delegator_.get() == nullptr) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3Winograd>(
-            pad_top, pad_bottom, pad_left, pad_right);
-      }
-      conv2d_delegator_->Compute(context, input, filter, output);
-    } else {
-      // TODO(liyin): the code below needs to be refactored.
-      // delegate to each of kernels instead of ruling them all
-      index_t padded_input_height = input_height + paddings[0];
-      index_t padded_input_width = input_width + paddings[1];
-      index_t extra_input_height = padded_input_height;
-      index_t extra_input_width = padded_input_width;
-      index_t extra_output_height = height;
-      index_t extra_output_width = width;
-
-      int pad_top = paddings[0] >> 1;
-      int pad_bottom = paddings[0] - pad_top;
-      int pad_left = paddings[1] >> 1;
-      int pad_right = paddings[1] - pad_left;
-
-      Tensor::MappingGuard input_guard(input);
-      Tensor::MappingGuard filter_guard(filter);
-      Tensor::MappingGuard output_guard(output);
-
-      auto filter_data = filter->data<float>();
-      auto output_data = output->mutable_data<float>();
-
-      std::function<void(const float *input, float *output)> conv_func;
-
-      bool use_neon_3x3_s1 = filter_h == 3 && filter_w == 3
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_3x3_s2 = filter_h == 3 && filter_w == 3
-          && stride_h == 2 && stride_w == 2 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_5x5_s1 = filter_h == 5 && filter_w == 5
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_1x7_s1 = filter_h == 1 && filter_w == 7
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_7x1_s1 = filter_h == 7 && filter_w == 1
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_7x7_s1 = filter_h == 7 && filter_w == 7
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_7x7_s2 = filter_h == 7 && filter_w == 7
-          && stride_h == 2 && stride_w == 2 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_7x7_s3 = filter_h == 7 && filter_w == 7
-          && stride_h == 3 && stride_w == 3 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_1x15_s1 = filter_h == 1 && filter_w == 15
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-      bool use_neon_15x1_s1 = filter_h == 15 && filter_w == 1
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1;
-
-      index_t tile_h, tile_w;
-      if (use_neon_3x3_s1) {
-        tile_h = 2;
-        tile_w = 4;
-      } else if (use_neon_7x1_s1 || use_neon_15x1_s1) {
-        tile_h = 4;
-        tile_w = 1;
-      } else {
-        tile_h = 1;
-        tile_w = 4;
-      }
-      extra_output_height = RoundUp<index_t>(height, tile_h);
-      extra_input_height =
-          std::max(padded_input_height, (extra_output_height - 1) * stride_h
-              + (filter_h - 1) * dilation_h + 1);
-      extra_output_width = RoundUp<index_t>(width, tile_w);
-      extra_input_width =
-          std::max(padded_input_width, (extra_output_width - 1) * stride_w
-              + (filter_w - 1) * dilation_w + 1);
-      if (extra_input_height != padded_input_height) {
-        pad_bottom += (extra_input_height - padded_input_height);
-      }
-      if (extra_input_width != padded_input_width) {
-        pad_right += (extra_input_width - padded_input_width);
-      }
-
-      // decide scratch size before allocate it
-      index_t total_scratch_size = 0;
-      index_t padded_input_size = 0;
-      index_t padded_output_size = 0;
-
-      if (extra_input_height != input_height
-          || extra_input_width != input_width) {
-        padded_input_size =
-            PadAlignSize(
-                batch * input_channels * (input_height + pad_top + pad_bottom)
-                    * (input_width + pad_left + pad_right) * sizeof(float) +
-                    MACE_EXTRA_BUFFER_PAD_SIZE);
-        total_scratch_size += padded_input_size;
-      }
-      if (extra_output_height != height || extra_output_width != width) {
-        padded_output_size =
-            PadAlignSize(
-                batch * channels * extra_output_height * extra_output_width
-                    * sizeof(float) + MACE_EXTRA_BUFFER_PAD_SIZE);
-        total_scratch_size += padded_output_size;
-      }
-
-      // Init scratch buffer
-      ScratchBuffer *scratch = context->device()->scratch_buffer();
-      scratch->Rewind();
-      scratch->GrowSize(total_scratch_size);
-      Tensor padded_input(scratch->Scratch(padded_input_size), DT_FLOAT);
-      Tensor padded_output(scratch->Scratch(padded_output_size), DT_FLOAT);
-      const index_t extra_input_shape[4] =
-          {batch, input_channels, extra_input_height, extra_input_width};
-      const index_t extra_output_shape[4] =
-          {batch, channels, extra_output_height, extra_output_width};
-
-      // make host compiler happy
-      MACE_UNUSED(extra_input_shape);
-      MACE_UNUSED(extra_output_shape);
-
-      // decide which convolution function to call
-      if (use_neon_3x3_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK3x3S1(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_3x3_s2) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK3x3S2(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_5x5_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK5x5S1(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_1x7_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK1x7S1(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_7x1_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK7x1S1(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_7x7_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK7x7S1(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_7x7_s2) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK7x7S2(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_7x7_s3) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK7x7S3(pad_input,
-                           filter_data,
-                           extra_input_shape,
-                           extra_output_shape,
-                           pad_output);
-        };
-      } else if (use_neon_1x15_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK1x15S1(pad_input,
-                            filter_data,
-                            extra_input_shape,
-                            extra_output_shape,
-                            pad_output);
-        };
-      } else if (use_neon_15x1_s1) {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dNeonK15x1S1(pad_input,
-                            filter_data,
-                            extra_input_shape,
-                            extra_output_shape,
-                            pad_output);
-        };
-      } else {
-        conv_func = [=](const float *pad_input, float *pad_output) {
-          Conv2dGeneral(pad_input,
-                        filter_data,
-                        extra_input_shape,
-                        extra_output_shape,
-                        filter_shape.data(),
-                        strides_.data(),
-                        dilations_.data(),
-                        pad_output);
-        };
-      }
-
-      // pad input and output
-      const Tensor *pad_input_ptr = input;
-      if (extra_input_height != input_height
-          || extra_input_width != input_width) {
-        MACE_RETURN_IF_ERROR(ConstructNCHWInputWithSpecificPadding(
-            input, pad_top, pad_bottom, pad_left, pad_right, &padded_input));
-        pad_input_ptr = &padded_input;
-      }
-
-      // TODO(libin): don't need clear after bias is integrated in each conv
-      Tensor *pad_output_ptr = output;
-      if (extra_output_height != height || extra_output_width != width) {
-        padded_output.Reshape({batch, channels, extra_output_height,
-                               extra_output_width});
-        padded_output.Clear();
-        pad_output_ptr = &padded_output;
-      } else {
-        output->Clear();
-      }
-
-      const float *pad_input_data = pad_input_ptr->data<float>();
-      float *pad_output_data = pad_output_ptr->mutable_data<float>();
-
-      conv_func(pad_input_data, pad_output_data);
-
-      // unpack output
-      if (extra_output_height != height || extra_output_width != width) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channels; ++c) {
-            for (index_t h = 0; h < height; ++h) {
-              memcpy(
-                  output_data + b * channels * height * width
-                      + c * height * width
-                      + h * width,
-                  pad_output_data
-                      + b * channels * extra_output_height * extra_output_width
-                      + c * extra_output_height * extra_output_width
-                      + h * extra_output_width,
-                  sizeof(float) * width);
-            }
-          }
-        }
-      }
-    }
-#else
+    // NOTE: delegator is fixed after first round of running,
+    // although winograd depends on input params.
+    // We do not support changeable filter for now.
     if (conv2d_delegator_.get() == nullptr) {
-      conv2d_delegator_ = make_unique<ref::Conv2d<float>>(paddings[0],
-                                                          paddings[1],
-                                                          stride_h,
-                                                          stride_w,
-                                                          dilation_h,
-                                                          dilation_w);
+      if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
+          && dilation_h == 1 && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x1>(
+            paddings_, padding_type_);
+      } else if (filter_h == 3 && filter_w == 3
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        if (input_channels >= 8 && channels >= 8) {
+          conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3Winograd>(
+              paddings_, padding_type_);
+        } else {
+          conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3S1>(
+              paddings_, padding_type_);
+        }
+      } else if (filter_h == 3 && filter_w == 3
+          && stride_h == 2 && stride_w == 2 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3S2>(
+            paddings_, padding_type_);
+      } else if (filter_h == 5 && filter_w == 5
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK5x5S1>(
+            paddings_, padding_type_);
+      } else if (filter_h == 7 && filter_w == 7
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x7S1>(
+            paddings_, padding_type_);
+      } else if (filter_h == 7 && filter_w == 7
+          && stride_h == 2 && stride_w == 2 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x7S2>(
+            paddings_, padding_type_);
+      } else if (filter_h == 7 && filter_w == 7
+          && stride_h == 3 && stride_w == 3 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x7S3>(
+            paddings_, padding_type_);
+      } else if (filter_h == 1 && filter_w == 7
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x7S1>(
+            paddings_, padding_type_);
+      } else if (filter_h == 7 && filter_w == 1
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x1S1>(
+            paddings_, padding_type_);
+      } else if (filter_h == 1 && filter_w == 15
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x15S1>(
+            paddings_, padding_type_);
+      } else if (filter_h == 15 && filter_w == 1
+          && stride_h == 1 && stride_w == 1 && dilation_h == 1
+          && dilation_w == 1) {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK15x1S1>(
+            paddings_, padding_type_);
+      } else {
+        conv2d_delegator_ = make_unique<arm::fp32::Conv2dGeneral>(
+            strides_,
+            dilations_,
+            paddings_,
+            padding_type_);
+      }
     }
+
     conv2d_delegator_->Compute(context, input, filter, output);
+#else
+    if (ref_conv2d_delegator_.get() == nullptr) {
+      ref_conv2d_delegator_ = make_unique<ref::Conv2d<float>>(strides_,
+                                                              dilations_,
+                                                              paddings_,
+                                                              padding_type_);
+    }
+    ref_conv2d_delegator_->Compute(context, input, filter, output);
 #endif
 
     Tensor::MappingGuard bias_guard(bias);
@@ -420,6 +180,9 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
     auto output_data = output->mutable_data<float>();
     if (bias_data != nullptr) {
+      const index_t batch = input->dim(0);
+      const index_t height = output->dim(2);
+      const index_t width = output->dim(3);
       const index_t image_size = height * width;
 #pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch; ++b) {
@@ -452,186 +215,13 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
   }
 
  private:
-  void Conv2dGeneral(const float *input,
-                     const float *filter,
-                     const index_t *in_shape,
-                     const index_t *out_shape,
-                     const index_t *filter_shape,
-                     const int *stride_hw,
-                     const int *dilation_hw,
-                     float *output) {
-    const index_t in_image_size = in_shape[2] * in_shape[3];
-    const index_t out_image_size = out_shape[2] * out_shape[3];
-    const index_t in_batch_size = filter_shape[1] * in_image_size;
-    const index_t out_batch_size = filter_shape[0] * out_image_size;
-    const index_t filter_size = filter_shape[2] * filter_shape[3];
-
-#pragma omp parallel for collapse(2) schedule(runtime)
-    for (index_t b = 0; b < in_shape[0]; b++) {
-      for (index_t m = 0; m < filter_shape[0]; m += 4) {
-        const index_t in_width = in_shape[3];
-        const index_t out_height = out_shape[2];
-        const index_t out_width = out_shape[3];
-        const index_t out_channels = filter_shape[0];
-        const index_t in_channels = filter_shape[1];
-
-        const int stride_h = stride_hw[0];
-        const int stride_w = stride_hw[1];
-        const int dilation_h = dilation_hw[0];
-        const int dilation_w = dilation_hw[1];
-        if (m + 3 < out_channels) {
-          float *out_ptr0_base =
-              output + b * out_batch_size + m * out_image_size;
-          float *out_ptr1_base = out_ptr0_base + out_image_size;
-          float *out_ptr2_base = out_ptr1_base + out_image_size;
-          float *out_ptr3_base = out_ptr2_base + out_image_size;
-          for (index_t c = 0; c < in_channels; ++c) {
-            const float *in_ptr_base =
-                input + b * in_batch_size + c * in_image_size;
-            const float *filter_ptr0 =
-                filter + m * in_channels * filter_size + c * filter_size;
-            const float *filter_ptr1 = filter_ptr0 + in_channels * filter_size;
-            const float *filter_ptr2 = filter_ptr1 + in_channels * filter_size;
-            const float *filter_ptr3 = filter_ptr2 + in_channels * filter_size;
-            for (index_t h = 0; h < out_height; ++h) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
-                // input offset
-                index_t ih = h * stride_h;
-                index_t iw = w * stride_w;
-                index_t in_offset = ih * in_width + iw;
-                // output (4 outch x 1 height x 4 width): vo_outch_height
-                float vo0[4], vo1[4], vo2[4], vo3[4];
-                // load output
-                index_t out_offset = h * out_width + w;
-                for (index_t ow = 0; ow < 4; ++ow) {
-                  vo0[ow] = out_ptr0_base[out_offset + ow];
-                  vo1[ow] = out_ptr1_base[out_offset + ow];
-                  vo2[ow] = out_ptr2_base[out_offset + ow];
-                  vo3[ow] = out_ptr3_base[out_offset + ow];
-                }
-                // calc by row
-                for (index_t kh = 0; kh < filter_shape[2]; ++kh) {
-                  for (index_t kw = 0; kw < filter_shape[3]; ++kw) {
-                    // outch 0
-                    vo0[0] += in_ptr_base[in_offset
-                        + kw * dilation_w] * filter_ptr0[kw];
-                    vo0[1] += in_ptr_base[in_offset + stride_w
-                        + kw * dilation_w] * filter_ptr0[kw];
-                    vo0[2] += in_ptr_base[in_offset + 2 * stride_w
-                        + kw * dilation_w] * filter_ptr0[kw];
-                    vo0[3] += in_ptr_base[in_offset + 3 * stride_w
-                        + kw * dilation_w] * filter_ptr0[kw];
-                    // outch 1
-                    vo1[0] += in_ptr_base[in_offset
-                        + kw * dilation_w] * filter_ptr1[kw];
-                    vo1[1] += in_ptr_base[in_offset + stride_w
-                        + kw * dilation_w] * filter_ptr1[kw];
-                    vo1[2] += in_ptr_base[in_offset + 2 * stride_w
-                        + kw * dilation_w] * filter_ptr1[kw];
-                    vo1[3] += in_ptr_base[in_offset + 3 * stride_w
-                        + kw * dilation_w] * filter_ptr1[kw];
-                    // outch 2
-                    vo2[0] += in_ptr_base[in_offset
-                        + kw * dilation_w] * filter_ptr2[kw];
-                    vo2[1] += in_ptr_base[in_offset + stride_w
-                        + kw * dilation_w] * filter_ptr2[kw];
-                    vo2[2] += in_ptr_base[in_offset + 2 * stride_w
-                        + kw * dilation_w] * filter_ptr2[kw];
-                    vo2[3] += in_ptr_base[in_offset + 3 * stride_w
-                        + kw * dilation_w] * filter_ptr2[kw];
-                    // outch 3
-                    vo3[0] += in_ptr_base[in_offset
-                        + kw * dilation_w] * filter_ptr3[kw];
-                    vo3[1] += in_ptr_base[in_offset + stride_w
-                        + kw * dilation_w] * filter_ptr3[kw];
-                    vo3[2] += in_ptr_base[in_offset + 2 * stride_w
-                        + kw * dilation_w] * filter_ptr3[kw];
-                    vo3[3] += in_ptr_base[in_offset + 3 * stride_w
-                        + kw * dilation_w] * filter_ptr3[kw];
-                  }  // kw
-
-                  in_offset += dilation_h * in_width;
-                  filter_ptr0 += filter_shape[3];
-                  filter_ptr1 += filter_shape[3];
-                  filter_ptr2 += filter_shape[3];
-                  filter_ptr3 += filter_shape[3];
-                }  // kh
-
-                for (index_t ow = 0; ow < 4; ++ow) {
-                  out_ptr0_base[out_offset + ow] = vo0[ow];
-                  out_ptr1_base[out_offset + ow] = vo1[ow];
-                  out_ptr2_base[out_offset + ow] = vo2[ow];
-                  out_ptr3_base[out_offset + ow] = vo3[ow];
-                }
-
-                filter_ptr0 -= filter_size;
-                filter_ptr1 -= filter_size;
-                filter_ptr2 -= filter_size;
-                filter_ptr3 -= filter_size;
-              }  // w
-            }  // h
-          }  // c
-        } else {
-          for (index_t mm = m; mm < out_channels; ++mm) {
-            float *out_ptr0_base =
-                output + b * out_batch_size + mm * out_image_size;
-            for (index_t c = 0; c < in_channels; ++c) {
-              const float *in_ptr_base =
-                  input + b * in_batch_size + c * in_image_size;
-              const float *filter_ptr0 =
-                  filter + mm * in_channels * filter_size + c * filter_size;
-
-              for (index_t h = 0; h < out_height; ++h) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
-                  // input offset
-                  index_t ih = h * stride_h;
-                  index_t iw = w * stride_w;
-                  index_t in_offset = ih * in_width + iw;
-                  // output (1 outch x 1 height x 4 width): vo_outch_height
-                  float vo0[4];
-                  // load output
-                  index_t out_offset = h * out_width + w;
-                  for (index_t ow = 0; ow < 4; ++ow) {
-                    vo0[ow] = out_ptr0_base[out_offset + ow];
-                  }
-
-                  // calc by row
-                  for (index_t kh = 0; kh < filter_shape[2]; ++kh) {
-                    for (index_t kw = 0; kw < filter_shape[3]; ++kw) {
-                      // outch 0
-                      vo0[0] += in_ptr_base[in_offset
-                          + kw * dilation_w] * filter_ptr0[kw];
-                      vo0[1] += in_ptr_base[in_offset + stride_w
-                          + kw * dilation_w] * filter_ptr0[kw];
-                      vo0[2] += in_ptr_base[in_offset + 2 * stride_w
-                          + kw * dilation_w] * filter_ptr0[kw];
-                      vo0[3] += in_ptr_base[in_offset + 3 * stride_w
-                          + kw * dilation_w] * filter_ptr0[kw];
-                    }  // kw
-
-                    in_offset += dilation_h * in_width;
-                    filter_ptr0 += filter_shape[3];
-                  }  // kh
-
-                  for (index_t ow = 0; ow < 4; ++ow) {
-                    out_ptr0_base[out_offset + ow] = vo0[ow];
-                  }
-                  filter_ptr0 -= filter_size;
-                }  // w
-              }  // h
-            }  // c
-          }  // mm
-        }  // if
-      }  // m
-    }  // b
-  }
   const ActivationType activation_;
   const float relux_max_limit_;
   const float leakyrelu_coefficient_;
 #ifdef MACE_ENABLE_NEON
   std::unique_ptr<arm::fp32::Conv2dBase> conv2d_delegator_;
 #else
-  std::unique_ptr<ref::Conv2d<float>> conv2d_delegator_;
+  std::unique_ptr<ref::Conv2d<float>> ref_conv2d_delegator_;
 #endif  // MACE_ENABLE_NEON
 
  private:

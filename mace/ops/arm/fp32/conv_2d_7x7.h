@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_FP32_CONV_2D_1X1_H_
-#define MACE_OPS_ARM_FP32_CONV_2D_1X1_H_
+#ifndef MACE_OPS_ARM_FP32_CONV_2D_7X7_H_
+#define MACE_OPS_ARM_FP32_CONV_2D_7X7_H_
 
 #include <vector>
 #include "mace/public/mace.h"
 #include "mace/core/tensor.h"
 #include "mace/core/op_context.h"
-#include "mace/ops/arm/fp32/gemm.h"
 #include "mace/ops/arm/fp32/conv_2d.h"
 
 namespace mace {
@@ -27,20 +26,43 @@ namespace ops {
 namespace arm {
 namespace fp32 {
 
-class Conv2dK1x1 : public Conv2dBase {
+class Conv2dK7x7S1 : public Conv2dBase {
  public:
-  Conv2dK1x1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK7x7S1(const std::vector<int> paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
-  virtual ~Conv2dK1x1() {}
+  virtual ~Conv2dK7x7S1() {}
 
   MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       Tensor *output);
+};
 
- private:
-  Gemm gemm_;
+class Conv2dK7x7S2 : public Conv2dBase {
+ public:
+  Conv2dK7x7S2(const std::vector<int> paddings, const Padding padding_type)
+      : Conv2dBase({2, 2}, {1, 1}, paddings, padding_type) {}
+  virtual ~Conv2dK7x7S2() {}
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output);
+};
+
+class Conv2dK7x7S3 : public Conv2dBase {
+ public:
+  Conv2dK7x7S3(const std::vector<int> paddings, const Padding padding_type)
+      : Conv2dBase({3, 3}, {1, 1}, paddings, padding_type) {}
+  virtual ~Conv2dK7x7S3() {}
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output);
 };
 
 }  // namespace fp32
@@ -48,4 +70,4 @@ class Conv2dK1x1 : public Conv2dBase {
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_FP32_CONV_2D_1X1_H_
+#endif  // MACE_OPS_ARM_FP32_CONV_2D_7X7_H_

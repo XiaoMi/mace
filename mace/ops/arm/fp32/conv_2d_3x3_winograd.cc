@@ -34,13 +34,6 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
   const index_t in_width = input->dim(3);
   const index_t out_channels = filter->dim(0);
 
-  index_t padded_in_height = in_height + pad_top_ + pad_bottom_;
-  index_t padded_in_width = in_width + pad_left_ + pad_right_;
-
-  index_t out_height = padded_in_height - 2;
-  index_t out_width = padded_in_width - 2;
-  output->Resize({batch, out_channels, out_height, out_width});
-
   // When size of input feature map is bigger than 16x16,
   // set winograd out tile size to 6 to get higher performance.
   index_t out_tile_size = 2;
@@ -48,10 +41,35 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
     out_tile_size = 6;
   }
 
-  const index_t padded_out_height = RoundUp<index_t>(out_height, out_tile_size);
-  const index_t padded_out_width = RoundUp<index_t>(out_width, out_tile_size);
-  padded_in_height = std::max(padded_in_height, padded_out_height + 2);
-  padded_in_width = std::max(padded_in_width, padded_out_width + 2);
+  std::vector<index_t> output_shape;
+  std::vector<int> in_pad_size;
+  std::vector<int> out_pad_size;
+  CalOutputShapeAndPadSize(input,
+                           filter,
+                           out_tile_size,
+                           out_tile_size,
+                           &output_shape,
+                           &in_pad_size,
+                           &out_pad_size);
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+
+  Tensor::MappingGuard filter_guard(filter);
+  Tensor::MappingGuard input_guard(input);
+  Tensor::MappingGuard output_guard(output);
+
+  const index_t out_height = output_shape[2];
+  const index_t out_width = output_shape[3];
+  const index_t padded_in_height = in_height + in_pad_size[0] + in_pad_size[1];
+  const index_t padded_in_width = in_width + in_pad_size[2] + in_pad_size[3];
+  const index_t
+      padded_out_height = out_height + out_pad_size[0] + out_pad_size[1];
+  const index_t
+      padded_out_width = out_width + out_pad_size[2] + out_pad_size[3];
+  const int pad_top = in_pad_size[0];
+  const int pad_left = in_pad_size[2];
+
+  bool is_in_padded =
+      padded_in_height != in_height || padded_in_width != in_width;
   bool is_out_padded =
       padded_out_height != out_height || padded_out_width != out_width;
 
@@ -63,8 +81,9 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
 
   // pad input and transform input
   auto scratch_buffer = context->device()->scratch_buffer();
-  const index_t padded_in_size = PadAlignSize(
-      sizeof(float) * batch * in_channels * padded_in_height * padded_in_width);
+  const index_t padded_in_size = is_in_padded ? PadAlignSize(
+      sizeof(float) * batch * in_channels * padded_in_height
+          * padded_in_width) : 0;
   const index_t padded_out_size = is_out_padded ? PadAlignSize(
       sizeof(float) * batch * out_channels * padded_out_height
           * padded_out_width) : 0;
@@ -81,8 +100,18 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
   scratch_buffer->GrowSize(
       padded_in_size + padded_out_size + transformed_in_size
           + transformed_out_size + gemm_pack_size);
-  Tensor padded_in(scratch_buffer->Scratch(padded_in_size), DataType::DT_FLOAT);
-  padded_in.Resize({batch, in_channels, padded_in_height, padded_in_width});
+
+  const Tensor *padded_in = input;
+  Tensor tmp_padded_in
+      (scratch_buffer->Scratch(padded_in_size), DataType::DT_FLOAT);
+  if (is_in_padded) {
+    tmp_padded_in.Resize({batch, in_channels, padded_in_height,
+                          padded_in_width});
+    Tensor::MappingGuard guard(&tmp_padded_in);
+    PadInput(*input, pad_top, pad_left, &tmp_padded_in);
+    padded_in = &tmp_padded_in;
+  }
+
   Tensor *padded_out = output;
   Tensor tmp_padded_out
       (scratch_buffer->Scratch(padded_out_size), DataType::DT_FLOAT);
@@ -94,22 +123,10 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
 
   auto transformed_in = scratch_buffer->Scratch(transformed_in_size);
   auto transformed_out = scratch_buffer->Scratch(transformed_out_size);
-
-  auto padded_in_data = padded_in.data<float>();
+  auto padded_in_data = padded_in->data<float>();
   auto padded_out_data = padded_out->mutable_data<float>();
   auto transformed_in_data = transformed_in.mutable_data<float>();
   auto transformed_out_data = transformed_out.mutable_data<float>();
-
-  const index_t padded_bottom = padded_in_height - in_height - pad_top_;
-  const index_t padded_right = padded_in_width - in_width - pad_left_;
-  ConstructNCHWInputWithSpecificPadding(input,
-                                        pad_top_,
-                                        padded_bottom,
-                                        pad_left_,
-                                        padded_right,
-                                        &padded_in);
-
-  Tensor::MappingGuard filter_guard(filter);
   auto filter_data = filter->data<float>();
 
   if (!filter->is_weight() || out_tile_size != out_tile_size_) {
@@ -215,45 +232,9 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
     default:MACE_NOT_IMPLEMENTED;
   }
 
-  if (is_out_padded) {
-    UnPackOutput(*padded_out, output);
-  }
+  UnPadOutput(*padded_out, output);
 
   return MaceStatus::MACE_SUCCESS;
-}
-
-void Conv2dK3x3Winograd::UnPackOutput(const Tensor &src, Tensor *dst) {
-  const index_t batch = dst->dim(0);
-  const index_t channels = dst->dim(1);
-  const index_t height = dst->dim(2);
-  const index_t width = dst->dim(3);
-  const index_t padded_height = src.dim(2);
-  const index_t padded_width = src.dim(3);
-
-  if (height == padded_height && width == padded_width) {
-    return;
-  }
-
-  auto padded_out_data = src.data<float>();
-  auto out_data = dst->mutable_data<float>();
-
-  const index_t img_size = height * width;
-  const index_t padded_img_size = padded_height * padded_width;
-
-#pragma omp parallel for collapse(3) schedule(runtime)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t c = 0; c < channels; ++c) {
-      for (index_t h = 0; h < height; ++h) {
-        memcpy(
-            out_data + (b * channels + c) * img_size
-                + h * width,
-            padded_out_data
-                + (b * channels + c) * padded_img_size
-                + h * padded_width,
-            sizeof(float) * width);
-      }  // h
-    }  // c
-  }  // b
 }
 
 // OCHW => TOC

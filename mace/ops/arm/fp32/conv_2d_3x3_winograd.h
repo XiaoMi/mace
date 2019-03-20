@@ -15,6 +15,7 @@
 #ifndef MACE_OPS_ARM_FP32_CONV_2D_3X3_WINOGRAD_H_
 #define MACE_OPS_ARM_FP32_CONV_2D_3X3_WINOGRAD_H_
 
+#include <vector>
 #include <memory>
 
 #include "mace/public/mace.h"
@@ -30,12 +31,10 @@ namespace fp32 {
 
 class Conv2dK3x3Winograd : public Conv2dBase {
  public:
-  Conv2dK3x3Winograd(int pad_top, int pad_bottom, int pad_left, int pad_right)
-      : gemm_(),
-        pad_top_(pad_top),
-        pad_bottom_(pad_bottom),
-        pad_left_(pad_left),
-        pad_right_(pad_right),
+  Conv2dK3x3Winograd(const std::vector<int> paddings,
+                     const Padding padding_type)
+      : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type),
+        gemm_(),
         transformed_filter_(nullptr),
         out_tile_size_(0) {}
 
@@ -48,9 +47,6 @@ class Conv2dK3x3Winograd : public Conv2dBase {
       Tensor *output);
 
  private:
-  void UnPackOutput(const Tensor &padded_output,
-                    Tensor *output);
-
   void TransformFilter4x4(const float *filter,
                           const index_t in_channels,
                           const index_t out_channels,
@@ -94,10 +90,6 @@ class Conv2dK3x3Winograd : public Conv2dBase {
                           float *output);
 
   Gemm gemm_;
-  int pad_top_;
-  int pad_bottom_;
-  int pad_left_;
-  int pad_right_;
   std::unique_ptr<Tensor> transformed_filter_;
   index_t out_tile_size_;
 };
