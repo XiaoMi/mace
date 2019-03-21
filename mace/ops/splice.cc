@@ -71,7 +71,8 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     const index_t out_chunk = chunk - (right_context - left_context);
 
     MACE_CHECK(input_dim > const_dim_,
-               "input dim should be greater than const dim.");
+               "input dim:", input_dim,
+               "should be greater than const dim:", const_dim_);
     const index_t output_dim = dim * num_splice + const_dim_;
     const index_t output_stride = out_chunk * output_dim;
 
@@ -103,7 +104,7 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
       const index_t input_offset = dim;
       for (int b = 0; b < batch; ++b) {
         for (index_t i = 0; i < out_chunk; ++i) {
-          T *output_base = output_data +  + b * output_stride + i * output_dim;
+          T *output_base = output_data + b * output_stride + i * output_dim;
           const T *input_base = input_data + b * input_stride + i * input_dim;
           memcpy(output_base + output_offset,
                  input_base + input_offset,

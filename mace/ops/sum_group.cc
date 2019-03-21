@@ -80,18 +80,22 @@ class SumGroupOp<DeviceType::CPU, T> : public Operation {
       MACE_CHECK(cur_index <= input_dim)
         << "size value over-ranged:" << cur_index << "<=" << input_dim;
     }
-
-    for (index_t i = 0; i < bh; ++i) {
-      for (index_t j = 0; j < output_dim; ++j) {
-        int start_col = sum_indexes[j].first;
-        int end_col = sum_indexes[j].second;
-        T sum = 0;
-        for (int src_col = start_col; src_col < end_col; ++src_col) {
-          sum += input_data[i * input_dim + src_col];
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      for (index_t i = start0; i < end0; i += step0) {
+        for (index_t j = start1; j < end1; j += step1) {
+          int start_col = sum_indexes[j].first;
+          int end_col = sum_indexes[j].second;
+          T sum = 0;
+          for (int src_col = start_col; src_col < end_col; ++src_col) {
+            sum += input_data[i * input_dim + src_col];
+          }
+          output_data[i * output_dim + j] = sum;
         }
-        output_data[i * output_dim + j] = sum;
       }
-    }
+    }, 0, bh, 1, 0, output_dim, 1);
 
     return MaceStatus::MACE_SUCCESS;
   }
