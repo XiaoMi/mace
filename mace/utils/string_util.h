@@ -15,6 +15,7 @@
 #ifndef MACE_UTILS_STRING_UTIL_H_
 #define MACE_UTILS_STRING_UTIL_H_
 
+#include <algorithm>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -79,6 +80,35 @@ inline std::string MakeString(const std::string &str) {
 }
 
 inline std::string MakeString(const char *c_str) { return std::string(c_str); }
+
+inline std::string ToLower(const std::string &src) {
+  std::string dest(src);
+  std::transform(src.begin(), src.end(), dest.begin(), ::tolower);
+  return dest;
+}
+
+inline std::string ToUpper(const std::string &src) {
+  std::string dest(src);
+  std::transform(src.begin(), src.end(), dest.begin(), ::toupper);
+  return dest;
+}
+
+std::string ObfuscateString(const std::string &src,
+                            const std::string &lookup_table);
+
+std::string ObfuscateString(const std::string &src);
+
+std::string ObfuscateSymbol(const std::string &src);
+
+#ifdef MACE_OBFUSCATE_LITERALS
+#define MACE_OBFUSCATE_STRING(str) ObfuscateString(str)
+#define MACE_OBFUSCATE_SYMBOL(str) ObfuscateSymbol(str)
+#else
+#define MACE_OBFUSCATE_STRING(str) (str)
+#define MACE_OBFUSCATE_SYMBOL(str) (str)
+#endif
+
+std::vector<std::string> Split(const std::string &str, char delims);
 
 }  // namespace mace
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/ops/arm/depthwise_deconv2d_neon.h"
 
 namespace mace {

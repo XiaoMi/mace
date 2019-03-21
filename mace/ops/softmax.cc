@@ -134,10 +134,10 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
   }
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
 
-#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
  public:

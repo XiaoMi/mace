@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "mace/core/operator.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {

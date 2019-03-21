@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "mace/core/tensor.h"
+#include "gtest/gtest.h"
 
 namespace mace {
 namespace ops {

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sys/time.h>
 #include <algorithm>
 #include <iomanip>
 #include <thread>  // NOLINT(build/c++11)
@@ -24,15 +23,8 @@
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
 #include "mace/core/types.h"
+#include "mace/port/env.h"
 #include "mace/utils/quantize.h"
-
-namespace {
-inline int64_t NowMicros() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
-}
-}
 
 namespace mace {
 

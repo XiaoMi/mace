@@ -12,31 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_UTILS_UTILS_H_
-#define MACE_UTILS_UTILS_H_
+#ifndef MACE_UTILS_MATH_H_
+#define MACE_UTILS_MATH_H_
+
+#include <cmath>
 
 #include <algorithm>
-#include <cstdlib>
-#include <cmath>
-#include <map>
-#include <string>
 #include <vector>
 
+#include "mace/utils/logging.h"
+
 namespace mace {
-
-// Disable the copy and assignment operator for a class.
-#ifndef MACE_DISABLE_COPY_AND_ASSIGN
-#define MACE_DISABLE_COPY_AND_ASSIGN(CLASSNAME) \
- private:                                       \
-  CLASSNAME(const CLASSNAME &) = delete;        \
-  CLASSNAME &operator=(const CLASSNAME &) = delete
-#endif
-
-#ifndef MACE_EMPTY_VIRTUAL_DESTRUCTOR
-#define MACE_EMPTY_VIRTUAL_DESTRUCTOR(CLASSNAME) \
- public:                                         \
-  virtual ~CLASSNAME() {}
-#endif
 
 template <typename Integer>
 Integer RoundUp(Integer i, Integer factor) {
@@ -69,8 +55,6 @@ Integer CeilQuotient(Integer a, Integer b) {
   return (a + b - 1) / b;
 }
 
-std::string ObfuscateString(const std::string &src,
-                            const std::string &lookup_table);
 template <typename Integer>
 inline Integer Clamp(Integer in, Integer low, Integer high) {
   return std::max<Integer>(low, std::min<Integer>(in, high));
@@ -98,48 +82,11 @@ inline T ScalarTanh(T in) {
   }
 }
 
-std::string ObfuscateString(const std::string &src);
-
-std::string ObfuscateSymbol(const std::string &src);
-
-#ifdef MACE_OBFUSCATE_LITERALS
-#define MACE_OBFUSCATE_STRING(str) ObfuscateString(str)
-#define MACE_OBFUSCATE_SYMBOL(str) ObfuscateSymbol(str)
-#else
-#define MACE_OBFUSCATE_STRING(str) (str)
-#define MACE_OBFUSCATE_SYMBOL(str) (str)
-#endif
-
-std::vector<std::string> Split(const std::string &str, char delims);
-
-bool ReadBinaryFile(std::vector<unsigned char> *data,
-                    const std::string &filename);
-
-void MemoryMap(const std::string &file,
-               const unsigned char **data,
-               size_t *size);
-
-void MemoryUnMap(const unsigned char *data,
-                 const size_t &size);
-
-template <typename T>
-std::vector<std::string> MapKeys(const std::map<std::string, T> &data) {
-  std::vector<std::string> keys;
-  for (auto &kv : data) {
-    keys.push_back(kv.first);
-  }
-  return keys;
-}
-
-inline bool EnvEnabled(std::string env_name) {
-  char *env = getenv(env_name.c_str());
-  return !(!env || env[0] == 0 || env[0] == '0');
-}
-
 template <typename SrcType, typename DstType>
 std::vector<DstType> TransposeShape(const std::vector<SrcType> &shape,
                                     const std::vector<int> &dst_dims) {
   size_t shape_dims = shape.size();
+  MACE_CHECK(shape_dims == dst_dims.size());
   std::vector<DstType> output_shape(shape_dims);
   for (size_t i = 0; i < shape_dims; ++i) {
     output_shape[i] = static_cast<DstType>(shape[dst_dims[i]]);
@@ -148,4 +95,5 @@ std::vector<DstType> TransposeShape(const std::vector<SrcType> &shape,
 }
 
 }  // namespace mace
-#endif  // MACE_UTILS_UTILS_H_
+
+#endif  // MACE_UTILS_MATH_H_

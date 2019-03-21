@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/utils/env_time.h"
+#include "mace/port/env.h"
 #include "mace/utils/logging.h"
 
 namespace mace {

@@ -19,6 +19,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/op_context.h"
 #include "mace/ops/common/matrix.h"
+#include "mace/utils/math.h"
 
 // This implements matrix-matrix multiplication.
 // In the case of matrix-vector multiplication, use gemv.h/gemv.cc instead

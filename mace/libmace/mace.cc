@@ -21,7 +21,12 @@
 #include "mace/core/net.h"
 #include "mace/ops/ops_registry.h"
 #include "mace/ops/common/transpose.h"
+#include "mace/utils/math.h"
+#include "mace/utils/memory.h"
+#include "mace/utils/stl_util.h"
 #include "mace/public/mace.h"
+#include "mace/port/env.h"
+#include "mace/port/file_system.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/gpu_device.h"
@@ -32,8 +37,6 @@
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_device.h"
 #endif  // MACE_ENABLE_HEXAGON
-
-#include "mace/utils/memory.h"
 
 namespace mace {
 namespace {
@@ -377,8 +380,7 @@ class MaceEngine::Impl {
                              std::pair<const std::string, MaceTensor> *output);
 
  private:
-  const unsigned char *model_data_;
-  size_t model_data_size_;
+  std::unique_ptr<port::ReadOnlyMemoryRegion> model_data_;
   std::unique_ptr<OpRegistryBase> op_registry_;
   DeviceType device_type_;
   std::unique_ptr<Device> device_;
@@ -396,7 +398,6 @@ class MaceEngine::Impl {
 
 MaceEngine::Impl::Impl(const MaceEngineConfig &config)
     : model_data_(nullptr),
-      model_data_size_(0),
       op_registry_(new OpRegistry),
       device_type_(config.impl_->device_type()),
       device_(nullptr),
@@ -490,7 +491,7 @@ MaceStatus MaceEngine::Impl::Init(
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
-        static_cast<int>(mace::logging::LogMessage::MinVLogLevel()));
+        static_cast<int>(mace::port::MinVLogLevelFromEnv()));
     MACE_CHECK(hexagon_controller_->SetupGraph(*net_def, model_data),
                "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {
@@ -532,23 +533,22 @@ MaceStatus MaceEngine::Impl::Init(
     const std::string &model_data_file) {
   LOG(INFO) << "Loading Model Data";
 
-  MemoryMap(model_data_file, &model_data_, &model_data_size_);
+  auto fs = GetFileSystem();
+  MACE_RETURN_IF_ERROR(fs->NewReadOnlyMemoryRegionFromFile(
+        model_data_file.c_str(), &model_data_));
 
-  MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes, model_data_));
+  MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes,
+        reinterpret_cast<const unsigned char *>(model_data_->data())));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
       (device_type_ == DeviceType::CPU && ws_->diffused_buffer())) {
-    MemoryUnMap(model_data_, model_data_size_);
-    model_data_ = nullptr;
+    model_data_.reset();
   }
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceEngine::Impl::~Impl() {
   LOG(INFO) << "Destroying MaceEngine";
-  if (model_data_ != nullptr) {
-    MemoryUnMap(model_data_, model_data_size_);
-  }
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
     if (VLOG_IS_ON(2)) {

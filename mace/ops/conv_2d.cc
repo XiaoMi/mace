@@ -31,7 +31,7 @@
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 #ifdef MACE_ENABLE_NEON
 #include "mace/ops/arm/fp32/conv_2d.h"

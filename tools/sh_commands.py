@@ -275,6 +275,8 @@ def bazel_build(target,
     if abi == "host":
         bazel_args = (
             "build",
+            "--config",
+            platform.system().lower(),
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
             "--define",

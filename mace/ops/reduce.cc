@@ -85,7 +85,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
  private:
   void Simplify(const Tensor *input) {
     std::vector<bool> bitmap(static_cast<uint32_t>(input->dim_size()), false);
-    if (axis_.size() == 0) {
+    if (axis_.empty()) {
       for (int i = 0; i < input->dim_size(); ++i) {
         bitmap[i] = true;
       }

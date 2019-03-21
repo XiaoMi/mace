@@ -21,9 +21,11 @@
 #include <thread>  // NOLINT(build/c++11)
 
 #include "gflags/gflags.h"
+#include "mace/port/env.h"
+#include "mace/port/file_system.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #include "mace/benchmark/statistics.h"
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -31,24 +33,6 @@
 
 namespace mace {
 namespace benchmark {
-namespace str_util {
-
-std::vector<std::string> Split(const std::string &str, char delims) {
-  std::vector<std::string> result;
-  std::string tmp = str;
-  while (!tmp.empty()) {
-    size_t next_offset = tmp.find(delims);
-    result.push_back(tmp.substr(0, next_offset));
-    if (next_offset == std::string::npos) {
-      break;
-    } else {
-      tmp = tmp.substr(next_offset + 1);
-    }
-  }
-  return result;
-}
-
-}  //  namespace str_util
 
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
@@ -229,14 +213,10 @@ int Main(int argc, char **argv) {
 
   std::unique_ptr<OpStat> statistician(new OpStat());
 
-  std::vector<std::string> input_names =
-      str_util::Split(FLAGS_input_node, ',');
-  std::vector<std::string> output_names =
-      str_util::Split(FLAGS_output_node, ',');
-  std::vector<std::string> input_shapes =
-      str_util::Split(FLAGS_input_shape, ':');
-  std::vector<std::string> output_shapes =
-      str_util::Split(FLAGS_output_shape, ':');
+  std::vector<std::string> input_names = Split(FLAGS_input_node, ',');
+  std::vector<std::string> output_names = Split(FLAGS_output_node, ',');
+  std::vector<std::string> input_shapes = Split(FLAGS_input_shape, ':');
+  std::vector<std::string> output_shapes = Split(FLAGS_output_shape, ':');
 
   const size_t input_count = input_shapes.size();
   const size_t output_count = output_shapes.size();
@@ -250,9 +230,9 @@ int Main(int argc, char **argv) {
   }
 
   std::vector<std::string> raw_input_data_formats =
-      str_util::Split(FLAGS_input_data_format, ',');
+      Split(FLAGS_input_data_format, ',');
   std::vector<std::string> raw_output_data_formats =
-      str_util::Split(FLAGS_output_data_format, ',');
+      Split(FLAGS_output_data_format, ',');
   std::vector<DataFormat> input_data_formats(input_count);
   std::vector<DataFormat> output_data_formats(output_count);
   for (size_t i = 0; i < input_count; ++i) {
@@ -302,41 +282,46 @@ int Main(int argc, char **argv) {
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
   // Create Engine
-  std::vector<unsigned char> model_graph_data;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data;
   if (FLAGS_model_file != "") {
-    if (!mace::ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
+    auto fs = GetFileSystem();
+    auto status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
+        &model_graph_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
   }
 
-  const unsigned char *model_weights_data = nullptr;
-  size_t model_weights_data_size = 0;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data;
   if (FLAGS_model_data_file != "") {
-    MemoryMap(FLAGS_model_data_file,
-              &model_weights_data,
-              &model_weights_data_size);
-    MACE_CHECK(model_weights_data != nullptr && model_weights_data_size != 0);
+    auto fs = GetFileSystem();
+    auto status = fs->NewReadOnlyMemoryRegionFromFile(
+        FLAGS_model_data_file.c_str(),
+        &model_weights_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
+    }
+    MACE_CHECK(model_weights_data->length() > 0);
   }
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
-  create_engine_status =
-        CreateMaceEngineFromCode(FLAGS_model_name,
-                                 model_weights_data,
-                                 model_weights_data_size,
-                                 input_names,
-                                 output_names,
-                                 config,
-                                 &engine);
+  create_engine_status = CreateMaceEngineFromCode(FLAGS_model_name,
+      reinterpret_cast<const unsigned char *>(model_weights_data->data()),
+      model_weights_data->length(),
+      input_names,
+      output_names,
+      config,
+      &engine);
 #else
-  create_engine_status =
-      CreateMaceEngineFromProto(model_graph_data.data(),
-                                model_graph_data.size(),
-                                model_weights_data,
-                                model_weights_data_size,
-                                input_names,
-                                output_names,
-                                config,
-                                &engine);
+  create_engine_status = CreateMaceEngineFromProto(
+      reinterpret_cast<const unsigned char *>(model_graph_data->data()),
+      model_graph_data->length(),
+      reinterpret_cast<const unsigned char *>(model_weights_data->data()),
+      model_weights_data->length(),
+      input_names,
+      output_names,
+      config,
+      &engine);
 #endif
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {
     LOG(FATAL) << "Create engine error, please check the arguments";
@@ -410,10 +395,6 @@ int Main(int argc, char **argv) {
   }
 
   statistician->PrintStat();
-
-  if (model_weights_data != nullptr) {
-    MemoryUnMap(model_weights_data, model_weights_data_size);
-  }
 
   return 0;
 }

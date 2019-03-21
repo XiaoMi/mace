@@ -17,7 +17,9 @@
 
 #include <condition_variable>  // NOLINT(build/c++11)
 #include <mutex>  // NOLINT(build/c++11)
+
 #include "mace/utils/logging.h"
+#include "mace/utils/macros.h"
 
 namespace mace {
 namespace utils {
@@ -26,10 +28,6 @@ class RWMutex {
  public:
   RWMutex() : counter_(0), waiting_readers_(0), waiting_writers_(0) {}
   ~RWMutex() = default;
-  RWMutex(const RWMutex &) = delete;
-  RWMutex(RWMutex &&) = delete;
-  RWMutex& operator=(const RWMutex &) = delete;
-  RWMutex& operator=(RWMutex &&) = delete;
 
   int counter_;  // -1 for writer, 0 for nobody, 1~n for reader
   int waiting_readers_;
@@ -37,6 +35,8 @@ class RWMutex {
   std::mutex mutex_;
   std::condition_variable reader_cv_;
   std::condition_variable writer_cv_;
+
+  MACE_DISABLE_COPY_AND_ASSIGN(RWMutex);
 };
 
 // Writer first
@@ -61,13 +61,11 @@ class ReadLock {
       }
     }
   }
-  ReadLock(const ReadLock &) = delete;
-  ReadLock(ReadLock &&) = delete;
-  ReadLock& operator=(const ReadLock &) = delete;
-  ReadLock& operator=(ReadLock &&) = delete;
 
  private:
   RWMutex *rw_mutex_;
+
+  MACE_DISABLE_COPY_AND_ASSIGN(ReadLock);
 };
 
 class WriteLock {
@@ -91,13 +89,11 @@ class WriteLock {
       rw_mutex_->reader_cv_.notify_all();
     }
   }
-  WriteLock(const WriteLock &) = delete;
-  WriteLock(WriteLock &&) = delete;
-  WriteLock& operator=(const WriteLock &) = delete;
-  WriteLock& operator=(WriteLock &&) = delete;
 
  private:
   RWMutex *rw_mutex_;
+
+  MACE_DISABLE_COPY_AND_ASSIGN(WriteLock);
 };
 
 }  // namespace utils

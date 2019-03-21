@@ -59,14 +59,12 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]),
-    linkopts = ["-ldl"] + if_android([
-        "-pie",
-        "-lm",
-    ]),
+    linkopts = ["-ldl"],
     deps = [
         "//mace/codegen:generated_version",
         "//mace/proto:mace_cc",
         "//mace/utils",
+        "//mace/port",
         "@half//:half",
     ] + if_opencl_enabled([
         ":opencl_headers",

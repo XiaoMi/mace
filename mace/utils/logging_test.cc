@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_UTILS_ENV_TIME_H_
-#define MACE_UTILS_ENV_TIME_H_
+#include "mace/utils/logging.h"
 
-#include <stdint.h>
-#ifdef __hexagon__
-#include <HAP_perf.h>
-#else
-#include <sys/time.h>
-#endif
+#include <gtest/gtest.h>
 
 namespace mace {
+namespace {
 
-inline int64_t NowMicros() {
-#ifdef __hexagon__
-  return HAP_perf_get_time_us();
-#else
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+class LoggingTest : public ::testing::Test {
+};
+
+TEST_F(LoggingTest, Basic) {
+  LOG(INFO) << "info logging";
+  LOG(WARNING) << "warning logging";
+  LOG(ERROR) << "error logging";
+
+  VLOG(1) << "vlog 1 logging";
+  VLOG(2) << "vlog 2 logging";
+}
+
+TEST_F(LoggingTest, LogFatal) {
+#ifdef GTEST_HAS_DEATH_TEST
+  EXPECT_DEATH(do { LOG(FATAL) << "fatal logging"; } while (false), "");
 #endif
 }
 
+}  // namespace
 }  // namespace mace
-
-#endif  // MACE_UTILS_ENV_TIME_H_

@@ -144,7 +144,9 @@ class MaceStatus {
   enum Code {
     MACE_SUCCESS = 0,
     MACE_INVALID_ARGS = 1,
-    MACE_OUT_OF_RESOURCES = 2
+    MACE_OUT_OF_RESOURCES = 2,
+    MACE_UNSUPPORTED = 3,
+    MACE_RUNTIME_ERROR = 4,
   };
 
  public:
@@ -166,18 +168,6 @@ class MaceStatus {
   class Impl;
   std::unique_ptr<Impl> impl_;
 };
-
-
-#define MACE_RETURN_IF_ERROR(stmt)                                         \
-  {                                                                        \
-    MaceStatus status = (stmt);                                            \
-    if (status != MaceStatus::MACE_SUCCESS) {                              \
-      VLOG(0) << "Mace runtime failure: "                                  \
-              << __FILE__ << ":" << __LINE__ << ". "                       \
-              << status.information();                                     \
-      return status;                                                       \
-    }                                                                      \
-  }
 
 /// \brief GPU context contain the status used for GPU device.
 ///

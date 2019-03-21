@@ -20,10 +20,9 @@
 #include <vector>
 
 #include "mace/utils/logging.h"
+#include "mace/public/mace.h"
 
 namespace mace {
-
-struct CallStats;
 
 // Wait the call to finish and get the stats if param is not nullptr
 struct StatsFuture {

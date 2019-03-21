@@ -12,5 +12,8 @@ cc_library(
     hdrs = [
         "mace.h",
     ],
+    srcs = [
+        "status.cc",
+    ],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
 )

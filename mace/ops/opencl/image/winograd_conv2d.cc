@@ -18,7 +18,7 @@
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/opencl/helper.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {

@@ -17,7 +17,7 @@
 
 #include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/public/mace.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 class OpContext;

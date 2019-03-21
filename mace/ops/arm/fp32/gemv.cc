@@ -18,6 +18,8 @@
 #include <arm_neon.h>
 #include <algorithm>
 
+#include "mace/utils/math.h"
+
 #if !defined(__aarch64__)
 float vaddvq_f32(float32x4_t v) {
   float32x2_t _sum = vadd_f32(vget_low_f32(v), vget_high_f32(v));

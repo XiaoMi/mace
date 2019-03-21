@@ -2,10 +2,10 @@
 """
 def _git_version_conf_impl(repository_ctx):
   repository_ctx.template(
-      "BUILD",
-      Label("//repository/git:BUILD.tpl"))
+      "BUILD.bazel",
+      Label("//repository/git:BUILD.bazel.tpl"))
 
-  mace_root_path = str(repository_ctx.path(Label("@mace//:BUILD")))[:-len("BUILD")]
+  mace_root_path = str(repository_ctx.path(Label("@mace//:BUILD.bazel")))[:-len("BUILD.bazel")]
 
   generated_files_path = repository_ctx.path("gen")
 

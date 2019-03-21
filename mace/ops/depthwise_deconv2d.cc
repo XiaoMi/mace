@@ -26,7 +26,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/arm/depthwise_deconv2d_neon.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #include "mace/public/mace.h"
 #include "mace/utils/memory.h"
 #ifdef MACE_ENABLE_OPENCL

@@ -23,8 +23,7 @@
  *          --dsp_model_data_file=dsp_model_data.data \
  *          --run_seconds=10
  */
-#include <malloc.h>
-#include <stdint.h>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -33,7 +32,7 @@
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
-#include "mace/utils/env_time.h"
+#include "mace/port/env.h"
 #include "mace/utils/logging.h"
 #include "mace/core/types.h"
 

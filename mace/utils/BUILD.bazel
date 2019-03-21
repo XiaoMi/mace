@@ -7,10 +7,20 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load(
-    "//mace:mace.bzl",
-    "if_android",
-    "if_openmp_enabled",
+cc_library(
+    name = "utils_hdrs",
+    hdrs = glob([
+        "*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//mace/port:port_api",
+        "//mace/public",
+    ],
 )
 
 cc_library(
@@ -20,46 +30,37 @@ cc_library(
             "*.cc",
         ],
         exclude = [
-            "tuner_test.cc",
+            "*_test.cc",
         ],
     ),
-    hdrs = glob([
-        "*.h",
-    ]),
     copts = [
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_openmp_enabled([
-        "-fopenmp",
-    ]),
-    linkopts = if_android([
-        "-llog",
-    ]),
-    deps = [
-        "//mace/public",
     ],
+    deps = [
+        ":utils_hdrs",
+    ],
+    alwayslink = 1,
 )
 
 cc_test(
-    name = "tuner_test",
+    name = "utils_test",
     testonly = 1,
-    srcs = [
-        "tuner_test.cc",
-    ],
+    srcs = glob(
+        [
+            "*_test.cc",
+        ],
+    ),
     copts = [
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
     ],
-    linkopts = ["-ldl"] + if_android([
-        "-pie",
-        "-lm",  # Required by unordered_map
-    ]),
     linkstatic = 1,
     deps = [
         ":utils",
-        "//mace/core",
+        "//mace/port",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

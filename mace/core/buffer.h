@@ -21,8 +21,9 @@
 #include <functional>
 
 #include "mace/core/allocator.h"
-#include "mace/core/macros.h"
 #include "mace/core/types.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/macros.h"
 
 namespace mace {
 namespace core {

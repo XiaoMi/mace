@@ -15,7 +15,7 @@
 #ifndef MACE_UTILS_TIMER_H_
 #define MACE_UTILS_TIMER_H_
 
-#include "mace/utils/env_time.h"
+#include "mace/port/env.h"
 #include "mace/utils/logging.h"
 
 namespace mace {

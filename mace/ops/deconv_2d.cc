@@ -29,7 +29,7 @@
 #include "mace/ops/activation.h"
 #include "mace/ops/arm/deconv_2d_neon.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/deconv_2d.h"
