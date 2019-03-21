@@ -230,6 +230,8 @@ def onnx_dtype(dtype):
 class OnnxNode(object):
     def __init__(self, node):
         self.name = str(node.name)
+        if self.name == '':
+            self.name = str(node.output)
         self.op_type = str(node.op_type)
         self.domain = str(node.domain)
         self.attrs = dict([(attr.name,
