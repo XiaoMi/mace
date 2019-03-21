@@ -2052,10 +2052,7 @@ class Transformer(base_converter.ConverterInterface):
 
                     data_type_arg = quantize_op.arg.add()
                     data_type_arg.name = MaceKeyword.mace_non_zero
-                    if non_zero:
-                        data_type_arg.i = 1
-                    else:
-                        data_type_arg.i = 0
+                    data_type_arg.i = 0
 
                     find_range_arg = quantize_op.arg.add()
                     find_range_arg.name = \
@@ -2063,8 +2060,6 @@ class Transformer(base_converter.ConverterInterface):
                     find_range_arg.i = 1
 
                     quantized_inputs_names[-1] = quantize_output_name
-
-                non_zero = False
 
             del op.input[:]
             op.input.extend(quantized_inputs_names)
