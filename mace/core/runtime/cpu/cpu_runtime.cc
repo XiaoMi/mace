@@ -40,19 +40,33 @@ struct CPUFreq {
   float freq;
 };
 
+enum SchedulePolicy {
+  SCHED_STATIC,
+  SCHED_GUIDED,
+};
+
 namespace {
 
 MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
-                                           const std::vector<size_t> &cpu_ids) {
+                                           const std::vector<size_t> &cpu_ids,
+                                           SchedulePolicy schedule_policy) {
   MaceOpenMPThreadCount = omp_num_threads;
 
 #ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
-  omp_set_schedule(omp_sched_guided, 1);
+  if (schedule_policy == SCHED_GUIDED) {
+    omp_set_schedule(omp_sched_guided, 1);
+  } else if (schedule_policy == SCHED_STATIC) {
+    omp_set_schedule(omp_sched_static, 0);
+  } else {
+    LOG(WARNING) << "Unknown schedule policy: " << schedule_policy;
+  }
+
   omp_set_num_threads(omp_num_threads);
 #else
   MACE_UNUSED(omp_num_threads);
+  MACE_UNUSED(schedule_policy);
   LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
 
@@ -148,6 +162,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
   } else {
     cores_to_use = num_threads_hint;
   }
+  MACE_CHECK(cores_to_use > 0, "number of cores to use should > 0");
 
   VLOG(2) << "Use " << num_threads_hint << " threads";
   std::vector<size_t> cpu_ids(cores_to_use);
@@ -155,6 +170,10 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id << " with freq "
             << cpu_freq[i].freq;
     cpu_ids[i] = cpu_freq[i].core_id;
+  }
+  SchedulePolicy sched_policy = SCHED_GUIDED;
+  if (std::abs(cpu_freq[0].freq - cpu_freq[cores_to_use - 1].freq) < 1e-6) {
+    sched_policy = SCHED_STATIC;
   }
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -164,7 +183,9 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
   }
 #endif  // MACE_ENABLE_QUANTIZE
 
-  return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint, cpu_ids);
+  return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint,
+                                         cpu_ids,
+                                         sched_policy);
 }
 
 }  // namespace mace

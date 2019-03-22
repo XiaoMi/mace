@@ -7,6 +7,14 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_android_armv7",
+    "if_neon_enabled",
+    "if_openmp_enabled",
+)
+
 cc_library(
     name = "utils_hdrs",
     hdrs = glob([
@@ -37,7 +45,17 @@ cc_library(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ],
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+        "-mfloat-abi=softfp",
+    ]),
+    linkopts = if_android([
+        "-llog",
+    ]),
     deps = [
         ":utils_hdrs",
     ],
