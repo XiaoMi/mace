@@ -19,26 +19,6 @@
 namespace mace {
 namespace ops {
 
-namespace {
-void PlusOne(int* val) {
-  ++(*val);
-}
-
-void SubOne(int* val) {
-  --(*val);
-}
-
-bool LessThan(const int& val, const int& boundary) {
-  return val < boundary;
-}
-
-bool NotLessThanZero(const int& val, const int& boundary) {
-  MACE_UNUSED(boundary);
-  return val >= 0;
-}
-
-}  // namespace
-
 template <DeviceType D, typename T>
 class CumsumOp;
 
@@ -47,9 +27,10 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit CumsumOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 3)),
+        axis_(Operation::GetOptionalArg<int>("axis", 0)),
         exclusive_(Operation::GetOptionalArg<bool>("exclusive", false)),
-        reverse_(Operation::GetOptionalArg<bool>("reverse", false)) {}
+        reverse_(Operation::GetOptionalArg<bool>("reverse", false)),
+        checked_(false) {}
 
   void Validate() {
     const int32_t input_dims = this->Input(0)->dim_size();
@@ -64,9 +45,9 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
     MACE_UNUSED(context);
     if (!checked_) {
       Validate();
-      auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-          "data_format", DataFormat::DF_NONE));
-      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+      bool has_data_format = Operation::GetOptionalArg<int>(
+          "has_data_format", 0);
+      if (has_data_format && this->Input(0)->dim_size() == 4) {
         if (axis_ == 3) axis_ = 1;
         else if (axis_ == 2) axis_ = 3;
         else if (axis_ == 1) axis_ = 2;
@@ -75,6 +56,7 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
     }
 
     const Tensor *input = this->Input(0);
+    const std::vector<index_t> input_shape = input->shape();
 
     Tensor *output = this->Output(0);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
@@ -85,66 +67,70 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
     const float *input_ptr = input->data<float>();
     float *output_ptr = output->mutable_data<float>();
 
-    std::function<void(int*)> next = reverse_ ? SubOne : PlusOne;
-    std::function<void(int*)> previous = reverse_ ? PlusOne : SubOne;
-    std::function<bool(const int&, const int&)> boundary =
-      reverse_ ? NotLessThanZero : LessThan;
+    const index_t outer_size = std::accumulate(input_shape.begin(),
+                                               input_shape.begin() + axis_,
+                                               1,
+                                               std::multiplies<index_t>());
+    const index_t inner_size = std::accumulate(input_shape.begin() + axis_ + 1,
+                                               input_shape.end(),
+                                               1,
+                                               std::multiplies<index_t>());
+    const index_t cum_size = input_shape[axis_];
 
-    if (input->dim_size() == 4) {
-      const int batch = input->dim(0);
-      const int channel = input->dim(1);
-      const int height = input->dim(2);
-      const int width = input->dim(3);
-
-      const int axis_dim_size = input->dim(axis_);
-
-      for (int n = reverse_ ? batch - 1 : 0; boundary(n, batch); next(&n)) {
-        for (int c = reverse_ ? channel - 1 : 0; boundary(c, channel);
-             next(&c)) {
-          for (int h = reverse_ ? height - 1 : 0; boundary(h, height);
-               next(&h)) {
-            for (int w = reverse_ ? width - 1 : 0; boundary(w, width);
-                 next(&w)) {
-              int dims[4] = {n, c, h, w};
-              if (!reverse_ && dims[axis_] == 0) {
-                if (exclusive_) {
-                  output_ptr[((n * channel + c) * height + h) * width + w] = 0;
-                } else {
-                  continue;
-                }
-              } else if (reverse_ && dims[axis_] == axis_dim_size - 1) {
-                if (exclusive_) {
-                  output_ptr[((n * channel + c) * height + h) * width + w] = 0;
-                } else {
-                  continue;
-                }
-              } else {
-                previous(&dims[axis_]);
-                if (exclusive_) {
-                  output_ptr[((n * channel + c) * height + h) * width + w] =
-                      input_ptr[((dims[0] * channel + dims[1]) * height +
-                                 dims[2]) *
-                                    width +
-                                dims[3]] +
-                      output_ptr[((dims[0] * channel + dims[1]) * height +
-                                  dims[2]) *
-                                     width +
-                                 dims[3]];
-                } else {
-                  output_ptr[((n * channel + c) * height + h) * width + w] =
-                      input_ptr[((n * channel + c) * height + h) * width + w] +
-                      output_ptr[((dims[0] * channel + dims[1]) * height +
-                                  dims[2]) *
-                                     width +
-                                 dims[3]];
-                }
-              }
+    if (!reverse_) {
+#pragma omp parallel for
+      for (index_t outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
+        index_t start_idx = outer_idx * cum_size * inner_size;
+        for (index_t cum_idx = 0; cum_idx < cum_size; ++cum_idx) {
+          if (cum_idx == 0) {
+            if (exclusive_) {
+              std::memset(output_ptr + start_idx,
+                          0,
+                          sizeof(T) * inner_size);
+            } else {
+              std::memcpy(output_ptr + start_idx,
+                          input_ptr + start_idx,
+                          sizeof(T) * inner_size);
+            }
+          } else {
+            index_t cur_idx = start_idx + cum_idx * inner_size;
+            index_t pre_idx = start_idx + (cum_idx - 1) * inner_size;
+            index_t input_idx = exclusive_ ? pre_idx : cur_idx;
+            for (index_t inner_idx = 0; inner_idx < inner_size; ++inner_idx) {
+              output_ptr[cur_idx + inner_idx] =
+                output_ptr[pre_idx + inner_idx] +
+                input_ptr[input_idx + inner_idx];
             }
           }
         }
       }
     } else {
-      MACE_NOT_IMPLEMENTED;
+#pragma omp parallel for
+      for (index_t outer_idx = outer_size - 1; outer_idx >= 0; --outer_idx) {
+        index_t start_idx = outer_idx * cum_size * inner_size;
+        for (index_t cum_idx = cum_size - 1; cum_idx >= 0; --cum_idx) {
+          index_t cur_idx = start_idx + cum_idx * inner_size;
+          if (cum_idx == cum_size - 1) {
+            if (exclusive_) {
+              std::memset(output_ptr + cur_idx,
+                          0,
+                          sizeof(T) * inner_size);
+            } else {
+              std::memcpy(output_ptr + cur_idx,
+                          input_ptr + cur_idx,
+                          sizeof(T) * inner_size);
+            }
+          } else {
+            index_t pre_idx = start_idx + (cum_idx + 1) * inner_size;
+            index_t input_idx = exclusive_ ? pre_idx : cur_idx;
+            for (index_t inner_idx = 0; inner_idx < inner_size; ++inner_idx) {
+              output_ptr[cur_idx + inner_idx] =
+                output_ptr[pre_idx + inner_idx] +
+                input_ptr[input_idx + inner_idx];
+            }
+          }
+        }
+      }
     }
 
     return MaceStatus::MACE_SUCCESS;

@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <functional>
-#include <vector>
-
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -24,33 +21,69 @@ namespace test {
 class CumsumOpTest : public OpsTestBase {};
 
 namespace {
-void SimpleTest() {
+template <typename T>
+void SimpleTestWithDataFormat(const std::vector<index_t> &shape,
+                              const std::vector<float> &input,
+                              const int axis,
+                              const int exclusive,
+                              const int reverse,
+                              const std::vector<float> &output) {
   // Construct graph
   OpsTestNet net;
 
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {2, 2, 2, 2},
-      {0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.});
+  net.AddInputFromArray<CPU, T>("Input", shape, input);
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+                                                  NCHW);
 
   OpDefBuilder("Cumsum", "CumsumTest")
-    .Input("Input")
-    .Output("Output")
-    .AddIntArg("axis", 1)
-    .AddIntArg("exclusive", 1)
-    .AddIntArg("reverse", 1)
-    .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
+    .Input("InputNCHW")
+    .Output("OutputNCHW")
+    .AddIntArg("axis", axis)
+    .AddIntArg("exclusive", exclusive)
+    .AddIntArg("reverse", reverse)
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .AddIntArg("has_data_format", 1)
     .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::CPU);
 
-  auto expected = net.CreateTensor<float>({2, 2, 2, 2},
-      {4., 5., 6., 7., 0., 0., 0., 0., 12., 13., 14., 15., 0., 0., 0., 0.});
-  ExpectTensorNear<float, float>(*expected, *net.GetOutput("Output"), 1e-5);
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
+                                                  NHWC);
+
+  net.AddInputFromArray<CPU, T>("ExpectedOutput", shape, output);
+  ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
+                      *net.GetOutput("Output"));
 }
 }  // namespace
 
-TEST_F(CumsumOpTest, CPU) {
-  SimpleTest();
+TEST_F(CumsumOpTest, HasDataFormatCPU) {
+  SimpleTestWithDataFormat<float>(
+      {2, 2, 2, 2},
+      {0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.},
+      0, 0, 0,
+      {0., 1., 2., 3., 4., 5., 6., 7., 8., 10., 12., 14., 16., 18., 20., 22.});
+  SimpleTestWithDataFormat<float>(
+      {2, 2, 2, 2},
+      {0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.},
+      1, 0, 0,
+      {0., 1., 2., 3., 4., 6., 8., 10., 8., 9., 10., 11., 20., 22., 24., 26.});
+  SimpleTestWithDataFormat<float>(
+      {2, 2, 2, 2},
+      {0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.},
+      0, 1, 0,
+      {0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 2., 3., 4., 5., 6., 7.});
+  SimpleTestWithDataFormat<float>(
+      {2, 2, 2, 2},
+      {0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.},
+      0, 0, 1,
+      {8., 10., 12., 14., 16., 18., 20., 22., 8., 9., 10., 11., 12., 13., 14.,
+      15.});
+  SimpleTestWithDataFormat<float>(
+      {2, 2, 2, 2},
+      {0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.},
+      1, 1, 1,
+      {4., 5., 6., 7., 0., 0., 0., 0., 12., 13., 14., 15., 0., 0., 0., 0.});
 }
 
 }  // namespace test
