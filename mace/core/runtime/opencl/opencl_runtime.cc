@@ -154,16 +154,19 @@ const std::string OpenCLErrorToString(cl_int error) {
       return "CL_INVALID_LINKER_OPTIONS";
     case CL_INVALID_DEVICE_PARTITION_COUNT:
       return "CL_INVALID_DEVICE_PARTITION_COUNT";
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200
     case CL_INVALID_PIPE_SIZE:
       return "CL_INVALID_PIPE_SIZE";
     case CL_INVALID_DEVICE_QUEUE:
       return "CL_INVALID_DEVICE_QUEUE";
+#endif
     default:
       return MakeString("UNKNOWN: ", error);
   }
 }
 
 namespace {
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200
 void OpenCLPrintfCallback(const char *buffer,
                           size_t length,
                           size_t final,
@@ -172,6 +175,7 @@ void OpenCLPrintfCallback(const char *buffer,
   MACE_UNUSED(user_data);
   fwrite(buffer, 1, length, stdout);
 }
+#endif
 
 void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
                                 GPUPerfHint gpu_perf_hint,
@@ -340,6 +344,7 @@ OpenCLRuntime::OpenCLRuntime(
         new cl::Context({*device_}, context_properties.data(),
                         nullptr, nullptr, &err));
   } else {
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200
     if (is_profiling_enabled_ && gpu_type_ == GPUType::MALI) {
       std::vector<cl_context_properties> context_properties = {
           CL_CONTEXT_PLATFORM, (cl_context_properties)default_platform(),
@@ -353,6 +358,10 @@ OpenCLRuntime::OpenCLRuntime(
       context_ = std::shared_ptr<cl::Context>(
           new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
     }
+#else
+    context_ = std::shared_ptr<cl::Context>(
+          new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
+#endif
   }
   if (err != CL_SUCCESS) {
     LOG(ERROR) << "error: " << OpenCLErrorToString(err);

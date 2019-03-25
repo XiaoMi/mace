@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 
+#include "mace/utils/memory.h"
+
 namespace mace {
 
 ScratchImageManager::ScratchImageManager() = default;
@@ -43,8 +45,7 @@ Image *ScratchImageManager::Spawn(
   // if not found
   if (found_image_idx == -1) {
     reference_count_.push_back(0);
-    images_[image_count] =
-        std::move(std::unique_ptr<Image>(new Image(allocator)));
+    images_[image_count] = make_unique<Image>(allocator);
     if (images_.at(image_count)->Allocate(shape, dt) !=
         MaceStatus::MACE_SUCCESS) {
       return nullptr;

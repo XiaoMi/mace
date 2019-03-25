@@ -2,6 +2,7 @@
 load(
     "//mace:mace.bzl",
     "if_android",
+    "if_darwin",
     "if_hexagon_enabled",
     "if_hta_enabled",
     "if_opencl_enabled",
@@ -18,10 +19,12 @@ cc_binary(
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = [
-        "-fuse-ld=gold",
         "-lm",
         "-ldl",
-    ] + if_openmp_enabled([
+    ] + if_darwin(
+        [],
+        default_value = ["-fuse-ld=gold"],
+    ) + if_openmp_enabled([
         "-fopenmp",
     ]) + if_android([
         "-ldl",
@@ -33,10 +36,11 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_libmace",
+        "//mace/utils:utils_hdrs",
+    ] + if_opencl_enabled([
         "//mace/codegen:generated_opencl_binary",
         "//mace/codegen:generated_opencl_parameter",
-        "//mace/utils:utils_hdrs",
-    ] + if_hexagon_enabled([
+    ]) + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]) + if_hta_enabled([
         "//third_party/hta",
@@ -54,10 +58,12 @@ cc_binary(
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = [
-        "-fuse-ld=gold",
         "-lm",
         "-ldl",
-    ] + if_android([
+    ] + if_darwin(
+        [],
+        default_value = ["-fuse-ld=gold"],
+    ) + if_android([
         "-ldl",
         "-pie",
         "-llog",
@@ -67,8 +73,9 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_libmace",
         "//mace/codegen:generated_mace_engine_factory",
+        "//mace/utils:utils_hdrs",
+    ] + if_opencl_enabled([
         "//mace/codegen:generated_opencl_binary",
         "//mace/codegen:generated_opencl_parameter",
-        "//mace/utils:utils_hdrs",
-    ],
+    ]),
 )

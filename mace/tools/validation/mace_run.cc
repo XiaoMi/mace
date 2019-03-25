@@ -24,7 +24,6 @@
  *          --model_data_file=model_data.data \
  *          --device=GPU
  */
-#include <malloc.h>
 #include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
@@ -94,56 +93,6 @@ DataFormat ParseDataFormat(const std::string &data_format_str) {
   } else {
     return DataFormat::DF_NONE;
   }
-}
-
-struct mallinfo LogMallinfoChange(struct mallinfo prev) {
-  struct mallinfo curr = mallinfo();
-  if (prev.arena != curr.arena) {
-    LOG(INFO) << "Non-mmapped space allocated (bytes): " << curr.arena
-              << ", diff: " << ((int64_t) curr.arena - (int64_t) prev.arena);
-  }
-  if (prev.ordblks != curr.ordblks) {
-    LOG(INFO) << "Number of free chunks: " << curr.ordblks
-              << ", diff: "
-              << ((int64_t) curr.ordblks - (int64_t) prev.ordblks);
-  }
-  if (prev.smblks != curr.smblks) {
-    LOG(INFO) << "Number of free fastbin blocks: " << curr.smblks
-              << ", diff: " << ((int64_t) curr.smblks - (int64_t) prev.smblks);
-  }
-  if (prev.hblks != curr.hblks) {
-    LOG(INFO) << "Number of mmapped regions: " << curr.hblks
-              << ", diff: " << ((int64_t) curr.hblks - (int64_t) prev.hblks);
-  }
-  if (prev.hblkhd != curr.hblkhd) {
-    LOG(INFO) << "Space allocated in mmapped regions (bytes): " << curr.hblkhd
-              << ", diff: " << ((int64_t) curr.hblkhd - (int64_t) prev.hblkhd);
-  }
-  if (prev.usmblks != curr.usmblks) {
-    LOG(INFO) << "Maximum total allocated space (bytes): " << curr.usmblks
-              << ", diff: "
-              << ((int64_t) curr.usmblks - (int64_t) prev.usmblks);
-  }
-  if (prev.fsmblks != curr.fsmblks) {
-    LOG(INFO) << "Space in freed fastbin blocks (bytes): " << curr.fsmblks
-              << ", diff: "
-              << ((int64_t) curr.fsmblks - (int64_t) prev.fsmblks);
-  }
-  if (prev.uordblks != curr.uordblks) {
-    LOG(INFO) << "Total allocated space (bytes): " << curr.uordblks
-              << ", diff: "
-              << ((int64_t) curr.uordblks - (int64_t) prev.uordblks);
-  }
-  if (prev.fordblks != curr.fordblks) {
-    LOG(INFO) << "Total free space (bytes): " << curr.fordblks << ", diff: "
-              << ((int64_t) curr.fordblks - (int64_t) prev.fordblks);
-  }
-  if (prev.keepcost != curr.keepcost) {
-    LOG(INFO) << "Top-most, releasable space (bytes): " << curr.keepcost
-              << ", diff: "
-              << ((int64_t) curr.keepcost - (int64_t) prev.keepcost);
-  }
-  return curr;
 }
 
 DEFINE_string(model_name,
@@ -395,8 +344,14 @@ bool RunModel(const std::string &model_name,
   if (FLAGS_round > 0) {
     LOG(INFO) << "Run model";
     int64_t total_run_duration = 0;
-    struct mallinfo prev = mallinfo();
     for (int i = 0; i < FLAGS_round; ++i) {
+      std::unique_ptr<port::Logger> info_log;
+      std::unique_ptr<port::MallocLogger> malloc_logger;
+      if (FLAGS_malloc_check_cycle >= 1 && i % FLAGS_malloc_check_cycle == 0) {
+        info_log = LOG_PTR(INFO);
+        malloc_logger = port::Env::Default()->NewMallocLogger(
+            info_log.get(), MakeString(i));
+      }
       MaceStatus run_status;
       while (true) {
         int64_t t0 = NowMicros();
@@ -435,10 +390,6 @@ bool RunModel(const std::string &model_name,
           total_run_duration += (t1 - t0);
           break;
         }
-      }
-      if (FLAGS_malloc_check_cycle >= 1 && i % FLAGS_malloc_check_cycle == 0) {
-        LOG(INFO) << "=== check malloc info change #" << i << " ===";
-        prev = LogMallinfoChange(prev);
       }
     }
     model_run_millis = total_run_duration / 1000.0 / FLAGS_round;

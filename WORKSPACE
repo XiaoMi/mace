@@ -88,10 +88,10 @@ http_archive(
 
 http_archive(
     name = "tflite",
-    sha256 = "c886d46ad8c91fcafed2d910ad9e7bc5aeb29856c387bdf9b6b4903cc16e6e60",
+    sha256 = "1bb4571ee5cbde427ecfed076b39edaad96ace897ab86bb2495bdb93c706b203",
     strip_prefix = "tensorflow-mace-ffc8cc7e8c9d1894753509e88b17e251bc6255e3",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/tflite/tensorflow-mace-ffc8cc7e8c9d1894753509e88b17e251bc6255e3.zip",
+        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/tflite/tensorflow-mace-ffc8cc7e8c9d1894753509e88b17e251bc6255e3_custom.zip",
     ],
 )
 

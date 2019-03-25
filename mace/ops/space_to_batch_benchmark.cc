@@ -70,10 +70,23 @@ void BMSpaceToBatch(
   MACE_BENCHMARK(                                                              \
     MACE_BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE)
 
+#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
   MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU); \
   MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU); \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, CPU);
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, CPU)
+#elif defined(MACE_ENABLE_OPENCL)
+#define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU)
+#elif defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, CPU)
+#else
+#define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU)
+#endif
 
 MACE_BM_SPACE_TO_BATCH(128, 16, 16, 128, 2);
 MACE_BM_SPACE_TO_BATCH(1, 256, 256, 32, 2);

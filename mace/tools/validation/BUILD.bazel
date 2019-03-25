@@ -1,5 +1,11 @@
 # Examples
-load("//mace:mace.bzl", "if_openmp_enabled", "if_android", "if_opencl_enabled")
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_darwin",
+    "if_opencl_enabled",
+    "if_openmp_enabled",
+)
 
 cc_binary(
     name = "mace_run_static",
@@ -10,9 +16,10 @@ cc_binary(
     ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = [
-        "-fuse-ld=gold",
-    ] + if_openmp_enabled([
+    linkopts = if_darwin(
+        [],
+        default_value = ["-fuse-ld=gold"],
+    ) + if_openmp_enabled([
         "-fopenmp",
     ]),
     linkstatic = 1,
@@ -33,9 +40,10 @@ cc_binary(
     ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = [
-        "-fuse-ld=gold",
-    ] + if_openmp_enabled([
+    linkopts = if_darwin(
+        [],
+        default_value = ["-fuse-ld=gold"],
+    ) + if_openmp_enabled([
         "-fopenmp",
     ]),
     linkstatic = 0,

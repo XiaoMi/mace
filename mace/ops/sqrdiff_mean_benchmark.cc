@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "mace/core/operator.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -69,10 +68,15 @@ void SqrDiffMean(int iters, int batch, int channels,
   MACE_BENCHMARK(                                                    \
     MACE_BM_SQRDIFF_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_SQRDIFF_MEAN(N, C, H, W)                 \
   MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, GPU);  \
   MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, half, GPU);   \
-  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, CPU);
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, CPU)
+#else
+#define MACE_BM_SQRDIFF_MEAN(N, C, H, W)                 \
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, CPU)
+#endif
 
 
 MACE_BM_SQRDIFF_MEAN(1, 1, 512, 512);

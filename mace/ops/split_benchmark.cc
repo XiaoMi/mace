@@ -73,10 +73,15 @@ void BMSplitHelper(int iters,
       MACE_BENCHMARK(                                                        \
           MACE_BM_SPLIT_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_SPLIT(N, H, W, C, NO)                 \
   MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, CPU);    \
   MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, GPU);    \
-  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, half, GPU);
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, half, GPU)
+#else
+#define MACE_BM_SPLIT(N, H, W, C, NO)                 \
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, CPU)
+#endif
 
 MACE_BM_SPLIT(1, 32, 32, 32, 2);
 MACE_BM_SPLIT(1, 32, 32, 128, 2);

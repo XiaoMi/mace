@@ -20,7 +20,6 @@
 #     --stdout_processor=stdout_processor
 
 import argparse
-import re
 import sys
 
 import sh_commands
@@ -106,6 +105,11 @@ def parse_args():
         default=True,
         help="Whether to use neon optimization")
     parser.add_argument(
+        "--enable_openmp",
+        type=str2bool,
+        default=True,
+        help="Disable openmp for multiple thread.")
+    parser.add_argument(
         '--address_sanitizer',
         action="store_true",
         help="Whether to enable AddressSanitizer")
@@ -140,7 +144,8 @@ def main(unused_args):
             toolchain=toolchain,
             enable_neon=FLAGS.enable_neon,
             address_sanitizer=FLAGS.address_sanitizer,
-            debug_mode=FLAGS.debug_mode)
+            debug_mode=FLAGS.debug_mode,
+            enable_openmp=FLAGS.enable_openmp)
         if FLAGS.run_target:
             target_devices = DeviceManager.list_devices(FLAGS.device_yml)
             if FLAGS.target_socs != TargetSOCTag.all and\

@@ -80,10 +80,15 @@ void EltwiseBenchmark(
   MACE_BENCHMARK(                                                             \
       MACE_BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
   MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU);    \
   MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, GPU);    \
-  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, GPU);
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, GPU)
+#else
+#define MACE_BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU)
+#endif
 
 MACE_BM_ELTWISE(2, 1, 128, 128, 32);
 MACE_BM_ELTWISE(2, 1, 240, 240, 256);
@@ -93,8 +98,10 @@ MACE_BM_ELTWISE(0, 1, 240, 240, 256);
 MACE_BM_ELTWISE(5, 1, 128, 128, 32);
 MACE_BM_ELTWISE(5, 1, 240, 240, 256);
 
+#ifdef MACE_ENABLE_QUANTIZE
 MACE_BM_ELTWISE_MACRO(0, 1, 128, 128, 32, uint8_t, CPU);
 MACE_BM_ELTWISE_MACRO(1, 1, 128, 128, 32, uint8_t, CPU);
+#endif
 
 }  // namespace test
 }  // namespace ops

@@ -41,10 +41,12 @@ void CropHelper(int iters,
     auto input_shape1 = TransposeShape<index_t, index_t>(shape1, {0, 3, 1, 2});
     net.AddRandomInput<D, float>("Input0", input_shape0);
     net.AddRandomInput<D, float>("Input1", input_shape1);
+#ifdef MACE_ENABLE_OPENCL
   } else if (D == DeviceType::GPU) {
     // Add input data
     net.AddRandomInput<D, T>("Input0", shape0);
     net.AddRandomInput<D, T>("Input1", shape1);
+#endif  // MACE_ENABLE_OPENCL
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -85,16 +87,20 @@ void CropHelper(int iters,
   MACE_BENCHMARK(MACE_BM_CROP_##N##_##H##_##W##_##C##_##AXIS##_##OFFSET\
   ##_##DEVICE##_##TYPE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_CROP(N, H, W, C, AXIS, OFFSET)               \
   MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, CPU, float);  \
   MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, float);  \
-  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, half);
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, half)
+#else
+#define MACE_BM_CROP(N, H, W, C, AXIS, OFFSET)               \
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, CPU, float)
+#endif  // MACE_ENABLE_OPENCL
 
 MACE_BM_CROP(4, 32, 32, 32, 2, 4);
 MACE_BM_CROP(8, 32, 32, 64, 1, 0);
 MACE_BM_CROP(8, 32, 32, 128, 0, 0);
 MACE_BM_CROP(8, 32, 32, 256, 2, 4);
-
 
 }  // namespace test
 }  // namespace ops
