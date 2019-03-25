@@ -263,7 +263,8 @@ def find_simpleperf_library(abi, simpleperf_path=''):
 def bazel_build(target,
                 abi="armeabi-v7a",
                 toolchain='android',
-                hexagon_mode=False,
+                enable_hexagon=False,
+                enable_hta=False,
                 enable_openmp=True,
                 enable_neon=True,
                 enable_opencl=True,
@@ -299,7 +300,9 @@ def bazel_build(target,
             "--define",
             "quantize=%s" % str(enable_quantize).lower(),
             "--define",
-            "hexagon=%s" % str(hexagon_mode).lower())
+            "hexagon=%s" % str(enable_hexagon).lower(),
+            "--define",
+            "hta=%s" % str(enable_hta).lower())
     if address_sanitizer:
         bazel_args += ("--config", "asan")
     else:

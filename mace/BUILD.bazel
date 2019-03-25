@@ -79,6 +79,17 @@ config_setting(
 )
 
 config_setting(
+    name = "hta_enabled",
+    define_values = {
+        "hta": "true",
+    },
+    values = {
+        "crosstool_top": "//external:android/crosstool",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "openmp_enabled",
     define_values = {
         "openmp": "true",

@@ -15,8 +15,7 @@ mace {
     *mace*NetDef*;
     *mace*MemoryType*;
     *mace*DataType*;
-    *mace*InputInfo*;
-    *mace*OutputInfo*;
+    *mace*InputOutputInfo*;
     *mace*OutputShape*;
     *mace*OperatorDef*;
     *mace*ConstTensor*;

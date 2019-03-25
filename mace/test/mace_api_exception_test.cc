@@ -29,7 +29,7 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
 
   std::shared_ptr<NetDef> net_def(new NetDef());
   for (size_t i = 0; i < input_names.size(); ++i) {
-    InputInfo *info = net_def->add_input_info();
+    InputOutputInfo *info = net_def->add_input_info();
     info->set_name(input_names[i]);
   }
 

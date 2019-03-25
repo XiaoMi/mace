@@ -12,6 +12,8 @@ load(
     "if_android",
     "if_android_armv7",
     "if_hexagon_enabled",
+    "if_hta_enabled",
+    "if_hexagon_or_hta_enabled",
     "if_neon_enabled",
     "if_not_hexagon_enabled",
     "if_opencl_enabled",
@@ -33,17 +35,24 @@ cc_library(
         [
             "runtime/opencl/*.cc",
         ],
-    )) + if_hexagon_enabled(glob([
-        "runtime/hexagon/*.cc",
-    ])),
+    )) + if_hexagon_enabled([
+        "runtime/hexagon/hexagon_dsp_wrapper.cc",
+    ]) + if_hta_enabled([
+        "runtime/hexagon/hexagon_hta_wrapper.cc",
+    ]),
     hdrs = glob([
         "*.h",
         "runtime/cpu/*.h",
-    ]) + if_opencl_enabled(glob(
-        [
-            "runtime/opencl/*.h",
-        ],
-    )) + if_hexagon_enabled(glob(["runtime/hexagon/*.h"])),
+    ]) + if_opencl_enabled(glob([
+        "runtime/opencl/*.h",
+    ])) + if_hexagon_or_hta_enabled(glob([
+        "runtime/hexagon/hexagon_control_wrapper.h",
+        "runtime/hexagon/hexagon_device.h",
+    ])) + if_hexagon_enabled(glob([
+        "runtime/hexagon/*dsp*.h",
+    ])) + if_hta_enabled(glob([
+        "runtime/hexagon/*hta*.h",
+    ])),
     copts = [
         "-Werror",
         "-Wextra",
@@ -57,6 +66,8 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
@@ -77,6 +88,8 @@ cc_library(
         "@gemmlowp",
     ]) + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
+    ]) + if_hta_enabled([
+        "//third_party/hta",
     ]),
 )
 

@@ -37,6 +37,7 @@ FLAGS = None
 device_type_map = {'cpu': cvt.DeviceType.CPU.value,
                    'gpu': cvt.DeviceType.GPU.value,
                    'dsp': cvt.DeviceType.HEXAGON.value,
+                   'hta': cvt.DeviceType.HTA.value,
                    'cpu+gpu': cvt.DeviceType.CPU.value}
 
 data_format_map = {
@@ -53,10 +54,11 @@ def parse_data_type(data_type, device_type):
             return mace_pb2.DT_FLOAT
         else:
             return mace_pb2.DT_HALF
-    elif device_type == cvt.DeviceType.HEXAGON.value:
+    elif device_type == cvt.DeviceType.HEXAGON.value or \
+            device_type == cvt.DeviceType.HTA.value:
         return mace_pb2.DT_FLOAT
     else:
-        print("Invalid device type: " + device_type)
+        print("Invalid device type: " + str(device_type))
 
 
 def file_checksum(fname):
@@ -121,7 +123,7 @@ def main(unused_args):
         six.print_("platform %s is not supported." % FLAGS.platform,
                    file=sys.stderr)
         sys.exit(-1)
-    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', 'cpu+gpu']:
+    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', 'hta', 'cpu+gpu']:
         six.print_("runtime %s is not supported." % FLAGS.runtime,
                    file=sys.stderr)
         sys.exit(-1)
@@ -220,7 +222,8 @@ def main(unused_args):
         option, output_graph_def)
     output_graph_def, quantize_activation_info = mace_transformer.run()
 
-    if FLAGS.runtime == 'dsp':
+    if option.device in [cvt.DeviceType.HEXAGON.value,
+                         cvt.DeviceType.HTA.value]:
         from mace.python.tools.converter_tool import hexagon_converter
         converter = hexagon_converter.HexagonConverter(
             option, output_graph_def, quantize_activation_info)

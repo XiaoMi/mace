@@ -129,6 +129,7 @@ class DeviceType(object):
     CPU = 'CPU'
     GPU = 'GPU'
     HEXAGON = 'HEXAGON'
+    HTA = 'HTA'
 
 
 class DataFormat(object):
@@ -199,6 +200,8 @@ def parse_device_type(runtime):
 
     if runtime == RuntimeType.dsp:
         device_type = DeviceType.HEXAGON
+    elif runtime == RuntimeType.hta:
+        device_type = DeviceType.HTA
     elif runtime == RuntimeType.gpu:
         device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
@@ -513,6 +516,7 @@ class RuntimeType(object):
     cpu = 'cpu'
     gpu = 'gpu'
     dsp = 'dsp'
+    hta = 'hta'
     cpu_gpu = 'cpu+gpu'
 
 

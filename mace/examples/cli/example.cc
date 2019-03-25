@@ -79,6 +79,8 @@ DeviceType ParseDeviceType(const std::string &device_str) {
     return DeviceType::GPU;
   } else if (device_str.compare("HEXAGON") == 0) {
     return DeviceType::HEXAGON;
+  } else if (device_str.compare("HTA") == 0) {
+    return DeviceType::HTA;
   } else {
     return DeviceType::CPU;
   }

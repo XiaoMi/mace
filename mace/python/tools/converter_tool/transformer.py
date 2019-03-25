@@ -1174,7 +1174,8 @@ class Transformer(base_converter.ConverterInterface):
 
             self.set_filter_format(FilterFormat.OHWI)
         elif self._option.quantize and \
-                self._option.device == DeviceType.HEXAGON.value:
+                (self._option.device == DeviceType.HEXAGON.value or
+                 self._option.device == DeviceType.HTA.value):
             print("Transpose filters to HWIO/HWIM")
             mace_check(filter_format == FilterFormat.HWIO,
                        "HEXAGON only support HWIO/HWIM filter format.")
@@ -1456,7 +1457,7 @@ class Transformer(base_converter.ConverterInterface):
                            % (op.name, op.type,
                               mace_pb2.DataType.Name(data_type_arg.i)))
 
-        for input_node in self._option.input_nodes.values():
+        for i, input_node in enumerate(self._option.input_nodes.values()):
             new_input_name = self.input_name_map[input_node.name]
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(new_input_name)
@@ -1465,8 +1466,10 @@ class Transformer(base_converter.ConverterInterface):
             op_def.output.extend([new_input_name])
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(input_node.shape)
-            self.copy_quantize_info(
-                op_def, self._quantize_activation_info[new_input_name])
+            quantize_info = self._quantize_activation_info[new_input_name]
+            self.copy_quantize_info(op_def, quantize_info)
+            self._model.input_info[i].scale = quantize_info.scale
+            self._model.input_info[i].zero_point = quantize_info.zero_point
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
@@ -1477,16 +1480,19 @@ class Transformer(base_converter.ConverterInterface):
             find_range_every_time_arg.i = 1
 
         output_nodes = self._option.check_nodes.values()
-        for output_node in output_nodes:
+        for i, output_node in enumerate(output_nodes):
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(output_node.name)
             op_def.type = MaceOp.Dequantize.name
             op_def.input.extend([self.output_name_map[output_node.name]])
             op_def.output.extend([output_node.name])
             output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(
-                self._producer[output_node.name].output_shape[0].dims)
+            producer_op = self._producer[output_node.name]
+            output_shape.dims.extend(producer_op.output_shape[0].dims)
             op_def.output_type.extend([mace_pb2.DT_FLOAT])
+            quantize_info = producer_op.quantize_info[0]
+            self._model.output_info[i].scale = quantize_info.scale
+            self._model.output_info[i].zero_point = quantize_info.zero_point
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
 
@@ -1533,7 +1539,8 @@ class Transformer(base_converter.ConverterInterface):
                     quantized_tensor = \
                         quantize_util.quantize_with_scale_and_zero(
                             tensor.float_data, scale, 0)
-                elif self._option.device == DeviceType.HEXAGON.value:
+                elif self._option.device == DeviceType.HEXAGON.value or \
+                        self._option.device == DeviceType.HTA.value:
                     quantized_tensor = \
                         quantize_util.quantize_bias_for_hexagon(
                             tensor.float_data)
@@ -1691,7 +1698,7 @@ class Transformer(base_converter.ConverterInterface):
             return False
 
         print("Add default quantize info for input")
-        for input_node in self._option.input_nodes.values():
+        for i, input_node in enumerate(self._option.input_nodes.values()):
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,
                                               str(input_node.range)))

@@ -61,6 +61,7 @@ RuntimeTypeStrs = [
     "cpu",
     "gpu",
     "dsp",
+    "hta",
     "cpu+gpu"
 ]
 
@@ -142,6 +143,8 @@ def parse_device_type(runtime):
 
     if runtime == RuntimeType.dsp:
         device_type = DeviceType.HEXAGON
+    elif runtime == RuntimeType.hta:
+        device_type = DeviceType.HTA
     elif runtime == RuntimeType.gpu:
         device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
@@ -159,6 +162,19 @@ def get_hexagon_mode(configs):
         runtime_list.append(model_runtime.lower())
 
     if RuntimeType.dsp in runtime_list:
+        return True
+    return False
+
+
+def get_hta_mode(configs):
+    runtime_list = []
+    for model_name in configs[YAMLKeyword.models]:
+        model_runtime = \
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.runtime, "")
+        runtime_list.append(model_runtime.lower())
+
+    if RuntimeType.hta in runtime_list:
         return True
     return False
 
@@ -452,6 +468,8 @@ def format_model_config(flags):
                 DeviceType.GPU: ValidationThreshold.gpu_threshold,
                 DeviceType.HEXAGON + "_QUANTIZE":
                     ValidationThreshold.hexagon_threshold,
+                DeviceType.HTA + "_QUANTIZE":
+                    ValidationThreshold.hexagon_threshold,
                 DeviceType.CPU + "_QUANTIZE":
                     ValidationThreshold.cpu_quantize_threshold,
             }
@@ -461,6 +479,7 @@ def format_model_config(flags):
                 if k.upper() not in (DeviceType.CPU,
                                      DeviceType.GPU,
                                      DeviceType.HEXAGON,
+                                     DeviceType.HTA,
                                      DeviceType.CPU + "_QUANTIZE"):
                     raise argparse.ArgumentTypeError(
                         'Unsupported validation threshold runtime: %s' % k)
@@ -740,7 +759,6 @@ def build_model_lib(configs, address_sanitizer):
     # create model library dir
     library_name = configs[YAMLKeyword.library_name]
     for target_abi in configs[YAMLKeyword.target_abis]:
-        hexagon_mode = get_hexagon_mode(configs)
         model_lib_output_path = get_model_lib_output_path(library_name,
                                                           target_abi)
         library_out_dir = os.path.dirname(model_lib_output_path)
@@ -751,7 +769,8 @@ def build_model_lib(configs, address_sanitizer):
             MODEL_LIB_TARGET,
             abi=target_abi,
             toolchain=toolchain,
-            hexagon_mode=hexagon_mode,
+            enable_hexagon=get_hexagon_mode(configs),
+            enable_hta=get_hta_mode(configs),
             enable_opencl=get_opencl_mode(configs),
             enable_quantize=get_quantize_mode(configs),
             address_sanitizer=address_sanitizer,
@@ -842,7 +861,6 @@ def report_run_statistics(stdout,
 def build_mace_run(configs, target_abi, toolchain, enable_openmp,
                    address_sanitizer, mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
-    hexagon_mode = get_hexagon_mode(configs)
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
     if os.path.exists(build_tmp_binary_dir):
@@ -865,7 +883,8 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         mace_run_target,
         abi=target_abi,
         toolchain=toolchain,
-        hexagon_mode=hexagon_mode,
+        enable_hexagon=get_hexagon_mode(configs),
+        enable_hta=get_hta_mode(configs),
         enable_openmp=enable_openmp,
         enable_opencl=get_opencl_mode(configs),
         enable_quantize=get_quantize_mode(configs),
@@ -880,7 +899,6 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
 def build_example(configs, target_abi, toolchain,
                   enable_openmp, mace_lib_type, cl_binary_to_code, device):
     library_name = configs[YAMLKeyword.library_name]
-    hexagon_mode = get_hexagon_mode(configs)
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
     if os.path.exists(build_tmp_binary_dir):
@@ -914,7 +932,8 @@ def build_example(configs, target_abi, toolchain,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             enable_quantize=get_quantize_mode(configs),
-                            hexagon_mode=hexagon_mode,
+                            enable_hexagon=get_hexagon_mode(configs),
+                            enable_hta=get_hta_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
                             symbol_hidden=symbol_hidden)
 
@@ -945,7 +964,8 @@ def build_example(configs, target_abi, toolchain,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             enable_quantize=get_quantize_mode(configs),
-                            hexagon_mode=hexagon_mode,
+                            enable_hexagon=get_hexagon_mode(configs),
+                            enable_hta=get_hta_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
                             extra_args=build_arg)
 
@@ -1028,7 +1048,6 @@ def build_benchmark_model(configs,
                           enable_openmp,
                           mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
-    hexagon_mode = get_hexagon_mode(configs)
 
     link_dynamic = mace_lib_type == MACELibType.dynamic
     if link_dynamic:
@@ -1051,7 +1070,8 @@ def build_benchmark_model(configs,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             enable_quantize=get_quantize_mode(configs),
-                            hexagon_mode=hexagon_mode,
+                            enable_hexagon=get_hexagon_mode(configs),
+                            enable_hta=get_hta_mode(configs),
                             symbol_hidden=symbol_hidden,
                             extra_args=build_arg)
     # clear tmp binary dir
