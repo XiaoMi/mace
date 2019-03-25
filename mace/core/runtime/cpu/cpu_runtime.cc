@@ -51,9 +51,8 @@ namespace {
 MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
                                            const std::vector<size_t> &cpu_ids,
                                            SchedulePolicy schedule_policy) {
-  MaceOpenMPThreadCount = omp_num_threads;
-  SchedSetAffinity(cpu_ids);
 #ifdef MACE_ENABLE_OPENMP
+  MaceOpenMPThreadCount = omp_num_threads;
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
   if (schedule_policy == SCHED_GUIDED) {
@@ -86,6 +85,7 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   }
   return MaceStatus::MACE_SUCCESS;
 #else
+  MACE_UNUSED(omp_num_threads);
   MaceStatus status = SchedSetAffinity(cpu_ids);
   VLOG(1) << "Set affinity without OpenMP: " << MakeString(cpu_ids);
   return status;

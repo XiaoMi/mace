@@ -63,9 +63,14 @@ void ConcatHelper(int iters, int concat_dim, int dim0, int dim1) {
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_CONCAT_CPU_##AXIS##_##DIM0##_##DIM1##_##TYPE)
 
+#ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_CONCAT_CPU(AXIS, DIM0, DIM1)             \
   MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, float);     \
-  MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, uint8_t);   \
+  MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, uint8_t)
+#else
+#define MACE_BM_CONCAT_CPU(AXIS, DIM0, DIM1)             \
+  MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, float)
+#endif
 
 MACE_BM_CONCAT_CPU(0, 100, 1000);
 MACE_BM_CONCAT_CPU(0, 100, 100000);
@@ -73,6 +78,7 @@ MACE_BM_CONCAT_CPU(1, 100, 1000);
 MACE_BM_CONCAT_CPU(1, 100, 100000);
 MACE_BM_CONCAT_CPU(1, 1225, 128);
 
+#ifdef MACE_ENABLE_OPENCL
 namespace {
 template <typename T>
 void OpenCLConcatHelper(int iters,
@@ -128,6 +134,8 @@ MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, half);
 MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, half);
 MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 128, half);
 MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 256, half);
+
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace test
 }  // namespace ops

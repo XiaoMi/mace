@@ -12,35 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/port/linux/env.h"
+#ifndef MACE_PORT_LINUX_BASE_ENV_H_
+#define MACE_PORT_LINUX_BASE_ENV_H_
 
-#include <execinfo.h>
-#include <sys/time.h>
-
-#include <cstddef>
-#include <string>
 #include <vector>
 
 #include "mace/port/env.h"
-#include "mace/port/posix/backtrace.h"
 #include "mace/port/posix/file_system.h"
-#include "mace/port/posix/time.h"
 
 namespace mace {
 namespace port {
 
-LogWriter *LinuxEnv::GetLogWriter() {
-  return &log_writer_;
-}
+class LinuxBaseEnv : public Env {
+ public:
+  int64_t NowMicros() override;
+  MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
+  FileSystem *GetFileSystem() override;
 
-std::vector<std::string> LinuxEnv::GetBackTraceUnsafe(int max_steps) {
-  return mace::port::posix::GetBackTraceUnsafe(max_steps);
-}
-
-Env *Env::Default() {
-  static LinuxEnv linux_env;
-  return &linux_env;
-}
+ protected:
+  PosixFileSystem posix_file_system_;
+};
 
 }  // namespace port
 }  // namespace mace
+
+#endif  // MACE_PORT_LINUX_BASE_ENV_H_

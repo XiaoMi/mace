@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -70,10 +69,15 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   }                                                                       \
   MACE_BENCHMARK(MACE_BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_BIAS_ADD(N, C, H, W)                 \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU);    \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU);
+#else
+#define MACE_BM_BIAS_ADD(N, C, H, W)                 \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);
+#endif
 
 MACE_BM_BIAS_ADD(1, 1, 512, 512);
 MACE_BM_BIAS_ADD(1, 3, 128, 128);

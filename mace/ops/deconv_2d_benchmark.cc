@@ -89,8 +89,6 @@ static void Deconv2d(int iters,
         ##OW##_##P##_##OC##_##TYPE##_##DEVICE(                                \
           int iters) {                                                        \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    int64_t oh = OH;                                                          \
-    int64_t ow = OW;                                                          \
     const int64_t macs =                                                      \
         static_cast<int64_t>(iters) * mace::benchmark::StatMACs(              \
             "Deconv2D", {OC, C, KH, KW}, {N, OH, OW, OC});                    \
@@ -104,10 +102,15 @@ static void Deconv2d(int iters,
         ##OW##_##P##_##OC##_##TYPE##_##DEVICE)
 
 // TODO(liutuo): add cpu benchmark when optimized.
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC)              \
   MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, CPU); \
   MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, GPU); \
-  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, GPU);
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, GPU)
+#else
+#define MACE_BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC)              \
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, CPU)
+#endif
 
 MACE_BM_DECONV_2D(1, 32, 60, 60, 1, 1, 1, 60, 60, VALID, 128);
 

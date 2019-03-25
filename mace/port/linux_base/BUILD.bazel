@@ -4,24 +4,17 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_darwin")
-
 cc_library(
-    name = "port_darwin",
-    srcs = if_darwin(glob([
+    name = "port_linux_base",
+    srcs = glob([
         "*.cc",
-    ])),
-    hdrs = if_darwin(glob([
+    ]),
+    hdrs = glob([
         "*.h",
-    ])),
+    ]),
     deps = [
         "//mace/port:port_base",
         "//mace/port/posix:port_posix",
     ],
     alwayslink = 1,
-)
-
-sh_binary(
-    name = "darwin_ar_merge",
-    srcs = ["ar_merge_on_darwin.sh"],
 )

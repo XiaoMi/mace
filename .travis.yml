@@ -56,6 +56,8 @@ jobs:
       script:
         - echo "Ops Test"
         - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+        - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --enable_openmp=false --target_abis=host || exit 1;
+        - bazel build "//mace/ops:ops_test" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
       env: TYPE=Ops-Test
       os: osx
       osx_image: xcode7.2
@@ -77,6 +79,8 @@ jobs:
     - stage: Unit Test
       script:
         - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+        - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=False --enable_openmp=false --target_abis=host || exit 1;
+        - bazel build "//mace/ops:ops_benchmark" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
       env: TYPE=Ops-Benchmark
       os: osx
       osx_image: xcode7.2
@@ -130,3 +134,21 @@ jobs:
       os: linux
       dist: xenial
       sudo: required
+    - stage: Extra Test
+      script:
+        - bazel build "//mace/libmace:libmace_static" --config=darwin --config=optimization_darwin --define openmp=false --define quantize=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_dynamic" --config=darwin --config=optimization_darwin --define openmp=false --define quantize=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_static" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_dynamic" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
+      env: TYPE=Build-Library
+      os: osx
+      osx_image: xcode7.2
+    - stage: Extra Test
+      script:
+        - echo 'API Test'
+        - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --enable_openmp=false --target_abis=host || exit 1
+        - python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --enable_openmp=false --target_abis=host || exit 1
+        - python tools/bazel_adb_run.py --target="//mace/utils:utils_test" --run_target=False --enable_openmp=false --target_abis=host || exit 1
+      env: TYPE=Extra-Test-darwin_x86_64
+      os: osx
+      osx_image: xcode7.2

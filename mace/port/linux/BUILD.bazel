@@ -14,9 +14,8 @@ cc_library(
     hdrs = if_linux(glob([
         "*.h",
     ])),
-    deps = [
-        "//mace/port:port_base",
-        "//mace/port/posix:port_posix",
-    ],
+    deps = if_linux([
+        "//mace/port/linux_base:port_linux_base",
+    ]),
     alwayslink = 1,
 )

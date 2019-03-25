@@ -71,10 +71,15 @@ void Pad(int iters, int batch, int height,
   MACE_BENCHMARK(MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##MODE##_##TYPE \
                  ##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_PAD_MODE(N, H, W, C, PAD, MODE)            \
   MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, CPU);    \
   MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, GPU);    \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, half, GPU);
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, half, GPU)
+#else
+#define MACE_BM_PAD_MODE(N, H, W, C, PAD, MODE)            \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, CPU)
+#endif
 
 #define MACE_BM_PAD(N, H, W, C, PAD)              \
   MACE_BM_PAD_MODE(N, H, W, C, PAD, CONSTANT);    \

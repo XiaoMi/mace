@@ -185,7 +185,7 @@ class FullyConnectedOp<DeviceType::GPU, T> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context) {
-    MemoryType mem_type;
+    MemoryType mem_type = MemoryType::CPU_BUFFER;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::FullyConnectedKernel<T>>();

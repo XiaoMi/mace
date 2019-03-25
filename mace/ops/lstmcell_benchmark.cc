@@ -90,10 +90,15 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
   MACE_BENCHMARK(                                                              \
       MACE_BM_LSTMCELL_##N##_##INPUT_SIZE##_##HIDDEN_UNITS##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_LSTMCELL(N, INPUT_SIZE, HIDDEN_UNITS)                 \
   MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, CPU);    \
   MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, GPU);    \
-  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, half, GPU);
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, half, GPU)
+#else
+#define MACE_BM_LSTMCELL(N, INPUT_SIZE, HIDDEN_UNITS)                 \
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, CPU)
+#endif
 
 MACE_BM_LSTMCELL(1, 64, 256);
 MACE_BM_LSTMCELL(30, 64, 256);

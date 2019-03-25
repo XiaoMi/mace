@@ -93,10 +93,15 @@ static void DepthwiseDeconv2d(int iters,
     MACE_BM_DEPTHWISE_DECONV2D_##N##_##C##_##H##_##W##_##KH##_##KW##_##S##_##P\
         ##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_DEPTHWISE_DECONV2D(N, C, H, W, KH, KW, S, P)              \
   MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, CPU); \
   MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, GPU); \
   MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, half, GPU);
+#else
+#define MACE_BM_DEPTHWISE_DECONV2D(N, C, H, W, KH, KW, S, P)              \
+  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, CPU)
+#endif
 
 MACE_BM_DEPTHWISE_DECONV2D(1, 128, 15, 15, 1, 1, 1, 0);
 MACE_BM_DEPTHWISE_DECONV2D(1, 32, 60, 60, 1, 1, 1, 0);
