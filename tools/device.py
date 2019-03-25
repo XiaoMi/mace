@@ -208,6 +208,7 @@ class DeviceWrapper:
             p = subprocess.Popen(
                 [
                     "env",
+                    "ASAN_OPTIONS=detect_leaks=1",
                     "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
                     "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                     "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,

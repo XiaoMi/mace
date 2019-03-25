@@ -66,7 +66,7 @@ class SerialNet : public NetBase {
   Workspace *ws_;
   Device *target_device_;
   // CPU is base device.
-  Device *cpu_device_;
+  std::unique_ptr<Device> cpu_device_;
   std::vector<std::unique_ptr<Operation> > operators_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(SerialNet);

@@ -15,16 +15,17 @@
 #include "mace/core/device.h"
 
 #include "mace/core/buffer.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 
 CPUDevice::CPUDevice(const int num_threads,
                      const CPUAffinityPolicy policy,
                      const bool use_gemmlowp)
-    : cpu_runtime_(new CPURuntime(num_threads,
-                                  policy,
-                                  use_gemmlowp)),
-      scratch_buffer_(new ScratchBuffer(GetCPUAllocator())) {}
+    : cpu_runtime_(make_unique<CPURuntime>(num_threads,
+                                           policy,
+                                           use_gemmlowp)),
+      scratch_buffer_(make_unique<ScratchBuffer>(GetCPUAllocator())) {}
 
 CPUDevice::~CPUDevice() = default;
 
