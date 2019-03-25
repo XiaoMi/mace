@@ -52,13 +52,13 @@ class CPURuntime {
 
 #ifdef MACE_ENABLE_QUANTIZE
   ~CPURuntime() {
-    if (!gemm_context_) {
+    if (gemm_context_ != nullptr) {
       delete static_cast<gemmlowp::GemmContext*>(gemm_context_);
     }
   }
 
   gemmlowp::GemmContext *GetGemmlowpContext() {
-    if (!gemm_context_) {
+    if (gemm_context_ == nullptr) {
       gemm_context_ = new gemmlowp::GemmContext();
     }
     return static_cast<gemmlowp::GemmContext*>(gemm_context_);
