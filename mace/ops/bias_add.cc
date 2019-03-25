@@ -100,7 +100,7 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
         has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 1)) {
-    MemoryType mem_type;
+    MemoryType mem_type = MemoryType::CPU_BUFFER;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::BiasAddKernel<T>>();

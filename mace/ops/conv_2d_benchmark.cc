@@ -79,6 +79,7 @@ void Conv2d(int iters,
   }
 }
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 void Conv2d<CPU, uint8_t>(int iters,
                           int batch,
@@ -132,6 +133,7 @@ void Conv2d<CPU, uint8_t>(int iters,
     net.Sync();
   }
 }
+#endif
 
 }  // namespace
 
@@ -167,12 +169,25 @@ void Conv2d<CPU, uint8_t>(int iters,
       MACE_BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##\
         DILATION##_##P##_##OC##_##TYPE##_##DEVICE)
 
+#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU);     \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, uint8_t, CPU);
-
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, uint8_t, CPU)
+#elif defined(MACE_ENABLE_OPENCL)
+#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU)
+#elif defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, uint8_t, CPU)
+#else
+#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU)
+#endif
 
 
 // Filter sizes and data alignments

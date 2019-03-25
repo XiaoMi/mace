@@ -20,18 +20,16 @@
 #include <vector>
 
 #include "mace/port/android/logger.h"
-#include "mace/port/posix/file_system.h"
 #include "mace/port/env.h"
+#include "mace/port/linux_base/env.h"
+#include "mace/port/posix/file_system.h"
 
 namespace mace {
 namespace port {
 
-class AndroidEnv : public Env {
+class AndroidEnv : public LinuxBaseEnv {
  public:
-  int64_t NowMicros() override;
-  MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
   MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) override;
-  FileSystem *GetFileSystem() override;
   LogWriter *GetLogWriter() override;
   std::vector<std::string> GetBackTraceUnsafe(int max_steps) override;
   std::unique_ptr<MallocLogger> NewMallocLogger(
@@ -39,7 +37,6 @@ class AndroidEnv : public Env {
       const std::string &name) override;
 
  private:
-  PosixFileSystem posix_file_system_;
   AndroidLogWriter log_writer_;
 };
 

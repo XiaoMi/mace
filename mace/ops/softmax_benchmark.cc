@@ -57,6 +57,7 @@ void SoftmaxBenchmark(
   net.Sync();
 }
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 void SoftmaxBenchmark<CPU, uint8_t>(
     int iters, int batch, int channels, int height, int width) {
@@ -80,6 +81,9 @@ void SoftmaxBenchmark<CPU, uint8_t>(
   output->SetScale(0);
   output->SetZeroPoint(1);
 
+  Tensor *input = net.GetTensor("Input");
+  input->SetScale(0.1);
+
   // Warm-up
   for (int i = 0; i < 2; ++i) {
     net.Run();
@@ -92,6 +96,8 @@ void SoftmaxBenchmark<CPU, uint8_t>(
   }
   net.Sync();
 }
+#endif  // MACE_ENABLE_QUANTIZE
+
 }  // namespace
 
 #define MACE_BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                   \
@@ -103,11 +109,25 @@ void SoftmaxBenchmark<CPU, uint8_t>(
   }                                                                       \
   MACE_BENCHMARK(MACE_BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
+#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_SOFTMAX(N, C, H, W)                 \
   MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
   MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, CPU);  \
   MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU);
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU)
+#elif defined(MACE_ENABLE_OPENCL)
+#define MACE_BM_SOFTMAX(N, C, H, W)                 \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, GPU);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU)
+#elif defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_SOFTMAX(N, C, H, W)                 \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, CPU)
+#else
+#define MACE_BM_SOFTMAX(N, C, H, W)                 \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU)
+#endif
 
 MACE_BM_SOFTMAX(1, 2, 512, 512);
 MACE_BM_SOFTMAX(1, 3, 512, 512);

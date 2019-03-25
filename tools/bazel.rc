@@ -24,25 +24,20 @@ build:linux --define linux=true
 
 # MacOS host build, --config darwin
 build:darwin --define darwin=true
-
-# iOS and other darwin platforms, --config ios
-build:ios --define darwin=true
-build:ios --distinct_host_configuration=true
-build:ios --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
-build:ios --cpu=arm64
-
-# Linux host build, --config linux
-build:linux --define linux=true
-
-# MacOS host build, --config darwin
-build:darwin --define darwin=true
+build:darwin --cpu=darwin_x86_64
+build:darwin --copt -Wno-unused-lambda-capture
+build:darwin --copt -Wno-missing-braces
 
 # iOS and other darwin platforms, --config ios
 build:ios --define darwin=true
 build:ios --distinct_host_configuration=true
 build:ios --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build:ios --cpu=ios_arm64
+build:ios --copt -Wno-unused-lambda-capture
+build:ios --copt -Wno-missing-braces
 
+# Linux host build, --config linux
+build:linux --define linux=true
 
 # Usage example: bazel build --config arm_linux_gnueabihf
 # Used to fix library not find linking issue, see also:
@@ -80,6 +75,12 @@ build:optimization --linkopt=-Wl,--strip-all
 build:optimization --copt=-ffunction-sections
 build:optimization --copt=-fdata-sections
 build:optimization --linkopt=-Wl,--gc-sections
+
+# Usage example: bazel build --config optimization_darwin
+build:optimization_darwin --copt=-O3
+build:optimization_darwin --copt=-ffunction-sections
+build:optimization_darwin --copt=-fdata-sections
+build:optimization_darwin --linkopt=-Wl,-dead_strip
 
 # Usage example: bazel build --config symbol_hidden
 build:symbol_hidden --copt=-fvisibility=hidden

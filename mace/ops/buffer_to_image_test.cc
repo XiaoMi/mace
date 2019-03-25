@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_OPENCL
+
 #include "gtest/gtest.h"
 #include "mace/ops/ops_test_util.h"
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -242,3 +244,5 @@ TEST(BufferToImageTest, ArgStringHalfToHalfSmall) {
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
+
+#endif  // MACE_ENABLE_OPENCL

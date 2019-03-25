@@ -106,6 +106,7 @@ void MatmulBenchmark_Eigen(int iters, int m, int k, int n) {
   }
 }
 
+#ifdef MACE_ENABLE_QUANTIZE
 void MatmulBenchmark_gemmlowp_uint8(int iters, int rows, int depth, int cols) {
   mace::testing::StopTiming();
 
@@ -181,6 +182,7 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
         -128, output_pipeline);
   }
 }
+#endif
 
 }  // namespace
 
@@ -195,10 +197,16 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
   }                                                                \
   MACE_BENCHMARK(MACE_BM_MATMUL_##M##_##K##_##N##_##FUNC)
 
+#ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL(M, K, N)                          \
   MACE_BM_MATMUL_FUNC(M, K, N, Eigen, float);            \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_uint8, uint8_t); \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_int32, uint8_t);
+#else
+#define MACE_BM_MATMUL(M, K, N)                          \
+  MACE_BM_MATMUL_FUNC(M, K, N, Eigen, float)
+#endif
+
 
 // Embedding size 384
 MACE_BM_MATMUL(7, 384, 384);
@@ -247,7 +255,7 @@ MACE_BM_MATMUL(512, 512, 196);
 MACE_BM_MATMUL(1024, 1024, 49);
 
 namespace {
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 void MatMulBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
   mace::testing::StopTiming();
@@ -289,7 +297,7 @@ void MatMulBenchmark(
   net.Sync();
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 void MatMulTransposeBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
   mace::testing::StopTiming();
@@ -349,9 +357,14 @@ void MatMulTransposeBenchmark(
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL_OP(N, H, C, W)              \
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, uint8_t, CPU);
+  MACE_BM_MATMUL_MACRO(N, H, C, W, uint8_t, CPU)
+#else
+#define MACE_BM_MATMUL_OP(N, H, C, W)              \
+  MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU)
+#endif
 
 #define MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, TYPE, DEVICE)               \
   static void MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(    \
@@ -365,9 +378,14 @@ void MatMulTransposeBenchmark(
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU)
+#else
+#define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU)
+#endif
 
 MACE_BM_MATMUL_OP(1, 30000, 256, 1);
 MACE_BM_MATMUL_OP(1, 128, 256, 128);

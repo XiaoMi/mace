@@ -80,10 +80,15 @@ void BatchNorm(
   }                                                                         \
   MACE_BENCHMARK(MACE_BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_BATCH_NORM(N, C, H, W)                 \
   MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, CPU);    \
   MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, GPU);    \
   MACE_BM_BATCH_NORM_MACRO(N, C, H, W, half, GPU);
+#else
+#define MACE_BM_BATCH_NORM(N, C, H, W)                 \
+  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, CPU);
+#endif
 
 MACE_BM_BATCH_NORM(1, 1, 512, 512);
 MACE_BM_BATCH_NORM(1, 3, 128, 128);

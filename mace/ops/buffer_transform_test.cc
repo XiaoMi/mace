@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_OPENCL
+
 #include <cstring>
 
 #include "gtest/gtest.h"
@@ -111,3 +113,6 @@ TEST_F(BufferTransformTest, Argument) {
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
+
+
+#endif  // MACE_ENABLE_OPENCL

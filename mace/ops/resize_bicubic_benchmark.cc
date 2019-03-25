@@ -82,10 +82,15 @@ void ResizeBicubicBenchmark(int iters,
       MACE_BM_RESIZE_BICUBIC_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_\
         ##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_RESIZE_BICUBIC(N, C, H0, W0, H1, W1)                 \
   MACE_BM_RESIZE_BICUBIC_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
   MACE_BM_RESIZE_BICUBIC_MACRO(N, C, H0, W0, H1, W1, float, GPU);    \
-  MACE_BM_RESIZE_BICUBIC_MACRO(N, C, H0, W0, H1, W1, half, GPU);
+  MACE_BM_RESIZE_BICUBIC_MACRO(N, C, H0, W0, H1, W1, half, GPU)
+#else
+#define MACE_BM_RESIZE_BICUBIC(N, C, H0, W0, H1, W1)                 \
+  MACE_BM_RESIZE_BICUBIC_MACRO(N, C, H0, W0, H1, W1, float, CPU)
+#endif
 
 MACE_BM_RESIZE_BICUBIC(1, 128, 120, 120, 480, 480);
 MACE_BM_RESIZE_BICUBIC(1, 256, 7, 7, 15, 15);

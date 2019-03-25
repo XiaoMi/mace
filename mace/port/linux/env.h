@@ -18,22 +18,18 @@
 #include <string>
 #include <vector>
 
-#include "mace/port/env.h"
+#include "mace/port/linux_base/env.h"
 #include "mace/port/logger.h"
-#include "mace/port/posix/file_system.h"
 
 namespace mace {
 namespace port {
 
-class LinuxEnv : public Env {
+class LinuxEnv : public LinuxBaseEnv {
  public:
-  int64_t NowMicros() override;
-  FileSystem *GetFileSystem() override;
   LogWriter *GetLogWriter() override;
   std::vector<std::string> GetBackTraceUnsafe(int max_steps) override;
 
  private:
-  PosixFileSystem posix_file_system_;
   LogWriter log_writer_;
 };
 

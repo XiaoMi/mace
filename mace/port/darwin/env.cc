@@ -15,7 +15,10 @@
 #include "mace/port/darwin/env.h"
 
 #include <execinfo.h>
+#include <stdint.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #include <cstddef>
 #include <string>
@@ -24,12 +27,32 @@
 #include "mace/port/posix/backtrace.h"
 #include "mace/port/posix/file_system.h"
 #include "mace/port/posix/time.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 namespace port {
 
+namespace {
+const char kCpuFrequencyMax[] = "hw.cpufrequency_max";
+}
+
 int64_t DarwinEnv::NowMicros() {
   return mace::port::posix::NowMicros();
+}
+
+MaceStatus DarwinEnv::GetCPUMaxFreq(std::vector<float> *max_freqs) {
+  MACE_CHECK_NOTNULL(max_freqs);
+
+  uint64_t freq = 0;
+  size_t size = sizeof(freq);
+  int ret = sysctlbyname(kCpuFrequencyMax, &freq, &size, NULL, 0);
+  if (ret < 0) {
+    LOG(ERROR) << "failed to get property: " << kCpuFrequencyMax;
+    return MaceStatus::MACE_RUNTIME_ERROR;
+  }
+  max_freqs->push_back(freq);
+
+  return MaceStatus::MACE_SUCCESS;
 }
 
 FileSystem *DarwinEnv::GetFileSystem() {

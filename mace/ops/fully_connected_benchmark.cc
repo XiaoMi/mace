@@ -41,13 +41,15 @@ void FCBenchmark(
                                {out_channel, channel, height, width}, true);
   net.AddRandomInput<D, float>("Bias", {out_channel}, true);
 
-  OpenCLBufferType weight_type = OpenCLBufferType::WEIGHT_WIDTH;
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("Input")
       .Input("Weight")
       .Input("Bias")
       .Output("Output")
-      .AddIntArg("weight_type", static_cast<int>(weight_type))
+#ifdef MACE_ENABLE_OPENCL
+      .AddIntArg("weight_type",
+                 static_cast<int>(OpenCLBufferType::WEIGHT_WIDTH))
+#endif
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
@@ -64,6 +66,7 @@ void FCBenchmark(
   net.Sync();
 }
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 void FCBenchmark<CPU, uint8_t>(
     int iters, int batch, int height, int width, int channel, int out_channel) {
@@ -100,6 +103,8 @@ void FCBenchmark<CPU, uint8_t>(
     net.Run();
   }
 }
+#endif  // MACE_ENABLE_QUANTIZE
+
 }  // namespace
 
 #define MACE_BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
@@ -116,11 +121,25 @@ void FCBenchmark<CPU, uint8_t>(
   }                                                                        \
   MACE_BENCHMARK(MACE_BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE)
 
+#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_FC(N, H, W, C, OC)                 \
   MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
   MACE_BM_FC_MACRO(N, H, W, C, OC, float, GPU);    \
   MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU);     \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, CPU);
+  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, CPU)
+#elif defined(MACE_ENABLE_OPENCL)
+#define MACE_BM_FC(N, H, W, C, OC)                 \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, GPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU)
+#elif defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_FC(N, H, W, C, OC)                 \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, CPU)
+#else
+#define MACE_BM_FC(N, H, W, C, OC)                 \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU)
+#endif
 
 MACE_BM_FC(1, 16, 16, 32, 32);
 MACE_BM_FC(1, 8, 8, 32, 1000);

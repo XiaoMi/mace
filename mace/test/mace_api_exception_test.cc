@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_OPENCL
+
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -40,3 +42,5 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
 
 }  // namespace test
 }  // namespace mace
+
+#endif  // MACE_ENABLE_OPENCL

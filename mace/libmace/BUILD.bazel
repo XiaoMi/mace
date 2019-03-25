@@ -10,14 +10,14 @@ licenses(["notice"])  # Apache 2.0
 load(
     "//mace:mace.bzl",
     "if_android",
-    "if_linux",
-    "if_darwin",
-    "if_neon_enabled",
-    "if_openmp_enabled",
     "if_android_armv7",
+    "if_darwin",
     "if_hexagon_enabled",
     "if_hta_enabled",
+    "if_linux",
+    "if_neon_enabled",
     "if_opencl_enabled",
+    "if_openmp_enabled",
     "if_quantize_enabled",
 )
 
@@ -53,11 +53,14 @@ cc_library(
 
 cc_binary(
     name = "libmace.so",
-    linkopts = [
-        "-Wl,-soname,libmace.so",
-        "-Wl,--version-script",
-        "$(location //mace/libmace:mace_version_script.lds)",
-    ] + if_openmp_enabled([
+    linkopts = if_darwin(
+        ["-Wl,-install_name,libmace.so"],
+        [
+            "-Wl,-soname,libmace.so",
+            "-Wl,--version-script",
+            "$(location //mace/libmace:mace_version_script.lds)",
+        ],
+    ) + if_openmp_enabled([
         "-fopenmp",
     ]),
     linkshared = 1,
@@ -103,6 +106,7 @@ genrule(
         "//mace/port/linux:port_linux",
     ]) + if_darwin([
         "//mace/port/darwin:port_darwin",
+        "//mace/port/darwin:darwin_ar_merge",
     ]) + if_opencl_enabled([
         "//mace/ops:opencl_kernels",
         "//mace/codegen:generated_opencl",
@@ -151,7 +155,10 @@ genrule(
           ) +
           "$@ " +
           "$$tmp_mri_file);" +
-          "$(AR) -M <$$tmp_mri_file;" +
+          if_darwin(
+              "bash $(locations //mace/port/darwin:darwin_ar_merge) $(AR) < $$tmp_mri_file;",
+              default_value = "$(AR) -M <$$tmp_mri_file;",
+          ) +
           "rm -rf $$tmp_mri_file;",
     # "$(STRIP) -x $@;",  # FIXME this will crash
     tools = ["//mace/python/tools:archive_static_lib"],

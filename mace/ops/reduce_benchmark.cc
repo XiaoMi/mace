@@ -67,10 +67,15 @@ void Reduce(int iters, int batch, int channels,
   MACE_BENCHMARK(                                                         \
     MACE_BM_REDUCE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_REDUCE(N, C, H, W)                 \
   MACE_BM_REDUCE_MACRO(N, C, H, W, float, GPU);  \
   MACE_BM_REDUCE_MACRO(N, C, H, W, half, GPU);   \
-  MACE_BM_REDUCE_MACRO(N, C, H, W, float, CPU);
+  MACE_BM_REDUCE_MACRO(N, C, H, W, float, CPU)
+#else
+#define MACE_BM_REDUCE(N, C, H, W)                 \
+  MACE_BM_REDUCE_MACRO(N, C, H, W, float, CPU)
+#endif
 
 
 MACE_BM_REDUCE(1, 1, 512, 512);

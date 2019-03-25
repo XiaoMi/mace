@@ -65,10 +65,15 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   MACE_BENCHMARK(                                                             \
       MACE_BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_ADDN(INPUTS, N, H, W, C)                 \
   MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU);    \
   MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, GPU);    \
   MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, half, GPU);
+#else
+#define MACE_BM_ADDN(INPUTS, N, H, W, C)                 \
+  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU);
+#endif
 
 MACE_BM_ADDN(2, 1, 256, 256, 32);
 MACE_BM_ADDN(2, 1, 128, 128, 32);

@@ -22,9 +22,19 @@
 /**
  * Wrapper of OpenCL 2.0, based on file opencl20/CL/cl.h
  */
+
+#ifdef __APPLE__
+typedef cl_queue_properties_APPLE cl_queue_properties;
+#endif
+
+#if CL_HPP_TARGET_OPENCL_VERSION < 200
+#define CL_API_SUFFIX__VERSION_2_0
+#endif
+
 namespace mace {
 
 namespace runtime {
+
 class OpenCLLibrary final {
  private:
   OpenCLLibrary();

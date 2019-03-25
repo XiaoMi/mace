@@ -89,11 +89,25 @@ void Pooling(int iters,
       MACE_BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
         ##TYPE##_##DEVICE)
 
+#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
   MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, CPU); \
   MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, GPU); \
   MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, half, GPU); \
-  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, uint8_t, CPU);
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, uint8_t, CPU)
+#elif defined(MACE_ENABLE_OPENCL)
+#define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, CPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, GPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, half, GPU)
+#elif defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, CPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, uint8_t, CPU)
+#else
+#define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, CPU)
+#endif
 
 
 MACE_BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);

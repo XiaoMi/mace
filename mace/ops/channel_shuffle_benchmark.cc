@@ -67,10 +67,15 @@ void ChannelShuffle(
   MACE_BENCHMARK(                                                              \
       MACE_BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_CHANNEL_SHUFFLE(N, C, H, W, G)                 \
   MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, CPU);    \
   MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, GPU);    \
   MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, half, GPU);
+#else
+#define MACE_BM_CHANNEL_SHUFFLE(N, C, H, W, G)                 \
+  MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, CPU);
+#endif
 
 MACE_BM_CHANNEL_SHUFFLE(1, 64, 64, 64, 8);
 MACE_BM_CHANNEL_SHUFFLE(1, 64, 128, 128, 8);
