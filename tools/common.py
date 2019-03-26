@@ -136,6 +136,7 @@ class DataFormat(object):
     NONE = "NONE"
     NHWC = "NHWC"
     NCHW = "NCHW"
+    OIHW = "OIHW"
 
 
 ################################

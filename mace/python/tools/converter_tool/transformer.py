@@ -25,7 +25,6 @@ from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import DeviceType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import PaddingMode
@@ -149,12 +148,12 @@ class Transformer(base_converter.ConverterInterface):
         filter_format_value = ConverterUtil.get_arg(self._model,
                                                     MaceKeyword.mace_filter_format_str).i  # noqa
         filter_format = None
-        if filter_format_value == FilterFormat.HWIO.value:
-            filter_format = FilterFormat.HWIO
-        elif filter_format_value == FilterFormat.OIHW.value:
-            filter_format = FilterFormat.OIHW
-        elif filter_format_value == FilterFormat.HWOI.value:
-            filter_format = FilterFormat.HWOI
+        if filter_format_value == DataFormat.HWIO.value:
+            filter_format = DataFormat.HWIO
+        elif filter_format_value == DataFormat.OIHW.value:
+            filter_format = DataFormat.OIHW
+        elif filter_format_value == DataFormat.HWOI.value:
+            filter_format = DataFormat.HWOI
         else:
             mace_check(False, "filter format %d not supported" %
                        filter_format_value)
@@ -614,14 +613,14 @@ class Transformer(base_converter.ConverterInterface):
                     offset = self._consts[consumer_op.input[2]]
                     idx = 0
                     filter_format = self.filter_format()
-                    if filter_format == FilterFormat.HWIO:
+                    if filter_format == DataFormat.HWIO:
                         for hwi in six.moves.range(filter.dims[0]
                                                    * filter.dims[1]
                                                    * filter.dims[2]):
                             for o in six.moves.range(filter.dims[3]):
                                 filter.float_data[idx] *= scale.float_data[o]
                                 idx += 1
-                    elif filter_format == FilterFormat.OIHW:
+                    elif filter_format == DataFormat.OIHW:
                         for o in six.moves.range(filter.dims[0]):
                             for hwi in six.moves.range(filter.dims[1]
                                                        * filter.dims[2]
@@ -673,7 +672,7 @@ class Transformer(base_converter.ConverterInterface):
                     idx = 0
                     filter_format = self.filter_format()
                     # in deconv op O and I channel is switched
-                    if filter_format == FilterFormat.HWIO:
+                    if filter_format == DataFormat.HWIO:
                         for hw in six.moves.range(filter.dims[0]
                                                   * filter.dims[1]):
                             for o in six.moves.range(filter.dims[2]):
@@ -681,7 +680,7 @@ class Transformer(base_converter.ConverterInterface):
                                     filter.float_data[idx] *=\
                                         scale.float_data[o]
                                     idx += 1
-                    elif filter_format == FilterFormat.OIHW:
+                    elif filter_format == DataFormat.OIHW:
                         for i in six.moves.range(filter.dims[0]):
                             for o in six.moves.range(filter.dims[1]):
                                 for hw in six.moves.range(filter.dims[2]
@@ -736,7 +735,7 @@ class Transformer(base_converter.ConverterInterface):
                     idx = 0
 
                     filter_format = self.filter_format()
-                    if filter_format == FilterFormat.HWIO:
+                    if filter_format == DataFormat.HWIO:
                         for hw in six.moves.range(filter.dims[0]
                                                   * filter.dims[1]):
                             for i in six.moves.range(filter.dims[2]):
@@ -744,7 +743,7 @@ class Transformer(base_converter.ConverterInterface):
                                     filter.float_data[idx] *= scale.float_data[
                                                         i * filter.dims[3] + o]
                                     idx += 1
-                    elif filter_format == FilterFormat.OIHW:
+                    elif filter_format == DataFormat.OIHW:
                         for o in six.moves.range(filter.dims[0]):
                             for i in six.moves.range(filter.dims[1]):
                                 for hw in six.moves.range(filter.dims[2]
@@ -791,17 +790,17 @@ class Transformer(base_converter.ConverterInterface):
     @staticmethod
     def sort_filter_shape(filter_shape, filter_format):
         """Return filter shape in HWIO order"""
-        if filter_format == FilterFormat.HWIO:
+        if filter_format == DataFormat.HWIO:
             filter_height = filter_shape[0]
             filter_width = filter_shape[1]
             in_channels = filter_shape[2]
             out_channels = filter_shape[3]
-        elif filter_format == FilterFormat.OIHW:
+        elif filter_format == DataFormat.OIHW:
             filter_height = filter_shape[2]
             filter_width = filter_shape[3]
             in_channels = filter_shape[1]
             out_channels = filter_shape[0]
-        elif filter_format == FilterFormat.HWOI:
+        elif filter_format == DataFormat.HWOI:
             filter_height = filter_shape[0]
             filter_width = filter_shape[1]
             in_channels = filter_shape[3]
@@ -1006,9 +1005,9 @@ class Transformer(base_converter.ConverterInterface):
                     input_shape = list(input_op.output_shape[0].dims)
                     weight.dims[:] = [weight.dims[0]] + input_shape[1:]
                     if len(input_shape) == 2:
-                        if filter_format == FilterFormat.HWIO:
+                        if filter_format == DataFormat.HWIO:
                             weight.dims[:] = [1, 1] + weight.dims[:]
-                        elif filter_format == FilterFormat.OIHW:
+                        elif filter_format == DataFormat.OIHW:
                             weight.dims[:] = weight.dims[:] + [1, 1]
                         else:
                             mace_check("FC does not support filter format %s",
@@ -1141,9 +1140,9 @@ class Transformer(base_converter.ConverterInterface):
         if self._option.quantize and \
                 self._option.device == DeviceType.CPU.value:
             print("Transpose filters to OHWI")
-            if filter_format == FilterFormat.HWIO:
+            if filter_format == DataFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
-            elif filter_format == FilterFormat.OIHW:
+            elif filter_format == DataFormat.OIHW:
                 transpose_order = [0, 2, 3, 1]
             else:
                 mace_check("Quantize model does not support conv "
@@ -1172,21 +1171,22 @@ class Transformer(base_converter.ConverterInterface):
                     filter.dims[:] = filter_data.shape
                     transposed_deconv_filter.add(op.input[1])
 
-            self.set_filter_format(FilterFormat.OHWI)
+            self.set_filter_format(DataFormat.OHWI)
         elif self._option.quantize and \
                 (self._option.device == DeviceType.HEXAGON.value or
                  self._option.device == DeviceType.HTA.value):
             print("Transpose filters to HWIO/HWIM")
-            mace_check(filter_format == FilterFormat.HWIO,
+            mace_check(filter_format == DataFormat.HWIO,
                        "HEXAGON only support HWIO/HWIM filter format.")
         else:
             print("Transpose filters to OIHW/MIHW")
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
-            if filter_format == FilterFormat.HWIO:
+            if filter_format == DataFormat.HWIO:
                 for op in net.op:
                     if (op.type == MaceOp.Conv2D.name
                             or op.type == MaceOp.Deconv2D.name
                             or op.type == MaceOp.DepthwiseConv2d.name) \
+                            and op.input[1] in self._consts \
                             and op.input[1] not in transposed_filter:
                         filter = self._consts[op.input[1]]
                         filter_data = np.array(filter.float_data).reshape(
@@ -1216,7 +1216,7 @@ class Transformer(base_converter.ConverterInterface):
                             weight.dims[:] = weight_data.shape
                             transposed_filter.add(op.input[1])
 
-                self.set_filter_format(FilterFormat.OIHW)
+                self.set_filter_format(DataFormat.OIHW)
             # deconv's filter's output channel and input channel is reversed
             for op in net.op:
                 if op.type in [MaceOp.Deconv2D.name,
@@ -1297,7 +1297,7 @@ class Transformer(base_converter.ConverterInterface):
                     len(op.input) == 2 and \
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
-                    filter_format == FilterFormat.HWIO and \
+                    filter_format == DataFormat.HWIO and \
                     op.input[0] in self._producer:
                 input_op = self._producer[op.input[0]]
                 input_shape = input_op.output_shape[0].dims
@@ -1330,7 +1330,7 @@ class Transformer(base_converter.ConverterInterface):
 
             # transform `fc1(2D) -> matmul` to `fc1(2D) -> fc1(2D)`
             if op.type == MaceOp.MatMul.name and \
-                    filter_format == FilterFormat.HWIO and \
+                    filter_format == DataFormat.HWIO and \
                     op.input[1] in self._consts:
                 producer = self._producer[op.input[0]]
                 weight = self._consts[op.input[1]]

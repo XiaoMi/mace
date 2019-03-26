@@ -97,8 +97,6 @@ inline std::ostream &operator<<(std::ostream &os, unsigned char c) {
 }
 }  // namespace numerical_chars
 
-enum FilterDataFormat { HWOI = 100, OIHW = 101, HWIO = 102, OHWI = 103 };
-
 class Tensor {
  public:
   Tensor(Allocator *alloc, DataType type,

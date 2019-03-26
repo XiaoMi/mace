@@ -152,6 +152,7 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
     const std::vector<mace::index_t> &input_shape,
     const std::string &output_name,
     const mace::DataType dt,
+    const OpenCLBufferType buffer_type,
     const mace::MemoryType mem_type,
     bool has_data_format) {
   std::unique_ptr<OperatorDef> op(new OperatorDef);
@@ -162,7 +163,7 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
   op->add_output(output_name);
   Argument *arg = op->add_arg();
   arg->set_name("buffer_type");
-  arg->set_i(static_cast<int32_t>(OpenCLBufferType::IN_OUT_CHANNEL));
+  arg->set_i(static_cast<int32_t>(buffer_type));
   arg = op->add_arg();
   arg->set_name("mem_type");
   arg->set_i(static_cast<int32_t>(mem_type));

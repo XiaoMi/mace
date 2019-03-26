@@ -180,6 +180,10 @@ def validate_tf_model(platform, device_type, model_file,
                     if input_data_formats[i] == common.DataFormat.NCHW and\
                             len(input_shapes[i]) == 4:
                         input_value = input_value.transpose((0, 2, 3, 1))
+                    elif input_data_formats[i] == common.DataFormat.OIHW and \
+                            len(input_shapes[i]) == 4:
+                        # OIHW -> HWIO
+                        input_value = input_value.transpose((2, 3, 1, 0))
                     input_node = graph.get_tensor_by_name(
                         normalize_tf_tensor_name(input_names[i]))
                     input_dict[input_node] = input_value

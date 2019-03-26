@@ -41,12 +41,15 @@ namespace {
 struct InternalOutputInfo {
   InternalOutputInfo(const MemoryType mem_type,
                      const DataType dtype,
+                     const DataFormat data_format,
                      const std::vector<index_t> &shape,
                      int op_idx)
-      : mem_type(mem_type), dtype(dtype), shape(shape), op_idx(op_idx) {}
+      : mem_type(mem_type), dtype(dtype), data_format(data_format),
+        shape(shape), op_idx(op_idx) {}
 
   MemoryType mem_type;  // transformed memory type
   DataType dtype;
+  DataFormat data_format;
   std::vector<index_t> shape;  // tensor shape
   int op_idx;  // operation which generate the tensor
 };
@@ -135,13 +138,6 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
               target_device->cpu_runtime()->policy(),
               target_device->cpu_runtime()->use_gemmlowp())) {
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet");
-  // output tensor : related information
-  std::unordered_map<std::string, InternalOutputInfo> output_map;
-  // used for memory optimization
-  std::unordered_map<std::string, MemoryType> output_mem_map;
-  std::unordered_set<std::string> transformed_set;
-  // add input information
-  MemoryType target_mem_type;
   // quantize model flag
   bool is_quantize_model = IsQuantizedModel(*net_def);
   // Tensor Shape map
@@ -163,7 +159,6 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
 
   bool has_data_format = false;
   if (target_device_->device_type() == DeviceType::CPU) {
-    target_mem_type = MemoryType::CPU_BUFFER;
     for (auto &input_info : net_def->input_info()) {
       std::vector<index_t> input_shape =
           std::vector<index_t>(input_info.dims().begin(),
@@ -180,26 +175,37 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
         // NHWC -> NCHW
         input_shape =
             TransposeShape<index_t, index_t>(input_shape, {0, 3, 1, 2});
+        input_data_format = DataFormat::NCHW;
       }
-      output_map.emplace(input_info.name(), InternalOutputInfo(
-          target_mem_type, DataType::DT_FLOAT, input_shape, -1));
     }
   }
-
 #ifdef MACE_ENABLE_OPENCL
-  else {  // GPU  NOLINT[readability/braces]
+  // output tensor : related information
+  std::unordered_map<std::string, InternalOutputInfo> output_map;
+  // used for memory optimization
+  std::unordered_map<std::string, MemoryType> output_mem_map;
+  std::unordered_set<std::string> transformed_set;
+  // add input information
+  MemoryType target_mem_type;
+  // default data format of output tensor
+  DataFormat default_output_df = DataFormat::DF_NONE;
+  if (target_device_->device_type() == DeviceType::GPU) {
     target_mem_type = MemoryType::GPU_BUFFER;
     for (auto &input_info : net_def->input_info()) {
-      has_data_format = static_cast<DataFormat>(
-          input_info.data_format()) == NHWC;
+      DataFormat input_data_format = static_cast<DataFormat>(
+          input_info.data_format());
+      has_data_format = input_data_format != DataFormat::DF_NONE;
       std::vector<index_t> input_shape =
           std::vector<index_t>(input_info.dims().begin(),
                                input_info.dims().end());
       // update tensor shape map
       tensor_shape_map[input_info.name()] = input_shape;
       output_map.emplace(input_info.name(), InternalOutputInfo(
-          target_mem_type, DataType::DT_FLOAT, input_shape, -1));
+          target_mem_type, DataType::DT_FLOAT, input_data_format,
+          input_shape, -1));
     }
+    default_output_df =
+        has_data_format ? DataFormat::NHWC : DataFormat::DF_NONE;
   }
 #endif  // MACE_ENABLE_OPENCL
 
@@ -244,11 +250,13 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
                         << output_info.mem_type << " to "
                         << wanted_in_mem_type
                         << ", from Data Type " << output_info.dtype << " to "
-                        << wanted_in_dt;
+                        << wanted_in_dt << ". with data format "
+                        << output_info.data_format;
                 std::string input_name = op_def->input(i);
                 op_def->set_input(i, t_input_name);
                 auto input_shape = output_info.shape;
                 if (output_info.mem_type == MemoryType::CPU_BUFFER &&
+                    output_info.data_format == DataFormat::NCHW &&
                     input_shape.size() == 4) {
                   // NCHW -> NHWC
                   input_shape =
@@ -256,8 +264,9 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
                                                        {0, 2, 3, 1});
                 }
                 auto transform_op_def = OpenCLUtil::CreateTransformOpDef(
-                    input_name, input_shape, t_input_name,
-                    wanted_in_dt, wanted_in_mem_type, has_data_format);
+                    input_name, input_shape, t_input_name, wanted_in_dt,
+                    construct_context.GetInputOpenCLBufferType(i),
+                    wanted_in_mem_type, has_data_format);
                 OpConstructContext t_construct_context(ws_);
                 auto transform_op = CreateOperation(
                     op_registry,
@@ -297,6 +306,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
             InternalOutputInfo(
                 out_mem_type,
                 dt,
+                default_output_df,
                 op_def->output_shape().empty() ?
                 std::vector<index_t>() :
                 std::vector<index_t>(
@@ -345,6 +355,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
             internal_output_info.shape,
             output_info.name(),
             output_info.data_type(),
+            OpenCLBufferType::IN_OUT_CHANNEL,
             target_mem_type,
             output_has_data_format);
         auto transform_op = CreateOperation(
@@ -368,7 +379,11 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
   for (auto &op : operators_) {
     VLOG(2) << "Operator " << op->debug_def().name() << "<" << op->device_type()
             << ", " << op->debug_def().type() << ">";
-    mem_optimizer->Optimize(op->operator_def().get(), output_mem_map);
+#ifdef MACE_ENABLE_OPENCL
+    mem_optimizer->Optimize(op->operator_def().get(), &output_mem_map);
+#else
+    mem_optimizer->Optimize(op->operator_def().get());
+#endif  // MACE_ENABLE_OPENCL
   }
   VLOG(1) << mem_optimizer->DebugInfo();
 }
@@ -450,7 +465,7 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
         bool transpose_a = op->GetOptionalArg<bool>("transpose_a", false);
         kernels = op->Input(0)->shape();
         if (transpose_a) {
-          std::swap(kernels[kernels.size()-2], kernels[kernels.size()-1]);
+          std::swap(kernels[kernels.size() - 2], kernels[kernels.size() - 1]);
         }
       } else if (type.compare("FullyConnected") == 0) {
         kernels = op->Input(1)->shape();
@@ -496,16 +511,16 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
             Tensor::MappingGuard guard(op->Output(i));
             auto *output_data = op->Output(i)->data<float>();
             for (index_t j = 0; j < op->Output(i)->size(); ++j) {
-                int index = static_cast<int>((output_data[j] - min_v) / bin_v);
-                if (index < 0)
-                  index = 0;
-                else if (index > bin_size-1)
-                  index = bin_size-1;
-                bin_distribution[index]++;
+              int index = static_cast<int>((output_data[j] - min_v) / bin_v);
+              if (index < 0)
+                index = 0;
+              else if (index > bin_size - 1)
+                index = bin_size - 1;
+              bin_distribution[index]++;
             }
             LOG(INFO) << "Tensor range @@" << op->debug_def().output(i)
-                        << "@@" << min_v << "," << max_v<< "@@"
-                        << MakeString(bin_distribution);
+                      << "@@" << min_v << "," << max_v << "@@"
+                      << MakeString(bin_distribution);
           }
         }
       }

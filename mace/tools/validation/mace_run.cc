@@ -88,6 +88,8 @@ DataFormat ParseDataFormat(const std::string &data_format_str) {
     return DataFormat::NHWC;
   } else if (data_format_str == "NCHW") {
     return DataFormat::NCHW;
+  } else if (data_format_str == "OIHW") {
+    return DataFormat::OIHW;
   } else {
     return DataFormat::DF_NONE;
   }

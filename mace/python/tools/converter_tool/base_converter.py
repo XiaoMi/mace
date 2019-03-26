@@ -29,9 +29,6 @@ class DataFormat(Enum):
     DF_NONE = 0
     NHWC = 1
     NCHW = 2
-
-
-class FilterFormat(Enum):
     HWIO = 100
     OIHW = 101
     HWOI = 102
@@ -572,11 +569,11 @@ class ConverterUtil(object):
         arg = ConverterUtil.get_arg(net, MaceKeyword.mace_filter_format_str)
         if arg is None:
             return None
-        elif arg.i == FilterFormat.HWIO.value:
-            return FilterFormat.HWIO
-        elif arg.i == FilterFormat.HWOI.value:
-            return FilterFormat.HWOI
-        elif arg.i == FilterFormat.OIHW.value:
-            return FilterFormat.OIHW
+        elif arg.i == DataFormat.HWIO.value:
+            return DataFormat.HWIO
+        elif arg.i == DataFormat.HWOI.value:
+            return DataFormat.HWOI
+        elif arg.i == DataFormat.OIHW.value:
+            return DataFormat.OIHW
         else:
             return None

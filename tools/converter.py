@@ -95,6 +95,7 @@ DataFormatStrs = [
     "NONE",
     "NHWC",
     "NCHW",
+    "OIHW",
 ]
 
 

@@ -29,7 +29,6 @@ from mace.python.tools.converter_tool.base_converter import PadType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
@@ -257,7 +256,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
-        ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.HWIO)
+        ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.HWIO)
 
         # import tensorflow graph
         tf_graph_def = tf.GraphDef()
@@ -330,13 +329,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
             for input_node in self._option.input_nodes.values():
                 if node.name == input_node.name \
                         or node.name + ':0' == input_node.name:
+                    input_shape = input_node.shape
+                    if input_node.data_format == DataFormat.OIHW \
+                            and len(input_shape) == 4:
+                        # OIHW -> HWIO
+                        input_shape = [input_shape[2], input_shape[3],
+                                       input_shape[1], input_shape[0]]
                     del node.attr['shape'].shape.dim[:]
                     node.attr['shape'].shape.dim.extend([
                         tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in
-                        input_node.shape
+                        input_shape
                     ])
                     self._placeholders[node.name + ':0'] = \
-                        np.zeros(shape=input_node.shape, dtype=float)
+                        np.zeros(shape=input_shape, dtype=float)
 
     @staticmethod
     def get_scope(tensor_name):

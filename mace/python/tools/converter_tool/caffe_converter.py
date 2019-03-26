@@ -27,7 +27,6 @@ from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
@@ -194,7 +193,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
-        ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.OIHW)
+        ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         self._caffe_net = CaffeNet()
         self._caffe_layers = caffe_pb2.NetParameter()
         caffe_weights = caffe_pb2.NetParameter()
