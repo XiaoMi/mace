@@ -1969,7 +1969,8 @@ class Transformer(base_converter.ConverterInterface):
             else:
                 print("Quantize op %s (%s)" % (op.name, op.type))
 
-            non_zero = self._option.device == DeviceType.CPU.value
+            non_zero = self._option.device == DeviceType.CPU.value \
+                and op.type == MaceOp.MatMul.name
 
             for idx, input_tensor in enumerate(op.input):
                 quantized_inputs_names.append(input_tensor)

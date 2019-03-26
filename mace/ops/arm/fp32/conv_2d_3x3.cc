@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
-#endif
-
-#include "mace/utils/macros.h"
-#include "mace/ops/arm/conv_2d_neon.h"
+#include <memory>
+#include "mace/ops/arm/fp32/conv_2d_3x3.h"
 
 namespace mace {
 namespace ops {
+namespace arm {
+namespace fp32 {
 
-// Ho = 2, Wo = 4, Co = 2
-void Conv2dNeonK3x3S1(const float *input,
-                      const float *filter,
-                      const index_t *in_shape,
-                      const index_t *out_shape,
-                      float *output) {
+MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
+                                 const Tensor *input,
+                                 const Tensor *filter,
+                                 Tensor *output) {
+  std::unique_ptr<const Tensor> padded_input;
+  std::unique_ptr<Tensor> padded_output;
+  ResizeOutAndPadInOut(context,
+                       input,
+                       filter,
+                       output,
+                       2,
+                       4,
+                       &padded_input,
+                       &padded_output);
+  const Tensor *in_tensor = input;
+  if (padded_input.get() != nullptr) {
+    in_tensor = padded_input.get();
+  }
+  Tensor *out_tensor = output;
+  if (padded_output.get() != nullptr) {
+    out_tensor = padded_output.get();
+  }
+  out_tensor->Clear();
+
+  Tensor::MappingGuard in_guard(input);
+  Tensor::MappingGuard filter_guard(filter);
+  Tensor::MappingGuard out_guard(output);
+  auto filter_data = filter->data<float>();
+  auto input_data = in_tensor->data<float>();
+  auto output_data = out_tensor->mutable_data<float>();
+
+  auto in_shape = in_tensor->shape();
+  auto out_shape = out_tensor->shape();
+
   const index_t in_image_size = in_shape[2] * in_shape[3];
   const index_t out_image_size = out_shape[2] * out_shape[3];
   const index_t in_batch_size = in_shape[1] * in_image_size;
@@ -42,26 +69,26 @@ void Conv2dNeonK3x3S1(const float *input,
       const index_t in_channels = in_shape[1];
       const index_t in_width = in_shape[3];
       if (m + 1 < out_channels) {
-        float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
-#if defined(MACE_ENABLE_NEON)
+        float *out_ptr0_base =
+            output_data + b * out_batch_size + m * out_image_size;
         float *out_ptr1_base =
-            output + b * out_batch_size + (m + 1) * out_image_size;
-#endif
+            output_data + b * out_batch_size + (m + 1) * out_image_size;
         for (index_t c = 0; c < in_channels; ++c) {
-          const float *in_ptr0 = input + b * in_batch_size + c * in_image_size;
-          const float *filter_ptr0 = filter + m * in_channels * 9 + c * 9;
+          const float
+              *in_ptr0 = input_data + b * in_batch_size + c * in_image_size;
+          const float *filter_ptr0 = filter_data + m * in_channels * 9 + c * 9;
 
-#if defined(MACE_ENABLE_NEON)
           float *out_ptr1 = out_ptr1_base;
           const float *in_ptr1 =
-              input + b * in_batch_size + c * in_image_size + 1 * in_width;
+              input_data + b * in_batch_size + c * in_image_size + 1 * in_width;
           const float *in_ptr2 =
-              input + b * in_batch_size + c * in_image_size + 2 * in_width;
+              input_data + b * in_batch_size + c * in_image_size + 2 * in_width;
           const float *in_ptr3 =
-              input + b * in_batch_size + c * in_image_size + 3 * in_width;
-          const float *filter_ptr1 = filter + (m + 1) * in_channels * 9 + c * 9;
-#endif
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+              input_data + b * in_batch_size + c * in_image_size + 3 * in_width;
+          const float
+              *filter_ptr1 = filter_data + (m + 1) * in_channels * 9 + c * 9;
+
+#if defined(__aarch64__)
           float *out_ptr0 = out_ptr0_base;
 
           // load filter (2 outch x 3 height x 3 width): vf_outch_height
@@ -179,7 +206,7 @@ void Conv2dNeonK3x3S1(const float *input,
             out_ptr0 += out_width;
             out_ptr1 += out_width;
           }                      // h
-#elif defined(MACE_ENABLE_NEON)  // arm v7
+#else  // arm v7
           float *out_ptr0 = out_ptr0_base;
 
           // load filter (2 outch x 3 height x 3 width): vf_outch_height
@@ -301,32 +328,28 @@ void Conv2dNeonK3x3S1(const float *input,
             out_ptr0 += out_width;
             out_ptr1 += out_width;
           }  // h
-#else
-          for (index_t oc = 0; oc < 2; ++oc) {
-            Conv2dCPUKHxKWCalc(in_ptr0, filter_ptr0 + oc * in_channels * 9,
-                               in_width, 3, 3, out_height, out_width,
-                               out_ptr0_base + oc * out_image_size, 1);
-          }
 #endif
         }  // c
       } else {
         for (index_t mm = m; mm < out_channels; ++mm) {
           float *out_ptr0_base =
-              output + b * out_batch_size + mm * out_image_size;
+              output_data + b * out_batch_size + mm * out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
             const float *in_ptr0 =
-                input + b * in_batch_size + c * in_image_size;
-#if defined(MACE_ENABLE_NEON)
+                input_data + b * in_batch_size + c * in_image_size;
             const float *in_ptr1 =
-                input + b * in_batch_size + c * in_image_size + 1 * in_width;
+                input_data + b * in_batch_size + c * in_image_size
+                    + 1 * in_width;
             const float *in_ptr2 =
-                input + b * in_batch_size + c * in_image_size + 2 * in_width;
+                input_data + b * in_batch_size + c * in_image_size
+                    + 2 * in_width;
             const float *in_ptr3 =
-                input + b * in_batch_size + c * in_image_size + 3 * in_width;
-#endif
-            const float *filter_ptr0 = filter + mm * in_channels * 9 + c * 9;
+                input_data + b * in_batch_size + c * in_image_size
+                    + 3 * in_width;
+            const float
+                *filter_ptr0 = filter_data + mm * in_channels * 9 + c * 9;
 
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+#if defined(__aarch64__)
             float *out_ptr0 = out_ptr0_base;
 
             // load filter (1 outch x 3 height x 3 width): vf_outch_height
@@ -409,7 +432,7 @@ void Conv2dNeonK3x3S1(const float *input,
 
               out_ptr0 += out_width;
             }                    // h
-#elif defined(MACE_ENABLE_NEON)  // arm v7
+#else  // arm v7
             float *out_ptr0 = out_ptr0_base;
 
             // load filter (1 outch x 3 height x 3 width): vf_outch_height
@@ -494,22 +517,52 @@ void Conv2dNeonK3x3S1(const float *input,
 
               out_ptr0 += out_width;
             }  // h
-#else
-            Conv2dCPUKHxKWCalc(in_ptr0, filter_ptr0, in_width, 3, 3, out_height,
-                               out_width, out_ptr0_base, 1);
 #endif
           }  // c
         }    // mm
       }      // if
     }        // m
   }          // b
+
+  UnPadOutput(*out_tensor, output);
+  return MaceStatus::MACE_SUCCESS;
 }
 
-void Conv2dNeonK3x3S2(const float *input,
-                      const float *filter,
-                      const index_t *in_shape,
-                      const index_t *out_shape,
-                      float *output) {
+MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
+                                 const Tensor *input,
+                                 const Tensor *filter,
+                                 Tensor *output) {
+  std::unique_ptr<const Tensor> padded_input;
+  std::unique_ptr<Tensor> padded_output;
+
+  ResizeOutAndPadInOut(context,
+                       input,
+                       filter,
+                       output,
+                       1,
+                       4,
+                       &padded_input,
+                       &padded_output);
+  const Tensor *in_tensor = input;
+  if (padded_input.get() != nullptr) {
+    in_tensor = padded_input.get();
+  }
+  Tensor *out_tensor = output;
+  if (padded_output.get() != nullptr) {
+    out_tensor = padded_output.get();
+  }
+  out_tensor->Clear();
+
+  Tensor::MappingGuard in_guard(input);
+  Tensor::MappingGuard filter_guard(filter);
+  Tensor::MappingGuard out_guard(output);
+  auto filter_data = filter->data<float>();
+  auto input_data = in_tensor->data<float>();
+  auto output_data = out_tensor->mutable_data<float>();
+
+  auto in_shape = in_tensor->shape();
+  auto out_shape = out_tensor->shape();
+
   const index_t in_image_size = in_shape[2] * in_shape[3];
   const index_t out_image_size = out_shape[2] * out_shape[3];
   const index_t in_batch_size = in_shape[1] * in_image_size;
@@ -523,11 +576,12 @@ void Conv2dNeonK3x3S2(const float *input,
         const index_t in_width = in_shape[3];
         const index_t out_height = out_shape[2];
         const index_t out_width = out_shape[3];
-        const float *in_base = input + b * in_batch_size + c * in_image_size;
-        const float *filter_ptr = filter + m * in_channels * 9 + c * 9;
-        float *out_base = output + b * out_batch_size + m * out_image_size;
+        const float
+            *in_base = input_data + b * in_batch_size + c * in_image_size;
+        const float *filter_ptr = filter_data + m * in_channels * 9 + c * 9;
+        float *out_base = output_data + b * out_batch_size + m * out_image_size;
 
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+#if defined(__aarch64__)
         // load filter (1 outch x 3 height x 3 width): vf_outch_height
         float32x4_t vf00, vf01, vf02;
         vf00 = vld1q_f32(filter_ptr);
@@ -587,7 +641,7 @@ void Conv2dNeonK3x3S2(const float *input,
             vst1q_f32(out_base + out_offset, vo);
           }                      // w
         }                        // h
-#elif defined(MACE_ENABLE_NEON)  // arm v7
+#else  // arm v7
         // load filter (1 outch x 3 height x 3 width): vf_outch_height
         float32x2_t vf01, vf23, vf45, vf67, vf78;
         vf01 = vld1_f32(filter_ptr);
@@ -649,14 +703,16 @@ void Conv2dNeonK3x3S2(const float *input,
             vst1q_f32(out_base + out_offset, vo);
           }  // w
         }    // h
-#else
-        Conv2dCPUKHxKWCalc(in_base, filter_ptr, in_width, 3, 3, out_height,
-                           out_width, out_base, 2);
 #endif
       }  // c
     }    // m
   }      // b
+
+  UnPadOutput(*out_tensor, output);
+  return MaceStatus::MACE_SUCCESS;
 }
 
+}  // namespace fp32
+}  // namespace arm
 }  // namespace ops
 }  // namespace mace

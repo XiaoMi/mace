@@ -12,33 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_FP32_GEMV_H_
-#define MACE_OPS_ARM_FP32_GEMV_H_
+#ifndef MACE_OPS_ARM_FP32_CONV_2D_3X3_H_
+#define MACE_OPS_ARM_FP32_CONV_2D_3X3_H_
 
+#include <vector>
 #include "mace/public/mace.h"
 #include "mace/core/tensor.h"
 #include "mace/core/op_context.h"
+#include "mace/ops/arm/fp32/conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
 namespace fp32 {
 
-class Gemv {
+class Conv2dK3x3S1 : public Conv2dBase {
  public:
-  Gemv() {}
-  ~Gemv() {}
-  // Always row-major after transpose
+  Conv2dK3x3S1(const std::vector<int> paddings, const Padding padding_type)
+      : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
+  virtual ~Conv2dK3x3S1() {}
+
   MaceStatus Compute(
       const OpContext *context,
-      const Tensor *lhs,
-      const Tensor *rhs,
-      const Tensor *bias,
-      const index_t batch,
-      const index_t lhs_height,
-      const index_t lhs_width,
-      const bool lhs_batched,
-      const bool rhs_batched,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output);
+};
+
+class Conv2dK3x3S2 : public Conv2dBase {
+ public:
+  Conv2dK3x3S2(const std::vector<int> paddings, const Padding padding_type)
+      : Conv2dBase({2, 2}, {1, 1}, paddings, padding_type) {}
+  virtual ~Conv2dK3x3S2() {}
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
       Tensor *output);
 };
 
@@ -47,4 +57,4 @@ class Gemv {
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_FP32_GEMV_H_
+#endif  // MACE_OPS_ARM_FP32_CONV_2D_3X3_H_
