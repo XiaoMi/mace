@@ -15,21 +15,34 @@
 #include <memory>
 
 #include "mace/core/operator.h"
+#include "mace/utils/math.h"
+#include "mace/utils/memory.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/crop.h"
 #endif  // MACE_ENABLE_OPENCL
-#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 
 template <DeviceType D, class T>
-class CropOp : public Operation {
+class CropOp;
+
+template <class T>
+class CropOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit CropOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 2)),
-        offset_(Operation::GetRepeatedArgs<int>("offset")) {}
+        offset_(Operation::GetRepeatedArgs<int>("offset")) {
+    MACE_CHECK(offset_.size() == 4,
+               "crop op only supports 4-dims inputs now.");
+    auto has_df = Operation::GetOptionalArg<int>(
+        "has_data_format", 0);
+    if (has_df) {
+      // NHWC -> NCHW
+      offset_ = TransposeShape<int, int>(offset_, {0, 3, 1, 2});
+    }
+  }
+
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -47,21 +60,13 @@ class CropOp : public Operation {
 
     std::vector<index_t> output_shape(input0->shape());
     for (index_t i = 0; i < in0_dims; ++i) {
-      int32_t crop_offset = 0;
-      index_t new_size = input0->dim(i);
-      if (i >= axis_) {
-        new_size = input1->dim(i);
-        if (offset_.size() == 1) {
-          crop_offset = offset_[0];
-        } else if (offset_.size() > 1) {
-          crop_offset = offset_[i - axis_];
-        }
-        MACE_CHECK(input0->dim(i) - crop_offset >= input1->dim(i))
-          << "the crop for dimension" << i << "is out of bound with size"
-          << input1->dim(i) << "and offset" << crop_offset;
+      if (offset_[i] >= 0) {
+        output_shape[i] = input1->dim(i);
+        offsets[i] = offset_[i];
+        MACE_CHECK(input0->dim(i) - offset_[i] >= input1->dim(i))
+          << "the crop for dimension " << i << " is out of bound with size "
+          << input1->dim(i) << " and offset " << offsets[i];
       }
-      output_shape[i] = new_size;
-      offsets[i] = crop_offset;
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     T *output_data = output->mutable_data<T>();
@@ -103,7 +108,6 @@ class CropOp : public Operation {
   }
 
  private:
-  const int axis_;
   std::vector<int> offset_;
 };
 
@@ -113,10 +117,9 @@ class CropOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit CropOp(OpConstructContext *context)
       : Operation(context) {
-    const int axis = Operation::GetOptionalArg<int>("axis", 2);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_ = make_unique<opencl::image::CropKernel<T>>(
-          axis, Operation::GetRepeatedArgs<int>("offset"));
+          Operation::GetRepeatedArgs<int>("offset"));
     } else {
       MACE_NOT_IMPLEMENTED;
     }

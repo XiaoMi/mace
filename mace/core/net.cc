@@ -175,7 +175,6 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
         // NHWC -> NCHW
         input_shape =
             TransposeShape<index_t, index_t>(input_shape, {0, 3, 1, 2});
-        input_data_format = DataFormat::NCHW;
       }
     }
   }

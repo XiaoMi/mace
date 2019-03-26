@@ -552,18 +552,20 @@ class CaffeConverter(base_converter.ConverterInterface):
         param = caffe_op.layer.crop_param
         op.type = MaceOp.Crop.name
 
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = 2
-        if param.HasField(MaceKeyword.mace_axis_str):
-            axis_arg.i = param.axis
-        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
+        axis = param.axis
+        axis = 4 + axis if axis < 0 else axis
+        offset_value = -1 * np.ones(4, dtype=np.int32)
+        offset_len = len(param.offset)
+        if offset_len == 1:
+            while axis < 4:
+                offset_value[axis] = param.offset[0]
+                axis += 1
+        else:
+            offset_value[axis:] = param.offset
+
         offset_arg = op.arg.add()
         offset_arg.name = MaceKeyword.mace_offset_str
-        if len(param.offset) > 0:
-            offset_arg.ints.extend(list(param.offset))
-        else:
-            offset_arg.i = 0
+        offset_arg.ints.extend(offset_value)
 
     def convert_concat(self, caffe_op):
         op = self.convert_general_op(caffe_op)

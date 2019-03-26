@@ -224,7 +224,12 @@ class ShapeInference(object):
 
     def infer_shape_crop(self, op):
         mace_check(len(op.input) == 2, "crop layer needs two inputs")
-        output_shape = self._output_shape_cache[op.input[1]]
+        output_shape = self._output_shape_cache[op.input[0]]
+        input1_shape = self._output_shape_cache[op.input[1]]
+        offsets = ConverterUtil.get_arg(op, MaceKeyword.mace_offset_str).ints
+        for i in range(len(offsets)):
+            if offsets[i] >= 0:
+                output_shape[i] = input1_shape[i]
         self.add_output_shape(op, [output_shape])
 
     def infer_shape_channel_shuffle(self, op):
