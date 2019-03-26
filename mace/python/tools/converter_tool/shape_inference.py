@@ -51,6 +51,7 @@ class ShapeInference(object):
             MaceOp.Transpose.name: self.infer_shape_permute,
             MaceOp.PriorBox.name: self.infer_shape_prior_box,
             MaceOp.Reshape.name: self.infer_shape_reshape,
+            MaceOp.ResizeBilinear.name: self.infer_shape_resize_bilinear,
         }
 
         self._net = net
@@ -288,3 +289,17 @@ class ShapeInference(object):
                 output_shape.append(self._output_shape_cache[op.input[0]][i])
             output_shape[axis] = dim
             self.add_output_shape(op, [output_shape])
+
+    def infer_shape_resize_bilinear(self, op):
+        input_shape = self._output_shape_cache[op.input[0]]
+        size = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_resize_size_str).ints
+        if ConverterUtil.data_format(op) == DataFormat.NCHW:
+            output_shape = [input_shape[0], input_shape[1], size[0], size[1]]
+        elif ConverterUtil.data_format(op) == DataFormat.NHWC:
+            output_shape = [input_shape[0], size[0], size[1], input_shape[3]]
+        else:
+            output_shape = []
+            mace_check(False, "format %s is not supported"
+                       % ConverterUtil.data_format(op))
+        self.add_output_shape(op, [output_shape])
