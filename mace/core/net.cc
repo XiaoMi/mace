@@ -28,6 +28,7 @@
 #include "mace/utils/logging.h"
 #include "mace/utils/macros.h"
 #include "mace/utils/math.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/timer.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -77,7 +78,7 @@ std::unique_ptr<Operation> SerialNet::CreateOperation(
   // Create the Operation
   DeviceType target_device_type = target_device_->device_type();
   DeviceType device_type = DeviceType::CPU;
-  construct_context->set_device(cpu_device_);
+  construct_context->set_device(cpu_device_.get());
   construct_context->set_operator_def(op_def);
   construct_context->set_output_mem_type(MemoryType::CPU_BUFFER);
   // Get available devices
@@ -129,9 +130,10 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
       ws_(ws),
       target_device_(target_device),
       cpu_device_(
-          new CPUDevice(target_device->cpu_runtime()->num_threads(),
-                        target_device->cpu_runtime()->policy(),
-                        target_device->cpu_runtime()->use_gemmlowp())) {
+          make_unique<CPUDevice>(
+              target_device->cpu_runtime()->num_threads(),
+              target_device->cpu_runtime()->policy(),
+              target_device->cpu_runtime()->use_gemmlowp())) {
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet");
   // output tensor : related information
   std::unordered_map<std::string, InternalOutputInfo> output_map;
@@ -380,7 +382,7 @@ MaceStatus SerialNet::Init() {
     if (device_type == target_device_->device_type()) {
       init_context.set_device(target_device_);
     } else {
-      init_context.set_device(cpu_device_);
+      init_context.set_device(cpu_device_.get());
     }
     // Initialize the operation
     MACE_RETURN_IF_ERROR(op->Init(&init_context));
@@ -391,7 +393,7 @@ MaceStatus SerialNet::Init() {
 MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
   MACE_MEMORY_LOGGING_GUARD();
   MACE_LATENCY_LOGGER(1, "Running net");
-  OpContext context(ws_, cpu_device_);
+  OpContext context(ws_, cpu_device_.get());
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
     DeviceType device_type = op->device_type();
@@ -404,7 +406,7 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
     if (device_type == target_device_->device_type()) {
       context.set_device(target_device_);
     } else {
-      context.set_device(cpu_device_);
+      context.set_device(cpu_device_.get());
     }
 
     CallStats call_stats;

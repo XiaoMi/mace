@@ -307,8 +307,8 @@ def bazel_build(target,
         bazel_args += ("--config", "asan")
     else:
         bazel_args += ("--config", "optimization")
-    if symbol_hidden:
-        bazel_args += ("--config", "symbol_hidden")
+        if symbol_hidden:
+            bazel_args += ("--config", "symbol_hidden")
     if extra_args:
         bazel_args += (extra_args,)
         six.print_(bazel_args)
