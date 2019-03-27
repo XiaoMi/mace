@@ -116,6 +116,7 @@ TFSupportedOps = [
     'FloorDiv',
     'Sqrt',
     'MirrorPad',
+    'Cumsum',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -253,6 +254,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.FloorDiv.name: self.convert_elementwise,
             TFOpType.Sqrt.name: self.convert_elementwise,
             TFOpType.MirrorPad.name: self.convert_pad,
+            TFOpType.Cumsum.name: self.convert_cumsum,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -1012,3 +1014,23 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         self._skip_tensor.add(tf_op.inputs[1].name)
         self._skip_tensor.add(tf_op.inputs[2].name)
+
+    def convert_cumsum(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Cumsum.name
+
+        axis = tf_op.inputs[1].eval().astype(np.int32)
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = axis
+        del op.input[1]
+
+        exclusive = tf_op.get_attr('exclusive')
+        exclusive_arg = op.arg.add()
+        exclusive_arg.name = MaceKeyword.mace_exclusive_str
+        exclusive_arg.i = int(exclusive)
+
+        reverse = tf_op.get_attr('reverse')
+        reverse_arg = op.arg.add()
+        reverse_arg.name = MaceKeyword.mace_reverse_str
+        reverse_arg.i = int(reverse)

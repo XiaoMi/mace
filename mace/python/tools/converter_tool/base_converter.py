@@ -159,6 +159,7 @@ MaceSupportedOps = [
     'Transpose',
     'WinogradInverseTransform',
     'WinogradTransform',
+    'Cumsum',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -237,6 +238,8 @@ class MaceKeyword(object):
     mace_find_range_every_time = 'find_range_every_time'
     mace_non_zero = 'non_zero'
     mace_pad_type_str = 'pad_type'
+    mace_exclusive_str = 'exclusive'
+    mace_reverse_str = 'reverse'
 
 
 class TransformerRule(Enum):
