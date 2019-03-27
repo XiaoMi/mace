@@ -26,7 +26,6 @@ void RunCrop(const std::vector<index_t> &input_shape,
              const std::vector<float> &input_data,
              const std::vector<index_t> &input_shape2,
              const std::vector<int> &offset,
-             const int axis,
              const std::vector<index_t> &expected_shape,
              const std::vector<float> &expected_data) {
   OpsTestNet net;
@@ -39,7 +38,7 @@ void RunCrop(const std::vector<index_t> &input_shape,
         .Input("Input1")
         .Output("Output")
         .AddIntsArg("offset", offset)
-        .AddIntArg("axis", axis)
+        .AddIntArg("has_data_format", 1)
         .Finalize(net.NewOperatorDef());
   } else if (D == CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("Input0",
@@ -55,7 +54,7 @@ void RunCrop(const std::vector<index_t> &input_shape,
         .Input("InputNCHW1")
         .Output("OutputNCHW")
         .AddIntsArg("offset", offset)
-        .AddIntArg("axis", axis)
+        .AddIntArg("has_data_format", 1)
         .Finalize(net.NewOperatorDef());
   }
 
@@ -113,7 +112,7 @@ TEST_F(CropTest, SimpleCPU) {
                             1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                             2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
                             3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
-                            4.0, 4.0, 4.0}, {1, 5, 5, 3}, {2, 2}, 2,
+                            4.0, 4.0, 4.0}, {1, 5, 5, 3}, {-1, 2, 2, -1},
                             {1, 5, 5, 3},
                             {1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
                             2.0, 2.0, 2.0, 3.0, 3.0, 3.0,
@@ -168,7 +167,7 @@ TEST_F(CropTest, SimpleGPU) {
                             1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                             2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
                             3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
-                            4.0, 4.0, 4.0}, {1, 5, 5, 3}, {2, 2}, 2,
+                            4.0, 4.0, 4.0}, {1, 5, 5, 3}, {-1, 2, 2, -1},
                             {1, 5, 5, 3},
                             {1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
                             2.0, 2.0, 2.0, 3.0, 3.0, 3.0,

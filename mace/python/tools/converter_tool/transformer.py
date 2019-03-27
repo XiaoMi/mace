@@ -1012,7 +1012,8 @@ class Transformer(base_converter.ConverterInterface):
                         elif filter_format == DataFormat.OIHW:
                             weight.dims[:] = weight.dims[:] + [1, 1]
                         else:
-                            mace_check("FC does not support filter format %s",
+                            mace_check(False,
+                                       "FC does not support filter format %s" %
                                        filter_format.name)
         return False
 
@@ -1084,6 +1085,16 @@ class Transformer(base_converter.ConverterInterface):
                             new_axises.sort()
                             arg.ints[:] = []
                             arg.ints.extend(new_axises)
+            elif op.type == MaceOp.Crop.name:
+                offset_arg = ConverterUtil.get_arg(op,
+                                                   MaceKeyword.mace_offset_str)
+                mace_check(offset_arg and
+                           ConverterUtil.data_format(op) == DataFormat.NCHW and
+                           len(op.output_shape[0].dims) == 4,
+                           "MACE only support crop with NCHW format")
+                print("Transpose crop args: %s(%s)"
+                      % (op.name, op.type))
+                self.transpose_shape(offset_arg.ints, [0, 2, 3, 1])
 
             # transpose op output shape
             data_format = ConverterUtil.data_format(op)
@@ -1147,7 +1158,7 @@ class Transformer(base_converter.ConverterInterface):
             elif filter_format == DataFormat.OIHW:
                 transpose_order = [0, 2, 3, 1]
             else:
-                mace_check("Quantize model does not support conv "
+                mace_check(False, "Quantize model does not support conv "
                            "filter format: %s" % filter_format.name)
 
             for op in net.op:

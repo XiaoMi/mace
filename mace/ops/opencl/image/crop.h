@@ -34,16 +34,14 @@ template <typename T>
 class CropKernel : public OpenCLCropKernel {
  public:
   explicit CropKernel(
-      const int axis,
       const std::vector<int> &offset)
-      : axis_(axis), offset_(offset) {}
+      : offset_(offset) {}
   MaceStatus Compute(
       OpContext *context,
       const std::vector<const Tensor *> &input_list,
       Tensor *output) override;
 
  private:
-  const int axis_;
   std::vector<int> offset_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
@@ -68,57 +66,14 @@ MaceStatus CropKernel<T>::Compute(
   std::vector<int32_t> offsets(4, 0);
 
   std::vector<index_t> output_shape(input0->shape());
-  switch (axis_) {
-    case 0:
-      if (offset_.size() == 1) {
-        offsets[0] = offset_[0];
-        offsets[1] = offset_[0];
-        offsets[2] = offset_[0];
-        offsets[3] = offset_[0];
-      } else if (offset_.size() == 4) {
-        offsets[0] = offset_[0];
-        offsets[1] = offset_[2];
-        offsets[2] = offset_[3];
-        offsets[3] = offset_[1];
-      }
-      for (int i = 0; i < 4; ++i) {
-        output_shape[i] = input1->dim(i);
-      }
-      break;
-    case 1:
-      if (offset_.size() == 1) {
-        offsets[1] = offset_[0];
-        offsets[2] = offset_[0];
-        offsets[3] = offset_[0];
-      } else if (offset_.size() == 3) {
-        offsets[1] = offset_[1];
-        offsets[2] = offset_[2];
-        offsets[3] = offset_[0];
-      }
-      for (int i = 1; i < 4; ++i) {
-        output_shape[i] = input1->dim(i);
-      }
-      break;
-    case 2:
-      if (offset_.size() == 1) {
-        offsets[1] = offset_[0];
-        offsets[2] = offset_[0];
-      } else if (offset_.size() == 2) {
-        offsets[1] = offset_[0];
-        offsets[2] = offset_[1];
-      }
-      output_shape[1] = input1->dim(1);
-      output_shape[2] = input1->dim(2);
-      break;
-    case 3:
-      if (offset_.size() == 1) {
-        offsets[2] = offset_[0];
-      }
-      output_shape[2] = input1->dim(2);
-      break;
-    default:
-      MACE_CHECK(axis_ >= 0 && axis_ < 4, "axis is out of boundary.");
-      break;
+  for (index_t i = 0; i < in0_dims; ++i) {
+    if (offset_[i] >= 0) {
+      output_shape[i] = input1->dim(i);
+      offsets[i] = offset_[i];
+      MACE_CHECK(input0->dim(i) - offset_[i] >= input1->dim(i))
+        << "the crop for dimension " << i << " is out of bound with size "
+        << input1->dim(i) << " and offset " << offsets[i];
+    }
   }
   MACE_CHECK(offsets[3] % 4 == 0,
              "MACE opencl only supports cropping channel"
