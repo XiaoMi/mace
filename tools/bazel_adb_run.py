@@ -110,6 +110,10 @@ def parse_args():
         action="store_true",
         help="Whether to enable AddressSanitizer")
     parser.add_argument(
+        '--debug_mode',
+        action="store_true",
+        help="Reserve debug symbols.")
+    parser.add_argument(
         "--simpleperf",
         type=str2bool,
         default=False,
@@ -135,7 +139,8 @@ def main(unused_args):
             abi=target_abi,
             toolchain=toolchain,
             enable_neon=FLAGS.enable_neon,
-            address_sanitizer=FLAGS.address_sanitizer)
+            address_sanitizer=FLAGS.address_sanitizer,
+            debug_mode=FLAGS.debug_mode)
         if FLAGS.run_target:
             target_devices = DeviceManager.list_devices(FLAGS.device_yml)
             if FLAGS.target_socs != TargetSOCTag.all and\

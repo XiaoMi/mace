@@ -204,6 +204,15 @@ def get_quantize_mode(configs):
     return False
 
 
+def get_symbol_hidden_mode(debug_mode, mace_lib_type=None):
+    if not mace_lib_type:
+        return True
+    if debug_mode or mace_lib_type == MACELibType.dynamic:
+        return False
+    else:
+        return True
+
+
 def md5sum(str):
     md5 = hashlib.md5()
     md5.update(str.encode('utf-8'))
@@ -754,7 +763,7 @@ def convert_model(configs, cl_mem_type):
             StringFormatter.block("Model %s converted" % model_name))
 
 
-def build_model_lib(configs, address_sanitizer):
+def build_model_lib(configs, address_sanitizer, debug_mode):
     MaceLogger.header(StringFormatter.block("Building model library"))
 
     # create model library dir
@@ -775,7 +784,8 @@ def build_model_lib(configs, address_sanitizer):
             enable_opencl=get_opencl_mode(configs),
             enable_quantize=get_quantize_mode(configs),
             address_sanitizer=address_sanitizer,
-            symbol_hidden=True
+            symbol_hidden=get_symbol_hidden_mode(debug_mode),
+            debug_mode=debug_mode
         )
 
         sh.cp("-f", MODEL_LIB_PATH, model_lib_output_path)
@@ -806,7 +816,7 @@ def convert_func(flags):
     convert_model(configs, flags.cl_mem_type)
 
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        build_model_lib(configs, flags.address_sanitizer)
+        build_model_lib(configs, flags.address_sanitizer, flags.debug_mode)
 
     print_library_summary(configs)
 
@@ -860,7 +870,7 @@ def report_run_statistics(stdout,
 
 
 def build_mace_run(configs, target_abi, toolchain, enable_openmp,
-                   address_sanitizer, mace_lib_type):
+                   address_sanitizer, mace_lib_type, debug_mode):
     library_name = configs[YAMLKeyword.library_name]
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -868,10 +878,8 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         sh.rm("-rf", build_tmp_binary_dir)
     os.makedirs(build_tmp_binary_dir)
 
-    symbol_hidden = True
     mace_run_target = MACE_RUN_STATIC_TARGET
     if mace_lib_type == MACELibType.dynamic:
-        symbol_hidden = False
         mace_run_target = MACE_RUN_DYNAMIC_TARGET
     build_arg = ""
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
@@ -890,15 +898,16 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         enable_opencl=get_opencl_mode(configs),
         enable_quantize=get_quantize_mode(configs),
         address_sanitizer=address_sanitizer,
-        symbol_hidden=symbol_hidden,
+        symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),
+        debug_mode=debug_mode,
         extra_args=build_arg
     )
     sh_commands.update_mace_run_binary(build_tmp_binary_dir,
                                        mace_lib_type == MACELibType.dynamic)
 
 
-def build_example(configs, target_abi, toolchain,
-                  enable_openmp, mace_lib_type, cl_binary_to_code, device):
+def build_example(configs, target_abi, toolchain, enable_openmp, mace_lib_type,
+                  cl_binary_to_code, device, debug_mode):
     library_name = configs[YAMLKeyword.library_name]
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -920,11 +929,8 @@ def build_example(configs, target_abi, toolchain,
             OPENCL_CODEGEN_DIR + '/opencl_binary.cc',
             OPENCL_CODEGEN_DIR + '/opencl_parameter.cc')
 
-    symbol_hidden = True
-
     libmace_target = LIBMACE_STATIC_TARGET
     if mace_lib_type == MACELibType.dynamic:
-        symbol_hidden = False
         libmace_target = LIBMACE_SO_TARGET
 
     sh_commands.bazel_build(libmace_target,
@@ -936,7 +942,8 @@ def build_example(configs, target_abi, toolchain,
                             enable_hexagon=get_hexagon_mode(configs),
                             enable_hta=get_hta_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
-                            symbol_hidden=symbol_hidden)
+                            symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),  # noqa
+                            debug_mode=debug_mode)
 
     if os.path.exists(LIB_CODEGEN_DIR):
         sh.rm("-rf", LIB_CODEGEN_DIR)
@@ -968,6 +975,7 @@ def build_example(configs, target_abi, toolchain,
                             enable_hexagon=get_hexagon_mode(configs),
                             enable_hta=get_hta_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
+                            debug_mode=debug_mode,
                             extra_args=build_arg)
 
     target_bin = "/".join(sh_commands.bazel_target_to_bin(example_target))
@@ -1015,14 +1023,16 @@ def run_mace(flags):
                                   not flags.disable_openmp,
                                   flags.mace_lib_type,
                                   flags.cl_binary_to_code,
-                                  device)
+                                  device,
+                                  flags.debug_mode)
                 else:
                     build_mace_run(configs,
                                    target_abi,
                                    toolchain,
                                    not flags.disable_openmp,
                                    flags.address_sanitizer,
-                                   flags.mace_lib_type)
+                                   flags.mace_lib_type,
+                                   flags.debug_mode)
                 # run
                 start_time = time.time()
                 with device.lock():
@@ -1047,15 +1057,14 @@ def build_benchmark_model(configs,
                           target_abi,
                           toolchain,
                           enable_openmp,
-                          mace_lib_type):
+                          mace_lib_type,
+                          debug_mode):
     library_name = configs[YAMLKeyword.library_name]
 
     link_dynamic = mace_lib_type == MACELibType.dynamic
     if link_dynamic:
-        symbol_hidden = False
         benchmark_target = BM_MODEL_DYNAMIC_TARGET
     else:
-        symbol_hidden = True
         benchmark_target = BM_MODEL_STATIC_TARGET
 
     build_arg = ""
@@ -1073,7 +1082,8 @@ def build_benchmark_model(configs,
                             enable_quantize=get_quantize_mode(configs),
                             enable_hexagon=get_hexagon_mode(configs),
                             enable_hta=get_hta_mode(configs),
-                            symbol_hidden=symbol_hidden,
+                            symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),  # noqa
+                            debug_mode=debug_mode,
                             extra_args=build_arg)
     # clear tmp binary dir
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -1109,7 +1119,8 @@ def benchmark_model(flags):
                                       target_abi,
                                       toolchain,
                                       not flags.disable_openmp,
-                                      flags.mace_lib_type)
+                                      flags.mace_lib_type,
+                                      flags.debug_mode)
                 device = DeviceWrapper(dev)
                 start_time = time.time()
                 with device.lock():
@@ -1181,6 +1192,10 @@ def parse_args():
         type=str,
         default="",
         help="Target SOCs, comma seperated list.")
+    all_type_parent_parser.add_argument(
+        "--debug_mode",
+        action="store_true",
+        help="Reserve debug symbols.")
     convert_run_parent_parser = argparse.ArgumentParser(add_help=False)
     convert_run_parent_parser.add_argument(
         '--address_sanitizer',

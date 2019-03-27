@@ -271,6 +271,7 @@ def bazel_build(target,
                 enable_quantize=True,
                 address_sanitizer=False,
                 symbol_hidden=True,
+                debug_mode=False,
                 extra_args=""):
     six.print_("* Build %s with ABI %s" % (target, abi))
     if abi == "host":
@@ -303,9 +304,12 @@ def bazel_build(target,
             "hexagon=%s" % str(enable_hexagon).lower(),
             "--define",
             "hta=%s" % str(enable_hta).lower())
+
     if address_sanitizer:
         bazel_args += ("--config", "asan")
-    else:
+    if debug_mode:
+        bazel_args += ("--config", "debug")
+    if not address_sanitizer and not debug_mode:
         bazel_args += ("--config", "optimization")
         if symbol_hidden:
             bazel_args += ("--config", "symbol_hidden")
