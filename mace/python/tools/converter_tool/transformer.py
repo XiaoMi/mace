@@ -963,7 +963,9 @@ class Transformer(base_converter.ConverterInterface):
 
         net = self._model
         for op in net.op:
-            if op.type == MaceOp.Conv2D.name:
+            if op.type == MaceOp.Conv2D.name \
+                    and len(op.input) >= 2 \
+                    and op.input[1] in self._consts:
                 producer = self._producer[op.input[0]]
                 input_shape = producer.output_shape[0].dims
                 batch, height, width, channels = self.sort_feature_map_shape(
