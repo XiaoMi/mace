@@ -78,6 +78,21 @@ For quantized model, if you want to check one layer, you can add `check_tensors`
 MACE op's output.
 
 
+Debug with crash
+--------------------------
+If MACE crashes, a complete stacktrace is needed. You can rebuild `mace_run` with `--debug_mode` option to reserve debug symbols, e.g.,
+
+  .. code:: sh
+
+    python tools/converter.py run --config=/path/to/config.yml --debug_mode
+
+For android, you can use `ndk-stack tools <https://developer.android.com/ndk/guides/ndk-stack?hl=EN>`__ to symbolize stack trace, e.g.,
+
+  .. code:: sh
+
+    adb logcat | $NDK/ndk-stack -sym /path/to/local/binary/directory/
+
+
 Debug memory usage
 --------------------------
 The simplest way to debug process memory usage is to use ``top`` command. With ``-H`` option, it can also show thread info.
