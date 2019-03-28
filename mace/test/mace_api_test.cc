@@ -44,14 +44,15 @@ void MaceRun(const int in_out_size,
   AddTensor<T>(filter_tensor_name, filter_shape, 0, data.size(), net_def.get());
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    InputInfo *info = net_def->add_input_info();
+    InputOutputInfo *info = net_def->add_input_info();
+    info->set_data_format(DataFormat::NHWC);
     info->set_name(input_names[i]);
     for (auto d : max_shape) {
       info->add_dims(static_cast<int>(d));
     }
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
-    OutputInfo *info = net_def->add_output_info();
+    InputOutputInfo *info = net_def->add_output_info();
     info->set_name(output_names[i]);
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -123,12 +124,11 @@ TEST_F(MaceAPITest, MultipleInputOutput) {
 }
 
 TEST_F(MaceAPITest, VariableInputShape) {
-  // TODO(liyin): there is a bug of cpu convolution
-//  MaceRun<CPU, float>(1,
-//                      {1, 32, 64, 16},
-//                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
-//                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
-//                      {16, 16, 3, 3});
+  MaceRun<CPU, float>(1,
+                      {1, 32, 64, 16},
+                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
+                      {{1, 16, 32, 16}, {1, 32, 64, 16}},
+                      {16, 16, 3, 3});
   MaceRun<GPU, float>(1,
                       {1, 32, 64, 16},
                       {{1, 16, 32, 16}, {1, 32, 64, 16}},

@@ -1,0 +1,159 @@
+# Description:
+# Mace libmace.
+#
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_linux",
+    "if_darwin",
+    "if_neon_enabled",
+    "if_openmp_enabled",
+    "if_android_armv7",
+    "if_hexagon_enabled",
+    "if_hta_enabled",
+    "if_opencl_enabled",
+    "if_quantize_enabled",
+)
+
+cc_library(
+    name = "libmace",
+    srcs = glob(
+        ["*.cc"],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+    ] + if_openmp_enabled(["-fopenmp"]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
+    ]),
+    deps = [
+        "//mace/ops",
+        "//mace/public",
+    ],
+    alwayslink = 1,
+)
+
+cc_binary(
+    name = "libmace.so",
+    linkopts = [
+        "-Wl,-soname,libmace.so",
+        "-Wl,--version-script",
+        "$(location //mace/libmace:mace_version_script.lds)",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]),
+    linkshared = 1,
+    linkstatic = 0,
+    deps = [
+        "//mace/libmace",
+        "//mace/libmace:mace_version_script.lds",
+    ],
+)
+
+exports_files(
+    [
+        "mace_version_script.lds",
+    ],
+)
+
+cc_library(
+    name = "libmace_dynamic",
+    srcs = ["libmace.so"],
+    visibility = ["//visibility:public"],
+)
+
+# For details, see https://github.com/bazelbuild/bazel/issues/5200
+genrule(
+    name = "libmace_static",
+    srcs = [
+        "//mace/codegen:generated_version",
+        "//mace/core",
+        "//mace/ops:common",
+        "//mace/ops:ref_kernels",
+        "//mace/ops:internal_ops",
+        "//mace/ops",
+        "//mace/libmace",
+        "//mace/port:port_base",
+        "//mace/port/posix:port_posix",
+        "//mace/public",
+        "//mace/utils",
+        "//mace/proto:mace_cc",
+        "@com_google_protobuf//:protobuf_lite",
+    ] + if_android([
+        "//mace/port/android:port_android",
+    ]) + if_linux([
+        "//mace/port/linux:port_linux",
+    ]) + if_darwin([
+        "//mace/port/darwin:port_darwin",
+    ]) + if_opencl_enabled([
+        "//mace/ops:opencl_kernels",
+        "//mace/codegen:generated_opencl",
+    ]) + if_neon_enabled([
+        "//mace/ops:arm_neon_kernels",
+    ]),
+    outs = ["libmace.a"],
+    cmd = "tmp_mri_file=$$(mktemp mace-static-lib-mri.XXXXXXXXXX);" +
+          "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
+          "$(locations //mace/codegen:generated_version) " +
+          "$(locations //mace/core:core) " +
+          "$(locations //mace/ops:common) " +
+          "$(locations //mace/ops:ref_kernels) " +
+          if_neon_enabled(
+              "$(locations //mace/ops:arm_neon_kernels) ",
+              default_value = "",
+          ) +
+          if_opencl_enabled(
+              "$(locations //mace/ops:opencl_kernels) ",
+              default_value = "",
+          ) +
+          "$(locations //mace/ops:internal_ops) " +
+          "$(locations //mace/ops:ops) " +
+          "$(locations //mace/libmace:libmace) " +
+          "$(locations //mace/port:port_base) " +
+          "$(locations //mace/port/posix:port_posix) " +
+          if_android(
+              "$(locations //mace/port/android:port_android) ",
+              default_value = "",
+          ) +
+          if_linux(
+              "$(locations //mace/port/linux:port_linux) ",
+              default_value = "",
+          ) +
+          if_darwin(
+              "$(locations //mace/port/darwin:port_darwin) ",
+              default_value = "",
+          ) +
+          "$(locations //mace/public:public) " +
+          "$(locations //mace/utils:utils) " +
+          "$(locations //mace/proto:mace_cc) " +
+          "$(locations @com_google_protobuf//:protobuf_lite) " +
+          if_opencl_enabled(
+              "$(locations //mace/codegen:generated_opencl) ",
+              default_value = "",
+          ) +
+          "$@ " +
+          "$$tmp_mri_file);" +
+          "$(AR) -M <$$tmp_mri_file;" +
+          "rm -rf $$tmp_mri_file;",
+    # "$(STRIP) -x $@;",  # FIXME this will crash
+    tools = ["//mace/python/tools:archive_static_lib"],
+    visibility = ["//visibility:public"],
+)

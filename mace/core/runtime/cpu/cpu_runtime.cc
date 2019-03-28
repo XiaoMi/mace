@@ -18,9 +18,6 @@
 #include <omp.h>
 #endif
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
@@ -29,8 +26,9 @@
 #include <utility>
 #include <vector>
 
-#include "mace/core/macros.h"
+#include "mace/port/env.h"
 #include "mace/public/mace.h"
+#include "mace/utils/macros.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
@@ -42,101 +40,36 @@ struct CPUFreq {
   float freq;
 };
 
+enum SchedulePolicy {
+  SCHED_STATIC,
+  SCHED_GUIDED,
+};
+
 namespace {
 
-int GetCPUCount() {
-  int cpu_count = 0;
-  std::string cpu_sys_conf = "/proc/cpuinfo";
-  std::ifstream f(cpu_sys_conf);
-  if (!f.is_open()) {
-    LOG(ERROR) << "failed to open " << cpu_sys_conf;
-    return -1;
-  }
-  std::string line;
-  const std::string processor_key = "processor";
-  while (std::getline(f, line)) {
-    if (line.size() >= processor_key.size()
-        && line.compare(0, processor_key.size(), processor_key) == 0) {
-      ++cpu_count;
-    }
-  }
-  if (f.bad()) {
-    LOG(ERROR) << "failed to read " << cpu_sys_conf;
-  }
-  if (!f.eof()) {
-    LOG(ERROR) << "failed to read end of " << cpu_sys_conf;
-  }
-  f.close();
-  VLOG(2) << "CPU cores: " << cpu_count;
-  return cpu_count;
-}
-
-int GetCPUMaxFreq(std::vector<float> *max_freqs) {
-  int cpu_count = GetCPUCount();
-  for (int cpu_id = 0; cpu_id < cpu_count; ++cpu_id) {
-    std::string cpuinfo_max_freq_sys_conf = MakeString(
-        "/sys/devices/system/cpu/cpu",
-        cpu_id,
-        "/cpufreq/cpuinfo_max_freq");
-    std::ifstream f(cpuinfo_max_freq_sys_conf);
-    if (!f.is_open()) {
-      LOG(ERROR) << "failed to open " << cpuinfo_max_freq_sys_conf;
-      return -1;
-    }
-    std::string line;
-    if (std::getline(f, line)) {
-      float freq = strtof(line.c_str(), nullptr);
-      max_freqs->push_back(freq);
-    }
-    if (f.bad()) {
-      LOG(ERROR) << "failed to read " << cpuinfo_max_freq_sys_conf;
-    }
-    f.close();
-  }
-
-  for (float freq : *max_freqs) {
-    VLOG(2) << "CPU freq: " << freq;
-  }
-
-  return 0;
-}
-
-MaceStatus SetThreadAffinity(cpu_set_t mask) {
-#if defined(__ANDROID__)
-  pid_t pid = gettid();
-#else
-  pid_t pid = syscall(SYS_gettid);
-#endif
-  int err = sched_setaffinity(pid, sizeof(mask), &mask);
-  if (err) {
-    LOG(WARNING) << "set affinity error: " << strerror(errno);
-    return MaceStatus(MaceStatus::MACE_INVALID_ARGS,
-                      "set affinity error: " + std::string(strerror(errno)));
-  } else {
-    return MaceStatus::MACE_SUCCESS;
-  }
-}
-
 MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
-                                           const std::vector<size_t> &cpu_ids) {
+                                           const std::vector<size_t> &cpu_ids,
+                                           SchedulePolicy schedule_policy) {
   MaceOpenMPThreadCount = omp_num_threads;
 
 #ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
-  omp_set_schedule(omp_sched_guided, 1);
+  if (schedule_policy == SCHED_GUIDED) {
+    omp_set_schedule(omp_sched_guided, 1);
+  } else if (schedule_policy == SCHED_STATIC) {
+    omp_set_schedule(omp_sched_static, 0);
+  } else {
+    LOG(WARNING) << "Unknown schedule policy: " << schedule_policy;
+  }
+
   omp_set_num_threads(omp_num_threads);
 #else
   MACE_UNUSED(omp_num_threads);
+  MACE_UNUSED(schedule_policy);
   LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
 
-  // compute mask
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
-  for (auto cpu_id : cpu_ids) {
-    CPU_SET(cpu_id, &mask);
-  }
 #ifdef MACE_ENABLE_OPENMP
   std::vector<MaceStatus> status(omp_num_threads,
                                  MaceStatus::MACE_INVALID_ARGS);
@@ -144,7 +77,7 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   for (int i = 0; i < omp_num_threads; ++i) {
     VLOG(1) << "Set affinity for OpenMP thread " << omp_get_thread_num()
             << "/" << omp_get_num_threads();
-    status[i] = SetThreadAffinity(mask);
+    status[i] = SchedSetAffinity(cpu_ids);
   }
   for (int i = 0; i < omp_num_threads; ++i) {
     if (status[i] != MaceStatus::MACE_SUCCESS)
@@ -152,8 +85,8 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   }
   return MaceStatus::MACE_SUCCESS;
 #else
-  MaceStatus status = SetThreadAffinity(mask);
-  VLOG(1) << "Set affinity without OpenMP: " << mask.__bits[0];
+  MaceStatus status = SchedSetAffinity(cpu_ids);
+  VLOG(1) << "Set affinity without OpenMP: " << MakeString(cpu_ids);
   return status;
 #endif
 }
@@ -166,8 +99,9 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     void *gemm_context) {
   // get cpu frequency info
   std::vector<float> cpu_max_freqs;
-  if (GetCPUMaxFreq(&cpu_max_freqs) == -1 || cpu_max_freqs.size() == 0) {
-    return MaceStatus::MACE_INVALID_ARGS;
+  MACE_RETURN_IF_ERROR(GetCPUMaxFreq(&cpu_max_freqs));
+  if (cpu_max_freqs.empty()) {
+    return MaceStatus::MACE_RUNTIME_ERROR;
   }
 
   std::vector<CPUFreq> cpu_freq(cpu_max_freqs.size());
@@ -228,6 +162,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
   } else {
     cores_to_use = num_threads_hint;
   }
+  MACE_CHECK(cores_to_use > 0, "number of cores to use should > 0");
 
   VLOG(2) << "Use " << num_threads_hint << " threads";
   std::vector<size_t> cpu_ids(cores_to_use);
@@ -235,6 +170,10 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id << " with freq "
             << cpu_freq[i].freq;
     cpu_ids[i] = cpu_freq[i].core_id;
+  }
+  SchedulePolicy sched_policy = SCHED_GUIDED;
+  if (std::abs(cpu_freq[0].freq - cpu_freq[cores_to_use - 1].freq) < 1e-6) {
+    sched_policy = SCHED_STATIC;
   }
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -244,7 +183,9 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
   }
 #endif  // MACE_ENABLE_QUANTIZE
 
-  return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint, cpu_ids);
+  return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint,
+                                         cpu_ids,
+                                         sched_policy);
 }
 
 }  // namespace mace

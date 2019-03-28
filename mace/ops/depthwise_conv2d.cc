@@ -33,6 +33,7 @@
 #include "mace/ops/arm/depthwise_conv2d_neon.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/public/mace.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -493,19 +494,25 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_.reset(new opencl::image::DepthwiseConv2dKernel<T>);
+      kernel_ = make_unique<opencl::image::DepthwiseConv2dKernel<T>>();
     } else {
       mem_type = MemoryType::GPU_BUFFER;
-      kernel_.reset(new opencl::buffer::DepthwiseConv2dKernel<T>);
+      kernel_ = make_unique<opencl::buffer::DepthwiseConv2dKernel<T>>();
     }
     context->set_output_mem_type(mem_type);
-    // Transform filter tensor to target format
-    MACE_CHECK(TransformFilter<T>(
-        context,
-        operator_def_.get(),
-        1,
-        OpenCLBufferType::DW_CONV2D_FILTER,
-        mem_type) == MaceStatus::MACE_SUCCESS);
+    Tensor *filter_tensor = context->workspace()->GetTensor(
+        operator_def_->input(1));
+    if (filter_tensor != nullptr && filter_tensor->is_weight()) {
+      // Transform filter tensor to target format
+      MACE_CHECK(TransformFilter<T>(
+          context,
+          operator_def_.get(),
+          1,
+          OpenCLBufferType::DW_CONV2D_FILTER,
+          mem_type) == MaceStatus::MACE_SUCCESS);
+    } else {
+      context->SetInputOpenCLBufferType(1, OpenCLBufferType::DW_CONV2D_FILTER);
+    }
     if (operator_def_->input_size() > 2) {
       MACE_CHECK(TransformFilter<T>(
           context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)

@@ -25,7 +25,6 @@ from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import DeviceType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import PaddingMode
@@ -103,6 +102,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_caffe_reshape_and_flatten,
             TransformerRule.TRANSFORM_CHANNEL_SHUFFLE:
                 self.transform_channel_shuffle,
+            TransformerRule.QUANTIZE_SPECIFIC_OPS_ONLY:
+                self.quantize_specific_ops_only,
         }
 
         self._option = option
@@ -127,7 +128,7 @@ class Transformer(base_converter.ConverterInterface):
                 self.construct_ops_and_consumers(key)
                 changed = transformer()
                 if not changed:
-                        break
+                    break
         self.delete_after_check_nodes()
         return self._model, self._quantize_activation_info
 
@@ -147,12 +148,12 @@ class Transformer(base_converter.ConverterInterface):
         filter_format_value = ConverterUtil.get_arg(self._model,
                                                     MaceKeyword.mace_filter_format_str).i  # noqa
         filter_format = None
-        if filter_format_value == FilterFormat.HWIO.value:
-            filter_format = FilterFormat.HWIO
-        elif filter_format_value == FilterFormat.OIHW.value:
-            filter_format = FilterFormat.OIHW
-        elif filter_format_value == FilterFormat.HWOI.value:
-            filter_format = FilterFormat.HWOI
+        if filter_format_value == DataFormat.HWIO.value:
+            filter_format = DataFormat.HWIO
+        elif filter_format_value == DataFormat.OIHW.value:
+            filter_format = DataFormat.OIHW
+        elif filter_format_value == DataFormat.HWOI.value:
+            filter_format = DataFormat.HWOI
         else:
             mace_check(False, "filter format %d not supported" %
                        filter_format_value)
@@ -191,16 +192,23 @@ class Transformer(base_converter.ConverterInterface):
                     op = mace_pb2.OperatorDef()
                     op.name = self.normalize_op_name(input_node.name)
                     op.type = "Input"
+                    data_type_arg = op.arg.add()
+                    data_type_arg.name = MaceKeyword.mace_op_data_type_str
+                    data_type_arg.i = mace_pb2.DT_FLOAT
                     op.output.extend([input_node.name])
                     output_shape = op.output_shape.add()
                     output_shape.dims.extend(input_node.shape)
-                    if ConverterUtil.data_format(
-                            self._consumers[input_node.name][0]) \
-                            == DataFormat.NCHW:
-                        self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
-                        ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
-                    else:
-                        ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
+                    if input_node in self._consumers:
+                        if ConverterUtil.data_format(
+                                self._consumers[input_node.name][0]) \
+                                == DataFormat.NCHW:
+                            self.transpose_shape(output_shape.dims,
+                                                 [0, 3, 1, 2])
+                            ConverterUtil.add_data_format_arg(op,
+                                                              DataFormat.NCHW)
+                        else:
+                            ConverterUtil.add_data_format_arg(op,
+                                                              DataFormat.NHWC)
                     self._producer[op.output[0]] = op
 
     @staticmethod
@@ -221,10 +229,32 @@ class Transformer(base_converter.ConverterInterface):
         return name.replace(':', '_')
 
     def get_tensor_shape(self, tensor):
-        producer = self._producer[tensor]
-        for i in six.moves.range(len(producer.output)):
-            if producer.output[i] == tensor:
-                return list(producer.output_shape[i].dims)
+        if tensor in self._consts:
+            return list(self._consts[tensor].dims)
+        elif tensor in self._producer:
+            producer = self._producer[tensor]
+            for i in six.moves.range(len(producer.output)):
+                if producer.output[i] == tensor:
+                    return list(producer.output_shape[i].dims)
+        else:
+            return None
+
+    def get_tensor_data_type(self, tensor):
+        if tensor in self._consts:
+            return self._consts[tensor].data_type
+        elif tensor in self._producer:
+            producer = self._producer[tensor]
+            for i in six.moves.range(len(producer.output)):
+                if producer.output[i] == tensor:
+                    if i < len(producer.output_type):
+                        return producer.output_type[i]
+                    elif ConverterUtil.get_arg(producer, "T") is not None:
+                        return ConverterUtil.get_arg(producer, "T").i
+                    else:
+                        print("No data type filled: ", producer)
+                        return None
+        else:
+            return None
 
     def consumer_count(self, tensor_name):
         return len(self._consumers.get(tensor_name, []))
@@ -583,14 +613,14 @@ class Transformer(base_converter.ConverterInterface):
                     offset = self._consts[consumer_op.input[2]]
                     idx = 0
                     filter_format = self.filter_format()
-                    if filter_format == FilterFormat.HWIO:
+                    if filter_format == DataFormat.HWIO:
                         for hwi in six.moves.range(filter.dims[0]
                                                    * filter.dims[1]
                                                    * filter.dims[2]):
                             for o in six.moves.range(filter.dims[3]):
                                 filter.float_data[idx] *= scale.float_data[o]
                                 idx += 1
-                    elif filter_format == FilterFormat.OIHW:
+                    elif filter_format == DataFormat.OIHW:
                         for o in six.moves.range(filter.dims[0]):
                             for hwi in six.moves.range(filter.dims[1]
                                                        * filter.dims[2]
@@ -642,7 +672,7 @@ class Transformer(base_converter.ConverterInterface):
                     idx = 0
                     filter_format = self.filter_format()
                     # in deconv op O and I channel is switched
-                    if filter_format == FilterFormat.HWIO:
+                    if filter_format == DataFormat.HWIO:
                         for hw in six.moves.range(filter.dims[0]
                                                   * filter.dims[1]):
                             for o in six.moves.range(filter.dims[2]):
@@ -650,7 +680,7 @@ class Transformer(base_converter.ConverterInterface):
                                     filter.float_data[idx] *=\
                                         scale.float_data[o]
                                     idx += 1
-                    elif filter_format == FilterFormat.OIHW:
+                    elif filter_format == DataFormat.OIHW:
                         for i in six.moves.range(filter.dims[0]):
                             for o in six.moves.range(filter.dims[1]):
                                 for hw in six.moves.range(filter.dims[2]
@@ -705,7 +735,7 @@ class Transformer(base_converter.ConverterInterface):
                     idx = 0
 
                     filter_format = self.filter_format()
-                    if filter_format == FilterFormat.HWIO:
+                    if filter_format == DataFormat.HWIO:
                         for hw in six.moves.range(filter.dims[0]
                                                   * filter.dims[1]):
                             for i in six.moves.range(filter.dims[2]):
@@ -713,7 +743,7 @@ class Transformer(base_converter.ConverterInterface):
                                     filter.float_data[idx] *= scale.float_data[
                                                         i * filter.dims[3] + o]
                                     idx += 1
-                    elif filter_format == FilterFormat.OIHW:
+                    elif filter_format == DataFormat.OIHW:
                         for o in six.moves.range(filter.dims[0]):
                             for i in six.moves.range(filter.dims[1]):
                                 for hw in six.moves.range(filter.dims[2]
@@ -760,17 +790,17 @@ class Transformer(base_converter.ConverterInterface):
     @staticmethod
     def sort_filter_shape(filter_shape, filter_format):
         """Return filter shape in HWIO order"""
-        if filter_format == FilterFormat.HWIO:
+        if filter_format == DataFormat.HWIO:
             filter_height = filter_shape[0]
             filter_width = filter_shape[1]
             in_channels = filter_shape[2]
             out_channels = filter_shape[3]
-        elif filter_format == FilterFormat.OIHW:
+        elif filter_format == DataFormat.OIHW:
             filter_height = filter_shape[2]
             filter_width = filter_shape[3]
             in_channels = filter_shape[1]
             out_channels = filter_shape[0]
-        elif filter_format == FilterFormat.HWOI:
+        elif filter_format == DataFormat.HWOI:
             filter_height = filter_shape[0]
             filter_width = filter_shape[1]
             in_channels = filter_shape[3]
@@ -933,7 +963,9 @@ class Transformer(base_converter.ConverterInterface):
 
         net = self._model
         for op in net.op:
-            if op.type == MaceOp.Conv2D.name:
+            if op.type == MaceOp.Conv2D.name \
+                    and len(op.input) >= 2 \
+                    and op.input[1] in self._consts:
                 producer = self._producer[op.input[0]]
                 input_shape = producer.output_shape[0].dims
                 batch, height, width, channels = self.sort_feature_map_shape(
@@ -975,12 +1007,13 @@ class Transformer(base_converter.ConverterInterface):
                     input_shape = list(input_op.output_shape[0].dims)
                     weight.dims[:] = [weight.dims[0]] + input_shape[1:]
                     if len(input_shape) == 2:
-                        if filter_format == FilterFormat.HWIO:
+                        if filter_format == DataFormat.HWIO:
                             weight.dims[:] = [1, 1] + weight.dims[:]
-                        elif filter_format == FilterFormat.OIHW:
+                        elif filter_format == DataFormat.OIHW:
                             weight.dims[:] = weight.dims[:] + [1, 1]
                         else:
-                            mace_check("FC does not support filter format %s",
+                            mace_check(False,
+                                       "FC does not support filter format %s" %
                                        filter_format.name)
         return False
 
@@ -1052,6 +1085,16 @@ class Transformer(base_converter.ConverterInterface):
                             new_axises.sort()
                             arg.ints[:] = []
                             arg.ints.extend(new_axises)
+            elif op.type == MaceOp.Crop.name:
+                offset_arg = ConverterUtil.get_arg(op,
+                                                   MaceKeyword.mace_offset_str)
+                mace_check(offset_arg and
+                           ConverterUtil.data_format(op) == DataFormat.NCHW and
+                           len(op.output_shape[0].dims) == 4,
+                           "MACE only support crop with NCHW format")
+                print("Transpose crop args: %s(%s)"
+                      % (op.name, op.type))
+                self.transpose_shape(offset_arg.ints, [0, 2, 3, 1])
 
             # transpose op output shape
             data_format = ConverterUtil.data_format(op)
@@ -1087,7 +1130,7 @@ class Transformer(base_converter.ConverterInterface):
                 rhs = op.input[1]
                 if rhs in self._consts and len(self._consts[rhs].dims) == 2:
                     arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
-                    six.print_('transpose matmul weight')
+                    six.print_("Transpose matmul weight %s" % rhs)
                     if arg is None:
                         arg = op.arg.add()
                         arg.name = MaceKeyword.mace_transpose_b_str
@@ -1110,12 +1153,12 @@ class Transformer(base_converter.ConverterInterface):
         if self._option.quantize and \
                 self._option.device == DeviceType.CPU.value:
             print("Transpose filters to OHWI")
-            if filter_format == FilterFormat.HWIO:
+            if filter_format == DataFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
-            elif filter_format == FilterFormat.OIHW:
+            elif filter_format == DataFormat.OIHW:
                 transpose_order = [0, 2, 3, 1]
             else:
-                mace_check("Quantize model does not support conv "
+                mace_check(False, "Quantize model does not support conv "
                            "filter format: %s" % filter_format.name)
 
             for op in net.op:
@@ -1141,20 +1184,22 @@ class Transformer(base_converter.ConverterInterface):
                     filter.dims[:] = filter_data.shape
                     transposed_deconv_filter.add(op.input[1])
 
-            self.set_filter_format(FilterFormat.OHWI)
+            self.set_filter_format(DataFormat.OHWI)
         elif self._option.quantize and \
-                self._option.device == DeviceType.HEXAGON.value:
+                (self._option.device == DeviceType.HEXAGON.value or
+                 self._option.device == DeviceType.HTA.value):
             print("Transpose filters to HWIO/HWIM")
-            mace_check(filter_format == FilterFormat.HWIO,
+            mace_check(filter_format == DataFormat.HWIO,
                        "HEXAGON only support HWIO/HWIM filter format.")
         else:
             print("Transpose filters to OIHW/MIHW")
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
-            if filter_format == FilterFormat.HWIO:
+            if filter_format == DataFormat.HWIO:
                 for op in net.op:
                     if (op.type == MaceOp.Conv2D.name
                             or op.type == MaceOp.Deconv2D.name
                             or op.type == MaceOp.DepthwiseConv2d.name) \
+                            and op.input[1] in self._consts \
                             and op.input[1] not in transposed_filter:
                         filter = self._consts[op.input[1]]
                         filter_data = np.array(filter.float_data).reshape(
@@ -1184,7 +1229,7 @@ class Transformer(base_converter.ConverterInterface):
                             weight.dims[:] = weight_data.shape
                             transposed_filter.add(op.input[1])
 
-                self.set_filter_format(FilterFormat.OIHW)
+                self.set_filter_format(DataFormat.OIHW)
             # deconv's filter's output channel and input channel is reversed
             for op in net.op:
                 if op.type in [MaceOp.Deconv2D.name,
@@ -1265,7 +1310,7 @@ class Transformer(base_converter.ConverterInterface):
                     len(op.input) == 2 and \
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
-                    filter_format == FilterFormat.HWIO and \
+                    filter_format == DataFormat.HWIO and \
                     op.input[0] in self._producer:
                 input_op = self._producer[op.input[0]]
                 input_shape = input_op.output_shape[0].dims
@@ -1298,7 +1343,8 @@ class Transformer(base_converter.ConverterInterface):
 
             # transform `fc1(2D) -> matmul` to `fc1(2D) -> fc1(2D)`
             if op.type == MaceOp.MatMul.name and \
-                    filter_format == FilterFormat.HWIO:
+                    filter_format == DataFormat.HWIO and \
+                    op.input[1] in self._consts:
                 producer = self._producer[op.input[0]]
                 weight = self._consts[op.input[1]]
                 if len(weight.dims) == 2 and self.is_after_fc(op) and \
@@ -1373,21 +1419,18 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def update_data_format(self):
-        data_format_flag = DataFormat.NHWC.value
+        print("update data format")
+        data_format_flag = 1
         for input_node in self._option.input_nodes.values():
             if input_node.data_format.value == DataFormat.DF_NONE.value:
-                data_format_flag = DataFormat.DF_NONE.value
-
+                data_format_flag = 0
         net = self._model
         for op in net.op:
-            data_format_arg = ConverterUtil.get_arg(
+            ConverterUtil.del_arg(
                 op, MaceKeyword.mace_data_format_str)
-            if not data_format_arg:
-                data_format_arg = op.arg.add()
-                data_format_arg.name = MaceKeyword.mace_data_format_str
-                data_format_arg.i = data_format_flag
-            elif data_format_arg.i != data_format_flag:
-                data_format_arg.i = data_format_flag
+            has_data_format_arg = op.arg.add()
+            has_data_format_arg.name = MaceKeyword.mace_has_data_format_str
+            has_data_format_arg.i = data_format_flag
         return False
 
     def quantize_nodes(self):
@@ -1423,10 +1466,11 @@ class Transformer(base_converter.ConverterInterface):
             else:
                 mace_check(op.type == MaceOp.Quantize.name,
                            "Quantization only support float ops, "
-                           "but get %s(%s)"
-                           % (op.name, op.type))
+                           "but get %s(%s, %s)"
+                           % (op.name, op.type,
+                              mace_pb2.DataType.Name(data_type_arg.i)))
 
-        for input_node in self._option.input_nodes.values():
+        for i, input_node in enumerate(self._option.input_nodes.values()):
             new_input_name = self.input_name_map[input_node.name]
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(new_input_name)
@@ -1435,8 +1479,10 @@ class Transformer(base_converter.ConverterInterface):
             op_def.output.extend([new_input_name])
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(input_node.shape)
-            self.copy_quantize_info(
-                op_def, self._quantize_activation_info[new_input_name])
+            quantize_info = self._quantize_activation_info[new_input_name]
+            self.copy_quantize_info(op_def, quantize_info)
+            self._model.input_info[i].scale = quantize_info.scale
+            self._model.input_info[i].zero_point = quantize_info.zero_point
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
@@ -1447,16 +1493,19 @@ class Transformer(base_converter.ConverterInterface):
             find_range_every_time_arg.i = 1
 
         output_nodes = self._option.check_nodes.values()
-        for output_node in output_nodes:
+        for i, output_node in enumerate(output_nodes):
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(output_node.name)
             op_def.type = MaceOp.Dequantize.name
             op_def.input.extend([self.output_name_map[output_node.name]])
             op_def.output.extend([output_node.name])
             output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(
-                self._producer[output_node.name].output_shape[0].dims)
+            producer_op = self._producer[output_node.name]
+            output_shape.dims.extend(producer_op.output_shape[0].dims)
             op_def.output_type.extend([mace_pb2.DT_FLOAT])
+            quantize_info = producer_op.quantize_info[0]
+            self._model.output_info[i].scale = quantize_info.scale
+            self._model.output_info[i].zero_point = quantize_info.zero_point
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
 
@@ -1503,7 +1552,8 @@ class Transformer(base_converter.ConverterInterface):
                     quantized_tensor = \
                         quantize_util.quantize_with_scale_and_zero(
                             tensor.float_data, scale, 0)
-                elif self._option.device == DeviceType.HEXAGON.value:
+                elif self._option.device == DeviceType.HEXAGON.value or \
+                        self._option.device == DeviceType.HTA.value:
                     quantized_tensor = \
                         quantize_util.quantize_bias_for_hexagon(
                             tensor.float_data)
@@ -1661,7 +1711,7 @@ class Transformer(base_converter.ConverterInterface):
             return False
 
         print("Add default quantize info for input")
-        for input_node in self._option.input_nodes.values():
+        for i, input_node in enumerate(self._option.input_nodes.values()):
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,
                                               str(input_node.range)))
@@ -1670,7 +1720,8 @@ class Transformer(base_converter.ConverterInterface):
                     quantize_util.adjust_range(input_node.range[0],
                                                input_node.range[1],
                                                non_zero=False)
-                quantize_info = mace_pb2.QuantizeActivationInfo()
+                quantize_info = \
+                    mace_pb2.QuantizeActivationInfo()
                 quantize_info.minval = minval
                 quantize_info.maxval = maxval
                 quantize_info.scale = scale
@@ -1725,18 +1776,29 @@ class Transformer(base_converter.ConverterInterface):
                     self.add_quantize_info(op, 0.0, 1.0)
                 self._quantize_activation_info[op.output[0]] = quantize_info
             elif (op.type == MaceOp.Eltwise.name
-                  and ConverterUtil.get_arg(op, MaceKeyword.mace_element_type_str).i == EltwiseType.SUM.value  # noqa
                   and not op.quantize_info
                   and len(op.input) == 2
                   and len(op.input[0]) not in self._consts
                   and len(op.input[1]) not in self._consts):
-                del op.quantize_info[:]
                 producer_op0 = self._producer[op.input[0]]
                 producer_op1 = self._producer[op.input[1]]
-                minval = producer_op0.quantize_info[0].minval \
-                    + producer_op1.quantize_info[0].minval
-                maxval = producer_op0.quantize_info[0].maxval \
-                    + producer_op1.quantize_info[0].maxval
+                if ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i \
+                        == EltwiseType.SUM.value:
+                    minval = producer_op0.quantize_info[0].minval \
+                        + producer_op1.quantize_info[0].minval
+                    maxval = producer_op0.quantize_info[0].maxval \
+                        + producer_op1.quantize_info[0].maxval
+                elif ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i \
+                        == EltwiseType.SUB.value:
+                    minval = producer_op0.quantize_info[0].minval \
+                        - producer_op1.quantize_info[0].maxval
+                    maxval = producer_op0.quantize_info[0].maxval \
+                        - producer_op1.quantize_info[0].minval
+                else:
+                    mace_check(False, "Quantized Elementwise only support:"
+                                      " SUM and SUB now.")
                 quantize_info = \
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
@@ -1880,3 +1942,131 @@ class Transformer(base_converter.ConverterInterface):
                             producer_op.output_shape[0].dims[:] = output_shape
 
                     return True
+
+    def quantize_specific_ops_only(self):
+        """
+        This transform rule is only used internally, we are not gonna make
+        things too complex for users
+        """
+        to_quantize_ops_output_type = {
+            MaceOp.MatMul.name: mace_pb2.DT_INT32,
+            MaceOp.Gather.name: mace_pb2.DT_UINT8,
+        }
+
+        for op in self._model.op:
+            if (op.type not in to_quantize_ops_output_type
+                    or len(op.output) > 1
+                    or ConverterUtil.get_arg(op,
+                                             MaceKeyword.mace_op_data_type_str).i != mace_pb2.DT_FLOAT):  # noqa
+                # only support single output
+                continue
+
+            quantized_inputs_names = []
+
+            should_quantize = False
+            has_const = False
+            for idx, input_tensor in enumerate(op.input):
+                if input_tensor in self._consts:
+                    has_const = True
+                    break
+            if not has_const:
+                continue
+
+            for idx, input_tensor in enumerate(op.input):
+                if self.get_tensor_data_type(input_tensor) \
+                        == mace_pb2.DT_FLOAT:
+                    should_quantize = True
+                    break
+            if not should_quantize:
+                continue
+            else:
+                print("Quantize op %s (%s)" % (op.name, op.type))
+
+            non_zero = self._option.device == DeviceType.CPU.value \
+                and op.type == MaceOp.MatMul.name
+
+            for idx, input_tensor in enumerate(op.input):
+                quantized_inputs_names.append(input_tensor)
+
+                if self.get_tensor_data_type(input_tensor) \
+                        != mace_pb2.DT_FLOAT:
+                    continue
+
+                if input_tensor in self._consts:
+                    const_tensor = self._consts[input_tensor]
+                    quantized_tensor = quantize_util.quantize(
+                        const_tensor.float_data, non_zero)
+                    del const_tensor.float_data[:]
+                    const_tensor.int32_data.extend(quantized_tensor.data)
+                    const_tensor.data_type = mace_pb2.DT_UINT8
+                    const_tensor.scale = quantized_tensor.scale
+                    const_tensor.zero_point = quantized_tensor.zero
+                    const_tensor.minval = quantized_tensor.minval
+                    const_tensor.maxval = quantized_tensor.maxval
+                    const_tensor.quantized = True
+                else:
+                    input_shape = self.get_tensor_shape(input_tensor)
+                    quantize_op = self._model.op.add()
+                    quantize_op.name = self.normalize_op_name(
+                        input_tensor) + "_quant"
+                    quantize_op.type = MaceOp.Quantize.name
+                    quantize_op.input.extend([input_tensor])
+                    quantize_output_name = quantize_op.name + '_0'
+                    quantize_op.output.extend([quantize_output_name])
+                    output_shape = quantize_op.output_shape.add()
+                    output_shape.dims.extend(input_shape)
+                    quantize_op.output_type.extend([mace_pb2.DT_UINT8])
+                    data_type_arg = quantize_op.arg.add()
+                    data_type_arg.name = MaceKeyword.mace_op_data_type_str
+                    data_type_arg.i = mace_pb2.DT_UINT8
+
+                    data_type_arg = quantize_op.arg.add()
+                    data_type_arg.name = MaceKeyword.mace_non_zero
+                    if non_zero:
+                        data_type_arg.i = 1
+                    else:
+                        data_type_arg.i = 0
+
+                    find_range_arg = quantize_op.arg.add()
+                    find_range_arg.name = \
+                        MaceKeyword.mace_find_range_every_time
+                    find_range_arg.i = 1
+
+                    quantized_inputs_names[-1] = quantize_output_name
+
+                non_zero = False
+
+            del op.input[:]
+            op.input.extend(quantized_inputs_names)
+
+            orginal_output_name = op.output[0]
+            op.output[0] = orginal_output_name + "_quant"
+            op.output_type.extend([to_quantize_ops_output_type[op.type]])
+            data_type_arg = ConverterUtil.get_arg(op,
+                                                  MaceKeyword.mace_op_data_type_str)  # noqa
+            if data_type_arg is None:
+                data_type_arg = op.arg.add()
+                data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = mace_pb2.DT_UINT8
+
+            dequantize_op = self._model.op.add()
+            dequantize_op.name = op.name + "_dequant"
+            dequantize_op.type = MaceOp.Dequantize.name
+            dequantize_op.input.extend([op.output[0]])
+            dequantize_op.output.extend([orginal_output_name])
+            dequantize_op.output_shape.extend(op.output_shape)
+            dequantize_op.output_type.extend([mace_pb2.DT_FLOAT])
+            data_type_arg = dequantize_op.arg.add()
+            data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = to_quantize_ops_output_type[op.type]
+
+            quantize_flag_arg = ConverterUtil.get_arg(self._model,
+                                                      MaceKeyword.mace_quantize_flag_arg_str)  # noqa
+            if quantize_flag_arg is None:
+                quantize_flag_arg = self._model.arg.add()
+                quantize_flag_arg.name = MaceKeyword.mace_quantize_flag_arg_str
+                quantize_flag_arg.i = 1
+
+            return True
+
+        return False

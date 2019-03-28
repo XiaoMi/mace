@@ -15,24 +15,10 @@
 #ifndef MACE_OPS_ELTWISE_H_
 #define MACE_OPS_ELTWISE_H_
 
+#include "mace/ops/common/eltwise_type.h"
+
 namespace mace {
 namespace ops {
-
-enum EltwiseType {
-  SUM = 0,
-  SUB = 1,
-  PROD = 2,
-  DIV = 3,
-  MIN = 4,
-  MAX = 5,
-  NEG = 6,
-  ABS = 7,
-  SQR_DIFF = 8,
-  POW = 9,
-  EQUAL = 10,
-  FLOOR_DIV = 11,
-  NONE = 12,
-};
 
 inline bool IsLogicalType(EltwiseType type) { return type == EQUAL; }
 

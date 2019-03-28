@@ -15,18 +15,55 @@
 #ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DEVICE_H_
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DEVICE_H_
 
+#include <memory>
+#include <utility>
+
 #include "mace/core/device.h"
+#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#ifdef MACE_ENABLE_HEXAGON
+#include "mace/core/runtime/hexagon/hexagon_dsp_wrapper.h"
+#endif
+#ifdef MACE_ENABLE_HTA
+#include "mace/core/runtime/hexagon/hexagon_hta_wrapper.h"
+#endif
 
 namespace mace {
 
 class HexagonDevice : public CPUDevice {
  public:
-  HexagonDevice() : CPUDevice(0, AFFINITY_NONE, false) {}
+  explicit HexagonDevice(DeviceType device_type)
+      : CPUDevice(0, AFFINITY_NONE, false),
+        device_type_(device_type) {}
 
   DeviceType device_type() const override {
-    return DeviceType::HEXAGON;
+    return device_type_;
   };
+
+ private:
+  DeviceType device_type_;
 };
+
+std::unique_ptr<HexagonControlWrapper> CreateHexagonControlWrapper(
+    DeviceType device_type) {
+  std::unique_ptr<HexagonControlWrapper> hexagon_controller;
+
+  switch (device_type) {
+#ifdef MACE_ENABLE_HEXAGON
+    case HEXAGON:
+      hexagon_controller = make_unique<HexagonDSPWrapper>();
+      break;
+#endif
+#ifdef MACE_ENABLE_HTA
+    case HTA:
+      hexagon_controller = make_unique<HexagonHTAWrapper>();
+      break;
+#endif
+    default:
+      LOG(FATAL) << "Not supported Hexagon device type: " << device_type;
+  }
+
+  return hexagon_controller;
+}
 
 }  // namespace mace
 #endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DEVICE_H_

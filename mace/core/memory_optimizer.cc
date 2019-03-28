@@ -21,8 +21,9 @@
 #include <unordered_set>
 
 #include "mace/core/arg_helper.h"
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/utils/logging.h"
+#include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_util.h"
@@ -61,12 +62,22 @@ void MemoryOptimizer::UpdateTensorRef(const mace::OperatorDef *op_def) {
 }
 
 MemoryBlock MemoryOptimizer::CreateMemoryBlock(
-    std::vector<int64_t> shape,
+    const OperatorDef *op_def,
+    int output_idx,
     DataType dt,
-    mace::MemoryType mem_type) {
+    MemoryType mem_type) {
+  auto shape = std::vector<int64_t>(
+      op_def->output_shape(output_idx).dims().begin(),
+      op_def->output_shape(output_idx).dims().end());
   MemoryBlock block;
 #ifdef MACE_ENABLE_OPENCL
   if (mem_type == MemoryType::GPU_IMAGE) {
+    OpenCLBufferType buffer_type = OpenCLBufferType::IN_OUT_CHANNEL;
+    if (op_def->type() == "BufferTransform") {
+      buffer_type = static_cast<OpenCLBufferType>(
+          ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+              *op_def, "buffer_type", OpenCLBufferType::IN_OUT_CHANNEL));
+    }
     std::vector<size_t> image_shape;
     if (shape.size() == 1) {
       shape = {shape[0], 1, 1, 1};
@@ -75,9 +86,7 @@ MemoryBlock MemoryOptimizer::CreateMemoryBlock(
     } else {
       MACE_CHECK(shape.size() == 4) << "GPU only support 1D/2D/4D input";
     }
-    OpenCLUtil::CalImage2DShape(shape,
-                                OpenCLBufferType::IN_OUT_CHANNEL,
-                                &image_shape);
+    OpenCLUtil::CalImage2DShape(shape, buffer_type, &image_shape);
     block.set_x(image_shape[0]);
     block.set_y(image_shape[1]);
     return block;
@@ -95,7 +104,7 @@ MemoryBlock MemoryOptimizer::CreateMemoryBlock(
 
 void MemoryOptimizer::Optimize(
     const mace::OperatorDef *op_def,
-    const std::unordered_map<std::string, MemoryType> &mem_types) {
+    const std::unordered_map<std::string, MemoryType> *mem_types) {
   MACE_LATENCY_LOGGER(2, "Optimize memory");
   if (op_def->output_size() != op_def->output_shape_size()) {
     VLOG(1) << op_def->name()
@@ -117,6 +126,8 @@ void MemoryOptimizer::Optimize(
       op_def->output_type_size());
   DataType dt;
 
+  bool has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+      *op_def, "has_data_format", 0) != 0;
   int output_size = op_def->output_size();
   for (int i = 0; i < output_size; ++i) {
     if (i < op_def->output_type_size()) {
@@ -127,22 +138,15 @@ void MemoryOptimizer::Optimize(
     int best_mem_id = -1;
     MemoryType mem_type = MemoryType::CPU_BUFFER;
     if (device == DeviceType::GPU) {
-      mem_type = mem_types.at(op_def->output(i));
+      mem_type = mem_types->at(op_def->output(i));
     }
-    auto shape = std::vector<int64_t>(
-        op_def->output_shape(i).dims().begin(),
-        op_def->output_shape(i).dims().end());
-    MemoryBlock op_mem_block = CreateMemoryBlock(shape, dt, mem_type);
+    MemoryBlock op_mem_block = CreateMemoryBlock(op_def, i, dt, mem_type);
     MemoryBlock best_mem_block;
     if (IsMemoryReuseOp(op_def->type())) {
       if (tensor_mem_map_.count(op_def->input(0)) == 1) {
-        best_mem_id = tensor_mem_map_[op_def->input(0)].first;
+        best_mem_id = tensor_mem_map_.at(op_def->input(0)).mem_id;
       }
     } else {
-      auto shape = std::vector<int64_t>(
-          op_def->output_shape(i).dims().begin(),
-          op_def->output_shape(i).dims().end());
-
       int64_t op_mem_size = op_mem_block.x() * op_mem_block.y();
       int64_t best_added_mem_size = LLONG_MAX;
       int64_t best_wasted_mem_size = LLONG_MAX;
@@ -206,7 +210,8 @@ void MemoryOptimizer::Optimize(
       } else {
         mem_ref_count_[best_mem_id] = 1;
       }
-      tensor_mem_map_[op_def->output(i)] = std::make_pair(best_mem_id, dt);
+      tensor_mem_map_.emplace(op_def->output(i), TensorMemInfo(best_mem_id,
+          dt, has_data_format));
     }
   }
 
@@ -218,7 +223,7 @@ void MemoryOptimizer::Optimize(
       tensor_ref_count_[input_name] -= 1;
       if (tensor_ref_count_.at(input_name) == 0 &&
           tensor_mem_map_.count(input_name) == 1) {
-        int mem_id = tensor_mem_map_.at(input_name).first;
+        int mem_id = tensor_mem_map_.at(input_name).mem_id;
         mem_ref_count_[mem_id] -= 1;
         if (mem_ref_count_.at(mem_id) == 0) {
           idle_blocks_.insert(mem_id);
@@ -238,7 +243,7 @@ const std::vector<MemoryBlock>& MemoryOptimizer::mem_blocks() const {
   return mem_blocks_;
 }
 
-const std::unordered_map<std::string, std::pair<int, DataType>>&
+const std::unordered_map<std::string, MemoryOptimizer::TensorMemInfo>&
     MemoryOptimizer::tensor_mem_map() const {
   return tensor_mem_map_;
 }

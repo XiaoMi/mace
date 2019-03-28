@@ -1,0 +1,85 @@
+# Description:
+# Mace utils.
+#
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_android_armv7",
+    "if_neon_enabled",
+    "if_openmp_enabled",
+)
+
+cc_library(
+    name = "utils_hdrs",
+    hdrs = glob([
+        "*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//mace/port:port_api",
+        "//mace/public",
+    ],
+)
+
+cc_library(
+    name = "utils",
+    srcs = glob(
+        [
+            "*.cc",
+        ],
+        exclude = [
+            "*_test.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+        "-mfloat-abi=softfp",
+    ]),
+    linkopts = if_android([
+        "-llog",
+    ]),
+    deps = [
+        ":utils_hdrs",
+    ],
+    alwayslink = 1,
+)
+
+cc_test(
+    name = "utils_test",
+    testonly = 1,
+    srcs = glob(
+        [
+            "*_test.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkstatic = 1,
+    deps = [
+        ":utils",
+        "//mace/port",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
+    ],
+)

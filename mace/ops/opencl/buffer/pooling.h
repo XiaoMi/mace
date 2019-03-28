@@ -24,6 +24,7 @@
 
 #include "mace/ops/opencl/buffer/utils.h"
 #include "mace/ops/opencl/helper.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -124,8 +125,8 @@ MaceStatus PoolingKernel<T>::Compute(
       old_scratch_size_ = scratch->size();
     }
 
-    padded_input.reset(new Tensor(scratch->Scratch(padded_input_size),
-                                  input->dtype()));
+    padded_input = make_unique<Tensor>(scratch->Scratch(padded_input_size),
+                                       input->dtype());
 
     padded_input->Resize(padded_input_shape);
     PadInput(context, &kernels_[0], input, 0, 0,

@@ -22,6 +22,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/ops/opencl/helper.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -130,7 +131,8 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   index_t channels = 11;
 
   GPUContext gpu_context;
-  std::unique_ptr<Device> device(new GPUDevice(gpu_context.opencl_tuner()));
+  std::unique_ptr<Device> device = make_unique<GPUDevice>(
+      gpu_context.opencl_tuner());
 
   Workspace ws;
   OpContext context(&ws, device.get());

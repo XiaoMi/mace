@@ -24,6 +24,7 @@
 #include "mace/ops/opencl/image/image_to_buffer.h"
 #include "mace/ops/opencl/buffer/buffer_transform.h"
 #include "mace/ops/common/transpose.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -34,11 +35,11 @@ class OpenCLBufferTransformer {
   OpenCLBufferTransformer(const MemoryType in_mem_type,
                           const MemoryType out_mem_type) {
     if (out_mem_type == MemoryType::GPU_IMAGE) {
-      kernel_.reset(new opencl::image::BufferToImage<T>);
+      kernel_ = make_unique<opencl::image::BufferToImage<T>>();
     } else if (in_mem_type == MemoryType::GPU_IMAGE) {
-      kernel_.reset(new opencl::image::ImageToBuffer<T>);
+      kernel_ = make_unique<opencl::image::ImageToBuffer<T>>();
     } else {
-      kernel_.reset(new opencl::buffer::BufferTransform<T>);
+      kernel_ = make_unique<opencl::buffer::BufferTransform<T>>();
     }
   }
 
@@ -47,7 +48,7 @@ class OpenCLBufferTransformer {
                        const OpenCLBufferType type,
                        const MemoryType out_mem_type,
                        const int wino_blk_size,
-                       const DataFormat data_format,
+                       bool has_data_format,
                        Tensor *output) {
     Workspace *ws = context->workspace();
     DataType dt = DataTypeToEnum<T>::value;
@@ -66,13 +67,14 @@ class OpenCLBufferTransformer {
         VLOG(2) << "Transform CPU Buffer " << input->name()
                 << " to GPU Buffer " << internal_tensor->name()
                 << " with data type " << dt;
-        if (data_format == DataFormat::NHWC && input->shape().size() == 4) {
+        if (has_data_format && input->shape().size() == 4) {
           // 1. (NCHW -> NHWC)
           std::vector<int> dst_dims = {0, 2, 3, 1};
           std::vector<index_t> output_shape =
               TransposeShape<index_t, index_t>(input->shape(),
                                                dst_dims);
           internal_tensor->Resize(output_shape);
+          internal_tensor->set_data_format(DataFormat::NHWC);
           // TODO(liuqi): Only support float now
           const float *input_ptr = input->data<float>();
           Tensor::MappingGuard guard(internal_tensor);
@@ -104,13 +106,13 @@ class OpenCLBufferTransformer {
       VLOG(2) << "Transform GPU Buffer " << internal_tensor.name()
               << " to CPU Buffer " << output->name()
               << " with data type " << dt;
-      if (data_format == DataFormat::NHWC &&
-          internal_tensor.shape().size() == 4) {
+      if (has_data_format && internal_tensor.shape().size() == 4) {
         // NHWC -> NCHW
         std::vector<int> dst_dims = {0, 3, 1, 2};
         std::vector<index_t> output_shape =
             TransposeShape<index_t, index_t>(internal_tensor.shape(),
                                              dst_dims);
+        output->set_data_format(DataFormat::NCHW);
         Tensor::MappingGuard guard(&internal_tensor);
         const float *internal_ptr = internal_tensor.data<float>();
         output->Resize(output_shape);

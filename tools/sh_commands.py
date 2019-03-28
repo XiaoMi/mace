@@ -69,7 +69,7 @@ def device_lock_path(serialno):
     return "/tmp/device-lock-%s" % serialno
 
 
-def device_lock(serialno, timeout=3600):
+def device_lock(serialno, timeout=7200):
     import filelock
     return filelock.FileLock(device_lock_path(serialno), timeout=timeout)
 
@@ -263,7 +263,8 @@ def find_simpleperf_library(abi, simpleperf_path=''):
 def bazel_build(target,
                 abi="armeabi-v7a",
                 toolchain='android',
-                hexagon_mode=False,
+                enable_hexagon=False,
+                enable_hta=False,
                 enable_openmp=True,
                 enable_neon=True,
                 enable_opencl=True,
@@ -275,6 +276,8 @@ def bazel_build(target,
     if abi == "host":
         bazel_args = (
             "build",
+            "--config",
+            platform.system().lower(),
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
             "--define",
@@ -297,13 +300,15 @@ def bazel_build(target,
             "--define",
             "quantize=%s" % str(enable_quantize).lower(),
             "--define",
-            "hexagon=%s" % str(hexagon_mode).lower())
+            "hexagon=%s" % str(enable_hexagon).lower(),
+            "--define",
+            "hta=%s" % str(enable_hta).lower())
     if address_sanitizer:
         bazel_args += ("--config", "asan")
     else:
         bazel_args += ("--config", "optimization")
-    if symbol_hidden:
-        bazel_args += ("--config", "symbol_hidden")
+        if symbol_hidden:
+            bazel_args += ("--config", "symbol_hidden")
     if extra_args:
         bazel_args += (extra_args,)
         six.print_(bazel_args)
@@ -649,6 +654,8 @@ def validate_model(abi,
                    output_nodes,
                    input_shapes,
                    output_shapes,
+                   input_data_formats,
+                   output_data_formats,
                    model_output_dir,
                    input_data_types,
                    caffe_env,
@@ -656,9 +663,12 @@ def validate_model(abi,
                    output_file_name="model_out",
                    validation_threshold=0.9,
                    backend="tensorflow",
-                   log_file="",
-                   ):
-    six.print_("* Validate with %s" % platform)
+                   validation_outputs_data=[],
+                   log_file=""):
+    if not validation_outputs_data:
+        six.print_("* Validate with %s" % platform)
+    else:
+        six.print_("* Validate with file: %s" % validation_outputs_data)
     if abi != "host":
         for output_name in output_nodes:
             formatted_name = common.formatted_file_name(
@@ -668,21 +678,15 @@ def validate_model(abi,
                 sh.rm("-rf", "%s/%s" % (model_output_dir, formatted_name))
             device.pull_from_data_dir(formatted_name, model_output_dir)
 
-    if platform == "tensorflow":
+    if platform == "tensorflow" or platform == "onnx":
         validate(platform, model_file_path, "",
                  "%s/%s" % (model_output_dir, input_file_name),
                  "%s/%s" % (model_output_dir, output_file_name), device_type,
                  ":".join(input_shapes), ":".join(output_shapes),
+                 ",".join(input_data_formats), ",".join(output_data_formats),
                  ",".join(input_nodes), ",".join(output_nodes),
                  validation_threshold, ",".join(input_data_types), backend,
-                 log_file)
-    elif platform == "onnx":
-        validate(platform, model_file_path, "",
-                 "%s/%s" % (model_output_dir, input_file_name),
-                 "%s/%s" % (model_output_dir, output_file_name), device_type,
-                 ":".join(input_shapes), ":".join(output_shapes),
-                 ",".join(input_nodes), ",".join(output_nodes),
-                 validation_threshold, ",".join(input_data_types), backend,
+                 validation_outputs_data,
                  log_file)
     elif platform == "caffe":
         image_name = "mace-caffe:" + docker_image_tag
@@ -698,8 +702,11 @@ def validate_model(abi,
                      "%s/%s" % (model_output_dir, output_file_name),
                      device_type,
                      ":".join(input_shapes), ":".join(output_shapes),
+                     ",".join(input_data_formats),
+                     ",".join(output_data_formats),
                      ",".join(input_nodes), ",".join(output_nodes),
                      validation_threshold, ",".join(input_data_types), backend,
+                     validation_outputs_data,
                      log_file)
         elif caffe_env == common.CaffeEnvType.DOCKER:
             docker_image_id = sh.docker("images", "-q", image_name)
@@ -764,9 +771,13 @@ def validate_model(abi,
                 "--output_node=%s" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
+                "--input_data_format=%s" % ",".join(input_data_formats),
+                "--output_data_format=%s" % ",".join(output_data_formats),
                 "--validation_threshold=%f" % validation_threshold,
                 "--input_data_type=%s" % ",".join(input_data_types),
                 "--backend=%s" % ",".join(backend),
+                "--validation_outputs_data=%s" % ",".join(
+                    validation_outputs_data),
                 "--log_file=%s" % log_file,
                 _fg=True)
 

@@ -101,17 +101,20 @@ MACE also provides model visualization HTML generated in `builds` directory, gen
 
 Debug engine using log
 --------------------------
-Mace defines two sorts of logs: one is for users (LOG), the other is for developers (VLOG).
+MACE implements a similar logging mechanism like `glog <https://github.com/google/glog>`__.
+There are two types of logs, LOG for normal logging and VLOG for debugging.
 
-LOG includes four levels, i.e, ``INFO``, ``WARNING``, ``ERROR``, ``FATAL``;
-Environment variable ``MACE_CPP_MIN_LOG_LEVEL`` can be set to specify log level of users, e.g.,
-``set MACE_CPP_MIN_LOG_LEVEL=0`` will enable ``INFO`` log level, while ``set MACE_CPP_MIN_LOG_LEVEL=4`` will enable ``FATAL`` log level.
+LOG includes four levels, sorted by severity level: ``INFO``, ``WARNING``, ``ERROR``, ``FATAL``.
+The logging severity threshold can be configured via environment variable, e.g. ``MACE_CPP_MIN_LOG_LEVEL=WARNING`` to set as ``WARNING``.
+Only the log messages with equal or above the specified severity threshold will be printed, the default threshold is ``INFO``.
+We don't support integer log severity value like `glog <https://github.com/google/glog>`__, because they are confusing with VLOG.
 
+VLOG is verbose logging which is logged as ``LOG(INFO)``. VLOG also has more detailed integer verbose levels, like 0, 1, 2, 3, etc.
+The threshold can be configured through environment variable, e.g. ``MACE_CPP_MIN_VLOG_LEVEL=2`` to set as ``2``.
+With VLOG, the lower the verbose level, the more likely messages are to be logged. For example, when the threshold is set
+to 2, both ``VLOG(1)``, ``VLOG(2)`` log messages will be printed, but ``VLOG(3)`` and highers won't. 
 
-VLOG level is specified by numbers, e.g., 0, 1, 2. Environment variable ``MACE_CPP_MIN_VLOG_LEVEL`` can be set to specify vlog level.
-Logs with higher levels than which is specified will be printed. So simply specifying a very large level number will make all logs printed.
-
-By using Mace run tool, vlog level can be easily set by option, e.g.,
+By using ``mace_run`` tool, VLOG level can be easily set by option, e.g.,
 
 	.. code:: sh
 
@@ -167,10 +170,4 @@ things may be a little bit complicated.
 
 		# then you can use it as host gdb, e.g.,
 		bt
-
-
-
-
-
-
 

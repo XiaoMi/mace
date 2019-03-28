@@ -16,7 +16,7 @@
 #define MACE_OPS_OPENCL_RESIZE_BICUBIC_H_
 
 #include "mace/public/mace.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 #include "mace/core/types.h"
 
 namespace mace {

@@ -13,18 +13,18 @@
 // limitations under the License.
 
 #include <fcntl.h>
-#include <limits.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <climits>
 #include <algorithm>
 #include <cstring>
 #include <memory>
 #include <utility>
 
 #include "mace/core/kv_storage.h"
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/utils/logging.h"
 
 namespace mace {

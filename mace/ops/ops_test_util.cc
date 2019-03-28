@@ -14,6 +14,7 @@
 
 #include "mace/ops/ops_test_util.h"
 #include "mace/core/memory_optimizer.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -120,17 +121,16 @@ OpTestContext *OpTestContext::Get(int num_threads,
 OpTestContext::OpTestContext(int num_threads,
                              CPUAffinityPolicy cpu_affinity_policy,
                              bool use_gemmlowp)
-    : gpu_context_(new GPUContext(GetStoragePathFromEnv())),
+    : gpu_context_(std::make_shared<GPUContext>(GetStoragePathFromEnv())),
       opencl_mem_types_({MemoryType::GPU_IMAGE}) {
-  device_map_[DeviceType::CPU] = std::unique_ptr<Device>(
-      new CPUDevice(num_threads,
-                    cpu_affinity_policy,
-                    use_gemmlowp));
+  device_map_[DeviceType::CPU] = make_unique<CPUDevice>(
+      num_threads, cpu_affinity_policy, use_gemmlowp);
 
-  device_map_[DeviceType::GPU] = std::unique_ptr<Device>(
-      new GPUDevice(gpu_context_->opencl_tuner(),
-                    gpu_context_->opencl_cache_storage(),
-                    GPUPriorityHint::PRIORITY_NORMAL));
+  device_map_[DeviceType::GPU] = make_unique<GPUDevice>(
+      gpu_context_->opencl_tuner(),
+      gpu_context_->opencl_cache_storage(),
+      GPUPriorityHint::PRIORITY_NORMAL,
+      GPUPerfHint::PERF_HIGH);
 }
 
 std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
@@ -167,9 +167,20 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
           !ws_.GetTensor(input)->is_weight()) {
         auto input_info = net_def.add_input_info();
         input_info->set_name(input);
-        auto data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            op_def, "data_format", DataFormat::DF_NONE);
-        input_info->set_data_format(data_format);
+        auto has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            op_def, "has_data_format", 1);
+        auto is_quantized_op = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            op_def, "T", static_cast<int>(DT_FLOAT))
+            == static_cast<int>(DT_UINT8);
+        if (has_data_format) {
+          if (is_quantized_op || device == DeviceType::GPU) {
+            input_info->set_data_format(NHWC);
+          } else {
+            input_info->set_data_format(NCHW);
+          }
+        } else {
+          input_info->set_data_format(DataFormat::DF_NONE);
+        }
         auto &shape = ws_.GetTensor(input)->shape();
         for (auto d : shape) {
           input_info->add_dims(static_cast<int>(d));
@@ -177,24 +188,26 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
       }
     }
   }
-  auto op_def = op_defs_.back();
-  for (int i = 0; i < op_def.output_size(); ++i) {
-    ws_.RemoveTensor(op_def.output(i));
-    auto output_info = net_def.add_output_info();
-    output_info->set_name(op_def.output(i));
-    if (op_def.output_type_size() == op_def.output_size()) {
-      output_info->set_data_type(op_def.output_type(i));
-    } else {
-      output_info->set_data_type(DataType::DT_FLOAT);
+  if (!op_defs_.empty()) {
+    auto op_def = op_defs_.back();
+    for (int i = 0; i < op_def.output_size(); ++i) {
+      ws_.RemoveTensor(op_def.output(i));
+      auto output_info = net_def.add_output_info();
+      output_info->set_name(op_def.output(i));
+      if (op_def.output_type_size() == op_def.output_size()) {
+        output_info->set_data_type(op_def.output_type(i));
+      } else {
+        output_info->set_data_type(DataType::DT_FLOAT);
+      }
     }
   }
   MemoryOptimizer mem_optimizer;
-  net_ = std::unique_ptr<NetBase>(new SerialNet(
+  net_ = make_unique<SerialNet>(
       op_registry_.get(),
       &net_def,
       &ws_,
       OpTestContext::Get()->GetDevice(device),
-      &mem_optimizer));
+      &mem_optimizer);
   MaceStatus status = (ws_.PreallocateOutputTensor(
       net_def,
       &mem_optimizer,
@@ -236,12 +249,12 @@ MaceStatus OpsTestNet::RunNet(const mace::NetDef &net_def,
                               const mace::DeviceType device) {
   device_type_ = device;
   MemoryOptimizer mem_optimizer;
-  net_ = std::unique_ptr<NetBase>(new SerialNet(
+  net_ = make_unique<SerialNet>(
       op_registry_.get(),
       &net_def,
       &ws_,
       OpTestContext::Get()->GetDevice(device),
-      &mem_optimizer));
+      &mem_optimizer);
   MACE_RETURN_IF_ERROR(ws_.PreallocateOutputTensor(
       net_def,
       &mem_optimizer,

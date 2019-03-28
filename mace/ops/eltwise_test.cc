@@ -75,7 +75,7 @@ void SimpleTensorScalar(const ops::EltwiseType type,
         .AddIntArg("T", DataTypeToEnum<T>::v())
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatArg("scalar_input", x)
-        .AddIntArg("data_format", DataFormat::NCHW)
+        .AddIntArg("has_data_format", 1)
         .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
         .Output("TOutput")
         .Finalize(net.NewOperatorDef());
@@ -120,7 +120,7 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
             .AddIntArg("T", DataTypeToEnum<T>::v())
             .AddIntArg("type", static_cast<int>(type))
             .AddFloatsArg("coeff", coeff)
-            .AddIntArg("data_format", DataFormat::NCHW)
+            .AddIntArg("has_data_format", 1)
             .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
             .Output("TOutput");
     if (shape0.size() > 1) {
@@ -642,7 +642,7 @@ void RandomTensorScalar(const ops::EltwiseType type,
       .Input("TInput")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatArg("scalar_input", 0.1)
-      .AddIntArg("data_format", DataFormat::NCHW)
+      .AddIntArg("has_data_format", 1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -699,7 +699,7 @@ void RandomTensorEltwise(const ops::EltwiseType type,
       .Input("TInput1")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatsArg("coeff", coeff)
-      .AddIntArg("data_format", DataFormat::NCHW)
+      .AddIntArg("has_data_format", 1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
 
@@ -729,7 +729,8 @@ void RandomTensorEltwise(const ops::EltwiseType type,
   }
 }
 
-void QuantizedSum(const std::vector<index_t> &shape) {
+void Quantized(const std::vector<index_t> &shape,
+               const ops::EltwiseType type) {
   // Construct graph
   OpsTestNet net;
 
@@ -753,8 +754,8 @@ void QuantizedSum(const std::vector<index_t> &shape) {
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput0")
       .Input("TInput1")
-      .AddIntArg("type", static_cast<int>(ops::EltwiseType::SUM))
-      .AddIntArg("data_format", DataFormat::NCHW)
+      .AddIntArg("type", static_cast<int>(type))
+      .AddIntArg("has_data_format", 1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
 
@@ -794,7 +795,7 @@ void QuantizedSum(const std::vector<index_t> &shape) {
       .Input("QuantizedInput0")
       .Input("QuantizedInput1")
       .Output("QuantizedOutput")
-      .AddIntArg("type", static_cast<int>(ops::EltwiseType::SUM))
+      .AddIntArg("type", static_cast<int>(type))
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
   net.Setup(DeviceType::CPU);
@@ -1009,9 +1010,11 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcastGPU) {
       {1, 1, 2, 1}, {2, 3}, {1, 1, 2, 5}, {4, 1, 0, 1, 4, 4, 9, 16, 25, 36});
 }
 
-TEST_F(EltwiseOpTest, QuantizedSum) {
-  QuantizedSum({1, 32, 32, 16});
-  QuantizedSum({1, 31, 31, 17});
+TEST_F(EltwiseOpTest, Quantized) {
+  Quantized({1, 32, 32, 16}, ops::EltwiseType::SUM);
+  Quantized({1, 31, 31, 17}, ops::EltwiseType::SUM);
+  Quantized({1, 32, 32, 16}, ops::EltwiseType::SUB);
+  Quantized({1, 31, 31, 17}, ops::EltwiseType::SUB);
 }
 
 }  // namespace test

@@ -27,27 +27,28 @@ from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import RoundMode
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
 from mace.python.tools.convert_util import mace_check
 
+import numpy as np
+
 import onnx
 import onnx.utils
-from onnx import helper, shape_inference, numpy_helper, optimizer
-import numpy as np
-from onnx import mapping
-from onnx import TensorProto
+from onnx import mapping, numpy_helper, TensorProto
 from numbers import Number
 
+IS_PYTHON3 = sys.version_info > (3,)
 
 OnnxSupportedOps = [
     'Abs',
     # 'Acos',
     # 'Acosh',
     'Add',
+    'Affine',
     # 'And',
+    'Append',
     'ArgMax',
     'ArgMin',
     # 'Asin',
@@ -68,6 +69,7 @@ OnnxSupportedOps = [
     # 'Cos',
     # 'Cosh',
     'DepthToSpace',
+    'DimRange',
     'Div',
     'Dropout',
     'Elu',
@@ -88,10 +90,12 @@ OnnxSupportedOps = [
     # 'Hardmax',
     'Identity',
     # 'If',
+    'IfDefined',
     'ImageScaler',
     # 'InstanceNormalization',
     # 'LRN',
-    # 'LSTM',
+    'LSTM',
+    # 'LstmNonlinear',
     'LeakyRelu',
     # 'Less',
     # 'Log',
@@ -109,11 +113,15 @@ OnnxSupportedOps = [
     'Mul',
     # 'Multinomial',
     'Neg',
+    'Normalize',
     # 'Not',
+    'Offset',
     # 'OneHot',
     # 'Or',
     'PRelu',
-    'Pad',
+    # 'Pad',
+    'Padding',
+    'PNorm',
     'Pow',
     # 'RNN',
     # 'RandomNormal',
@@ -133,6 +141,7 @@ OnnxSupportedOps = [
     # 'ReduceSumSquare',
     'Relu',
     'Reshape',
+    'Scale',
     # 'Scan',
     # 'Selu',
     'Shape',
@@ -140,18 +149,21 @@ OnnxSupportedOps = [
     # 'Sin',
     # 'Sinh',
     # 'Size',
-    # 'Slice',
+    'Slice',
     'Softmax',
     # 'Softplus',
     # 'Softsign',
     'SpaceToDepth',
+    'Splice',
     'Split',
     'Sqrt',
     'Squeeze',
     'Sub',
     'Sum',
+    'SumGroup',
     # 'Tan',
     'Tanh',
+    'TargetRMSNorm',
     # 'Tile',
     # 'TopK',
     'Transpose',
@@ -188,7 +200,7 @@ def convert_onnx_attribute_proto(attr_proto):
         return attr_proto.i
     elif attr_proto.HasField('s'):
         return str(attr_proto.s, 'utf-8')\
-            if sys.version_info.major == 3 else attr_proto.s
+            if IS_PYTHON3 else attr_proto.s
     elif attr_proto.HasField('t'):
         return attr_proto.t  # this is a proto!
     elif attr_proto.floats:
@@ -217,6 +229,8 @@ def onnx_dtype(dtype):
 class OnnxNode(object):
     def __init__(self, node):
         self.name = str(node.name)
+        if self.name == '':
+            self.name = str(node.output)
         self.op_type = str(node.op_type)
         self.domain = str(node.domain)
         self.attrs = dict([(attr.name,
@@ -227,14 +241,14 @@ class OnnxNode(object):
         self.node_proto = node
 
     def print_info(self):
-        print "node: ", self.name
-        print "    type: ", self.op_type
-        print "    domain: ", self.domain
-        print "    inputs: ", self.inputs
-        print "    outputs: ", self.outputs
-        print "    attrs:"
+        print("node: ", self.name)
+        print("    type: ", self.op_type)
+        print("    domain: ", self.domain)
+        print("    inputs: ", self.inputs)
+        print("    outputs: ", self.outputs)
+        print("    attrs:")
         for arg in self.attrs:
-            print "        %s: %s" % (arg, self.attrs[arg])
+            print("        %s: %s" % (arg, self.attrs[arg]))
 
 
 class OnnxTensor(object):
@@ -273,6 +287,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         OnnxOpType.Equal.name: EltwiseType.EQUAL,
         OnnxOpType.Sqrt.name: EltwiseType.POW,
         OnnxOpType.Reciprocal.name: EltwiseType.POW,
+        OnnxOpType.Scale.name: EltwiseType.PROD,
     }
 
     reduce_type = {
@@ -296,6 +311,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         self._op_converters = {
             OnnxOpType.Abs.name: self.convert_eltwise,
             OnnxOpType.Add.name: self.convert_eltwise,
+            OnnxOpType.Affine.name: self.convert_affine,
+            OnnxOpType.Append.name: self.convert_concat,
             OnnxOpType.ArgMax.name: self.convert_argmax,
             OnnxOpType.ArgMin.name: self.convert_argmax,
             OnnxOpType.AveragePool.name: self.convert_pooling,
@@ -306,6 +323,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.ConvTranspose.name: self.convert_deconv,
             OnnxOpType.DepthToSpace.name: self.convert_depth_space,
             OnnxOpType.Dropout.name: self.convert_identity,
+            OnnxOpType.DimRange.name: self.convert_dim_range,
             OnnxOpType.Div.name: self.convert_eltwise,
             OnnxOpType.Equal.name: self.convert_eltwise,
             OnnxOpType.Gather.name: self.convert_gather,
@@ -313,53 +331,77 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
             OnnxOpType.Identity.name: self.convert_identity,
+            OnnxOpType.IfDefined.name: self.convert_identity,
             OnnxOpType.ImageScaler.name: self.convert_imagescaler,
             OnnxOpType.LeakyRelu.name: self.convert_activation,
+            # OnnxOpType.LogSoftmax.name: self.convert_softmax,
+            OnnxOpType.LSTM.name: self.convert_lstm,
+            # OnnxOpType.LstmNonlinear.name: self.convert_lstm_nonlinear,
             OnnxOpType.Max.name: self.convert_eltwise,
             OnnxOpType.MaxPool.name: self.convert_pooling,
             OnnxOpType.MatMul.name: self.convert_matmul,
             OnnxOpType.Min.name: self.convert_eltwise,
             OnnxOpType.Mul.name: self.convert_eltwise,
             OnnxOpType.Neg.name: self.convert_eltwise,
-            OnnxOpType.Pad.name: self.convert_pad,
+            OnnxOpType.Normalize: self.convert_normalize,
+            OnnxOpType.Offset.name: self.convert_timeoffset,
+            OnnxOpType.Padding.name: self.convert_identity,
+            OnnxOpType.PNorm.name: self.convert_pnorm,
             OnnxOpType.Pow.name: self.convert_eltwise,
             OnnxOpType.PRelu.name: self.convert_activation,
             OnnxOpType.Relu.name: self.convert_activation,
             OnnxOpType.Reshape.name: self.convert_reshape,
             OnnxOpType.Reciprocal.name: self.convert_eltwise,
+            OnnxOpType.Scale.name: self.convert_eltwise,
             OnnxOpType.Sigmoid.name: self.convert_activation,
+            OnnxOpType.Slice.name: self.convert_slice,
             OnnxOpType.Softmax.name: self.convert_softmax,
             OnnxOpType.SpaceToDepth.name: self.convert_depth_space,
+            OnnxOpType.Splice.name: self.convert_splice,
             OnnxOpType.Split.name: self.convert_split,
             OnnxOpType.Sqrt.name: self.convert_eltwise,
             OnnxOpType.Squeeze.name: self.convert_squeeze,
             OnnxOpType.Sub.name: self.convert_eltwise,
             OnnxOpType.Sum.name: self.convert_eltwise,
+            OnnxOpType.SumGroup.name: self.convert_sum_group,
             OnnxOpType.Tanh.name: self.convert_activation,
+            OnnxOpType.TargetRMSNorm: self.convert_target_rms_norm,
             OnnxOpType.Transpose.name: self.convert_transpose,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
-        ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.OIHW)
+        self._data_format = DataFormat.NCHW
+        ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         onnx_model = onnx.load(src_model_file)
 
-        polished_model = onnx.utils.polish_model(onnx_model)
+        ir_version = onnx_model.ir_version
+        opset_imp = onnx_model.opset_import
 
-        print "onnx model IR version: ", onnx_model.ir_version
-        print "onnx model opset import: ", onnx_model.opset_import
+        polish_available = True
+        print("onnx model IR version: ", ir_version)
+        for imp in opset_imp:
+            domain = imp.domain
+            version = imp.version
+            print("constains ops domain: ", domain, "version:", version)
+            if 'kaldi2onnx' in domain:
+                polish_available = False
+                self._data_format = DataFormat.DF_NONE
+        if polish_available:
+            onnx_model = onnx.utils.polish_model(onnx_model)
 
-        self._onnx_model = shape_inference.infer_shapes(polished_model)
+        self._onnx_model = onnx_model
         self._graph_shapes_dict = {}
         self._consts = {}
         self._replace_tensors = {}
 
-    def print_graph_info(self, graph):
+    @staticmethod
+    def print_graph_info(graph):
         for value_info in graph.value_info:
-            print "value info:", value_info
+            print("value info:", value_info)
         for value_info in graph.input:
-            print "inputs info:", value_info
+            print("inputs info:", value_info)
         for value_info in graph.output:
-            print "outputs info:", value_info
+            print("outputs info:", value_info)
 
     def extract_shape_info(self, graph):
         def extract_value_info(shape_dict, value_info):
@@ -368,12 +410,12 @@ class OnnxConverter(base_converter.ConverterInterface):
             if t:
                 shape_dict[value_info.name] = t
 
-        for value_info in graph.value_info:
-            extract_value_info(self._graph_shapes_dict, value_info)
-        for value_info in graph.input:
-            extract_value_info(self._graph_shapes_dict, value_info)
-        for value_info in graph.output:
-            extract_value_info(self._graph_shapes_dict, value_info)
+        for vi in graph.value_info:
+            extract_value_info(self._graph_shapes_dict, vi)
+        for vi in graph.input:
+            extract_value_info(self._graph_shapes_dict, vi)
+        for vi in graph.output:
+            extract_value_info(self._graph_shapes_dict, vi)
 
     def add_tensor(self, name, shape, data_type, value):
         tensor = self._mace_net_def.tensors.add()
@@ -387,11 +429,6 @@ class OnnxConverter(base_converter.ConverterInterface):
         self.extract_shape_info(graph_def)
         self.convert_tensors(graph_def)
         self.convert_ops(graph_def)
-        # self.print_graph_info(graph_def)
-        # shape_inferer = mace_shape_inference.ShapeInference(
-        #     self._mace_net_def,
-        #     self._option.input_nodes.values())
-        # shape_inferer.run()
         return self._mace_net_def
 
     def add_stride_pad_kernel_arg(self, attrs, op_def):
@@ -435,6 +472,32 @@ class OnnxConverter(base_converter.ConverterInterface):
             padding_arg.name = MaceKeyword.mace_padding_values_str
             padding_arg.ints.extend(pad)
 
+    def remove_node(self, node):
+        input_name = node.inputs[0]
+        output_name = node.outputs[0]
+        self._replace_tensors[output_name] = input_name
+
+    @staticmethod
+    def squeeze_shape(shape, axis):
+        new_shape = []
+        if len(axis) > 0:
+            for i in range(len(shape)):
+                if i not in axis:
+                    new_shape.append(shape[i])
+        else:
+            new_shape = shape
+        return new_shape
+
+    @staticmethod
+    def transpose_const(tensor):
+        shape = tensor.dims
+        mace_check(len(shape) == 2, "gemm only supports 2-dim input.")
+        tensor_data = np.array(tensor.float_data).reshape(
+            shape[0], shape[1])
+        tensor_data = tensor_data.transpose(1, 0)
+        tensor.float_data[:] = tensor_data.flat
+        tensor.dims[:] = tensor_data.shape
+
     def convert_ops(self, graph_def):
         for n in graph_def.node:
             node = OnnxNode(n)
@@ -471,7 +534,7 @@ class OnnxConverter(base_converter.ConverterInterface):
                                "Not supported tensor type: %s" % data_type)
                 self._consts[tensor.name] = tensor
 
-    def convert_general_op(self, node):
+    def convert_general_op(self, node, with_shape=True):
         op = self._mace_net_def.op.add()
         op.name = node.name
 
@@ -481,9 +544,11 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.input.append(input)
         for output in node.outputs:
             op.output.append(output)
-            output_shape = op.output_shape.add()
-            shape_info = self._graph_shapes_dict[output]
-            output_shape.dims.extend(shape_info)
+            if with_shape:
+                if output in self._graph_shapes_dict:
+                    output_shape = op.output_shape.add()
+                    shape_info = self._graph_shapes_dict[output]
+                    output_shape.dims.extend(shape_info)
 
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
@@ -493,39 +558,94 @@ class OnnxConverter(base_converter.ConverterInterface):
         framework_type_arg.name = MaceKeyword.mace_framework_type_str
         framework_type_arg.i = FrameworkType.ONNX.value
 
-        ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
+        ConverterUtil.add_data_format_arg(op, self._data_format)
         return op
 
-    def convert_fused_batchnorm(self, node):
+    def convert_activation(self, node):
         op = self.convert_general_op(node)
-        op.type = MaceOp.BatchNorm.name
+        op.type = MaceOp.Activation.name
 
-        if "epsilon" in node.attrs:
-            epsilon_value = node.attrs["epsilon"]
+        type_arg = op.arg.add()
+        type_arg.name = MaceKeyword.mace_activation_type_str
+        type_arg.s = six.b(self.activation_type[node.op_type].name)
+
+        if "alpha" in node.attrs:
+            alpha_value = node.attrs["alpha"]
         else:
-            epsilon_value = 1e-5
+            if node.op_type == OnnxOpType.LeakyRelu.name:
+                alpha_value = 0.01
+            else:
+                alpha_value = 0
+        alpha_arg = op.arg.add()
+        alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
+        alpha_arg.f = alpha_value
 
-        mace_check(len(node.inputs) == 5, "batch norm should have 5 inputs.")
+    def convert_affine(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.MatMul.name
+        transpose_b_arg = op.arg.add()
+        transpose_b_arg.name = MaceKeyword.mace_transpose_b_str
+        transpose_b_arg.i = 1
 
-        gamma_value = np.array(self._consts[node.inputs[1]].float_data)
-        beta_value = np.array(self._consts[node.inputs[2]].float_data)
-        mean_value = np.array(self._consts[node.inputs[3]].float_data)
-        var_value = np.array(self._consts[node.inputs[4]].float_data)
+    def convert_argmax(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.ArgMax.name
 
-        scale_name = node.name + 'scale'
-        offset_name = node.name + 'offset'
-        scale_value = (
-                (1.0 / np.sqrt(
-                    var_value + epsilon_value)) * gamma_value)
-        offset_value = (-mean_value * scale_value) + beta_value
-        self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
-                        scale_value)
-        self.add_tensor(offset_name, offset_value.shape, mace_pb2.DT_FLOAT,
-                        offset_value)
-        del op.input[1:]
-        op.input.extend([scale_name, offset_name])
-        del op.output[1:]
-        del op.output_shape[1:]
+        if 'axis' in node.attrs:
+            axis_value = node.attrs['axis']
+        else:
+            axis_value = 0
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = axis_value
+
+        if 'keepdims' in node.attrs:
+            keepdims = node.attrs['keepdims']
+        else:
+            keepdims = 1
+        keep_dims_arg = op.arg.add()
+        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
+        keep_dims_arg.i = keepdims
+
+        if node.op_type == OnnxOpType.ArgMin.name:
+            min_arg = op.arg.add()
+            min_arg.name = MaceKeyword.mace_argmin_str
+            min_arg.i = 1
+
+    def convert_biasadd(self, node):
+        self.convert_general_op(node)
+        op.type = MaceOp.BiasAdd.name
+
+    def convert_cast(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Cast.name
+
+        if 'to' in node.attrs:
+            dtype = node.attrs['to']
+            if dtype == TensorProto.FLOAT:
+                op.output_type.extend([self._option.data_type])
+            elif dtype == TensorProto.INT:
+                op.output_type.extend([mace_pb2.DT_INT32])
+            else:
+                mace_check(False, "data type %s not supported" % dtype)
+        else:
+            op.output_type.extend([self._option.data_type])
+
+    def convert_concat(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Concat.name
+        axis_value = 1
+        if node.op_type == OnnxOpType.Concat.name:
+            mace_check('axis' in node.attrs,
+                       'Concat op should have axis attribute.')
+            axis_value = node.attrs['axis']
+            mace_check(axis_value == 1 or axis_value == -3,
+                       "only support concat at channel dimension")
+        elif node.op_type == OnnxOpType.Append.name:
+            axis_value = 2
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = 4 + axis_value if axis_value < 0 else axis_value
 
     def convert_conv2d(self, node):
         op = self.convert_general_op(node)
@@ -554,6 +674,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.type = MaceOp.DepthwiseConv2d.name
         else:
             op.type = MaceOp.Conv2D.name
+            mace_check(op.input[1] in self._consts,
+                       "Mace does not support non-const filter convolution.")
 
         dilation_arg = op.arg.add()
         dilation_arg.name = MaceKeyword.mace_dilations_str
@@ -562,188 +684,6 @@ class OnnxConverter(base_converter.ConverterInterface):
         else:
             dilation_val = [1, 1]
         dilation_arg.ints.extend(dilation_val)
-
-    def convert_biasadd(self, node):
-        self.convert_general_op(node)
-
-    def convert_concat(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Concat.name
-        mace_check('axis' in node.attrs,
-                   'Concat op should have axis attribute.')
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = node.attrs['axis']
-        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
-        mace_check(axis_arg.i == 1,
-                   "only support concat at channel dimension")
-
-    def convert_activation(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Activation.name
-
-        type_arg = op.arg.add()
-        type_arg.name = MaceKeyword.mace_activation_type_str
-        type_arg.s = six.b(self.activation_type[node.op_type].name)
-
-        if "alpha" in node.attrs:
-            alpha_value = node.attrs["alpha"]
-        else:
-            if node.op_type == OnnxOpType.LeakyRelu.name:
-                alpha_value = 0.01
-            else:
-                alpha_value = 0
-        alpha_arg = op.arg.add()
-        alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
-        alpha_arg.f = alpha_value
-
-    def convert_pooling(self, node):
-        op = self.convert_general_op(node)
-
-        op.type = MaceOp.Pooling.name
-        self.add_stride_pad_kernel_arg(node.attrs, op)
-        pooling_type_arg = op.arg.add()
-        pooling_type_arg.name = MaceKeyword.mace_pooling_type_str
-        pooling_type_arg.i = self.pooling_type_mode[node.op_type].value
-
-        round_mode_arg = op.arg.add()
-        round_mode_arg.name = MaceKeyword.mace_round_mode_str
-        round_mode_arg.i = RoundMode.FLOOR.value
-
-    def convert_reshape(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Reshape.name
-
-    def convert_flatten(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Reshape.name
-
-    def remove_node(self, node):
-        input_name = node.inputs[0]
-        output_name = node.outputs[0]
-        self._replace_tensors[output_name] = input_name
-
-    def convert_eltwise(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Eltwise.name
-        type_arg = op.arg.add()
-        type_arg.name = MaceKeyword.mace_element_type_str
-        type_arg.i = self.eltwise_type[node.op_type].value
-
-        if node.op_type == OnnxOpType.Sqrt.name:
-            value_arg = op.arg.add()
-            value_arg.name = MaceKeyword.mace_scalar_input_str
-            value_arg.f = 0.5
-        elif node.op_type == OnnxOpType.Reciprocal.name:
-            value_arg = op.arg.add()
-            value_arg.name = MaceKeyword.mace_scalar_input_str
-            value_arg.f = -1
-
-    def convert_reduce(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Reduce.name
-
-        reduce_type_arg = op.arg.add()
-        reduce_type_arg.name = MaceKeyword.mace_reduce_type_str
-        reduce_type_arg.i = self.reduce_type[node.op_type].value
-
-        if node.op_type in [OnnxOpType.GlobalAveragePool.name,
-                            OnnxOpType.GlobalMaxPool.name]:
-            reduce_dims = [2, 3]
-            keep_dims = 1
-        else:
-            if 'axes' in node.attrs:
-                reduce_dims = node.attrs['axes']
-            else:
-                reduce_dims = []
-            if 'keepdims' in node.attrs:
-                keep_dims = node.attrs['keepdims']
-            else:
-                keep_dims = 1
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.ints.extend(reduce_dims)
-
-        keep_dims_arg = op.arg.add()
-        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
-        keep_dims_arg.i = keep_dims
-
-    def convert_imagescaler(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.BatchNorm.name
-
-        scale = node.attrs['scale']
-        bias_value = np.array(node.attrs['bias'])
-        scale_value = scale * np.ones_like(bias_value)
-
-        scale_name = node.name + "_scale"
-        bias_name = node.name + "_bias"
-        self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
-                        scale_value)
-        self.add_tensor(bias_name, bias_value.shape, mace_pb2.DT_FLOAT,
-                        bias_value)
-        op.input.extend([scale_name, bias_name])
-
-    def convert_matmul(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.MatMul.name
-
-    def convert_softmax(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Softmax.name
-
-    def convert_argmax(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.ArgMax.name
-
-        if 'axis' in node.attrs:
-            axis_value = node.attrs['axis']
-        else:
-            axis_value = 0
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = axis_value
-
-        if 'keepdims' in node.attrs:
-            keepdims = node.attrs['keepdims']
-        else:
-            keepdims = 1
-        keep_dims_arg = op.arg.add()
-        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
-        keep_dims_arg.i = keepdims
-
-        if node.op_type == OnnxOpType.ArgMin.name:
-            min_arg = op.arg.add()
-            min_arg.name = MaceKeyword.mace_argmin_str
-            min_arg.i = 1
-
-    def convert_cast(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Cast.name
-
-        if 'to' in node.attrs:
-            dtype = node.attrs['to']
-            if dtype == TensorProto.FLOAT:
-                op.output_type.extend([self._option.data_type])
-            elif dtype == TensorProto.INT:
-                op.output_type.extend([mace_pb2.DT_INT32])
-            else:
-                mace_check(False, "data type %s not supported" % dtype)
-        else:
-            op.output_type.extend([self._option.data_type])
-
-    def convert_depth_space(self, node):
-        op = self.convert_general_op(node)
-        if op.type == OnnxOpType.DepthToSpace.name:
-            op.type = MaceOp.DepthToSpace.name
-        else:
-            op.type = MaceOp.SpaceToDepth.name
-        mace_check(('block_size' in node.attrs),
-                   "depth to space op should have block size attribute.")
-        block_size = node.attrs['block_size']
-        size_arg = op.arg.add()
-        size_arg.name = MaceKeyword.mace_space_depth_block_size_str
-        size_arg.i = block_size
 
     def convert_deconv(self, node):
         op = self.convert_general_op(node)
@@ -794,27 +734,94 @@ class OnnxConverter(base_converter.ConverterInterface):
         #     output_shape_arg.name = MaceKeyword.mace_output_shape_str
         #     output_shape_arg.ints.extend(output_shape)
 
-    def convert_nop(self, node):
-        pass
-
-    def convert_identity(self, node):
+    def convert_depth_space(self, node):
         op = self.convert_general_op(node)
-        op.type = MaceOp.Identity.name
+        if op.type == OnnxOpType.DepthToSpace.name:
+            op.type = MaceOp.DepthToSpace.name
+        else:
+            op.type = MaceOp.SpaceToDepth.name
+        mace_check(('block_size' in node.attrs),
+                   "depth to space op should have block size attribute.")
+        block_size = node.attrs['block_size']
+        size_arg = op.arg.add()
+        size_arg.name = MaceKeyword.mace_space_depth_block_size_str
+        size_arg.i = block_size
 
-    def convert_pad(self, node):
+    def convert_dim_range(self, node):
         op = self.convert_general_op(node)
-        op.type = MaceOp.Pad.name
+        op.type = MaceOp.Slice.name
 
-        if 'pads' in node.attrs:
-            paddings_arg = op.arg.add()
-            paddings_arg.name = MaceKeyword.mace_paddings_str
-            paddings_value = node.attrs['pads']
-            paddings_arg.ints.extend(paddings_value)
+        mace_check('offset' in node.attrs,
+                   "Attribute dim required!")
+        mace_check('output_dim' in node.attrs,
+                   "Attribute output_dim required!")
+        offset = node.attrs['offset']
+        starts_arg = op.arg.add()
+        starts_arg.name = 'starts'
+        starts_arg.ints.append(offset)
+        output_dim = node.attrs['output_dim']
+        ends_arg = op.arg.add()
+        ends_arg.name = 'output_dim'
+        ends_arg.ints.append(output_dim)
+        axes_arg = op.arg.add()
+        axes_arg.name = 'axes'
+        axes_arg.ints.append(-1)
 
-        if 'value' in node.attrs:
-            constant_value_arg = op.arg.add()
-            constant_value_arg.name = MaceKeyword.mace_constant_value_str
-            constant_value_arg.i = node.attrs['value']
+    def convert_eltwise(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Eltwise.name
+        type_arg = op.arg.add()
+        type_arg.name = MaceKeyword.mace_element_type_str
+        type_arg.i = self.eltwise_type[node.op_type].value
+
+        if node.op_type == OnnxOpType.Sqrt.name:
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_scalar_input_str
+            value_arg.f = 0.5
+        elif node.op_type == OnnxOpType.Reciprocal.name:
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_scalar_input_str
+            value_arg.f = -1
+        elif node.op_type == OnnxOpType.Scale.name and 'scale' in node.attrs:
+            value = node.attrs['scale']
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_scalar_input_str
+            value_arg.f = value
+
+    def convert_flatten(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Reshape.name
+
+    def convert_fused_batchnorm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.BatchNorm.name
+
+        if "epsilon" in node.attrs:
+            epsilon_value = node.attrs["epsilon"]
+        else:
+            epsilon_value = 1e-5
+
+        mace_check(len(node.inputs) == 5, "batch norm should have 5 inputs.")
+
+        gamma_value = np.array(self._consts[node.inputs[1]].float_data)
+        beta_value = np.array(self._consts[node.inputs[2]].float_data)
+        mean_value = np.array(self._consts[node.inputs[3]].float_data)
+        var_value = np.array(self._consts[node.inputs[4]].float_data)
+
+        scale_name = node.name + 'scale'
+        offset_name = node.name + 'offset'
+        scale_value = (
+                (1.0 / np.sqrt(
+                    var_value + epsilon_value)) * gamma_value)
+        offset_value = (-mean_value * scale_value) + beta_value
+        self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
+                        scale_value)
+        self.add_tensor(offset_name, offset_value.shape, mace_pb2.DT_FLOAT,
+                        offset_value)
+        del op.input[1:]
+        op.input.extend([scale_name, offset_name])
+        del op.output[1:]
+        del op.output_shape[1:]
 
     def convert_gather(self, node):
         op = self.convert_general_op(node)
@@ -827,76 +834,6 @@ class OnnxConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = value
-
-    def convert_split(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Split.name
-
-        if 'axis' in node.attrs:
-            value = node.attrs['axis']
-        else:
-            value = 0
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = value
-
-    def convert_transpose(self, node):
-        op = self.convert_general_op(node)
-        op.type = MaceOp.Transpose.name
-
-        if np.array_equal(perm, ordered_perm):
-            op.type = MaceOp.Identity.name
-            del op.input[1:]
-        if 'perm' in node.attrs:
-            perm = node.attrs['perm']
-            ordered_perm = np.sort(perm)
-            if np.array_equal(perm, ordered_perm):
-                op.type = MaceOp.Identity.name
-            else:
-                dims_arg = op.arg.add()
-                dims_arg.name = MaceKeyword.mace_dims_str
-                dims_arg.ints.extend(perm)
-
-    @staticmethod
-    def squeeze_shape(shape, axis):
-        new_shape = []
-        if len(axis) > 0:
-            for i in range(len(shape)):
-                if i not in axis:
-                    new_shape.append(shape[i])
-        else:
-            new_shape = shape
-        return new_shape
-
-    def convert_squeeze(self, node):
-        axis_value = node.attrs['axes']
-        if node.inputs[0] in self._consts:
-            tensor = self._consts[node.inputs[0]]
-            shape = tensor.dims
-            new_shape = self.squeeze_shape(shape, axis_value)
-            del tensor.dims[:]
-            tensor.dims.extend(new_shape)
-            self.remove_node(node)
-        else:
-            op = self.convert_general_op(node)
-            op.type = MaceOp.Squeeze.name
-            axis_arg = op.arg.add()
-            axis_arg.name = MaceKeyword.mace_axis_str
-            if 'axis' in node.attrs:
-                axis_value = node.attrs['axis']
-            else:
-                axis_value = []
-            axis_arg.ints.extend(axis_value)
-
-    @staticmethod
-    def transpose_const(tensor):
-        shape = tensor.dims
-        mace_check(len(shape) == 2, "gemm only supports 2-dim input.")
-        tensor_data = np.array(tensor.float_data).reshape(
-            shape[0], shape[1])
-        tensor_data = tensor_data.transpose(1, 0)
-        tensor.float_data[:] = tensor_data.flat
-        tensor.dims[:] = tensor_data.shape
 
     def convert_gemm(self, node):
         # only supports FullyConnected Style Gemm for now.
@@ -915,7 +852,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         elif len(shape_b) == 2:
             tensor_b = self._consts[node.inputs[1]]
             tensor_data = np.array(tensor_b.float_data).reshape(
-                    shape_b[0], shape_b[1], 1, 1)
+                shape_b[0], shape_b[1], 1, 1)
             tensor_b.float_data[:] = tensor_data.flat
             tensor_b.dims[:] = tensor_data.shape
         else:
@@ -949,4 +886,224 @@ class OnnxConverter(base_converter.ConverterInterface):
                 shape_info = [shape_info[0], shape_info[1], 1, 1]
             output_shape.dims.extend(shape_info)
 
-        return op
+    def convert_identity(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Identity.name
+
+    def convert_imagescaler(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.BatchNorm.name
+
+        scale = node.attrs['scale']
+        bias_value = np.array(node.attrs['bias'])
+        scale_value = scale * np.ones_like(bias_value)
+
+        scale_name = node.name + "_scale"
+        bias_name = node.name + "_bias"
+        self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
+                        scale_value)
+        self.add_tensor(bias_name, bias_value.shape, mace_pb2.DT_FLOAT,
+                        bias_value)
+        op.input.extend([scale_name, bias_name])
+
+    def convert_lstm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.LSTMCell.name
+
+    def convert_lstm_nonlinear(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.LstmNonlinear.name
+
+    def convert_matmul(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.MatMul.name
+
+    def convert_nop(self, node):
+        pass
+
+    def convert_normalize(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.BatchNorm.name
+
+    def convert_pnorm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.PNorm.name
+        if 'output_dim' in node.attrs:
+            output_dim_arg = op.arg.add()
+            output_dim_arg.name = 'output_dim'
+            output_dim_arg.i = node.attrs['output_dim']
+        if 'p' in node.attrs:
+            p_value = node.attrs['p']
+            mace_check((p_value >= 0) and (p_value <= 2),
+                       "PNorm only supports p = 0, 1, 2")
+            p_arg = op.arg.add()
+            p_arg.name = 'p'
+            p_arg.i = p_value
+
+    def convert_pooling(self, node):
+        op = self.convert_general_op(node)
+
+        op.type = MaceOp.Pooling.name
+        self.add_stride_pad_kernel_arg(node.attrs, op)
+        pooling_type_arg = op.arg.add()
+        pooling_type_arg.name = MaceKeyword.mace_pooling_type_str
+        pooling_type_arg.i = self.pooling_type_mode[node.op_type].value
+
+        round_mode_arg = op.arg.add()
+        round_mode_arg.name = MaceKeyword.mace_round_mode_str
+        round_mode_arg.i = RoundMode.FLOOR.value
+
+    def convert_reduce(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Reduce.name
+
+        reduce_type_arg = op.arg.add()
+        reduce_type_arg.name = MaceKeyword.mace_reduce_type_str
+        reduce_type_arg.i = self.reduce_type[node.op_type].value
+
+        if node.op_type in [OnnxOpType.GlobalAveragePool.name,
+                            OnnxOpType.GlobalMaxPool.name]:
+            reduce_dims = [2, 3]
+            keep_dims = 1
+        else:
+            if 'axes' in node.attrs:
+                reduce_dims = node.attrs['axes']
+            else:
+                reduce_dims = []
+            if 'keepdims' in node.attrs:
+                keep_dims = node.attrs['keepdims']
+            else:
+                keep_dims = 1
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.ints.extend(reduce_dims)
+
+        keep_dims_arg = op.arg.add()
+        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
+        keep_dims_arg.i = keep_dims
+
+    def convert_reshape(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Reshape.name
+
+    def convert_slice(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Slice.name
+
+        mace_check('starts' in node.attrs, "Attribute starts required!")
+        mace_check('ends' in node.attrs, "Attribute ends required!")
+        starts = node.attrs['starts']
+        starts_arg = op.arg.add()
+        starts_arg.name = 'starts'
+        starts_arg.ints.extend(starts)
+        ends = node.attrs['ends']
+        ends_arg = op.arg.add()
+        ends_arg.name = 'ends'
+        ends_arg.ints.extend(ends)
+        if 'axes' in node.attrs:
+            axes = node.attrs['axes']
+            axes_arg = op.arg.add()
+            axes_arg.name = 'axes'
+            axes_arg.ints.extend(axes)
+
+    def convert_softmax(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Softmax.name
+        # TODO: add logsoftmax in softmax op
+        # if node.op_type == OnnxOpType.LogSoftmax.name:
+        #     use_log_arg = op.arg.add()
+        #     use_log_arg.name = 'use_log'
+        #     use_log_arg.i = 1
+
+    def convert_splice(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Splice.name
+        if 'context' in node.attrs:
+            context = node.attrs['context']
+        else:
+            context = [0]
+        context_arg = op.arg.add()
+        context_arg.name = 'context'
+        context_arg.ints.extend(context)
+        if 'const_component_dim' in node.attrs:
+            const_dim = node.attrs['const_component_dim']
+        else:
+            const_dim = 0
+        const_dim_arg = op.arg.add()
+        const_dim_arg.name = 'const_component_dim'
+        const_dim_arg.i = const_dim
+
+    def convert_split(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Split.name
+
+        if 'axis' in node.attrs:
+            value = node.attrs['axis']
+        else:
+            value = 0
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = value
+
+    def convert_squeeze(self, node):
+        axis_value = node.attrs['axes']
+        if node.inputs[0] in self._consts:
+            tensor = self._consts[node.inputs[0]]
+            shape = tensor.dims
+            new_shape = self.squeeze_shape(shape, axis_value)
+            del tensor.dims[:]
+            tensor.dims.extend(new_shape)
+            self.remove_node(node)
+        else:
+            op = self.convert_general_op(node)
+            op.type = MaceOp.Squeeze.name
+            axis_arg = op.arg.add()
+            axis_arg.name = MaceKeyword.mace_axis_str
+            if 'axis' in node.attrs:
+                axis_value = node.attrs['axis']
+            else:
+                axis_value = []
+            axis_arg.ints.extend(axis_value)
+
+    def convert_sum_group(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.SumGroup.name
+
+    def convert_target_rms_norm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.TargetRMSNorm.name
+
+        if 'target_rms' in node.attrs:
+            value = node.attrs['target_rms']
+            target_rms_arg = op.arg.add()
+            target_rms_arg.name = 'target_rms'
+            target_rms_arg.f = value
+
+    def convert_transpose(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Transpose.name
+
+        if 'perm' in node.attrs:
+            perm = node.attrs['perm']
+            ordered_perm = np.sort(perm)
+            if np.array_equal(perm, ordered_perm):
+                op.type = MaceOp.Identity.name
+                del op.input[1:]
+            else:
+                dims_arg = op.arg.add()
+                dims_arg.name = MaceKeyword.mace_dims_str
+                dims_arg.ints.extend(perm)
+
+    def convert_timeoffset(self, node):
+        op = self.convert_general_op(node)
+        mace_check('offset' in node.attrs,
+                   'Offset attribute required in Offset Node.')
+        offset = node.attrs['offset']
+        if offset == 0:
+            op.type = MaceOp.Identity.name
+        else:
+            op.type = MaceOp.TimeOffset.name
+
+        offset_arg = op.arg.add()
+        offset_arg.name = 'offset'
+        offset_arg.i = offset

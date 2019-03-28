@@ -22,13 +22,15 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/fixpoint.h"
-#include "mace/ops/gemmlowp_util.h"
+#include "mace/ops/common/gemmlowp_util.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/softmax.h"
 #include "mace/ops/opencl/buffer/softmax.h"
 #endif  // MACE_ENABLE_OPENCL
+
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -132,10 +134,10 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
   }
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
 
-#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
@@ -374,10 +376,10 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::SoftmaxKernel<T>);
+      kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>();
     } else {
       context->set_output_mem_type(MemoryType::GPU_BUFFER);
-      kernel_.reset(new opencl::buffer::SoftmaxKernel<T>);
+      kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>();
     }
   }
   MaceStatus Run(OpContext *context) override {

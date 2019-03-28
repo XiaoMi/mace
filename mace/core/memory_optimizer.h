@@ -78,30 +78,43 @@ class MemoryBlock {
 
 class MemoryOptimizer {
  public:
+  struct TensorMemInfo {
+    int mem_id;
+    DataType data_type;
+    bool has_data_format;
+
+    TensorMemInfo(int mem_id, DataType data_type, bool has_data_format) :
+        mem_id(mem_id), data_type(data_type), has_data_format(has_data_format)
+    {}
+  };
+
+ public:
   static bool IsMemoryReuseOp(const std::string &op_type);
   void UpdateTensorRef(const std::string &tensor_name);
   void UpdateTensorRef(const OperatorDef *op_def);
-  void Optimize(const OperatorDef *op_def,
-                const std::unordered_map<std::string, MemoryType> &mem_types);
+  void Optimize(
+      const OperatorDef *op_def,
+      const std::unordered_map<std::string, MemoryType> *mem_types = nullptr);
 
   const std::vector<MemoryBlock> &mem_blocks() const;
 
-  const std::unordered_map<std::string,
-                           std::pair<int, DataType>> &tensor_mem_map() const;
+  const std::unordered_map<std::string, TensorMemInfo> &tensor_mem_map() const;
 
   std::string DebugInfo() const;
 
  private:
-  MemoryBlock CreateMemoryBlock(std::vector<int64_t> shape,
-                                DataType dt,
-                                MemoryType mem_type);
+  MemoryBlock CreateMemoryBlock(
+      const OperatorDef *op_def,
+      int output_idx,
+      DataType dt,
+      MemoryType mem_type);
 
  private:
   std::unordered_map<std::string, int> tensor_ref_count_;
   std::vector<MemoryBlock> mem_blocks_;
   // tensor name : <mem_id, data_type>
   // Buffer Memory do not different data type, so store the data type.
-  std::unordered_map<std::string, std::pair<int, DataType>> tensor_mem_map_;
+  std::unordered_map<std::string, TensorMemInfo> tensor_mem_map_;
   std::unordered_map<int, int> mem_ref_count_;
   std::set<int> idle_blocks_;
 };

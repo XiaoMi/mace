@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "mace/utils/logging.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 
@@ -151,8 +152,9 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
     const std::vector<mace::index_t> &input_shape,
     const std::string &output_name,
     const mace::DataType dt,
+    const OpenCLBufferType buffer_type,
     const mace::MemoryType mem_type,
-    const DataFormat data_format) {
+    bool has_data_format) {
   std::unique_ptr<OperatorDef> op(new OperatorDef);
   std::string op_name = "mace_node_" + output_name;
   op->set_name(op_name);
@@ -161,7 +163,7 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
   op->add_output(output_name);
   Argument *arg = op->add_arg();
   arg->set_name("buffer_type");
-  arg->set_i(static_cast<int32_t>(OpenCLBufferType::IN_OUT_CHANNEL));
+  arg->set_i(static_cast<int32_t>(buffer_type));
   arg = op->add_arg();
   arg->set_name("mem_type");
   arg->set_i(static_cast<int32_t>(mem_type));
@@ -169,8 +171,8 @@ std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
   arg->set_name("T");
   arg->set_i(static_cast<int32_t>(dt));
   arg = op->add_arg();
-  arg->set_name("data_format");
-  arg->set_i(data_format);
+  arg->set_name("has_data_format");
+  arg->set_i(has_data_format);
   if (!input_shape.empty()) {
     OutputShape *shape = op->add_output_shape();
     for (auto value : input_shape) {

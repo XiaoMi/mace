@@ -21,8 +21,9 @@
 #include <functional>
 
 #include "mace/core/allocator.h"
-#include "mace/core/macros.h"
 #include "mace/core/types.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/macros.h"
 
 namespace mace {
 namespace core {
@@ -434,16 +435,11 @@ class BufferSlice : public BufferBase {
   }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
-    MACE_UNUSED(offset);
-    MACE_UNUSED(length);
-    MACE_UNUSED(pitch);
-    MACE_NOT_IMPLEMENTED;
-    return nullptr;
+    return buffer_->Map(offset_ + offset, length, pitch);
   }
 
   void UnMap(void *mapped_ptr) const {
-    MACE_UNUSED(mapped_ptr);
-    MACE_NOT_IMPLEMENTED;
+    buffer_->UnMap(mapped_ptr);
   }
 
   void Map(std::vector<size_t> *pitch) {
@@ -507,7 +503,7 @@ class ScratchBuffer: public Buffer {
   virtual ~ScratchBuffer() {}
 
   MaceStatus GrowSize(const index_t size) {
-    if (size > size_) {
+    if (offset_ + size > size_) {
       VLOG(1) << "Grow scratch size to: " << size;
       MACE_CHECK(offset_ == 0, "scratch is being used, cannot grow size");
       return Resize(size);

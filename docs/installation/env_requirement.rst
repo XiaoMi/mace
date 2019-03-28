@@ -41,7 +41,7 @@ For Bazel, install it following installation guide. For python dependencies,
 
 	.. code:: sh
 
-		pip install -U --user setup/requirements.txt
+		pip install -U --user -r setup/requirements.txt
 
 
 
@@ -83,7 +83,7 @@ For python dependencies,
 
 	.. code:: sh
 
-		pip install -U --user setup/optionals.txt
+		pip install -U --user -r setup/optionals.txt
 
 
 .. note::

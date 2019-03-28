@@ -26,6 +26,9 @@
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/proto/mace.pb.h"
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/opencl_util.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 
@@ -72,6 +75,11 @@ class OpConstructContext {
 
   DataType GetInputDataType(size_t idx) const;
 
+#ifdef MACE_ENABLE_OPENCL
+  void SetInputOpenCLBufferType(size_t idx, OpenCLBufferType buffer_type);
+  OpenCLBufferType GetInputOpenCLBufferType(size_t idx) const;
+#endif  // MACE_ENABLE_OPENCL
+
  private:
   std::shared_ptr<OperatorDef> operator_def_;
   Workspace *ws_;
@@ -81,6 +89,9 @@ class OpConstructContext {
   std::vector<MemoryType> input_mem_types_;
   std::vector<DataType> input_data_types_;
   MemoryType output_mem_type_;  // there is only one output memory type now.
+#ifdef MACE_ENABLE_OPENCL
+  std::vector<OpenCLBufferType> input_opencl_buffer_types_;
+#endif  // MACE_ENABLE_OPENCL
 };
 
 // memory_optimizer, device

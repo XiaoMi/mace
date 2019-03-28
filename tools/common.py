@@ -129,6 +129,14 @@ class DeviceType(object):
     CPU = 'CPU'
     GPU = 'GPU'
     HEXAGON = 'HEXAGON'
+    HTA = 'HTA'
+
+
+class DataFormat(object):
+    NONE = "NONE"
+    NHWC = "NHWC"
+    NCHW = "NCHW"
+    OIHW = "OIHW"
 
 
 ################################
@@ -193,6 +201,8 @@ def parse_device_type(runtime):
 
     if runtime == RuntimeType.dsp:
         device_type = DeviceType.HEXAGON
+    elif runtime == RuntimeType.hta:
+        device_type = DeviceType.HTA
     elif runtime == RuntimeType.gpu:
         device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
@@ -401,6 +411,7 @@ class YAMLKeyword(object):
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
     cl_mem_type = 'cl_mem_type'
     backend = 'backend'
+    validation_outputs_data = 'validation_outputs_data'
     docker_image_tag = 'docker_image_tag'
     dockerfile_path = 'dockerfile_path'
     dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'
@@ -506,6 +517,7 @@ class RuntimeType(object):
     cpu = 'cpu'
     gpu = 'gpu'
     dsp = 'dsp'
+    hta = 'hta'
     cpu_gpu = 'cpu+gpu'
 
 
@@ -524,3 +536,10 @@ class ToolchainType:
 class TargetSOCTag:
     all = 'all'
     random = 'random'
+
+
+def split_shape(shape):
+    if shape.strip() == "":
+        return []
+    else:
+        return shape.split(',')

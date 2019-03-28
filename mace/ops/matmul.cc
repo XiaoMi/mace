@@ -21,8 +21,7 @@
 
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/sgemm.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/math.h"
 
 #ifdef MACE_ENABLE_NEON
 #include "mace/ops/arm/fp32/gemm.h"
@@ -38,7 +37,7 @@
 #endif  // MACE_ENABLE_NEON
 
 #ifdef MACE_ENABLE_QUANTIZE
-#include "mace/ops/gemmlowp_util.h"
+#include "mace/ops/common/gemmlowp_util.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
@@ -233,8 +232,8 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
                   const index_t height,
                   const index_t K,
                   const index_t width,
-                  const bool lhs_bached,
-                  const bool rhs_bached,
+                  const bool lhs_batched,
+                  const bool rhs_batched,
                   Tensor *C) {
 #if defined(MACE_ENABLE_NEON)
     if (width == 1 && AOrder == gemmlowp::MapOrder::RowMajor) {
@@ -245,8 +244,8 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
                            batch,
                            height,
                            K,
-                           true,
-                           true,
+                           lhs_batched,
+                           rhs_batched,
                            C);
     } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
       gemv_kernel_.Compute(context,
@@ -256,8 +255,8 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
                            batch,
                            width,
                            K,
-                           true,
-                           true,
+                           lhs_batched,
+                           rhs_batched,
                            C);
     } else {
 #endif  // MACE_ENABLE_NEON
@@ -281,11 +280,13 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
 
       for (index_t i = 0; i < batch; ++i) {
         gemmlowp::MatrixMap<const uint8_t, AOrder>
-            a_matrix(a_ptr_base + static_cast<index_t>(lhs_bached) * i * a_size,
+            a_matrix(a_ptr_base
+                         + static_cast<index_t>(lhs_batched) * i * a_size,
                      height,
                      K);
         gemmlowp::MatrixMap<const uint8_t, BOrder>
-            b_matrix(b_ptr_base + static_cast<index_t>(rhs_bached) * i * b_size,
+            b_matrix(b_ptr_base
+                         + static_cast<index_t>(rhs_batched) * i * b_size,
                      K,
                      width);
         gemmlowp::MatrixMap <uint8_t, gemmlowp::MapOrder::RowMajor>
@@ -315,8 +316,8 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
                   const index_t height,
                   const index_t K,
                   const index_t width,
-                  const bool lhs_bached,
-                  const bool rhs_bached,
+                  const bool lhs_batched,
+                  const bool rhs_batched,
                   Tensor *C) {
     C->SetScale(A->scale() * B->scale());
     C->SetZeroPoint(0);
@@ -330,8 +331,8 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
                            batch,
                            height,
                            K,
-                           lhs_bached,
-                           rhs_bached,
+                           lhs_batched,
+                           rhs_batched,
                            C);
     } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
       gemv_kernel_.Compute(context,
@@ -341,8 +342,8 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
                            batch,
                            width,
                            K,
-                           lhs_bached,
-                           rhs_bached,
+                           lhs_batched,
+                           rhs_batched,
                            C);
     } else {
 #endif  // MACE_ENABLE_NEON
@@ -366,12 +367,12 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
       for (index_t i = 0; i < batch; ++i) {
         gemmlowp::MatrixMap<const uint8_t, AOrder>
             a_matrix
-            (a_ptr_base + static_cast<index_t>(lhs_bached) * i * a_size,
+            (a_ptr_base + static_cast<index_t>(lhs_batched) * i * a_size,
              height,
              K);
         gemmlowp::MatrixMap<const uint8_t, BOrder>
             b_matrix
-            (b_ptr_base + static_cast<index_t>(rhs_bached) * i * b_size,
+            (b_ptr_base + static_cast<index_t>(rhs_batched) * i * b_size,
              K,
              width);
         gemmlowp::MatrixMap <int32_t, gemmlowp::MapOrder::RowMajor>

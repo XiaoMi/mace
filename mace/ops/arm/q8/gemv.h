@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,9 @@ namespace q8 {
 template<typename OUTPUT_TYPE>
 class Gemv {
  public:
-  Gemv() {}
+  Gemv() : is_output_type_uint8_(
+      DataTypeToEnum<OUTPUT_TYPE>::value == DataType::DT_UINT8) {
+  }
   ~Gemv() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -44,6 +46,9 @@ class Gemv {
       const bool lhs_batched,
       const bool rhs_batched,
       Tensor *output);
+
+ private:
+  bool is_output_type_uint8_;
 };
 
 }  // namespace q8

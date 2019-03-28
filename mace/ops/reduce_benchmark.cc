@@ -38,6 +38,7 @@ void Reduce(int iters, int batch, int channels,
       .Input("Input")
       .AddIntsArg("axis", axis)
       .Output("OutputImage")
+      .AddIntArg("has_data_format", 1)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 

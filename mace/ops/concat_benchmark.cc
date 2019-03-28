@@ -91,6 +91,7 @@ void OpenCLConcatHelper(int iters,
       .Input("Input0")
       .Input("Input1")
       .AddIntArg("axis", concat_dim)
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());

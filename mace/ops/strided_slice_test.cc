@@ -64,6 +64,54 @@ void TestStridedSlice(const std::vector<index_t> &input_shape,
                           *net.GetOutput("Output"));
 }
 
+void TestStridedSliceWithDataFormat(const std::vector<index_t> &input_shape,
+                                    const std::vector<float> &input,
+                                    const std::vector<int32_t> &begin_indices,
+                                    const std::vector<int32_t> &end_indices,
+                                    const std::vector<int32_t> &strides,
+                                    const int begin_mask,
+                                    const int end_mask,
+                                    const int ellipsis_mask,
+                                    const int new_axis_mask,
+                                    const int shrink_axis_mask,
+                                    const std::vector<index_t> &output_shape,
+                                    const std::vector<float> &output) {
+  OpsTestNet net;
+  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
+  net.AddInputFromArray<CPU, int32_t>(
+      "BeginIndices", {static_cast<int32_t>(begin_indices.size())},
+      begin_indices);
+  net.AddInputFromArray<CPU, int32_t>(
+      "EndIndices", {static_cast<int32_t>(end_indices.size())}, end_indices);
+  net.AddInputFromArray<CPU, int32_t>(
+      "Strides", {static_cast<int32_t>(strides.size())}, strides);
+
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+                                                  NCHW);
+
+  OpDefBuilder("StridedSlice", "StridedSliceOpTest")
+      .Input("InputNCHW")
+      .Input("BeginIndices")
+      .Input("EndIndices")
+      .Input("Strides")
+      .Output("OutputNCHW")
+      .AddIntArg("begin_mask", begin_mask)
+      .AddIntArg("end_mask", end_mask)
+      .AddIntArg("ellipsis_mask", ellipsis_mask)
+      .AddIntArg("new_axis_mask", new_axis_mask)
+      .AddIntArg("shrink_axis_mask", shrink_axis_mask)
+      .AddIntArg("has_data_format", 1)
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp();
+
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
+                                                  NHWC);
+  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
+                          *net.GetOutput("Output"));
+}
+
 void TestSlice(const std::vector<index_t> &input_shape,
                const std::vector<float> &input,
                const std::vector<int32_t> &begin_indices,
@@ -87,6 +135,41 @@ void TestSlice(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
 
   net.RunOp();
+  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
+                          *net.GetOutput("Output"));
+}
+
+void TestSliceWithDataFormat(const std::vector<index_t> &input_shape,
+                             const std::vector<float> &input,
+                             const std::vector<int32_t> &begin_indices,
+                             const std::vector<int32_t> &indices_size,
+                             const std::vector<index_t> &output_shape,
+                             const std::vector<float> &output) {
+  OpsTestNet net;
+  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
+  net.AddInputFromArray<CPU, int32_t>(
+      "BeginIndices", {static_cast<int32_t>(input_shape.size())},
+      begin_indices);
+  net.AddInputFromArray<CPU, int32_t>(
+      "IndicesSize", {static_cast<int32_t>(indices_size.size())}, indices_size);
+
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+                                                  NCHW);
+
+  OpDefBuilder("StridedSlice", "StridedSliceOpTest")
+      .Input("InputNCHW")
+      .Input("BeginIndices")
+      .Input("IndicesSize")
+      .Output("OutputNCHW")
+      .AddIntArg("slice", 1)
+      .AddIntArg("has_data_format", 1)
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp();
+
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
+                                                  NHWC);
   net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
@@ -157,6 +240,66 @@ TEST_F(StridedSliceOpTest, TestStridedSliceRank3) {
                    1, 2}, {1, 1, 3, 3});
 }
 
+
+TEST_F(StridedSliceOpTest, TestStridedSliceRank4) {
+  TestStridedSlice({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 0, 0, 0, 0, 0, {1, 2, 1, 2},
+                   {15, 16, 21, 22});
+  TestStridedSlice({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 3, 0, 0, 0, 0, {2, 2, 1, 2},
+                   {3, 4, 9, 10, 15, 16, 21, 22});
+  TestStridedSlice({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 0, 8, 0, 0, 0, {1, 2, 1, 3},
+                   {15, 16, 17, 21, 22, 23});
+  TestStridedSlice({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 0, 8, 0, 0, 8, {1, 2, 1},
+                   {15, 21});
+  TestStridedSlice({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 0, 8, 0, 0, 15, {}, {15});
+  TestStridedSlice({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {-1, 2, 1, 3},
+                   {0, 0, 0, 0}, {-1, -1, -1, -1}, 0, 0, 0, 0, 0, {1, 1, 1, 2},
+                   {23, 22});
+}
+
+TEST_F(StridedSliceOpTest, TestStridedSliceWithDataFormat) {
+  TestStridedSliceWithDataFormat(
+                   {2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 0, 0, 0, 0, 0, {1, 2, 1, 2},
+                   {15, 16, 21, 22});
+  TestStridedSliceWithDataFormat(
+                   {2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 3, 0, 0, 0, 0, {2, 2, 1, 2},
+                   {3, 4, 9, 10, 15, 16, 21, 22});
+  TestStridedSliceWithDataFormat(
+                   {2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0, 1, 0},
+                   {2, 2, 2, 2}, {1, 1, 1, 1}, 0, 8, 0, 0, 0, {1, 2, 1, 3},
+                   {15, 16, 17, 21, 22, 23});
+  TestStridedSliceWithDataFormat(
+                   {2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0},
+                   {2, 1}, {1, 1}, 0, 8, 0, 0, 0, {1, 1, 2, 3},
+                   {12, 13, 14, 15, 16, 17});
+  TestStridedSliceWithDataFormat(
+                   {2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {1, 0},
+                   {2, 1}, {1, 1}, 0, 2, 0, 0, 0, {1, 2, 2, 3},
+                   {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23});
+  TestStridedSliceWithDataFormat(
+                   {2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23}, {-1, 2, 1, 3},
+                   {0, 0, 0, 0}, {-1, -1, -1, -1}, 0, 0, 0, 0, 0, {1, 1, 1, 2},
+                   {23, 22});
+}
+
 TEST_F(StridedSliceOpTest, TestSlice) {
   TestSlice({2, 3}, {1, 2, 3, 4, 5, 6}, {0, 0}, {2, 3}, {2, 3},
             {1, 2, 3, 4, 5, 6});
@@ -164,6 +307,17 @@ TEST_F(StridedSliceOpTest, TestSlice) {
   TestSlice({2, 3}, {1, 2, 3, 4, 5, 6}, {0, 0}, {2, -1}, {2, 3},
             {1, 2, 3, 4, 5, 6});
   TestSlice({2, 3}, {1, 2, 3, 4, 5, 6}, {0, 1}, {2, -1}, {2, 2}, {2, 3, 5, 6});
+}
+
+TEST_F(StridedSliceOpTest, TestSliceWithDataFormat) {
+  TestSliceWithDataFormat({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+                          {1, 0, 1, 0}, {1, 2, 1, 2}, {1, 2, 1, 2},
+                          {15, 16, 21, 22});
+  TestSliceWithDataFormat({2, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+                          {1, 0, 1, 0}, {-1, -1, -1, -1}, {1, 2, 1, 3},
+                          {15, 16, 17, 21, 22, 23});
 }
 
 }  // namespace test

@@ -135,7 +135,8 @@ void Complex(const std::vector<index_t> &batch,
                rhs_batched,
                &expected_output_tensor);
 
-  ExpectTensorNear<float>(expected_output_tensor, *net.GetTensor("Output"));
+  ExpectTensorNear<float>(expected_output_tensor, *net.GetTensor("Output"),
+      1e-4, 1e-2);
 }
 }  // namespace
 

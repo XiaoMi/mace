@@ -35,11 +35,10 @@ class ShapeOp : public Operation {
     Tensor::MappingGuard output_guard(output);
     int32_t *output_data = output->mutable_data<int32_t>();
 
-    const int data_format =
-        Operation::GetOptionalArg<int>("data_format", 0);
-    if (input->dim_size() == 4 &&
-        D == DeviceType::CPU &&
-        data_format == DataFormat::NCHW) {
+    auto has_df = Operation::GetOptionalArg<int>(
+        "has_data_format", 0);
+    if (has_df && input->data_format() == DataFormat::NCHW &&
+        input->dim_size() != 4) {
       // transpose NCHW to NHWC for cpu runtime
       output_data[0] = static_cast<int32_t>(input->dim(0));
       output_data[1] = static_cast<int32_t>(input->dim(2));

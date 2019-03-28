@@ -48,8 +48,9 @@ class OpenCLUtil {
       const std::vector<mace::index_t> &input_shape,
       const std::string &output_name,
       const mace::DataType dt,
+      const OpenCLBufferType buffer_type,
       const MemoryType mem_type,
-      const DataFormat data_format);
+      bool has_data_format);
 };
 
 }  // namespace mace

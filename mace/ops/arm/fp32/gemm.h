@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/op_context.h"
 #include "mace/ops/common/matrix.h"
+#include "mace/utils/math.h"
 
 // This implements matrix-matrix multiplication.
 // In the case of matrix-vector multiplication, use gemv.h/gemv.cc instead

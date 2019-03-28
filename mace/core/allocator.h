@@ -15,14 +15,13 @@
 #ifndef MACE_CORE_ALLOCATOR_H_
 #define MACE_CORE_ALLOCATOR_H_
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
 #include <map>
 #include <limits>
 #include <vector>
 #include <cstring>
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/core/types.h"
 #include "mace/core/runtime_failure_mock.h"
 #include "mace/public/mace.h"

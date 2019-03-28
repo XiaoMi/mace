@@ -21,12 +21,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/core/types.h"
-#include "mace/utils/utils.h"
+#include "mace/utils/memory.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {
@@ -41,8 +42,8 @@ namespace ops {
 
 #define MACE_OUT_OF_RANGE_INIT(kernel)                       \
   if (runtime->IsOutOfRangeCheckEnabled()) {                 \
-    oorc_flag = std::move(std::unique_ptr<Buffer>(           \
-        new Buffer((context)->device()->allocator())));      \
+    oorc_flag = make_unique<Buffer>(                         \
+        (context)->device()->allocator());                   \
     MACE_RETURN_IF_ERROR((oorc_flag)->Allocate(sizeof(int)));\
     oorc_flag->Map(nullptr);                                 \
     *(oorc_flag->mutable_data<int>()) = 0;                   \

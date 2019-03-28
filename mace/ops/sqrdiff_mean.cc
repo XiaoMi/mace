@@ -19,6 +19,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/sqrdiff_mean.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -83,7 +84,7 @@ class SqrDiffMeanOp<DeviceType::GPU, T> : public Operation {
   explicit SqrDiffMeanOp(OpConstructContext *context)
       : Operation(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::SqrDiffMeanKernel<T>());
+      kernel_ = make_unique<opencl::image::SqrDiffMeanKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }

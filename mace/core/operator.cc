@@ -86,6 +86,27 @@ DataType OpConstructContext::GetInputDataType(size_t idx) const {
   return input_data_types_[idx];
 }
 
+#ifdef MACE_ENABLE_OPENCL
+void OpConstructContext::SetInputOpenCLBufferType(
+    size_t idx, OpenCLBufferType buffer_type) {
+  if (input_opencl_buffer_types_.empty()) {
+    // the default inputs' memory types are same as output memory type.
+    input_opencl_buffer_types_.resize(operator_def_->input_size(),
+                               OpenCLBufferType::IN_OUT_CHANNEL);
+  }
+  MACE_CHECK(idx < input_opencl_buffer_types_.size());
+  input_opencl_buffer_types_[idx] = buffer_type;
+}
+OpenCLBufferType OpConstructContext::GetInputOpenCLBufferType(
+    size_t idx) const {
+  if (input_opencl_buffer_types_.empty()) {
+    return OpenCLBufferType::IN_OUT_CHANNEL;
+  }
+  MACE_CHECK(idx < input_opencl_buffer_types_.size());
+  return input_opencl_buffer_types_[idx];
+}
+#endif  // MACE_ENABLE_OPENCL
+
 OpInitContext::OpInitContext(Workspace *ws, Device *device)
     : ws_(ws), device_(device) {}
 

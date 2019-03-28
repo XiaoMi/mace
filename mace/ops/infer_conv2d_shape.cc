@@ -34,9 +34,10 @@ class InferConv2dShapeOp : public Operation {
     Tensor::MappingGuard output_guard(output);
     int32_t *output_data = output->mutable_data<int32_t>();
 
-    const int32_t data_format =
-        Operation::GetOptionalArg<int>("data_format", 0);
-    const bool isNCHW = data_format == 1;
+    auto has_data_format =
+        Operation::GetOptionalArg<int>("has_data_format", 0);
+    const bool isNCHW = (has_data_format &&
+        input->data_format() == DataFormat::NCHW);
 
     Padding padding_type =
         static_cast<Padding>(Operation::GetOptionalArg<int>(

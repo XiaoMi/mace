@@ -14,12 +14,9 @@
 
 import argparse
 import glob
-import hashlib
-import os
-import re
 import sh
 import sys
-import urllib
+import time
 import yaml
 
 from enum import Enum
@@ -64,6 +61,7 @@ RuntimeTypeStrs = [
     "cpu",
     "gpu",
     "dsp",
+    "hta",
     "cpu+gpu"
 ]
 
@@ -96,12 +94,9 @@ WinogradParameters = [0, 2, 4]
 DataFormatStrs = [
     "NONE",
     "NHWC",
+    "NCHW",
+    "OIHW",
 ]
-
-
-class DataFormat(object):
-    NONE = "NONE"
-    NHWC = "NHWC"
 
 
 class DefaultValues(object):
@@ -149,6 +144,8 @@ def parse_device_type(runtime):
 
     if runtime == RuntimeType.dsp:
         device_type = DeviceType.HEXAGON
+    elif runtime == RuntimeType.hta:
+        device_type = DeviceType.HTA
     elif runtime == RuntimeType.gpu:
         device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
@@ -166,6 +163,19 @@ def get_hexagon_mode(configs):
         runtime_list.append(model_runtime.lower())
 
     if RuntimeType.dsp in runtime_list:
+        return True
+    return False
+
+
+def get_hta_mode(configs):
+    runtime_list = []
+    for model_name in configs[YAMLKeyword.models]:
+        model_runtime = \
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.runtime, "")
+        runtime_list.append(model_runtime.lower())
+
+    if RuntimeType.hta in runtime_list:
         return True
     return False
 
@@ -371,6 +381,15 @@ def format_model_config(flags):
                 if not isinstance(value, list):
                     subgraph[key] = [value]
                 subgraph[key] = [str(v) for v in subgraph[key]]
+            input_size = len(subgraph[YAMLKeyword.input_tensors])
+            output_size = len(subgraph[YAMLKeyword.output_tensors])
+
+            mace_check(len(subgraph[YAMLKeyword.input_shapes]) == input_size,
+                       ModuleName.YAML_CONFIG,
+                       "input shapes' size not equal inputs' size.")
+            mace_check(len(subgraph[YAMLKeyword.output_shapes]) == output_size,
+                       ModuleName.YAML_CONFIG,
+                       "output shapes' size not equal outputs' size.")
 
             for key in [YAMLKeyword.check_tensors,
                         YAMLKeyword.check_shapes]:
@@ -399,13 +418,13 @@ def format_model_config(flags):
             if input_data_formats:
                 if not isinstance(input_data_formats, list):
                     subgraph[YAMLKeyword.input_data_formats] =\
-                        [input_data_formats]
+                        [input_data_formats] * input_size
                 else:
                     mace_check(len(input_data_formats)
-                               == len(subgraph[YAMLKeyword.input_tensors]),
+                               == input_size,
                                ModuleName.YAML_CONFIG,
                                "input_data_formats should match"
-                               " the size of input")
+                               " the size of input.")
                 for input_data_format in\
                         subgraph[YAMLKeyword.input_data_formats]:
                     mace_check(input_data_format in DataFormatStrs,
@@ -414,17 +433,18 @@ def format_model_config(flags):
                                + str(DataFormatStrs) + ", but got "
                                + input_data_format)
             else:
-                subgraph[YAMLKeyword.input_data_formats] = [DataFormat.NHWC]
+                subgraph[YAMLKeyword.input_data_formats] = \
+                    [DataFormat.NHWC] * input_size
 
             output_data_formats = subgraph.get(YAMLKeyword.output_data_formats,
                                                [])
             if output_data_formats:
                 if not isinstance(output_data_formats, list):
                     subgraph[YAMLKeyword.output_data_formats] = \
-                        [output_data_formats]
+                        [output_data_formats] * output_size
                 else:
                     mace_check(len(output_data_formats)
-                               == len(subgraph[YAMLKeyword.output_tensors]),
+                               == output_size,
                                ModuleName.YAML_CONFIG,
                                "output_data_formats should match"
                                " the size of output")
@@ -435,7 +455,8 @@ def format_model_config(flags):
                                "'output_data_formats' must be in "
                                + str(DataFormatStrs))
             else:
-                subgraph[YAMLKeyword.output_data_formats] = [DataFormat.NHWC]
+                subgraph[YAMLKeyword.output_data_formats] =\
+                    [DataFormat.NHWC] * output_size
 
             validation_threshold = subgraph.get(
                 YAMLKeyword.validation_threshold, {})
@@ -448,6 +469,8 @@ def format_model_config(flags):
                 DeviceType.GPU: ValidationThreshold.gpu_threshold,
                 DeviceType.HEXAGON + "_QUANTIZE":
                     ValidationThreshold.hexagon_threshold,
+                DeviceType.HTA + "_QUANTIZE":
+                    ValidationThreshold.hexagon_threshold,
                 DeviceType.CPU + "_QUANTIZE":
                     ValidationThreshold.cpu_quantize_threshold,
             }
@@ -457,6 +480,7 @@ def format_model_config(flags):
                 if k.upper() not in (DeviceType.CPU,
                                      DeviceType.GPU,
                                      DeviceType.HEXAGON,
+                                     DeviceType.HTA,
                                      DeviceType.CPU + "_QUANTIZE"):
                     raise argparse.ArgumentTypeError(
                         'Unsupported validation threshold runtime: %s' % k)
@@ -476,6 +500,14 @@ def format_model_config(flags):
             onnx_backend = subgraph.get(
                 YAMLKeyword.backend, "tensorflow")
             subgraph[YAMLKeyword.backend] = onnx_backend
+            validation_outputs_data = subgraph.get(
+                YAMLKeyword.validation_outputs_data, [])
+            if not isinstance(validation_outputs_data, list):
+                subgraph[YAMLKeyword.validation_outputs_data] = [
+                    validation_outputs_data]
+            else:
+                subgraph[YAMLKeyword.validation_outputs_data] = \
+                    validation_outputs_data
             input_ranges = subgraph.get(
                 YAMLKeyword.input_ranges, [])
             if not isinstance(input_ranges, list):
@@ -728,7 +760,6 @@ def build_model_lib(configs, address_sanitizer):
     # create model library dir
     library_name = configs[YAMLKeyword.library_name]
     for target_abi in configs[YAMLKeyword.target_abis]:
-        hexagon_mode = get_hexagon_mode(configs)
         model_lib_output_path = get_model_lib_output_path(library_name,
                                                           target_abi)
         library_out_dir = os.path.dirname(model_lib_output_path)
@@ -739,7 +770,8 @@ def build_model_lib(configs, address_sanitizer):
             MODEL_LIB_TARGET,
             abi=target_abi,
             toolchain=toolchain,
-            hexagon_mode=hexagon_mode,
+            enable_hexagon=get_hexagon_mode(configs),
+            enable_hta=get_hta_mode(configs),
             enable_opencl=get_opencl_mode(configs),
             enable_quantize=get_quantize_mode(configs),
             address_sanitizer=address_sanitizer,
@@ -830,7 +862,6 @@ def report_run_statistics(stdout,
 def build_mace_run(configs, target_abi, toolchain, enable_openmp,
                    address_sanitizer, mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
-    hexagon_mode = get_hexagon_mode(configs)
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
     if os.path.exists(build_tmp_binary_dir):
@@ -853,7 +884,8 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         mace_run_target,
         abi=target_abi,
         toolchain=toolchain,
-        hexagon_mode=hexagon_mode,
+        enable_hexagon=get_hexagon_mode(configs),
+        enable_hta=get_hta_mode(configs),
         enable_openmp=enable_openmp,
         enable_opencl=get_opencl_mode(configs),
         enable_quantize=get_quantize_mode(configs),
@@ -868,7 +900,6 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
 def build_example(configs, target_abi, toolchain,
                   enable_openmp, mace_lib_type, cl_binary_to_code, device):
     library_name = configs[YAMLKeyword.library_name]
-    hexagon_mode = get_hexagon_mode(configs)
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
     if os.path.exists(build_tmp_binary_dir):
@@ -902,7 +933,8 @@ def build_example(configs, target_abi, toolchain,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             enable_quantize=get_quantize_mode(configs),
-                            hexagon_mode=hexagon_mode,
+                            enable_hexagon=get_hexagon_mode(configs),
+                            enable_hta=get_hta_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
                             symbol_hidden=symbol_hidden)
 
@@ -933,7 +965,8 @@ def build_example(configs, target_abi, toolchain,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             enable_quantize=get_quantize_mode(configs),
-                            hexagon_mode=hexagon_mode,
+                            enable_hexagon=get_hexagon_mode(configs),
+                            enable_hta=get_hta_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
                             extra_args=build_arg)
 
@@ -991,8 +1024,11 @@ def run_mace(flags):
                                    flags.address_sanitizer,
                                    flags.mace_lib_type)
                 # run
+                start_time = time.time()
                 with device.lock():
                     device.run_specify_abi(flags, configs, target_abi)
+                elapse_minutes = (time.time() - start_time) / 60
+                print("Elapse time: %f minutes." % elapse_minutes)
             elif dev[YAMLKeyword.device_name] != SystemType.host:
                 six.print_('The device with soc %s do not support abi %s' %
                            (dev[YAMLKeyword.target_socs], target_abi),
@@ -1013,7 +1049,6 @@ def build_benchmark_model(configs,
                           enable_openmp,
                           mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
-    hexagon_mode = get_hexagon_mode(configs)
 
     link_dynamic = mace_lib_type == MACELibType.dynamic
     if link_dynamic:
@@ -1036,7 +1071,8 @@ def build_benchmark_model(configs,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             enable_quantize=get_quantize_mode(configs),
-                            hexagon_mode=hexagon_mode,
+                            enable_hexagon=get_hexagon_mode(configs),
+                            enable_hta=get_hta_mode(configs),
                             symbol_hidden=symbol_hidden,
                             extra_args=build_arg)
     # clear tmp binary dir
@@ -1075,8 +1111,11 @@ def benchmark_model(flags):
                                       not flags.disable_openmp,
                                       flags.mace_lib_type)
                 device = DeviceWrapper(dev)
+                start_time = time.time()
                 with device.lock():
                     device.bm_specific_target(flags, configs, target_abi)
+                elapse_minutes = (time.time() - start_time) / 60
+                print("Elapse time: %f minutes." % elapse_minutes)
             else:
                 six.print_('There is no abi %s with soc %s' %
                            (target_abi, dev[YAMLKeyword.target_socs]),

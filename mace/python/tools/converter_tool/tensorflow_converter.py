@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import os
 import math
 import numpy as np
 import six
@@ -29,7 +29,6 @@ from mace.python.tools.converter_tool.base_converter import PadType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
@@ -117,6 +116,7 @@ TFSupportedOps = [
     'FloorDiv',
     'Sqrt',
     'MirrorPad',
+    'Cumsum',
     'OneHot',
 ]
 
@@ -124,39 +124,16 @@ TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
 
 TFSupportedOps = [six.b(op) for op in TFSupportedOps]
 
-TFTransformGraphOptions = {
-    base_converter.DeviceType.CPU.value: [
-        'strip_unused_nodes',
-        'remove_nodes(op=Identity, op=CheckNumerics)',
-        'fold_constants(ignore_errors=true)',
-        'fold_batch_norms',
-        'fold_old_batch_norms',
-        'remove_control_dependencies',
-        'strip_unused_nodes',
-        'sort_by_execution_order'
-    ],
-    base_converter.DeviceType.GPU.value: [
-        'strip_unused_nodes',
-        'remove_nodes(op=Identity, op=CheckNumerics)',
-        'fold_constants(ignore_errors=true)',
-        'flatten_atrous_conv',
-        'fold_batch_norms',
-        'fold_old_batch_norms',
-        'remove_control_dependencies',
-        'strip_unused_nodes',
-        'sort_by_execution_order'
-    ],
-    base_converter.DeviceType.HEXAGON.value: [
-        'strip_unused_nodes',
-        'remove_nodes(op=Identity, op=CheckNumerics)',
-        'fold_constants(ignore_errors=true)',
-        'fold_batch_norms',
-        'fold_old_batch_norms',
-        'remove_control_dependencies',
-        'strip_unused_nodes',
-        'sort_by_execution_order'
-    ]
-}
+TFTransformGraphOptions = [
+    'strip_unused_nodes',
+    'remove_nodes(op=Identity, op=CheckNumerics)',
+    'fold_constants(ignore_errors=true)',
+    'fold_batch_norms',
+    'fold_old_batch_norms',
+    'remove_control_dependencies',
+    'strip_unused_nodes',
+    'sort_by_execution_order'
+]
 
 
 class TensorflowConverter(base_converter.ConverterInterface):
@@ -278,11 +255,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.FloorDiv.name: self.convert_elementwise,
             TFOpType.Sqrt.name: self.convert_elementwise,
             TFOpType.MirrorPad.name: self.convert_pad,
+            TFOpType.Cumsum.name: self.convert_cumsum,
             TFOpType.OneHot.name: self.convert_one_hot,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
-        ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.HWIO)
+        ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.HWIO)
 
         # import tensorflow graph
         tf_graph_def = tf.GraphDef()
@@ -290,29 +268,44 @@ class TensorflowConverter(base_converter.ConverterInterface):
             tf_graph_def.ParseFromString(f.read())
 
         self._placeholders = {}
-        self.add_shape_info(tf_graph_def)
+        self._skip_tensor = set()
+        self._output_shape = {}
 
-        print("Run transform_graph: %s" % TFTransformGraphOptions[
-            option.device])
+        print("Run transform_graph: %s" % TFTransformGraphOptions)
         try:
-            print ("output keys: ", option.output_nodes.keys())
+            print("output keys: ", option.output_nodes.keys())
             transformed_graph_def = TransformGraph(tf_graph_def,
                                                    option.input_nodes.keys(),
                                                    option.output_nodes.keys(),
-                                                   TFTransformGraphOptions[
-                                                       option.device])
+                                                   TFTransformGraphOptions)
         except Exception as ex:
             print("Failed to transform graph using tf tool: %s" % ex)
             transformed_graph_def = tf_graph_def
+
+        # To check optimized model, uncomment following code.
+        # tf.io.write_graph(
+        #     transformed_graph_def,
+        #     ".",
+        #     os.path.basename(src_model_file)[:-3] + "_opt.pb",
+        #     as_text=False
+        # )
+
+        self.add_shape_info(transformed_graph_def)
 
         with tf.Session() as session:
             with session.graph.as_default() as graph:
                 tf.import_graph_def(transformed_graph_def, name='')
                 self._tf_graph = graph
+                self.update_output_shapes(session)
 
-        self._skip_tensor = set()
-        self._output_shape_list = []
-        self._output_shape_op_list = []
+        # we have polluted graph with 'shape' ops, so reset it and reload it
+        # again
+        tf.reset_default_graph()
+
+        with tf.Session() as session:
+            with session.graph.as_default() as graph:
+                tf.import_graph_def(transformed_graph_def, name='')
+                self._tf_graph = graph
 
     def run(self):
         with tf.Session() as session:
@@ -340,13 +333,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
             for input_node in self._option.input_nodes.values():
                 if node.name == input_node.name \
                         or node.name + ':0' == input_node.name:
+                    input_shape = input_node.shape
+                    if input_node.data_format == DataFormat.OIHW \
+                            and len(input_shape) == 4:
+                        # OIHW -> HWIO
+                        input_shape = [input_shape[2], input_shape[3],
+                                       input_shape[1], input_shape[0]]
                     del node.attr['shape'].shape.dim[:]
                     node.attr['shape'].shape.dim.extend([
                         tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in
-                        input_node.shape
+                        input_shape
                     ])
                     self._placeholders[node.name + ':0'] = \
-                        np.zeros(shape=input_node.shape, dtype=float)
+                        np.zeros(shape=input_shape, dtype=float)
 
     @staticmethod
     def get_scope(tensor_name):
@@ -357,10 +356,17 @@ class TensorflowConverter(base_converter.ConverterInterface):
             return tensor_name[:idx]
 
     def update_output_shapes(self, sess):
-        output_shapes = sess.run(self._output_shape_op_list,
+        tensors = []
+        shape_tensors = []
+        for tf_op in self._tf_graph.get_operations():
+            for output in tf_op.outputs:
+                tensors.append(output.name)
+                shape_tensors.append(tf.shape(output))
+
+        tensor_shapes = sess.run(shape_tensors,
                                  feed_dict=self._placeholders)
-        for i in range(len(self._output_shape_list)):
-            self._output_shape_list[i].dims.extend(output_shapes[i])
+        for i in range(len(tensors)):
+            self._output_shape[tensors[i]] = tensor_shapes[i]
 
     def convert_ops(self, sess):
         for tf_op in self._tf_graph.get_operations():
@@ -368,7 +374,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
                        "Mace does not support tensorflow op type %s yet"
                        % tf_op.type)
             self._op_converters[tf_op.type](tf_op)
-        self.update_output_shapes(sess)
+
         self.convert_tensors()
 
     def convert_tensors(self):
@@ -402,18 +408,17 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     # this function tries to infer tensor shape, but some dimension shape
     # may be undefined due to variance of input length
-    def infer_tensor_shape(self, output_shape, tensor):
-        inferred_tensor_shape = tensor.shape.as_list()
-        inferred_success = True
-        for _, dim in enumerate(inferred_tensor_shape):
-            if dim is None:
-                inferred_success = False
-                break
-        if inferred_success:
-            output_shape.dims.extend(inferred_tensor_shape)
+    def infer_tensor_shape(self, tensor, output_shape=None):
+        shape = None
+        if tensor.name in self._output_shape:
+            shape = self._output_shape[tensor.name]
         else:
-            self._output_shape_list.append(output_shape)
-            self._output_shape_op_list.append(tf.shape(tensor))
+            shape = tensor.shape.as_list()
+
+        if output_shape:
+            output_shape.dims.extend(shape)
+
+        return shape
 
     def convert_nop(self, tf_op):
         pass
@@ -426,7 +431,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.output.extend([tf_output.name for tf_output in tf_op.outputs])
         for tf_output in tf_op.outputs:
             output_shape = op.output_shape.add()
-            self.infer_tensor_shape(output_shape, tf_output)
+            self.infer_tensor_shape(tf_output, output_shape)
 
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
@@ -509,10 +514,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         def check_is_scalar(tf_op):
             if len(tf_op.inputs) == 1:
-                return len(tf_op.inputs[0].shape) == 0
+                return len(self.infer_tensor_shape(tf_op.inputs[0])) == 0
             elif len(tf_op.inputs) == 2:
-                return len(tf_op.inputs[0].shape) == 0 and \
-                       len(tf_op.inputs[1].shape) == 0
+                return len(self.infer_tensor_shape(tf_op.inputs[0])) == 0 and \
+                       len(self.infer_tensor_shape(tf_op.inputs[1])) == 0
 
         if check_is_scalar(tf_op):
             op.type = MaceOp.ScalarMath.name
@@ -539,9 +544,9 @@ class TensorflowConverter(base_converter.ConverterInterface):
                         EltwiseType.SUM, EltwiseType.PROD,
                         EltwiseType.MAX, EltwiseType.MIN]
 
-                if len(tf_op.inputs) > 1 and \
-                        len(tf_op.inputs[1].shape) == 0 and \
-                        tf_op.inputs[1].op.type == TFOpType.Const.name:
+                if (len(tf_op.inputs) > 1 and
+                        len(self.infer_tensor_shape(tf_op.inputs[1])) == 0 and
+                        tf_op.inputs[1].op.type == TFOpType.Const.name):
                     scalar = tf_op.inputs[1].eval().astype(np.float32)
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
@@ -553,7 +558,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
                     value_index_arg.i = 1
                     self._skip_tensor.add(tf_op.inputs[1].name)
                     del op.input[1]
-                elif len(tf_op.inputs[0].shape) == 0 and \
+                elif len(self.infer_tensor_shape(tf_op.inputs[0])) == 0 and \
                         tf_op.inputs[0].op.type == TFOpType.Const.name and \
                         is_commutative(type_arg.i):
                     scalar = tf_op.inputs[0].eval().astype(np.float32)
@@ -1034,3 +1039,23 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         self._skip_tensor.add(tf_op.inputs[1].name)
         self._skip_tensor.add(tf_op.inputs[2].name)
+
+    def convert_cumsum(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Cumsum.name
+
+        axis = tf_op.inputs[1].eval().astype(np.int32)
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = axis
+        del op.input[1]
+
+        exclusive = tf_op.get_attr('exclusive')
+        exclusive_arg = op.arg.add()
+        exclusive_arg.name = MaceKeyword.mace_exclusive_str
+        exclusive_arg.i = int(exclusive)
+
+        reverse = tf_op.get_attr('reverse')
+        reverse_arg = op.arg.add()
+        reverse_arg.name = MaceKeyword.mace_reverse_str
+        reverse_arg.i = int(reverse)

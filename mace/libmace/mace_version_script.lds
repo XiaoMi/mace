@@ -7,19 +7,20 @@ mace {
     *CreateMaceEngineFromProto*;
     *GetBigLittleCoreIDs*;
     *MaceVersion*;
+    *GetCapability*;
 
     # api for static library of models
-    *mace*logging*LogMessage*;
+    *mace*port**;
     *mace*MaceStatus*;
     *mace*NetDef*;
     *mace*MemoryType*;
     *mace*DataType*;
-    *mace*InputInfo*;
-    *mace*OutputInfo*;
+    *mace*InputOutputInfo*;
     *mace*OutputShape*;
     *mace*OperatorDef*;
     *mace*ConstTensor*;
     *mace*Argument*;
+    *mace*Split*;
     *mace*MemoryBlock*;
     *google*protobuf*;
 

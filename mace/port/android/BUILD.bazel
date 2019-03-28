@@ -1,0 +1,22 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load("//mace:mace.bzl", "if_android")
+
+cc_library(
+    name = "port_android",
+    srcs = if_android(glob([
+        "*.cc",
+    ])),
+    hdrs = if_android(glob([
+        "*.h",
+    ])),
+    deps = [
+        "//mace/port:port_base",
+        "//mace/port/posix:port_posix",
+    ],
+    alwayslink = 1,
+)

@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,45 +21,19 @@
 #include <vector>
 #include <utility>
 
-#include "mace/public/mace.h"
-#include "mace/utils/env_time.h"
+#include "mace/port/env.h"
+#include "mace/port/logger.h"
+#include "mace/utils/macros.h"
 #include "mace/utils/string_util.h"
-#include "mace/utils/utils.h"
 
-#undef ERROR
 
 namespace mace {
-
-// Log severity level constants.
-const int INFO = 0;
-const int WARNING = 1;
-const int ERROR = 2;
-const int FATAL = 3;
-
-namespace logging {
-
-class LogMessage : public std::ostringstream {
- public:
-  LogMessage(const char *fname, int line, int severity);
-  ~LogMessage();
-
-  static int MinVLogLevel();
-
- private:
-  void GenerateLogMessage();
-  void DealWithFatal();
-
-  const char *fname_;
-  int line_;
-  int severity_;
-};
+namespace logging_internal {
 
 #define LOG(severity) \
-  ::mace::logging::LogMessage(__FILE__, __LINE__, mace::severity)
+  ::mace::port::Logger(__FILE__, __LINE__, mace::severity)
 
-// Set MACE_CPP_MIN_VLOG_LEVEL environment to update minimum log level of VLOG.
-// Only when vlog_level <= MinVLogLevel(), it will produce output.
-#define VLOG_IS_ON(vll) ((vll) <= ::mace::logging::LogMessage::MinVLogLevel())
+#define VLOG_IS_ON(vll) (mace::ShouldGenerateVLogMessage(vll))
 #define VLOG(vll) if (VLOG_IS_ON(vll)) LOG(INFO)
 
 // MACE_CHECK/MACE_ASSERT dies with a fatal error if condition is not true.
@@ -85,16 +59,26 @@ class LogMessage : public std::ostringstream {
 template <typename T>
 T &&CheckNotNull(const char *file, int line, const char *exprtext, T &&t) {
   if (t == nullptr) {
-    ::mace::logging::LogMessage(file, line, FATAL) << std::string(exprtext);
+    ::mace::port::Logger(file, line, FATAL) << std::string(exprtext);
   }
   return std::forward<T>(t);
 }
 
 #define MACE_CHECK_NOTNULL(val) \
-  ::mace::logging::CheckNotNull(__FILE__, __LINE__, \
-                                "'" #val "' Must not be NULL", (val))
+  ::mace::logging_internal::CheckNotNull(__FILE__, __LINE__, \
+                                         "'" #val "' Must not be NULL", (val))
 
 #define MACE_NOT_IMPLEMENTED MACE_CHECK(false, "not implemented")
+
+#define MACE_RETURN_IF_ERROR(stmt)                           \
+  {                                                          \
+    MaceStatus status = (stmt);                              \
+    if (status != MaceStatus::MACE_SUCCESS) {                \
+      VLOG(0) << #stmt << " failed with error: "             \
+              << status.information();                       \
+      return status;                                         \
+    }                                                        \
+  }
 
 class LatencyLogger {
  public:
@@ -121,11 +105,21 @@ class LatencyLogger {
   MACE_DISABLE_COPY_AND_ASSIGN(LatencyLogger);
 };
 
-#define MACE_LATENCY_LOGGER(vlog_level, ...)              \
-  mace::logging::LatencyLogger latency_logger_##__line__( \
+#define MACE_LATENCY_LOGGER(vlog_level, ...)                                  \
+  mace::logging_internal::LatencyLogger latency_logger_##__line__(            \
       vlog_level, VLOG_IS_ON(vlog_level) ? mace::MakeString(__VA_ARGS__) : "")
 
-}  // namespace logging
+
+#ifdef MACE_ENABLE_MALLOC_LOGGING
+#define MACE_MEMORY_LOGGING_GUARD()                                      \
+  auto malloc_logger_##__line__ = port::Env::Default()->NewMallocLogger( \
+      ::mace::port::Logger(__FILE__, __LINE__, mace::INFO), \
+      std::string(__FILE__) + ":" + std::string(__func__));
+#else
+#define MACE_MEMORY_LOGGING_GUARD()
+#endif
+
+}  // namespace logging_internal
 }  // namespace mace
 
 #endif  // MACE_UTILS_LOGGING_H_

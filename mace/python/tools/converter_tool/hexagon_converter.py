@@ -20,6 +20,7 @@ from operator import mul
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
+from mace.python.tools.converter_tool.base_converter import DeviceType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
@@ -29,11 +30,15 @@ from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.convert_util import mace_check
 from mace.python.tools import graph_util
 
+from six.moves import reduce
+
 
 HexagonSupportedOps = [
     'BatchToSpaceND_8',
     'DepthwiseSupernode_8x8p32to8',
     'DequantizeOUTPUT_8tof',
+    'INPUT',
+    'OUTPUT',
     'QuantizedAdd_8p8to8',
     'QuantizedAvgPool_8',
     'QuantizedConcat_8',
@@ -126,9 +131,9 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         self.add_input_output_node()
         if not self._option.check_nodes:
-            output_name = self._option.output_nodes.values()[0].name
+            output_name = list(self._option.output_nodes.values())[0].name
         else:
-            output_name = self._option.check_nodes.values()[0].name
+            output_name = list(self._option.check_nodes.values())[0].name
         output_name = normalize_name(output_name)
         self._model = graph_util.sort_mace_graph(self._model, output_name)
 
@@ -330,7 +335,7 @@ class HexagonConverter(base_converter.ConverterInterface):
             else:
                 op.type = self._hexagon_ops.map_nn_op(op.type)
 
-    def add_min_max(self, name, val):
+    def add_const_node(self, name, val):
         if name not in self._consts:
             tensor = self._model.tensors.add()
             self._consts[name] = tensor
@@ -362,14 +367,14 @@ class HexagonConverter(base_converter.ConverterInterface):
                 min_tensor_name = op + ':1'
             else:
                 min_tensor_name = op + '_min:0'
-                self.add_min_max(min_tensor_name, minval)
+                self.add_const_node(min_tensor_name, minval)
             this_op.input.extend([min_tensor_name])
         if add_max:
             if is_activation and diff_port:
                 max_tensor_name = op + ':2'
             else:
                 max_tensor_name = op + '_max:0'
-                self.add_min_max(max_tensor_name, maxval)
+                self.add_const_node(max_tensor_name, maxval)
             this_op.input.extend([max_tensor_name])
 
     def add_shape_const_node(self, op, values, name):
@@ -380,27 +385,48 @@ class HexagonConverter(base_converter.ConverterInterface):
         tensor.dims.extend(values)
         return tensor.name
 
-    def add_input_output_node(self):
-        for op in self._model.op:
-            if op.name.startswith(MaceKeyword.mace_input_node_name):
-                del op.input[0]
-                break
+    def add_constant_min_max_for_first_op(self, op):
+        minval = self._quantize_activation_info[op.input[0]].minval
+        maxval = self._quantize_activation_info[op.input[0]].maxval
+        input_op, _ = get_op_and_port_from_tensor(op.input[0])
+        input_min = input_op + '_min:0'
+        input_max = input_op + '_max:0'
+        self.add_const_node(input_min, minval)
+        self.add_const_node(input_max, maxval)
+        for i in range(len(op.input)):
+            if op.input[i] == input_op + ':1':
+                op.input[i] = input_min
+            elif op.input[i] == input_op + ':2':
+                op.input[i] = input_max
 
-        output_node = None
-        if not self._option.check_nodes:
-            output_name = self._option.output_nodes.values()[0].name
-        else:
-            output_name = self._option.check_nodes.values()[0].name
-        output_name = normalize_name(output_name)
-        for op in self._model.op:
-            if op.name == output_name:
-                output_node = op
-                break
-        mace_check(output_node is not None,
-                   "mace_output_node_* not found.")
-        del output_node.output_shape[:]
-        del output_node.output_type[:]
-        del output_node.out_max_byte_size[:]
+    def add_input_output_node(self):
+        mace_check(
+            self._model.op[0].type == HexagonOp.QuantizeINPUT_f_to_8.name,
+            "Not started with Quantize op.")
+        quantize_input_op = self._model.op[0]
+        del quantize_input_op.input[:]
+
+        mace_check(
+            self._model.op[-1].type == HexagonOp.DequantizeOUTPUT_8tof.name,
+            "Not ended with Dequantize op.")
+        dequantize_output_op = self._model.op[-1]
+        del dequantize_output_op.output_shape[:]
+        del dequantize_output_op.output_type[:]
+        del dequantize_output_op.out_max_byte_size[:]
+
+        if self._option.device == DeviceType.HTA.value:
+            # replace QuantizeINPUT_f_to_8 with INPUT
+            quantize_input_op.type = HexagonOp.INPUT.name
+            del quantize_input_op.output_shape[1:]
+            del quantize_input_op.output_type[1:]
+            del quantize_input_op.out_max_byte_size[1:]
+
+            # replace first op's input min max with constant
+            self.add_constant_min_max_for_first_op(self._model.op[1])
+
+            # replace DequantizeOUTPUT_8tof with OUTPUT
+            dequantize_output_op.type = HexagonOp.OUTPUT.name
+            del dequantize_output_op.input[1:]
 
     def add_node_id(self):
         node_id_counter = 0

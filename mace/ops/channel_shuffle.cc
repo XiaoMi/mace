@@ -18,6 +18,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/channel_shuffle.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -83,7 +84,7 @@ class ChannelShuffleOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     const int groups = Operation::GetOptionalArg<int>("group", 1);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ChannelShuffleKernel<T>(groups));
+      kernel_ = make_unique<opencl::image::ChannelShuffleKernel<T>>(groups);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

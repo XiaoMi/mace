@@ -76,6 +76,7 @@ void Conv3x3(const std::string &input_name,
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("has_data_format", 1)
       .Finalize(&operator_def);
 
   OutputShape *shape = operator_def.add_output_shape();
@@ -98,6 +99,7 @@ void Relu(const std::string &input_name,
       .AddStringArg("activation", "RELU")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .AddIntArg("device", static_cast<int>(device_type))
+      .AddIntArg("has_data_format", 1)
       .Finalize(&operator_def);
 
   net_def->add_op()->CopyFrom(operator_def);

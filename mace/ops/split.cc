@@ -19,6 +19,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/split.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -35,9 +36,9 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
         checked_(false) {}
 
   void Validate() {
-    auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-        "data_format", DataFormat::DF_NONE));
-    if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+    auto has_df = Operation::GetOptionalArg<int>(
+        "has_data_format", 0);
+    if (has_df && this->Input(0)->dim_size() == 4) {
       if (axis_ == 3) axis_ = 1;
       else if (axis_ == 2) axis_ = 3;
       else if (axis_ == 1) axis_ = 2;
@@ -108,7 +109,7 @@ class SplitOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     int32_t axis = Operation::GetOptionalArg<int>("axis", 3);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::SplitKernel<T>(axis));
+      kernel_ = make_unique<opencl::image::SplitKernel<T>>(axis);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

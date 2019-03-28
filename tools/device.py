@@ -154,7 +154,9 @@ class DeviceWrapper:
                    input_nodes,
                    output_nodes,
                    input_shapes,
+                   input_data_formats,
                    output_shapes,
+                   output_data_formats,
                    mace_model_dir,
                    model_tag,
                    device_type,
@@ -206,6 +208,7 @@ class DeviceWrapper:
             p = subprocess.Popen(
                 [
                     "env",
+                    "ASAN_OPTIONS=detect_leaks=1",
                     "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
                     "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                     "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
@@ -216,6 +219,8 @@ class DeviceWrapper:
                     "--output_node=%s" % ",".join(output_nodes),
                     "--input_shape=%s" % ":".join(input_shapes),
                     "--output_shape=%s" % ":".join(output_shapes),
+                    "--input_data_format=%s" % ",".join(input_data_formats),
+                    "--output_data_format=%s" % ",".join(output_data_formats),
                     "--input_file=%s/%s" % (model_output_dir,
                                             input_file_name),
                     "--output_file=%s/%s" % (model_output_dir,
@@ -307,6 +312,8 @@ class DeviceWrapper:
                 "--output_node=%s" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
+                "--input_data_format=%s" % ",".join(input_data_formats),
+                "--output_data_format=%s" % ",".join(output_data_formats),
                 "--input_file=%s/%s" % (self.data_dir, input_file_name),
                 "--output_file=%s/%s" % (self.data_dir, output_file_name),
                 "--input_dir=%s" % input_dir,
@@ -394,6 +401,8 @@ class DeviceWrapper:
             output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
             input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
             output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+            input_data_formats=subgraphs[0][YAMLKeyword.input_data_formats],
+            output_data_formats=subgraphs[0][YAMLKeyword.output_data_formats],
             mace_model_dir=mace_model_dir,
             model_tag=model_name,
             device_type=DeviceType.GPU,
@@ -587,6 +596,10 @@ class DeviceWrapper:
                             YAMLKeyword.output_tensors],
                         input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
                         output_shapes=output_config[YAMLKeyword.output_shapes],
+                        input_data_formats=subgraphs[0][
+                            YAMLKeyword.input_data_formats],
+                        output_data_formats=subgraphs[0][
+                            YAMLKeyword.output_data_formats],
                         mace_model_dir=mace_model_dir,
                         model_tag=model_name,
                         device_type=device_type,
@@ -652,6 +665,10 @@ class DeviceWrapper:
                                 YAMLKeyword.input_shapes],
                             output_shapes=output_config[
                                 YAMLKeyword.output_shapes],
+                            input_data_formats=subgraphs[0][
+                                YAMLKeyword.input_data_formats],
+                            output_data_formats=subgraphs[0][
+                                YAMLKeyword.output_data_formats],
                             model_output_dir=model_output_dir,
                             input_data_types=subgraphs[0][
                                 YAMLKeyword.input_data_types],
@@ -660,6 +677,8 @@ class DeviceWrapper:
                                 YAMLKeyword.validation_threshold][
                                 validate_type],
                             backend=subgraphs[0][YAMLKeyword.backend],
+                            validation_outputs_data=subgraphs[0][
+                                YAMLKeyword.validation_outputs_data],
                             log_file=log_file,
                         )
                     if flags.report and flags.round > 0:
@@ -748,6 +767,8 @@ class DeviceWrapper:
                         output_nodes,
                         input_shapes,
                         output_shapes,
+                        input_data_formats,
+                        output_data_formats,
                         max_num_runs,
                         max_seconds,
                         model_tag,
@@ -788,6 +809,8 @@ class DeviceWrapper:
                     '--output_node=%s' % ','.join(output_nodes),
                     '--input_shape=%s' % ':'.join(input_shapes),
                     '--output_shape=%s' % ':'.join(output_shapes),
+                    "--input_data_format=%s" % ",".join(input_data_formats),
+                    "--output_data_format=%s" % ",".join(output_data_formats),
                     '--input_file=%s/%s' % (model_output_dir, input_file_name),
                     "--model_data_file=%s" % model_data_file,
                     '--max_num_runs=%d' % max_num_runs,
@@ -843,6 +866,8 @@ class DeviceWrapper:
                 '--output_node=%s' % ','.join(output_nodes),
                 '--input_shape=%s' % ':'.join(input_shapes),
                 '--output_shape=%s' % ':'.join(output_shapes),
+                "--input_data_format=%s" % ",".join(input_data_formats),
+                "--output_data_format=%s" % ",".join(output_data_formats),
                 '--input_file=%s/%s' % (self.data_dir, input_file_name),
                 "--model_data_file=%s" % model_data_file,
                 '--max_num_runs=%d' % max_num_runs,
@@ -959,6 +984,10 @@ class DeviceWrapper:
                     output_nodes=output_nodes,
                     input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
                     output_shapes=output_shapes,
+                    input_data_formats=subgraphs[0][
+                        YAMLKeyword.input_data_formats],
+                    output_data_formats=subgraphs[0][
+                        YAMLKeyword.output_data_formats],
                     max_num_runs=flags.max_num_runs,
                     max_seconds=flags.max_seconds,
                     mace_model_dir=mace_model_dir,
@@ -972,8 +1001,7 @@ class DeviceWrapper:
                     opencl_binary_file=opencl_output_bin_path,
                     opencl_parameter_file=opencl_parameter_path,
                     libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
-                    link_dynamic=link_dynamic
-                )
+                    link_dynamic=link_dynamic)
 
     def run(self,
             abi,

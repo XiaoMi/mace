@@ -23,6 +23,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bicubic.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -197,9 +198,8 @@ class ResizeBicubicOp<DeviceType::GPU, T> : public Operation {
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ResizeBicubicKernel<T>(align_corners,
-                                                              size[0],
-                                                              size[1]));
+      kernel_ = make_unique<opencl::image::ResizeBicubicKernel<T>>(
+          align_corners, size[0], size[1]);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

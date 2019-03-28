@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <sys/mman.h>
@@ -26,7 +27,11 @@
 #include <numeric>
 
 #include "gflags/gflags.h"
+#include "mace/port/env.h"
+#include "mace/port/file_system.h"
 #include "mace/public/mace.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/string_util.h"
 // if convert model to code.
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -44,97 +49,6 @@ size_t OpenCLParameterSize();
 
 namespace mace {
 namespace examples {
-
-namespace str_util {
-
-std::vector<std::string> Split(const std::string &str, char delims) {
-  std::vector<std::string> result;
-  std::string tmp = str;
-  while (!tmp.empty()) {
-    size_t next_offset = tmp.find(delims);
-    result.push_back(tmp.substr(0, next_offset));
-    if (next_offset == std::string::npos) {
-      break;
-    } else {
-      tmp = tmp.substr(next_offset + 1);
-    }
-  }
-  return result;
-}
-
-}  // namespace str_util
-
-namespace {
-bool ReadBinaryFile(std::vector<unsigned char> *data,
-                           const std::string &filename) {
-  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
-  if (!ifs.is_open()) {
-    return false;
-  }
-  ifs.seekg(0, ifs.end);
-  size_t length = ifs.tellg();
-  ifs.seekg(0, ifs.beg);
-
-  data->reserve(length);
-  data->insert(data->begin(), std::istreambuf_iterator<char>(ifs),
-               std::istreambuf_iterator<char>());
-  if (ifs.fail()) {
-    return false;
-  }
-  ifs.close();
-
-  return true;
-}
-
-bool MemoryMap(const std::string &file,
-               const unsigned char **data,
-               size_t *size) {
-  bool ret = true;
-  int fd = open(file.c_str(), O_RDONLY);
-  if (fd < 0) {
-    std::cerr << "Failed to open file " << file
-              << ", error code: " << strerror(errno) << std::endl;
-    ret = false;
-  }
-  struct stat st;
-  fstat(fd, &st);
-  *size = static_cast<size_t>(st.st_size);
-
-  *data = static_cast<const unsigned char *>(
-      mmap(nullptr, *size, PROT_READ, MAP_PRIVATE, fd, 0));
-  if (*data == static_cast<const unsigned char *>(MAP_FAILED)) {
-    std::cerr << "Failed to map file " << file
-              << ", error code: " << strerror(errno) << std::endl;
-    ret = false;
-  }
-
-  if (close(fd) < 0) {
-    std::cerr << "Failed to close file " << file
-              << ", error code: " << strerror(errno) << std::endl;
-    ret = false;
-  }
-
-  return ret;
-}
-
-bool MemoryUnMap(const unsigned char *data,
-                 const size_t &size) {
-  bool ret = true;
-  if (data == nullptr || size == 0) {
-    std::cerr << "data is null or size is 0" << std::endl;
-    ret = false;
-  }
-
-  if (munmap(const_cast<unsigned char *>(data), size) < 0) {
-    std::cerr << "Failed to unmap file, error code: "
-              << strerror(errno) << std::endl;
-    ret = false;
-  }
-
-  return ret;
-}
-
-}  // namespace
 
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
@@ -165,11 +79,24 @@ DeviceType ParseDeviceType(const std::string &device_str) {
     return DeviceType::GPU;
   } else if (device_str.compare("HEXAGON") == 0) {
     return DeviceType::HEXAGON;
+  } else if (device_str.compare("HTA") == 0) {
+    return DeviceType::HTA;
   } else {
     return DeviceType::CPU;
   }
 }
 
+DataFormat ParseDataFormat(const std::string &data_format_str) {
+  if (data_format_str == "NHWC") {
+    return DataFormat::NHWC;
+  } else if (data_format_str == "NCHW") {
+    return DataFormat::NCHW;
+  } else if (data_format_str == "OIHW") {
+    return DataFormat::OIHW;
+  } else {
+    return DataFormat::DF_NONE;
+  }
+}
 
 DEFINE_string(model_name,
               "",
@@ -186,6 +113,12 @@ DEFINE_string(output_node,
 DEFINE_string(output_shape,
               "1,224,224,2:1,1,1,10",
               "output shapes, separated by colon and comma");
+DEFINE_string(input_data_format,
+              "NHWC",
+              "input data formats, NONE|NHWC|NCHW");
+DEFINE_string(output_data_format,
+              "NHWC",
+              "output data formats, NONE|NHWC|NCHW");
 DEFINE_string(input_file,
               "",
               "input file name | input file prefix for multiple inputs.");
@@ -222,8 +155,10 @@ DEFINE_int32(cpu_affinity_policy, 1,
 
 bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
+              const std::vector<DataFormat> &input_data_formats,
               const std::vector<std::string> &output_names,
-              const std::vector<std::vector<int64_t>> &output_shapes) {
+              const std::vector<std::vector<int64_t>> &output_shapes,
+              const std::vector<DataFormat> &output_data_formats) {
   // load model
   DeviceType device_type = ParseDeviceType(FLAGS_device);
   // configuration
@@ -266,16 +201,26 @@ bool RunModel(const std::vector<std::string> &input_names,
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
 
-  std::vector<unsigned char> model_graph_data;
-  if (!ReadBinaryFile(&model_graph_data, FLAGS_model_file)) {
-    std::cerr << "Failed to read file: " << FLAGS_model_file << std::endl;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data;
+  if (FLAGS_model_file != "") {
+    auto fs = GetFileSystem();
+    auto status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
+        &model_graph_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
+    }
   }
-  const unsigned char *model_weights_data = nullptr;
-  size_t model_weights_data_size = 0;
-  if (!MemoryMap(FLAGS_model_data_file,
-                 &model_weights_data,
-                 &model_weights_data_size)) {
-    std::cerr << "Failed to read file: " << FLAGS_model_data_file << std::endl;
+
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data;
+  if (FLAGS_model_data_file != "") {
+    auto fs = GetFileSystem();
+    auto status = fs->NewReadOnlyMemoryRegionFromFile(
+        FLAGS_model_data_file.c_str(),
+        &model_weights_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
+    }
+    MACE_CHECK(model_weights_data->length() > 0);
   }
 
   // Only choose one of the two type based on the `model_graph_format`
@@ -283,24 +228,24 @@ bool RunModel(const std::vector<std::string> &input_names,
 #ifdef MODEL_GRAPH_FORMAT_CODE
   // if model_data_format == code, just pass an empty string("")
   // to model_data_file parameter.
-  create_engine_status =
-      CreateMaceEngineFromCode(FLAGS_model_name,
-                               model_weights_data,
-                               model_weights_data_size,
-                               input_names,
-                               output_names,
-                               config,
-                               &engine);
+  create_engine_status = CreateMaceEngineFromCode(
+      FLAGS_model_name,
+      reinterpret_cast<const unsigned char *>(model_weights_data->data()),
+      model_weights_data->length(),
+      input_names,
+      output_names,
+      config,
+      &engine);
 #else
-  create_engine_status =
-      CreateMaceEngineFromProto(model_graph_data.data(),
-                                model_graph_data.size(),
-                                model_weights_data,
-                                model_weights_data_size,
-                                input_names,
-                                output_names,
-                                config,
-                                &engine);
+  create_engine_status = CreateMaceEngineFromProto(
+      reinterpret_cast<const unsigned char *>(model_graph_data->data()),
+      model_graph_data->length(),
+      reinterpret_cast<const unsigned char *>(model_weights_data->data()),
+      model_weights_data->length(),
+      input_names,
+      output_names,
+      config,
+      &engine);
 #endif
 
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {
@@ -324,7 +269,8 @@ bool RunModel(const std::vector<std::string> &input_names,
     inputs_size[input_names[i]] = input_size;
     auto buffer_in = std::shared_ptr<float>(new float[input_size],
                                             std::default_delete<float[]>());
-    inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in);
+    inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in,
+        input_data_formats[i]);
   }
 
   for (size_t i = 0; i < output_count; ++i) {
@@ -333,7 +279,8 @@ bool RunModel(const std::vector<std::string> &input_names,
                         std::multiplies<int64_t>());
     auto buffer_out = std::shared_ptr<float>(new float[output_size],
                                              std::default_delete<float[]>());
-    outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out);
+    outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out,
+        output_data_formats[i]);
   }
 
   if (!FLAGS_input_dir.empty()) {
@@ -430,10 +377,6 @@ bool RunModel(const std::vector<std::string> &input_names,
     }
   }
 
-  if (model_weights_data != nullptr) {
-    MemoryUnMap(model_weights_data, model_weights_data_size);
-  }
-
   std::cout << "Finished" << std::endl;
 
   return true;
@@ -466,13 +409,10 @@ int Main(int argc, char **argv) {
             << FLAGS_cpu_affinity_policy
             << std::endl;
 
-  std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
-  std::vector<std::string> output_names =
-      str_util::Split(FLAGS_output_node, ',');
-  std::vector<std::string> input_shapes =
-      str_util::Split(FLAGS_input_shape, ':');
-  std::vector<std::string> output_shapes =
-      str_util::Split(FLAGS_output_shape, ':');
+  std::vector<std::string> input_names = Split(FLAGS_input_node, ',');
+  std::vector<std::string> output_names = Split(FLAGS_output_node, ',');
+  std::vector<std::string> input_shapes = Split(FLAGS_input_shape, ':');
+  std::vector<std::string> output_shapes = Split(FLAGS_output_shape, ':');
 
   const size_t input_count = input_shapes.size();
   const size_t output_count = output_shapes.size();
@@ -485,11 +425,25 @@ int Main(int argc, char **argv) {
     ParseShape(output_shapes[i], &output_shape_vec[i]);
   }
 
+  std::vector<std::string> raw_input_data_formats =
+    Split(FLAGS_input_data_format, ',');
+  std::vector<std::string> raw_output_data_formats =
+    Split(FLAGS_output_data_format, ',');
+  std::vector<DataFormat> input_data_formats(input_count);
+  std::vector<DataFormat> output_data_formats(output_count);
+  for (size_t i = 0; i < input_count; ++i) {
+    input_data_formats[i] = ParseDataFormat(raw_input_data_formats[i]);
+  }
+  for (size_t i = 0; i < output_count; ++i) {
+    output_data_formats[i] = ParseDataFormat(raw_output_data_formats[i]);
+  }
+
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     std::cout << "restart round " << i << std::endl;
     ret =
-        RunModel(input_names, input_shape_vec, output_names, output_shape_vec);
+        RunModel(input_names, input_shape_vec, input_data_formats,
+                 output_names, output_shape_vec, output_data_formats);
   }
   if (ret) {
     return 0;

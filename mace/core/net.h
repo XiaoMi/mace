@@ -59,14 +59,14 @@ class SerialNet : public NetBase {
       const OpRegistryBase *op_registry,
       OpConstructContext *construct_context,
       std::shared_ptr<OperatorDef> op_def,
-      DataFormat input_format,
+      bool has_data_format,
       bool is_quantize_model = false);
 
  protected:
   Workspace *ws_;
   Device *target_device_;
   // CPU is base device.
-  Device *cpu_device_;
+  std::unique_ptr<Device> cpu_device_;
   std::vector<std::unique_ptr<Operation> > operators_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(SerialNet);

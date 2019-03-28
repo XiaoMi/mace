@@ -21,7 +21,6 @@
 #include "public/gemmlowp.h"
 #include "mace/benchmark/statistics.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/ops/sgemm.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace gemmlowp {
@@ -93,32 +92,6 @@ namespace test {
 // Test the speed of different access order of a NHWC buffer
 
 namespace {
-
-// Matmul with (m, k) x (k, n)
-void MatmulBenchmark_Mace_SGemm(int iters, int m, int k, int n) {
-  mace::testing::StopTiming();
-  std::vector<float> lhs(m * k);
-  std::vector<float> rhs(k * n);
-  std::vector<float> result(m * n);
-
-  ops::SGemmMatrixMap<const float>
-      matrix_lhs(1, m, k, SGemmRowMajor, lhs.data(),
-                 true);
-  ops::SGemmMatrixMap<const float>
-      matrix_rhs(1, k, n, SGemmRowMajor, rhs.data(),
-                 true);
-  ops::SGemmMatrixMap<float>
-      matrix_result(1, m, n, SGemmRowMajor, result.data());
-
-  ops::SGemm sgemm;
-
-  sgemm(matrix_lhs, matrix_rhs, &matrix_result);
-
-  mace::testing::StartTiming();
-  while (iters--) {
-    sgemm(matrix_lhs, matrix_rhs, &matrix_result);
-  }
-}
 
 void MatmulBenchmark_Eigen(int iters, int m, int k, int n) {
   mace::testing::StopTiming();
@@ -223,7 +196,6 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
   MACE_BENCHMARK(MACE_BM_MATMUL_##M##_##K##_##N##_##FUNC)
 
 #define MACE_BM_MATMUL(M, K, N)                          \
-  MACE_BM_MATMUL_FUNC(M, K, N, Mace_SGemm, float);       \
   MACE_BM_MATMUL_FUNC(M, K, N, Eigen, float);            \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_uint8, uint8_t); \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_int32, uint8_t);

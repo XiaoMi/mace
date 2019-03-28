@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_NEON
+#ifdef MACE_ENABLE_QUANTIZE
+#include "mace/ops/arm/q8/eltwise.h"
+#endif  // MACE_ENABLE_QUANTIZE
+#endif  // MACE_ENABLE_NEON
+
 #include "mace/ops/eltwise.h"
 
 #include <algorithm>
@@ -24,6 +30,7 @@
 #include "mace/core/future.h"
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -890,8 +897,8 @@ class EltwiseOp : public Operation {
         scalar_input_(Operation::GetOptionalArg<float>("scalar_input", 1.0)),
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
             "scalar_input_index", 1)),
-        data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", 0))) {}
+        has_data_format_(Operation::GetOptionalArg<int>(
+            "has_data_format", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -920,7 +927,9 @@ class EltwiseOp : public Operation {
                        const Tensor *input1,
                        Tensor *output) {
     bool swapped = false;
-    if (input0->size() < input1->size()) {
+    if (input0->dim_size() < input1->dim_size()
+        || (input0->dim_size() == input1->dim_size()
+            && input0->size() < input1->size())) {
       std::swap(input0, input1);
       swapped = true;
     }
@@ -931,7 +940,7 @@ class EltwiseOp : public Operation {
     // check if we can broadcast tensor
     uint32_t rank_diff =
         static_cast<uint32_t>(input0->dim_size() - input1->dim_size());
-    if (data_format_ == NCHW) {
+    if (has_data_format_) {
       MACE_CHECK(
           (input0->dim_size() == 4) &&
               ((input1->dim_size() == 0) ||
@@ -956,7 +965,7 @@ class EltwiseOp : public Operation {
     const T *input0_ptr = input0->data<T>();
     const T *input1_ptr = input1->data<T>();
 
-    if (data_format_ == NCHW && input1->dim_size() > 0) {
+    if (has_data_format_ && input1->dim_size() > 0) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
       Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
@@ -1018,7 +1027,7 @@ class EltwiseOp : public Operation {
   std::vector<float> coeff_;
   float scalar_input_;
   int32_t scalar_input_index_;
-  DataFormat data_format_;
+  int has_data_format_;
   Tensor scalar_tensor_;
 };
 
@@ -1033,21 +1042,30 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
         coeff_(Operation::GetRepeatedArgs<float>("coeff")),
         scalar_input_(Operation::GetOptionalArg<float>("scalar_input", 1.0)),
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
-            "scalar_input_index", 1)),
-        data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", 0))) {}
+            "scalar_input_index", 1))
+#ifdef MACE_ENABLE_NEON
+        , eltwise_(static_cast<ops::EltwiseType>(Operation::GetOptionalArg<int>(
+            "type", static_cast<int>(ops::EltwiseType::NONE))))
+#endif
+  {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input0 = this->Input(0);
-    const Tensor *input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
+    MACE_CHECK(this->InputSize() == 2,
+               "Quantized Elementwise don't support broadcast now.");
+    const Tensor *input1 = this->Input(1);
     Tensor *output = this->Output(0);
-    MACE_CHECK(type_ == SUM, "Only support Elementwise SUM now. ");
+    MACE_CHECK(type_ == SUM || type_ == SUB,
+               "Quantized Elementwise only support SUM and SUB now.");
     MACE_CHECK(input0->size() == input1->size(),
                "input0 and input1 must have the same shape.");
     MACE_CHECK(output->scale() != 0);
     MACE_RETURN_IF_ERROR(output->Resize(input0->shape()));
 
+#ifdef MACE_ENABLE_NEON
+    eltwise_.Compute(context, input0, input1, output);
+#else
     constexpr int left_shift = 20;
     const double doubled_scale = 2 * std::max(input0->scale(), input1->scale());
     const double adjusted_input0_scale = input0->scale() / doubled_scale;
@@ -1078,57 +1096,8 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
     auto input0_ptr = input0->data<uint8_t>();
     auto input1_ptr = input1->data<uint8_t>();
     auto output_ptr = output->mutable_data<uint8_t>();
-
-    index_t handled_output_size = 0;
-#ifdef MACE_ENABLE_NEON
-    #pragma omp parallel for schedule(runtime)
-    for (index_t i = handled_output_size; i <= output->size() - 8; i += 8) {
-      const auto input0_val = vld1_u8(input0_ptr + i);
-      const auto input1_val = vld1_u8(input1_ptr + i);
-      const auto input0_val_s16 =
-          vreinterpretq_s16_u16(vmovl_u8(input0_val));
-      const auto input1_val_s16 =
-          vreinterpretq_s16_u16(vmovl_u8(input1_val));
-      const auto offset_input0 =
-          vaddq_s16(input0_val_s16, vdupq_n_s16(-input0->zero_point()));
-      const auto offset_input1 =
-          vaddq_s16(input1_val_s16, vdupq_n_s16(-input1->zero_point()));
-      auto input0_low_s32 = vmovl_s16(vget_low_s16(offset_input0));
-      auto input0_high_s32 = vmovl_s16(vget_high_s16(offset_input0));
-      auto input1_low_s32 = vmovl_s16(vget_low_s16(offset_input1));
-      auto input1_high_s32 = vmovl_s16(vget_high_s16(offset_input1));
-      const auto left_shift_dup = vdupq_n_s32(left_shift);
-      input0_low_s32 = vshlq_s32(input0_low_s32, left_shift_dup);
-      input0_high_s32 = vshlq_s32(input0_high_s32, left_shift_dup);
-      input1_low_s32 = vshlq_s32(input1_low_s32, left_shift_dup);
-      input1_high_s32 = vshlq_s32(input1_high_s32, left_shift_dup);
-      input0_low_s32 = vqrdmulhq_n_s32(input0_low_s32, input0_multiplier);
-      input0_high_s32 = vqrdmulhq_n_s32(input0_high_s32, input0_multiplier);
-      input1_low_s32 = vqrdmulhq_n_s32(input1_low_s32, input1_multiplier);
-      input1_high_s32 = vqrdmulhq_n_s32(input1_high_s32, input1_multiplier);
-      const auto input0_shift_dup = vdupq_n_s32(input0_shift);
-      const auto input1_shift_dup = vdupq_n_s32(input1_shift);
-      input0_low_s32 = vshlq_s32(input0_low_s32, input0_shift_dup);
-      input0_high_s32 = vshlq_s32(input0_high_s32, input0_shift_dup);
-      input1_low_s32 = vshlq_s32(input1_low_s32, input1_shift_dup);
-      input1_high_s32 = vshlq_s32(input1_high_s32, input1_shift_dup);
-      auto sum_low = vaddq_s32(input0_low_s32, input1_low_s32);
-      auto sum_high = vaddq_s32(input0_high_s32, input1_high_s32);
-      sum_low = vqrdmulhq_n_s32(sum_low, output_multiplier);
-      sum_high = vqrdmulhq_n_s32(sum_high, output_multiplier);
-      sum_low = gemmlowp::RoundingDivideByPOT(sum_low, -output_shift);
-      sum_high = gemmlowp::RoundingDivideByPOT(sum_high, -output_shift);
-      const auto sum_low_s16 = vmovn_s32(sum_low);
-      const auto sum_high_s16 = vmovn_s32(sum_high);
-      const auto output_val = vaddq_s16(vcombine_s16(sum_low_s16,
-                                                     sum_high_s16),
-                                        vdupq_n_s16(output->zero_point()));
-      vst1_u8(output_ptr + i, vqmovun_s16(output_val));
-    }
-    handled_output_size = output->size() - output->size() % 8;
-#endif  // NEON
 #pragma omp parallel for schedule(runtime)
-    for (index_t i = handled_output_size; i < output->size(); ++i) {
+    for (index_t i = 0; i < output->size(); ++i) {
       const int32_t offset_input0 = input0_ptr[i] - input0->zero_point();
       const int32_t offset_input1 = input1_ptr[i] - input1->zero_point();
       const int32_t shifted_input0 = offset_input0 * (1 << left_shift);
@@ -1143,14 +1112,22 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
               gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input1,
                                                           input1_multiplier),
               -input1_shift);
-      const int32_t sum = multiplied_input0 + multiplied_input1;
+
+      int32_t res;
+      if (type_ == SUM) {
+        res = multiplied_input0 + multiplied_input1;
+      } else {
+        res = multiplied_input0 - multiplied_input1;
+      }
+
       const int32_t output_val =
           gemmlowp::RoundingDivideByPOT(
-              gemmlowp::SaturatingRoundingDoublingHighMul(sum,
+              gemmlowp::SaturatingRoundingDoublingHighMul(res,
                                                           output_multiplier),
               -output_shift) + output->zero_point();
       output_ptr[i] = Saturate<uint8_t>(output_val);
     }
+#endif  // NEON
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -1160,8 +1137,10 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
   std::vector<float> coeff_;
   float scalar_input_;
   int32_t scalar_input_index_;
-  DataFormat data_format_;
   Tensor scalar_tensor_;
+#ifdef MACE_ENABLE_NEON
+  arm::q8::Eltwise eltwise_;
+#endif
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -1181,8 +1160,8 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     MemoryType mem_type;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_.reset(new opencl::image::EltwiseKernel<T>(
-          type, coeff, scalar_input, scalar_input_index));
+      kernel_ = make_unique<opencl::image::EltwiseKernel<T>>(
+          type, coeff, scalar_input, scalar_input_index);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -1192,12 +1171,23 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     for (int i = 0; i < input_size; ++i) {
       if (ws->HasTensor(operator_def_->input(i)) &&
           ws->GetTensor(operator_def_->input(i))->is_weight()) {
-        MACE_CHECK(TransformFilter<T>(
-            context,
-            operator_def_.get(),
-            i,
-            OpenCLBufferType::ARGUMENT,
-            mem_type) == MaceStatus::MACE_SUCCESS);
+        if (ws->GetTensor(operator_def_->input(i))->dim_size() == 1) {
+          MACE_CHECK(TransformFilter<T>(
+              context,
+              operator_def_.get(),
+              i,
+              OpenCLBufferType::ARGUMENT,
+              mem_type) == MaceStatus::MACE_SUCCESS);
+        } else if (ws->GetTensor(operator_def_->input(i))->dim_size() == 4) {
+          MACE_CHECK(TransformFilter<T>(
+              context,
+              operator_def_.get(),
+              i,
+              OpenCLBufferType::IN_OUT_CHANNEL,
+              mem_type) == MaceStatus::MACE_SUCCESS);
+        } else {
+          MACE_NOT_IMPLEMENTED;
+        }
       }
     }
   }

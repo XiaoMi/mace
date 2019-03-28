@@ -18,6 +18,7 @@
 #include "mace/core/operator.h"
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/lstm_cell.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -25,6 +26,7 @@ namespace ops {
 template <DeviceType D, class T>
 class LSTMCellOp;
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 class LSTMCellOp<DeviceType::GPU, T> : public Operation {
  public:
@@ -35,7 +37,7 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
                                          0.0));
     MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::LSTMCellKernel<T>(forget_bias));
+      kernel_ = make_unique<opencl::image::LSTMCellKernel<T>>(forget_bias);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -88,6 +90,7 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
   MACE_OP_INPUT_TAGS(INPUT, PRE_OUTPUT, WEIGHT, BIAS, PRE_CELL);
   MACE_OP_OUTPUT_TAGS(CELL, OUTPUT);
 };
+#endif
 
 void RegisterLSTMCell(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "LSTMCell", LSTMCellOp,

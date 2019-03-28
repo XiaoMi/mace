@@ -30,12 +30,12 @@ void EltwiseBenchmark(
 
   OpsTestNet net;
   // Add input data
-  if (D == DeviceType::GPU) {
-    net.AddRandomInput<D, T>("Input0", {n, h, w, c});
-    net.AddRandomInput<D, T>("Input1", {n, h, w, c});
-  } else {
+  if (D == DeviceType::CPU && DataTypeToEnum<T>::value != DT_UINT8) {
     net.AddRandomInput<D, T>("Input0", {n, c, h, w});
     net.AddRandomInput<D, T>("Input1", {n, c, h, w});
+  } else {
+    net.AddRandomInput<D, T>("Input0", {n, h, w, c});
+    net.AddRandomInput<D, T>("Input1", {n, h, w, c});
   }
 
   OpDefBuilder("Eltwise", "EltwiseTest")
@@ -44,18 +44,25 @@ void EltwiseBenchmark(
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatsArg("coeff", {1.2, 2.1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(D);
+
+  if (D == DeviceType::CPU && DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("Output")->SetScale(0.1);
+  }
+
   // Warm-up
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 }
@@ -85,6 +92,9 @@ MACE_BM_ELTWISE(0, 1, 128, 128, 32);
 MACE_BM_ELTWISE(0, 1, 240, 240, 256);
 MACE_BM_ELTWISE(5, 1, 128, 128, 32);
 MACE_BM_ELTWISE(5, 1, 240, 240, 256);
+
+MACE_BM_ELTWISE_MACRO(0, 1, 128, 128, 32, uint8_t, CPU);
+MACE_BM_ELTWISE_MACRO(1, 1, 128, 128, 32, uint8_t, CPU);
 
 }  // namespace test
 }  // namespace ops

@@ -27,7 +27,6 @@ from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
@@ -183,6 +182,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'Slice': self.convert_slice,
             'Softmax': self.convert_softmax,
             'InnerProduct': self.convert_fully_connected,
+            'Interp': self.convert_interp,
             'BatchNorm': self.convert_folded_batchnorm,
             'Crop': self.convert_crop,
             'Scale': self.convert_scale,
@@ -194,7 +194,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
-        ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.OIHW)
+        ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         self._caffe_net = CaffeNet()
         self._caffe_layers = caffe_pb2.NetParameter()
         caffe_weights = caffe_pb2.NetParameter()
@@ -552,18 +552,20 @@ class CaffeConverter(base_converter.ConverterInterface):
         param = caffe_op.layer.crop_param
         op.type = MaceOp.Crop.name
 
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = 2
-        if param.HasField('axis'):
-            axis_arg.i = param.axis
-        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
+        axis = param.axis
+        axis = 4 + axis if axis < 0 else axis
+        offset_value = -1 * np.ones(4, dtype=np.int32)
+        offset_len = len(param.offset)
+        if offset_len == 1:
+            while axis < 4:
+                offset_value[axis] = param.offset[0]
+                axis += 1
+        else:
+            offset_value[axis:] = param.offset
+
         offset_arg = op.arg.add()
         offset_arg.name = MaceKeyword.mace_offset_str
-        if len(param.offset) > 0:
-            offset_arg.ints.extend(list(param.offset))
-        else:
-            offset_arg.i = 0
+        offset_arg.ints.extend(offset_value)
 
     def convert_concat(self, caffe_op):
         op = self.convert_general_op(caffe_op)
@@ -573,7 +575,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = 1
-        if param.HasField('axis'):
+        if param.HasField(MaceKeyword.mace_axis_str):
             axis_arg.i = param.axis
         elif param.HasField('concat_dim'):
             axis_arg.i = param.concat_dim
@@ -592,6 +594,18 @@ class CaffeConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = 1
+
+    def convert_interp(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.interp_param
+        mace_check(param.HasField("height") and param.HasField("width"),
+                   'Only support bilinear interp with height and width')
+        op.type = MaceOp.ResizeBilinear.name
+
+        size_arg = op.arg.add()
+        size_arg.name = MaceKeyword.mace_resize_size_str
+        size_value = np.array([param.height, param.width], dtype=np.int32)
+        size_arg.ints.extend(size_value)
 
     def convert_fully_connected(self, caffe_op):
         op = self.convert_general_op(caffe_op)

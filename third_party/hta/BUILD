@@ -1,0 +1,31 @@
+# These files are generated fron nnlib project
+
+licenses(["notice"])
+
+exports_files(["license.txt"])
+
+load(
+    "//mace:mace.bzl",
+    "if_android_armv7",
+    "if_android_arm64",
+)
+
+cc_library(
+    name = "hta",
+    srcs = if_android_armv7([
+        "armeabi-v7a/libhta_controller.so",
+        "armeabi-v7a/libhta_hexagon_runtime.so",
+        "armeabi-v7a/libnpu.so",
+    ]) + if_android_arm64([
+        "arm64-v8a/libcdsprpc.so",
+        "arm64-v8a/libhta_controller.so",
+        "arm64-v8a/libhta_hexagon_runtime.so",
+        "arm64-v8a/libnpu.so",
+    ]),
+    hdrs = [
+        "hta_hexagon_api.h",
+        "hta_hexagon_nn_ops.h",
+        "hta_ops.h",
+    ],
+    visibility = ["//visibility:public"],
+)

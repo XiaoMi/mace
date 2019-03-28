@@ -16,10 +16,10 @@
 
 #include <string>
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
-#include "mace/utils/env_time.h"
+#include "mace/port/env.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
@@ -75,7 +75,7 @@ void CreateNetArg(NetDef *net_def) {
 {% if net.input_info | length > 0 %}
 void CreateInputInfo(NetDef *net_def) {
   net_def->mutable_input_info()->Reserve({{ net.input_info | length }});
-  InputInfo *input_info = nullptr;
+  InputOutputInfo *input_info = nullptr;
   {% for idx in range(net.input_info|length) %}
   input_info = net_def->add_input_info();
   input_info->set_name({{ net.input_info[idx].name|tojson }});
@@ -92,7 +92,7 @@ void CreateInputInfo(NetDef *net_def) {
 {% if net.output_info | length > 0 %}
 void CreateOutputInfo(NetDef *net_def) {
   net_def->mutable_output_info()->Reserve({{ net.output_info | length }});
-  OutputInfo *output_info = nullptr;
+  InputOutputInfo *output_info = nullptr;
   {% for idx in range(net.output_info|length) %}
   output_info = net_def->add_output_info();
   output_info->set_name({{ net.output_info[idx].name|tojson }});

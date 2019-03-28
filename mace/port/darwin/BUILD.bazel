@@ -1,0 +1,22 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load("//mace:mace.bzl", "if_darwin")
+
+cc_library(
+    name = "port_darwin",
+    srcs = if_darwin(glob([
+        "*.cc",
+    ])),
+    hdrs = if_darwin(glob([
+        "*.h",
+    ])),
+    deps = [
+        "//mace/port:port_base",
+        "//mace/port/posix:port_posix",
+    ],
+    alwayslink = 1,
+)

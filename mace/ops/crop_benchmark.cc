@@ -21,107 +21,80 @@ namespace test {
 
 namespace {
 template <DeviceType D, typename T>
-void CropHelper(int iters, int crop_axis, int dim1, int offset) {
-  mace::testing::StopTiming();
-
-  OpsTestNet net;
-  OpDefBuilder("Crop", "CropBM")
-      .Input("Input0")
-      .Input("Input1")
-      .AddIntArg("axis", crop_axis)
-      .AddIntsArg("offset", {offset})
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  const int kDim0 = 100;
-  net.AddRandomInput<DeviceType::CPU, T>("Input0", {1, kDim0, dim1, dim1, });
-  net.AddRandomInput<DeviceType::CPU, T>("Input1",
-                                         {1, kDim0 / 2, dim1 / 2, dim1 / 2});
-
-  // Warm-up
-  for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
-  }
-  const int64_t tot = static_cast<int64_t>(iters) * kDim0 * dim1 * dim1;
-  testing::BytesProcessed(tot * sizeof(T));
-  mace::testing::StartTiming();
-  while (iters--) {
-    net.RunOp(D);
-  }
-}
-}  // namespace
-
-#define MACE_BM_CROP_CPU_MACRO(AXIS, DIM, OFFSET)                     \
-  static void MACE_BM_CROP_CPU_##AXIS##_##DIM##_##OFFSET(int iters) { \
-    CropHelper<DeviceType::CPU, float>(iters, AXIS, DIM, OFFSET);     \
-  }                                                               \
-  MACE_BENCHMARK(MACE_BM_CROP_CPU_##AXIS##_##DIM##_##OFFSET)
-
-MACE_BM_CROP_CPU_MACRO(1, 256, 3);
-MACE_BM_CROP_CPU_MACRO(2, 256, 3);
-MACE_BM_CROP_CPU_MACRO(3, 512, 3);
-MACE_BM_CROP_CPU_MACRO(2, 512, 6);
-
-namespace {
-template <typename T>
-void OpenCLCropHelper(int iters,
-                      const std::vector<index_t> &shape0,
-                      const std::vector<index_t> &shape1,
-                      int crop_axis,
-                      int offset) {
+void CropHelper(int iters,
+                const std::vector<index_t> &shape0,
+                const std::vector<index_t> &shape1,
+                int crop_axis,
+                int offset) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
-  // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input0", shape0);
-  net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1);
+  std::vector<int> offsets(4, -1);
+
+  for (int i = crop_axis; i < 4; ++i) {
+    offsets[i] = offset;
+  }
+
+  if (D == DeviceType::CPU) {
+    auto input_shape0 = TransposeShape<index_t, index_t>(shape0, {0, 3, 1, 2});
+    auto input_shape1 = TransposeShape<index_t, index_t>(shape1, {0, 3, 1, 2});
+    net.AddRandomInput<D, float>("Input0", input_shape0);
+    net.AddRandomInput<D, float>("Input1", input_shape1);
+  } else if (D == DeviceType::GPU) {
+    // Add input data
+    net.AddRandomInput<D, T>("Input0", shape0);
+    net.AddRandomInput<D, T>("Input1", shape1);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
 
   OpDefBuilder("Crop", "CropBM")
       .Input("Input0")
       .Input("Input1")
-      .AddIntArg("axis", crop_axis)
-      .AddIntsArg("offset", {offset})
+      .AddIntsArg("offset", offsets)
+      .AddIntArg("has_data_format", 1)
       .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
-  for (int i = 0; i < 5; ++i) {
-    net.RunOp(DeviceType::GPU);
+  net.Setup(D);
+  for (int i = 0; i < 1; ++i) {
+    net.Run();
   }
 
   const int64_t tot =
       static_cast<int64_t>(iters) *
-      (net.GetTensor("Input0")->size() + net.GetTensor("Input1")->size());
+      (net.GetTensor("Input0")->size());
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(DeviceType::GPU);
+    net.Run();
   }
 }
 }  // namespace
 
-#define MACE_BM_CROP_GPU_MACRO(N, H, W, C, AXIS, OFFSET, TYPE)            \
-  static void MACE_BM_CROP_GPU_##N##_##H##_##W##_##C##_##AXIS##_##OFFSET##\
-  _##TYPE(int iters) {                                                        \
-    std::vector<index_t> shape0 = {N, H, W, C};                              \
-    std::vector<index_t> shape1 = {N / 2, H / 2, W / 2, C / 2};              \
-    OpenCLCropHelper<TYPE>(iters, shape0, shape1, AXIS, OFFSET);             \
-  }                                                                          \
-  MACE_BENCHMARK(MACE_BM_CROP_GPU_##N##_##H##_##W##_##C##_##AXIS##_##OFFSET\
-  ##_##TYPE)
+#define MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, DEVICE, TYPE)     \
+  static void MACE_BM_CROP_##N##_##H##_##W##_##C##_##AXIS##_##OFFSET## \
+  _##DEVICE##_##TYPE(int iters) {                                      \
+    std::vector<index_t> shape0 = {N, H, W, C};                        \
+    std::vector<index_t> shape1 = {N / 2, H / 2, W / 2, C / 2};        \
+    CropHelper<DEVICE, TYPE>(iters, shape0, shape1, AXIS, OFFSET);     \
+  }                                                                    \
+  MACE_BENCHMARK(MACE_BM_CROP_##N##_##H##_##W##_##C##_##AXIS##_##OFFSET\
+  ##_##DEVICE##_##TYPE)
 
-MACE_BM_CROP_GPU_MACRO(4, 32, 32, 32, 2, 4, float);
-MACE_BM_CROP_GPU_MACRO(8, 32, 32, 64, 1, 0, float);
-MACE_BM_CROP_GPU_MACRO(8, 32, 32, 128, 0, 0, float);
-MACE_BM_CROP_GPU_MACRO(8, 32, 32, 256, 2, 4, float);
+#define MACE_BM_CROP(N, H, W, C, AXIS, OFFSET)               \
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, CPU, float);  \
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, float);  \
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, half);
 
-MACE_BM_CROP_GPU_MACRO(4, 32, 32, 32, 2, 4, half);
-MACE_BM_CROP_GPU_MACRO(8, 32, 32, 64, 1, 0, half);
-MACE_BM_CROP_GPU_MACRO(8, 32, 32, 128, 0, 0, half);
-MACE_BM_CROP_GPU_MACRO(8, 32, 32, 256, 2, 4, half);
+MACE_BM_CROP(4, 32, 32, 32, 2, 4);
+MACE_BM_CROP(8, 32, 32, 64, 1, 0);
+MACE_BM_CROP(8, 32, 32, 128, 0, 0);
+MACE_BM_CROP(8, 32, 32, 256, 2, 4);
+
 
 }  // namespace test
 }  // namespace ops

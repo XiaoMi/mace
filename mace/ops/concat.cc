@@ -16,6 +16,7 @@
 
 #include "mace/core/operator.h"
 #include "mace/utils/quantize.h"
+#include "mace/utils/memory.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/concat.h"
@@ -59,9 +60,9 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
     MACE_UNUSED(context);
     if (!checked_) {
       Validate();
-      auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-          "data_format", DataFormat::DF_NONE));
-      if (df == DataFormat::NHWC && this->Input(0)->dim_size() == 4) {
+      auto has_df = Operation::GetOptionalArg<int>(
+          "has_data_format", 0);
+      if (has_df && this->Input(0)->dim_size() == 4) {
         if (axis_ == 3) axis_ = 1;
         else if (axis_ == 2) axis_ = 3;
         else if (axis_ == 1) axis_ = 2;
@@ -199,7 +200,7 @@ class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ConcatKernel<T>(axis_));
+      kernel_ = make_unique<opencl::image::ConcatKernel<T>>(axis_);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -250,9 +251,12 @@ void RegisterConcat(OpRegistryBase *op_registry) {
               if (op->output_shape(0).dims_size() != 4) {
                 return { DeviceType::CPU };
               } else {
+                int has_data_format =
+                    ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                        *op, "has_data_format", 0);
                 int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "axis", 3);
-                if (axis != 3) {
+                if (!has_data_format || axis != 3) {
                   return { DeviceType::CPU };
                 }
                 bool divisible_four = true;

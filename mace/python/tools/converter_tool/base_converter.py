@@ -22,15 +22,13 @@ class DeviceType(Enum):
     CPU = 0
     GPU = 2
     HEXAGON = 3
+    HTA = 4
 
 
 class DataFormat(Enum):
     DF_NONE = 0
     NHWC = 1
     NCHW = 2
-
-
-class FilterFormat(Enum):
     HWIO = 100
     OIHW = 101
     HWOI = 102
@@ -104,6 +102,7 @@ class FrameworkType(Enum):
 MaceSupportedOps = [
     'Activation',
     'AddN',
+    'Affine',
     'ArgMax',
     'BatchNorm',
     'BatchToSpaceND',
@@ -127,9 +126,11 @@ MaceSupportedOps = [
     'InferConv2dShape',
     'LocalResponseNorm',
     'LSTMCell',
+    # 'LstmNonlinear',
     'MatMul',
     'OneHot',
     'Pad',
+    'PNorm',
     'Pooling',
     'PriorBox',
     'Proposal',
@@ -141,6 +142,8 @@ MaceSupportedOps = [
     'ResizeNearestNeighbor',
     'Reverse',
     'ScalarMath',
+    'Slice',
+    'Splice',
     'Split',
     'Shape',
     'Squeeze',
@@ -151,9 +154,13 @@ MaceSupportedOps = [
     'SpaceToBatchND',
     'SpaceToDepth',
     'SqrDiffMean',
+    'SumGroup',
+    'TargetRMSNorm',
+    'TimeOffset',
     'Transpose',
     'WinogradInverseTransform',
     'WinogradTransform',
+    'Cumsum',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -166,6 +173,7 @@ class MaceKeyword(object):
     mace_buffer_type = 'buffer_type'
     # arg related str
     mace_padding_str = 'padding'
+    mace_padding_type_str = 'padding'
     mace_padding_values_str = 'padding_values'
     mace_strides_str = 'strides'
     mace_dilations_str = 'dilations'
@@ -173,6 +181,7 @@ class MaceKeyword(object):
     mace_global_pooling_str = 'global_pooling'
     mace_kernel_str = 'kernels'
     mace_data_format_str = 'data_format'
+    mace_has_data_format_str = 'has_data_format'
     mace_filter_format_str = 'filter_format'
     mace_element_type_str = 'type'
     mace_activation_type_str = 'activation'
@@ -228,7 +237,10 @@ class MaceKeyword(object):
     mace_step_h_str = 'step_h'
     mace_step_w_str = 'step_w'
     mace_find_range_every_time = 'find_range_every_time'
+    mace_non_zero = 'non_zero'
     mace_pad_type_str = 'pad_type'
+    mace_exclusive_str = 'exclusive'
+    mace_reverse_str = 'reverse'
 
 
 class TransformerRule(Enum):
@@ -271,6 +283,7 @@ class TransformerRule(Enum):
     FOLD_FC_RESHAPE = 37
     TRANSFORM_CHANNEL_SHUFFLE = 38
     UPDATE_DATA_FORMAT = 39
+    QUANTIZE_SPECIFIC_OPS_ONLY = 40
 
 
 class ConverterInterface(object):
@@ -481,6 +494,7 @@ class ConverterOption(object):
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
+                TransformerRule.TRANSPOSE_MATMUL_WEIGHT,
                 # Add winograd argument
                 TransformerRule.ADD_WINOGRAD_ARG,
                 # Mace model structure related transformation
@@ -513,6 +527,16 @@ class ConverterUtil(object):
             if arg.name == arg_name:
                 return arg
         return None
+
+    @staticmethod
+    def del_arg(op, arg_name):
+        found_idx = -1
+        for idx in range(len(op.arg)):
+            if op.arg[idx].name == arg_name:
+                found_idx = idx
+                break
+        if found_idx != -1:
+            del op.arg[found_idx]
 
     @staticmethod
     def add_data_format_arg(op, data_format):
@@ -549,11 +573,11 @@ class ConverterUtil(object):
         arg = ConverterUtil.get_arg(net, MaceKeyword.mace_filter_format_str)
         if arg is None:
             return None
-        elif arg.i == FilterFormat.HWIO.value:
-            return FilterFormat.HWIO
-        elif arg.i == FilterFormat.HWOI.value:
-            return FilterFormat.HWOI
-        elif arg.i == FilterFormat.OIHW.value:
-            return FilterFormat.OIHW
+        elif arg.i == DataFormat.HWIO.value:
+            return DataFormat.HWIO
+        elif arg.i == DataFormat.HWOI.value:
+            return DataFormat.HWOI
+        elif arg.i == DataFormat.OIHW.value:
+            return DataFormat.OIHW
         else:
             return None

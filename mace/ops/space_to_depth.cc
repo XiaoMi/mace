@@ -19,6 +19,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/space_to_depth.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -95,7 +96,7 @@ class SpaceToDepthOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     int block_size = Operation::GetOptionalArg<int>("block_size", 1);
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::SpaceToDepthKernel<T>(block_size));
+      kernel_ = make_unique<opencl::image::SpaceToDepthKernel<T>>(block_size);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

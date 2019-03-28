@@ -25,6 +25,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/reduce.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -84,7 +85,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
  private:
   void Simplify(const Tensor *input) {
     std::vector<bool> bitmap(static_cast<uint32_t>(input->dim_size()), false);
-    if (axis_.size() == 0) {
+    if (axis_.empty()) {
       for (int i = 0; i < input->dim_size(); ++i) {
         bitmap[i] = true;
       }
@@ -93,9 +94,9 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
         int index = axis_[i] >= 0 ?
                           axis_[i] :
                           axis_[i] + input->dim_size();
-        auto df = static_cast<DataFormat>(Operation::GetOptionalArg<int>(
-            "data_format", DataFormat::DF_NONE));
-        if (df == DataFormat::NHWC && DataTypeToEnum<T>::value != DT_UINT8
+        auto has_df = Operation::GetOptionalArg<int>(
+            "has_data_format", 0);
+        if (has_df && DataTypeToEnum<T>::value != DT_UINT8
             && input->dim_size() == 4) {
           if (index == 1 || index == 2) index = index + 1;
           else if (index == 3) index = 1;
@@ -847,9 +848,9 @@ class ReduceOp<DeviceType::GPU, T> : public ReduceOpBase {
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::ReduceKernel<T>(reduce_type_,
-                                                       axis_,
-                                                       keep_dims_));
+      kernel_ = make_unique<opencl::image::ReduceKernel<T>>(reduce_type_,
+                                                            axis_,
+                                                            keep_dims_);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

@@ -37,11 +37,14 @@ FLAGS = None
 device_type_map = {'cpu': cvt.DeviceType.CPU.value,
                    'gpu': cvt.DeviceType.GPU.value,
                    'dsp': cvt.DeviceType.HEXAGON.value,
+                   'hta': cvt.DeviceType.HTA.value,
                    'cpu+gpu': cvt.DeviceType.CPU.value}
 
 data_format_map = {
     'NONE': cvt.DataFormat.DF_NONE,
     'NHWC': cvt.DataFormat.NHWC,
+    'NCHW': cvt.DataFormat.NCHW,
+    'OIHW': cvt.DataFormat.OIHW,
 }
 
 
@@ -52,10 +55,11 @@ def parse_data_type(data_type, device_type):
             return mace_pb2.DT_FLOAT
         else:
             return mace_pb2.DT_HALF
-    elif device_type == cvt.DeviceType.HEXAGON.value:
+    elif device_type == cvt.DeviceType.HEXAGON.value or \
+            device_type == cvt.DeviceType.HTA.value:
         return mace_pb2.DT_FLOAT
     else:
-        print("Invalid device type: " + device_type)
+        print("Invalid device type: " + str(device_type))
 
 
 def file_checksum(fname):
@@ -66,12 +70,26 @@ def file_checksum(fname):
     return hash_func.hexdigest()
 
 
+def split_shape(shape):
+    if shape.strip() == "":
+        return []
+    else:
+        return shape.split(',')
+
+
 def parse_int_array_from_str(ints_str):
-    return [int(int_str) for int_str in ints_str.split(',')]
+    return [int(i) for i in split_shape(ints_str)]
 
 
-def parse_float_array_from_str(ints_str):
-    return [float(int_str) for int_str in ints_str.split(',')]
+def parse_float_array_from_str(floats_str):
+    return [float(i) for i in floats_str.split(',')]
+
+
+def transpose_shape(shape, dst_order):
+    t_shape = [0] * len(shape)
+    for i in range(len(shape)):
+        t_shape[i] = shape[dst_order[i]]
+    return t_shape
 
 
 def main(unused_args):
@@ -106,7 +124,7 @@ def main(unused_args):
         six.print_("platform %s is not supported." % FLAGS.platform,
                    file=sys.stderr)
         sys.exit(-1)
-    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', 'cpu+gpu']:
+    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', 'hta', 'cpu+gpu']:
         six.print_("runtime %s is not supported." % FLAGS.runtime,
                    file=sys.stderr)
         sys.exit(-1)
@@ -139,6 +157,10 @@ def main(unused_args):
         else:
             input_node.data_format = data_format_map[input_node_formats[i]]
         input_node.shape = parse_int_array_from_str(input_node_shapes[i])
+        if input_node.data_format == cvt.DataFormat.NCHW and\
+                len(input_node.shape) == 4:
+            input_node.shape = transpose_shape(input_node.shape, [0, 2, 3, 1])
+            input_node.data_format = cvt.DataFormat.NHWC
         if len(input_node_ranges) > i:
             input_node.range = parse_float_array_from_str(input_node_ranges[i])
         option.add_input_node(input_node)
@@ -156,6 +178,11 @@ def main(unused_args):
         else:
             output_node.data_format = data_format_map[output_node_formats[i]]
         output_node.shape = parse_int_array_from_str(output_node_shapes[i])
+        if output_node.data_format == cvt.DataFormat.NCHW and\
+                len(output_node.shape) == 4:
+            output_node.shape = transpose_shape(output_node.shape,
+                                                [0, 2, 3, 1])
+            output_node.data_format = cvt.DataFormat.NHWC
         option.add_output_node(output_node)
 
     if FLAGS.check_node != '':
@@ -196,7 +223,8 @@ def main(unused_args):
         option, output_graph_def)
     output_graph_def, quantize_activation_info = mace_transformer.run()
 
-    if FLAGS.runtime == 'dsp':
+    if option.device in [cvt.DeviceType.HEXAGON.value,
+                         cvt.DeviceType.HTA.value]:
         from mace.python.tools.converter_tool import hexagon_converter
         converter = hexagon_converter.HexagonConverter(
             option, output_graph_def, quantize_activation_info)

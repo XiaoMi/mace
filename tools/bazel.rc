@@ -14,20 +14,49 @@ build --copt=-DGEMMLOWP_USE_OPENMP
 build:symbol_hidden --copt=-fvisibility=hidden
 
 # Usage example: bazel build --config android
+build:android --linkopt=-pie
+build:android --linkopt=-ldl
+build:android --linkopt=-llog
+build:android --linkopt=-lm
 build:android --distinct_host_configuration=true
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+
+# Linux host build, --config linux
+build:linux --define linux=true
+
+# MacOS host build, --config darwin
+build:darwin --define darwin=true
+
+# iOS and other darwin platforms, --config ios
+build:ios --define darwin=true
+build:ios --distinct_host_configuration=true
+build:ios --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:ios --cpu=arm64
+
+# Linux host build, --config linux
+build:linux --define linux=true
+
+# MacOS host build, --config darwin
+build:darwin --define darwin=true
+
+# iOS and other darwin platforms, --config ios
+build:ios --define darwin=true
+build:ios --distinct_host_configuration=true
+build:ios --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:ios --cpu=ios_arm64
 
 
 # Usage example: bazel build --config arm_linux_gnueabihf
 # Used to fix library not find linking issue, see also:
 # https://github.com/bazelbuild/bazel/issues/6653,
 # https://github.com/bazelbuild/bazel/issues/6189
+build:arm_linux_gnueabihf --define linux=true
 build:arm_linux_gnueabihf --spawn_strategy=standalone
 build:arm_linux_gnueabihf --distinct_host_configuration=true
 build:arm_linux_gnueabihf --crosstool_top=//tools/arm_compiler:toolchain
 build:arm_linux_gnueabihf --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
-build:arm_linux_gnueabihf --cpu=armeabi-v7a
+build:arm_linux_gnueabihf --cpu=armhf
 build:arm_linux_gnueabihf --copt -mfloat-abi=hard
 build:arm_linux_gnueabihf --copt -mfpu=neon
 build:arm_linux_gnueabihf --copt -Wno-ignored-attributes
@@ -36,6 +65,7 @@ build:arm_linux_gnueabihf --copt -Wno-sequence-point
 build:arm_linux_gnueabihf --copt -Wno-implicit-fallthrough
 
 # Usage example: bazel build --config aarch64_linux_gnu
+build:aarch64_linux_gnu --define linux=true
 build:aarch64_linux_gnu --spawn_strategy=standalone
 build:aarch64_linux_gnu --distinct_host_configuration=true
 build:aarch64_linux_gnu --crosstool_top=//tools/aarch64_compiler:toolchain

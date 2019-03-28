@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/core/macros.h"
+#include "mace/utils/macros.h"
 #include "mace/ops/arm/depthwise_conv2d_neon.h"
 
 namespace mace {
