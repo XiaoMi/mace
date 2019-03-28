@@ -28,12 +28,11 @@ fi
 
 mkdir -p $OUTPUT_DIR
 
-DATE_STR=$(date +%Y%m%d)
 GIT_VERSION=$(git --git-dir=${MACE_SOURCE_DIR}/.git --work-tree=${MACE_SOURCE_DIR} describe --long --tags)
 if [[ $? != 0 ]]; then
-  GIT_VERSION=unknown-${DATE_STR}
+  GIT_VERSION=unknown
 else
-  GIT_VERSION=${GIT_VERSION}-${DATE_STR}
+  GIT_VERSION=${GIT_VERSION}
 fi
 
 echo $GIT_VERSION
