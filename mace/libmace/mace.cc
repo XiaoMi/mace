@@ -293,9 +293,10 @@ MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
                        std::shared_ptr<float> data,
                        const DataFormat format) {
   MACE_CHECK_NOTNULL(data.get());
-  MACE_CHECK(format == DataFormat::NHWC || format == DataFormat::NCHW
-                 || format == OIHW,
-             "MACE only support NHWC, NCHW and OIHW formats of input now.");
+  MACE_CHECK(format == DataFormat::DF_NONE || format == DataFormat::NHWC
+                 || format == DataFormat::NCHW || format == OIHW,
+             "MACE only support DF_NONE, NHWC, NCHW and OIHW "
+             "formats of input now.");
   impl_ = make_unique<MaceTensor::Impl>();
   impl_->shape = shape;
   impl_->data = data;
