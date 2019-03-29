@@ -62,6 +62,7 @@ RuntimeTypeStrs = [
     "gpu",
     "dsp",
     "hta",
+    "apu",
     "cpu+gpu"
 ]
 
@@ -87,6 +88,13 @@ DSPDataTypeStrs = [
 ]
 
 DSPDataType = Enum('DSPDataType', [(ele, ele) for ele in DSPDataTypeStrs],
+                   type=str)
+
+APUDataTypeStrs = [
+    "uint8",
+]
+
+APUDataType = Enum('APUDataType', [(ele, ele) for ele in APUDataTypeStrs],
                    type=str)
 
 WinogradParameters = [0, 2, 4]
@@ -150,6 +158,8 @@ def parse_device_type(runtime):
         device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
         device_type = DeviceType.CPU
+    elif runtime == RuntimeType.apu:
+        device_type = DeviceType.APU
 
     return device_type
 
@@ -361,6 +371,15 @@ def format_model_config(flags):
             else:
                 model_config[YAMLKeyword.data_type] = \
                     DSPDataType.uint8.value
+        elif runtime == RuntimeType.apu:
+            if len(data_type) > 0:
+                mace_check(data_type in APUDataTypeStrs,
+                           ModuleName.YAML_CONFIG,
+                           "'data_type' must be in " + str(APUDataTypeStrs)
+                           + " for apu runtime")
+            else:
+                model_config[YAMLKeyword.data_type] = \
+                    APUDataType.uint8.value
         else:
             if len(data_type) > 0:
                 mace_check(data_type in FPDataTypeStrs,

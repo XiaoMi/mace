@@ -113,6 +113,7 @@ TFSupportedOps = [
     'ArgMax',
     'Split',
     'FakeQuantWithMinMaxVars',
+    'FakeQuantWithMinMaxArgs',
     'FloorDiv',
     'Sqrt',
     'MirrorPad',
@@ -252,6 +253,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.Split.name: self.convert_split,
             TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
+            TFOpType.FakeQuantWithMinMaxArgs.name: self.convert_fake_quantize,
             TFOpType.FloorDiv.name: self.convert_elementwise,
             TFOpType.Sqrt.name: self.convert_elementwise,
             TFOpType.MirrorPad.name: self.convert_pad,
@@ -1026,10 +1028,14 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         min_arg = op.arg.add()
         min_arg.name = 'min'
-        min_arg.f = tf_op.inputs[1].eval()
         max_arg = op.arg.add()
         max_arg.name = 'max'
-        max_arg.f = tf_op.inputs[2].eval()
+        if tf_op.type == TFOpType.FakeQuantWithMinMaxVars.name:
+            min_arg.f = tf_op.inputs[1].eval()
+            max_arg.f = tf_op.inputs[2].eval()
+        elif tf_op.type == TFOpType.FakeQuantWithMinMaxArgs.name:
+            min_arg.f = float(tf_op.get_attr('min'))
+            max_arg.f = float(tf_op.get_attr('max'))
         narrow_range_arg = op.arg.add()
         narrow_range_arg.name = 'narrow_range'
         narrow_range_arg.i = int(tf_op.get_attr('narrow_range'))
@@ -1037,8 +1043,9 @@ class TensorflowConverter(base_converter.ConverterInterface):
         num_bits_arg.name = 'num_bits'
         num_bits_arg.i = int(tf_op.get_attr('num_bits'))
 
-        self._skip_tensor.add(tf_op.inputs[1].name)
-        self._skip_tensor.add(tf_op.inputs[2].name)
+        if tf_op.type == TFOpType.FakeQuantWithMinMaxVars.name:
+            self._skip_tensor.add(tf_op.inputs[1].name)
+            self._skip_tensor.add(tf_op.inputs[2].name)
 
     def convert_cumsum(self, tf_op):
         op = self.convert_general_op(tf_op)

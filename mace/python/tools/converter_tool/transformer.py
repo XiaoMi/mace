@@ -104,6 +104,10 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_channel_shuffle,
             TransformerRule.QUANTIZE_SPECIFIC_OPS_ONLY:
                 self.quantize_specific_ops_only,
+            TransformerRule.ADD_TENSORFLOW_PADDING_VALUE:
+                self.add_tensorflow_padding_value,
+            TransformerRule.USE_UINT8_IN_OUT:
+                self.use_uint8_in_out,
         }
 
         self._option = option
@@ -643,6 +647,7 @@ class Transformer(base_converter.ConverterInterface):
                     # remove bn
                     del consumer_op.input[:]
                     net.tensors.remove(scale)
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
 
                     return True
@@ -711,6 +716,7 @@ class Transformer(base_converter.ConverterInterface):
 
                     del consumer_op.input[:]
                     net.tensors.remove(scale)
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
 
                     return True
@@ -767,6 +773,7 @@ class Transformer(base_converter.ConverterInterface):
                     # remove bn
                     del consumer_op.input[:]
                     net.tensors.remove(scale)
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
 
                     return True
@@ -865,7 +872,8 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def flatten_atrous_conv(self):
-        if self._option.device != DeviceType.GPU.value:
+        if self._option.device != DeviceType.GPU.value \
+               and self._option.device != DeviceType.APU.value:
             return
 
         net = self._model
@@ -1151,7 +1159,8 @@ class Transformer(base_converter.ConverterInterface):
         transposed_deconv_filter = set()
 
         if self._option.quantize and \
-                self._option.device == DeviceType.CPU.value:
+                (self._option.device == DeviceType.CPU.value or
+                 self._option.device == DeviceType.APU.value):
             print("Transpose filters to OHWI")
             if filter_format == DataFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
@@ -1163,7 +1172,7 @@ class Transformer(base_converter.ConverterInterface):
 
             for op in net.op:
                 if (op.type == MaceOp.Conv2D.name or
-                    op.type == MaceOp.Deconv2D.name) and\
+                    op.type == MaceOp.DepthwiseConv2d.name) and\
                         op.input[1] not in transposed_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
@@ -1541,7 +1550,8 @@ class Transformer(base_converter.ConverterInterface):
                         if len(ops[0].input) >= 4:
                             check_deconv = ops[0].input[3] == tensor.name
             if check_conv or check_deconv:
-                if self._option.device == DeviceType.CPU.value:
+                if self._option.device == DeviceType.CPU.value \
+                       or self._option.device == DeviceType.APU.value:
                     conv_op = ops[0]
                     scale_input = self._quantize_activation_info[
                         conv_op.input[0]].scale
@@ -1615,13 +1625,16 @@ class Transformer(base_converter.ConverterInterface):
 
         net = self._model
         for op in net.op:
-            if op.type == 'FakeQuantWithMinMaxVars':
+            if op.type == 'FakeQuantWithMinMaxVars' or \
+                   op.type == 'FakeQuantWithMinMaxArgs':
                 producer_op = self._producer[op.input[0]]
                 minval = ConverterUtil.get_arg(op, 'min').f
                 maxval = ConverterUtil.get_arg(op, 'max').f
                 quantize_info = \
                     self.add_quantize_info(producer_op, minval, maxval)
                 self._quantize_activation_info[op.input[0]] = quantize_info
+                # for add -> fakequant pattern
+                self._quantize_activation_info[op.output[0]] = quantize_info
                 op.type = MaceOp.Identity.name
 
         return False
@@ -2069,4 +2082,83 @@ class Transformer(base_converter.ConverterInterface):
 
             return True
 
+    def add_tensorflow_padding_value(self):
+        if ConverterUtil.get_arg(self._model.op[0],
+                                 MaceKeyword.mace_framework_type_str).i != \
+               FrameworkType.TENSORFLOW.value:
+            return False
+
+        for op in self._model.op:
+            padding_type = ConverterUtil.get_arg(
+                               op, MaceKeyword.mace_padding_str)
+            if padding_type is None:
+                continue
+
+            padding_arg = op.arg.add()
+            padding_arg.name = MaceKeyword.mace_padding_values_str
+            if padding_type.i == PaddingMode.VALID.value:
+                padding_arg.ints.extend([0, 0, 0, 0])
+            elif padding_type.i == PaddingMode.SAME.value:
+                stride = ConverterUtil.get_arg(
+                             op, MaceKeyword.mace_strides_str).ints
+                kernel = []
+                dilation = [1, 1]
+                if op.type == MaceOp.Conv2D.name or \
+                   op.type == MaceOp.DepthwiseConv2d.name:
+                    if ConverterUtil.get_arg(
+                           op, MaceKeyword.mace_dilations_str) is not None:
+                        dilation = ConverterUtil.get_arg(
+                                       op, MaceKeyword.mace_dilations_str).ints
+                    for tensor in self._model.tensors:
+                        if tensor.name == op.input[1]:
+                            kernel = tensor.dims[1:3]
+                            break
+                else:
+                    kernel = ConverterUtil.get_arg(
+                                 op, MaceKeyword.mace_kernel_str).ints
+                in_size = []
+                for input_info in self._model.input_info:
+                    if input_info.name == op.input[0]:
+                        in_size = input_info.dims[1:3]
+                        break
+                for _op in self._model.op:
+                    for out in _op.output:
+                        if out == op.input[0]:
+                            in_size = _op.output_shape[0].dims[1:3]
+                            break
+                    if len(in_size) > 0:
+                        break
+                out_size = op.output_shape[0].dims[1:3]
+                h = (out_size[0] - 1) * stride[0] \
+                    + ((kernel[0] - 1) * dilation[0] + 1) - in_size[0]
+                w = (out_size[1] - 1) * stride[1] \
+                    + ((kernel[1] - 1) * dilation[1] + 1) - in_size[1]
+                top = int(np.floor(h/2))
+                left = int(np.floor(w/2))
+                bottom = h - top
+                right = w - left
+                padding_arg.ints.extend([top, left, bottom, right])
+        return False
+
+    def use_uint8_in_out(self):
+        for input_info in self._model.input_info:
+            if input_info.data_type == mace_pb2.DT_FLOAT:
+                for op in self._model.op:
+                    if op.input[0] == input_info.name \
+                           and op.type == MaceOp.Quantize.name:
+                        input_info.name = op.output[0]
+                        input_info.data_type = mace_pb2.DT_UINT8
+                        input_info.scale = op.quantize_info[0].scale
+                        input_info.zero_point = op.quantize_info[0].zero_point
+                        break
+                self._model.op.remove(op)
+        for output_info in self._model.output_info:
+            if output_info.data_type == mace_pb2.DT_FLOAT:
+                for op in self._model.op:
+                    if op.output[0] == output_info.name \
+                           and op.type == MaceOp.Dequantize.name:
+                        output_info.name = op.input[0]
+                        output_info.data_type = mace_pb2.DT_UINT8
+                        break
+                self._model.op.remove(op)
         return False
