@@ -45,7 +45,6 @@ void TestOneHot(const std::vector<index_t> &input_shape,
   .AddFloatArg("on_value", on_value)
   .AddFloatArg("off_value", off_value)
   .AddIntArg("axis", axis)
-  .AddIntArg("data_format", DataFormat::NHWC)
   .Finalize(net.NewOperatorDef());
 
   // Run
@@ -77,10 +76,6 @@ TEST_F(OneHotTest, Dim1) {
 
   TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
                                      expected_data, 5, -1);
-  TestOneHot<DeviceType::GPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 5, -1);
-  TestOneHot<DeviceType::GPU, half>(input_shape, input_data, expected_shape,
-                                    expected_data, 5, -1);
 
   expected_shape = {5, 10};
   expected_data  = {
@@ -93,10 +88,6 @@ TEST_F(OneHotTest, Dim1) {
 
   TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
                                      expected_data, 5, 0);
-  TestOneHot<DeviceType::GPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 5, 0);
-  TestOneHot<DeviceType::GPU, half>(input_shape, input_data, expected_shape,
-                                    expected_data, 5, 0);
 }
 
 TEST_F(OneHotTest, OnOffValue) {
@@ -111,10 +102,6 @@ TEST_F(OneHotTest, OnOffValue) {
 
   TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
                                      expected_data, 6, -1, 7, 8);
-  TestOneHot<DeviceType::GPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 6, -1, 7, 8);
-  TestOneHot<DeviceType::GPU, half>(input_shape, input_data, expected_shape,
-                                    expected_data, 6, -1, 7, 8);
 }
 
 TEST_F(OneHotTest, Dim2) {

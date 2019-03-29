@@ -48,14 +48,14 @@ MaceStatus ConcatN(OpContext *context,
 template <typename T>
 class ConcatKernel : public OpenCLConcatKernel {
  public:
-  explicit ConcatKernel(const int32_t axis) : axis_(axis) {}
+  ConcatKernel() {}
   MaceStatus Compute(
       OpContext *context,
       const std::vector<const Tensor *> &input_list,
+      const int32_t axis,
       Tensor *output) override;
 
  private:
-  int32_t axis_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
@@ -65,6 +65,7 @@ template <typename T>
 MaceStatus ConcatKernel<T>::Compute(
     OpContext *context,
     const std::vector<const Tensor *> &input_list,
+    const int32_t axis,
     Tensor *output) {
   const int inputs_count = input_list.size();
 
@@ -76,13 +77,13 @@ MaceStatus ConcatKernel<T>::Compute(
     MACE_CHECK(input->dim_size() == input0->dim_size(),
                "Ranks of all input tensors must be same.");
     for (int j = 0; j < input->dim_size(); ++j) {
-      if (j == axis_) {
+      if (j == axis) {
         continue;
       }
       MACE_CHECK(input->dim(j) == input0->dim(j),
                  "Dimensions of inputs should equal except axis.");
     }
-    output_shape[axis_] += input->dim(axis_);
+    output_shape[axis] += input->dim(axis);
   }
   std::vector<size_t> image_shape;
   OpenCLUtil::CalImage2DShape(output_shape,

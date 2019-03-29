@@ -31,6 +31,7 @@ class OpenCLConcatKernel {
   virtual MaceStatus Compute(
       OpContext *context,
       const std::vector<const Tensor *> &input_list,
+      const int32_t axis,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLConcatKernel);
 };

@@ -61,9 +61,7 @@ void OneHot(int iters, int batch, int depth, int axis) {
   MACE_BENCHMARK(MACE_BM_ONE_HOT_##N##_##DEPTH##_##AXIS##_##TYPE##_##DEVICE)
 
 #define MACE_BM_ONE_HOT(N, DEPTH, AXIS)                 \
-  MACE_BM_ONE_HOT_MACRO(N, DEPTH, AXIS, float, CPU);    \
-  MACE_BM_ONE_HOT_MACRO(N, DEPTH, AXIS, float, GPU);    \
-  MACE_BM_ONE_HOT_MACRO(N, DEPTH, AXIS, half, GPU);
+  MACE_BM_ONE_HOT_MACRO(N, DEPTH, AXIS, float, CPU);
 
 MACE_BM_ONE_HOT(512, 16, 0);
 MACE_BM_ONE_HOT(512, 16, 1);
