@@ -445,7 +445,7 @@ class Transformer(base_converter.ConverterInterface):
                     gather_weights = self._consts[op.input[0]]
                     mul_weight = ConverterUtil.get_arg(consumer_op,
                                                        MaceKeyword.mace_scalar_input_str).f  # noqa
-                    gather_weights.float_data[:] = gather_weights.float_data * mul_weight  # noqa
+                    gather_weights.float_data[:] = [float_data * mul_weight for float_data in gather_weights.float_data]  # noqa
                     self.safe_remove_node(consumer_op, None,
                                           remove_input_tensor=True)
 
