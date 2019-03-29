@@ -128,6 +128,7 @@ MaceSupportedOps = [
     'LSTMCell',
     # 'LstmNonlinear',
     'MatMul',
+    'OneHot',
     'Pad',
     'PNorm',
     'Pooling',

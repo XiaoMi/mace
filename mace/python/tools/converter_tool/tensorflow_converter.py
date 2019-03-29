@@ -117,6 +117,7 @@ TFSupportedOps = [
     'Sqrt',
     'MirrorPad',
     'Cumsum',
+    'OneHot',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -255,6 +256,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Sqrt.name: self.convert_elementwise,
             TFOpType.MirrorPad.name: self.convert_pad,
             TFOpType.Cumsum.name: self.convert_cumsum,
+            TFOpType.OneHot.name: self.convert_one_hot,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -575,6 +577,29 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_biasadd(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.BiasAdd.name
+
+    def convert_one_hot(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.OneHot.name
+
+        depth_arg = op.arg.add()
+        depth_arg.name = 'depth'
+        depth_arg.i = tf_op.inputs[1].eval().astype(np.int32)
+
+        on_value_arg = op.arg.add()
+        on_value_arg.name = 'on_value'
+        on_value_arg.f = tf_op.inputs[2].eval().astype(np.float32)
+
+        off_value_arg = op.arg.add()
+        off_value_arg.name = 'off_value'
+        off_value_arg.f = tf_op.inputs[3].eval().astype(np.float32)
+
+        axis_arg = op.arg.add()
+        axis_arg.name = tf_axis
+        axis_arg.i = tf_op.get_attr(tf_axis)
+
+        self._skip_tensor.update([inp.name for inp in tf_op.inputs][1:])
+        del op.input[1:]
 
     def convert_add(self, tf_op):
         if len(tf_op.inputs) == 2:

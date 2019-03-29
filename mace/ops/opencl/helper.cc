@@ -34,6 +34,8 @@ std::vector<index_t> FormatBufferShape(
         return buffer_shape;
       } else if (buffer_shape_size == 2) {  // NC
         return {buffer_shape[0], 1, 1, buffer_shape[1]};
+      } else if (buffer_shape_size == 1) {  // N
+        return {buffer_shape[0], 1, 1, 1};
       } else {
         LOG(FATAL) << "GPU only support 2D or 4D input and output";
       }

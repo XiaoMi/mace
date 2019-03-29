@@ -43,6 +43,7 @@ extern void RegisterIdentity(OpRegistryBase *op_registry);
 extern void RegisterInferConv2dShape(OpRegistryBase *op_registry);
 extern void RegisterLocalResponseNorm(OpRegistryBase *op_registry);
 extern void RegisterMatMul(OpRegistryBase *op_registry);
+extern void RegisterOneHot(OpRegistryBase *op_registry);
 extern void RegisterPad(OpRegistryBase *op_registry);
 extern void RegisterPNorm(OpRegistryBase *op_registry);
 extern void RegisterPooling(OpRegistryBase *op_registry);
@@ -110,6 +111,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterInferConv2dShape(this);
   ops::RegisterLocalResponseNorm(this);
   ops::RegisterMatMul(this);
+  ops::RegisterOneHot(this);
   ops::RegisterPad(this);
   ops::RegisterPNorm(this);
   ops::RegisterPooling(this);
