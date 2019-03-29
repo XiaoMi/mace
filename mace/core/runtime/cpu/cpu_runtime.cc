@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <string>
