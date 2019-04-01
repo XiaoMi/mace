@@ -29,22 +29,21 @@ class ConcatOpBase : public Operation {
  public:
   explicit ConcatOpBase(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 3)),
-        checked_(false) {}
+        axis_(Operation::GetOptionalArg<int>("axis", 3)) {}
 
  protected:
-  void Validate() {
+  int FormatAxis() {
     const int32_t input_dims = this->Input(0)->dim_size();
     axis_ =
         axis_ < 0 ? axis_ + input_dims : axis_;
     MACE_CHECK((0 <= axis_ && axis_ < input_dims),
                "Expected concatenating axis in the range [", -input_dims, ", ",
                input_dims, "], but got ", axis_);
+    return axis_;
   }
 
  protected:
   int axis_;
-  bool checked_;
 };
 
 template <DeviceType D, class T>
@@ -54,20 +53,17 @@ template <typename T>
 class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
-      : ConcatOpBase(context) {}
+      : ConcatOpBase(context),
+        has_data_format_(Operation::GetOptionalArg<int>(
+            "has_data_format", 0) == 1) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    if (!checked_) {
-      Validate();
-      auto has_df = Operation::GetOptionalArg<int>(
-          "has_data_format", 0);
-      if (has_df && this->Input(0)->dim_size() == 4) {
-        if (axis_ == 3) axis_ = 1;
-        else if (axis_ == 2) axis_ = 3;
-        else if (axis_ == 1) axis_ = 2;
-      }
-      checked_ = true;
+    int axis = FormatAxis();
+    if (has_data_format_ && this->Input(0)->dim_size() == 4) {
+      if (axis == 3) axis = 1;
+      else if (axis == 2) axis = 3;
+      else if (axis == 1) axis = 2;
     }
     const std::vector<const Tensor *> &inputs = this->Inputs();
     Tensor *output = this->Output(0);
@@ -76,7 +72,7 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
 
     std::vector<index_t> output_shape(input0->shape());
     index_t inner_size = 1;
-    for (int i = 0; i < axis_; ++i) {
+    for (int i = 0; i < axis; ++i) {
       inner_size *= output_shape[i];
     }
     std::vector<index_t> outer_sizes(inputs_count, 0);
@@ -86,14 +82,14 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
       MACE_CHECK(input->dim_size() == input0->dim_size(),
                  "Ranks of all input tensors must be same.");
       for (int j = 0; j < input->dim_size(); ++j) {
-        if (j == axis_) {
+        if (j == axis) {
           continue;
         }
         MACE_CHECK(input->dim(j) == input0->dim(j),
                    "Dimensions of inputs should equal except axis.");
       }
       outer_sizes[i] = input->size() / inner_size;
-      output_shape[axis_] += input->dim(axis_);
+      output_shape[axis] += input->dim(axis);
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
@@ -119,6 +115,9 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
 
     return MaceStatus::MACE_SUCCESS;
   }
+
+ private:
+  bool has_data_format_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -130,7 +129,7 @@ class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    Validate();
+    int axis = FormatAxis();
     const std::vector<const Tensor *> &inputs = this->Inputs();
     Tensor *output = this->Output(0);
     MACE_CHECK(output->scale() != 0);
@@ -139,7 +138,7 @@ class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
 
     std::vector<index_t> output_shape(input0->shape());
     index_t inner_size = 1;
-    for (int i = 0; i < axis_; ++i) {
+    for (int i = 0; i < axis; ++i) {
       inner_size *= output_shape[i];
     }
     std::vector<index_t> outer_sizes(inputs_count, 0);
@@ -149,14 +148,14 @@ class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
       MACE_CHECK(input->dim_size() == input0->dim_size(),
                  "Ranks of all input tensors must be same.");
       for (int j = 0; j < input->dim_size(); ++j) {
-        if (j == axis_) {
+        if (j == axis) {
           continue;
         }
         MACE_CHECK(input->dim(j) == input0->dim(j),
                    "Dimensions of inputs should equal except axis.");
       }
       outer_sizes[i] = input->size() / inner_size;
-      output_shape[axis_] += input->dim(axis_);
+      output_shape[axis] += input->dim(axis);
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
@@ -200,15 +199,14 @@ class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_ = make_unique<opencl::image::ConcatKernel<T>>(axis_);
+      kernel_ = make_unique<opencl::image::ConcatKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
   }
   MaceStatus Run(OpContext *context) override {
-    Validate();
     Tensor *output = this->Output(0);
-    return kernel_->Compute(context, inputs_, output);
+    return kernel_->Compute(context, inputs_, FormatAxis(), output);
   }
 
  private:

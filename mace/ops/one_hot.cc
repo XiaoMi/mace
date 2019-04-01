@@ -16,9 +16,6 @@
 #include <memory>
 
 #include "mace/core/operator.h"
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/image/one_hot.h"
-#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace ops {
@@ -148,52 +145,9 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
   }
 };
 
-#ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class OneHotOp<DeviceType::GPU, T> : public OneHotOpBase {
- public:
-  explicit OneHotOp(OpConstructContext *context) : OneHotOpBase(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::OneHotKernel<T>(
-          depth_, on_value_, off_value_, axis_));
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
-  }
-  MaceStatus Run(OpContext *context) override {
-    const Tensor *input = this->Input(0);
-    Tensor *output = this->Output(0);
-
-    return kernel_->Compute(context, input, output);
-  }
-
- private:
-  std::unique_ptr<OpenCLOneHotKernel> kernel_;
-};
-#endif  // MACE_ENABLE_OPENCL
 
 void RegisterOneHot(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, DeviceType::CPU, float);
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, DeviceType::GPU, half);
-
-  MACE_REGISTER_OP_CONDITION(
-      op_registry,
-      OpConditionBuilder("OneHot")
-          .SetDevicePlacerFunc(
-              [](OpConstructContext *context) -> std::set<DeviceType> {
-                auto op = context->operator_def();
-                if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
-                }
-                if (op->output_shape(0).dims_size() != 2) {
-                  return { DeviceType::CPU };
-                }
-                return { DeviceType::CPU, DeviceType::GPU };
-              }));
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops
