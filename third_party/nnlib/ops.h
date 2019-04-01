@@ -218,6 +218,7 @@ DEF_OP(Sink)
 DEF_OP_WREF(QuantizedPRelu_8_d32)
 DEF_OP_WREF(AutoQuantize)
 DEF_OP_WREF(QuantizedDepthwiseConv2d_8x8to32)
+DEF_OP(QuantizedTransposeConv2d_8x8p32to8)
 DEF_OP_WREF(DepthwiseConv2d_f)
 DEF_OP(DepthwiseSupernode_8x8p8to8)
 DEF_OP(DepthwiseSupernode_8x8p8to8_d32)
@@ -226,7 +227,7 @@ DEF_OP_WREF(QuantizedMul_8x8to8_d32)
 
 DEF_OP(FullyConnected_u8)
 #if 0
-DEF_OP_WREF(QuantizedFC_8x8p8to8)
+    DEF_OP_WREF(QuantizedFC_8x8p8to8)
 #endif
 
 DEF_OP_WREF(QuantizedAdd_8p8to8_d32)
@@ -291,11 +292,128 @@ DEF_OP_WREF(QuantizedInstanceNorm_8_d32)
 DEF_OP_WREF(QuantizedInstanceNormBG_8)
 DEF_OP_WREF(QuantizedInstanceNormBG_8_d32)
 
+DEF_OP(SuperFC_8x8p32to8)
+DEF_OP(SuperFC_8x8p32to8_ref)
+DEF_OP(SuperFC_8x8p32to8_d32)
 
 DEF_OP(ChannelShuffle_f)
 DEF_OP(ChannelShuffle_int32)
-DEF_OP(QuantizedChannelShuffle_8)
+DEF_OP_WREF(QuantizedChannelShuffle_8)
+DEF_OP(QuantizedChannelShuffle_8_d32)
+/* this is in op_chanshuffle_d32.c*/
+DEF_OP(QuantizedSplit_8_d32)
 
+DEF_OP(QuantizedCrop_8)
+DEF_OP(ResizeUnitSquare_f)
+DEF_OP_WREF(ResizeUnitSquare_8)
+DEF_OP_WREF(Nv21ToRgb_8)
+DEF_OP_WREF(RgbaToRgb_8)
+DEF_OP_WREF(Argb32ToRgb_8)
+DEF_OP(Permute_f)
+DEF_OP(QuantizedPermute_8)
+DEF_OP_WREF(QuantizedRoiPool_8)
+DEF_OP(Proposal_f)
+DEF_OP(RoiAlign_f)
+DEF_OP_WREF(QuantizedRoiAlign_8)
+DEF_OP_WREF(Implode_8)
+DEF_OP(QuantizedConcat_8_nond32)
+
+DEF_OP(Close_16tof)
+DEF_OP(QuantizedLstmInput_16x16to16)
+DEF_OP(QuantizedLstmOutput_16x16to8)
+
+DEF_OP(Quantize_16)
+DEF_OP(Dequantize_16)
+DEF_OP(Convert_8_16)
+DEF_OP(QuantizedTanh_16)
+DEF_OP(QuantizedSigmoid_16)
+
+DEF_OP_WREF(QuantizeDownAndShrinkRange_32to16)
+DEF_OP_WREF(Requantize_32to16)
+DEF_OP_WREF(QuantizedMatMul_8x8p32to16)
+
+DEF_OP(QuantizedStridedSlice_8)
+DEF_OP(Bbox_Transform_f)
+DEF_OP(Softmax_uint8)
+
+DEF_OP(QuantizedFakeConcat_8_d32)
+
+DEF_OP(DepthToSpace_8_d32)
+DEF_OP(OemNode)
+
+DEF_OP(QuantizedPad_8_d32)
+
+DEF_OP(QuantizedSqrt_8)
+DEF_OP(QuantizedSlice_16)
+DEF_OP(QuantizedMin_8)
+DEF_OP(QuantizedMax_8)
+
+DEF_OP(Transpose_8)
+
+DEF_OP(Close_u16tof)
+DEF_OP(QuantizeForTest_16b_d32)
+DEF_OP(QuantizeForTest_u16b_d32)
+DEF_OP(Close_16b_d32)
+DEF_OP(Close_u16b_d32)
+DEF_OP(Convert_from_d32_b16)
+DEF_OP(Supernode_16x16p16to16_d32)
+DEF_OP(Supernode_u16x16p16to16_d32)
+
+DEF_OP(QuantizedMatMulDims_8x8p32to16)
+DEF_OP(BatchSeqConfig)
+DEF_OP(QuantizedDiv_8)
+DEF_OP(QuantizedRecip_8)
+
+DEF_OP(QuantizedNeg_8)
+DEF_OP(QuantizedNeg_8_d32)
+DEF_OP(Neg_int32)
+DEF_OP(Abs_f)
+DEF_OP(Abs_int32)
+
+DEF_OP(QuantizedSub_8p8to8)
+DEF_OP(Box_Decoder_f)
+DEF_OP(QuantizedExtractGlimpse_8)
+DEF_OP(QuantizedTile_8)
+
+DEF_OP_WREF(QuantizedMul_8x8to8)
+DEF_OP(QuantizedSum_8to32)
+DEF_OP(ImageTransform_f)
+
+DEF_OP(Convert_to_aix_d32)
+DEF_OP(Convert_from_aix)
+DEF_OP(Convert_from_aix_d32)
+
+DEF_OP(MultiClassNms_f)
+
+DEF_OP(BatchToSpaceND_8_d32)
+DEF_OP(SpaceToBatchND_8_d32)
+DEF_OP(Supernode3322_8x8p8to8)
+DEF_OP(Supernode3322_8x8p32to8)
+
+DEF_OP(Convert_int32_f)
+DEF_OP(ArgMax_ftoInt32)
+DEF_OP(ArgMax_8toInt32)
+DEF_OP(ArgMax_8)
+DEF_OP(Supernode_8x8p32to8_ref)
+DEF_OP(HeatmapMaxKP_f)
+DEF_OP(TopK_f)
+DEF_OP(TopK_8)
+DEF_OP(CastFloat32ToInt32)
+DEF_OP(CastFloat32ToUInt8)
+DEF_OP(CastInt32ToFloat32)
+DEF_OP(CastInt32ToUInt8)
+DEF_OP(CastUInt8ToFloat32)
+DEF_OP(CastUInt8ToInt32)
+DEF_OP(AxisShuffle_8)
+DEF_OP(ResizeNearestNeighbor_8)
+DEF_OP(QuantizedHeatmapMaxKP_8)
+DEF_OP(Moments_8to32)
+DEF_OP(ArgMin_8)
+DEF_OP(Select_f)
+DEF_OP(Select_8)
+DEF_OP(QuantizedGroupedConv2d_8x8p32to8)
+
+// Add new operations above this line
 #ifdef __SELF_DEF_OP_WREF
 #undef __SELF_DEF_OP_WREF
 #undef DEF_OP_WREF
