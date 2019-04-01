@@ -485,7 +485,9 @@ MaceStatus MaceEngine::Impl::Init(
                  << MakeString(MapKeys(output_info_map_));
     }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-    ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
+    Tensor *output_tensor =
+        ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
+    output_tensor->set_data_format(NHWC);
 #endif
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
