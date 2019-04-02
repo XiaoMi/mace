@@ -270,8 +270,11 @@ class DeviceWrapper:
                 if os.path.exists(opencl_parameter_file):
                     self.push(opencl_parameter_file, self.data_dir)
 
-            self.push("third_party/nnlib/libhexagon_controller.so",
-                      self.data_dir)
+            if self.system == SystemType.android \
+                    and device_type == common.DeviceType.HEXAGON:
+                self.push(
+                    "third_party/nnlib/%s/libhexagon_controller.so" % abi,
+                    self.data_dir)
 
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:
