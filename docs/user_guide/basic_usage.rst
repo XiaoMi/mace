@@ -50,6 +50,8 @@ Here we use the mobilenet-v2 model as an example.
 
     .. note::
 
+        - This step can be skipped if you just want to run a model using ``tools/converter.py``, such as commands in step 5.
+
         - Libraries in ``builds/lib/armeabi-v7a/cpu_gpu/`` means it can run on ``cpu`` or ``gpu`` devices.
 
         - The results in ``builds/lib/armeabi-v7a/cpu_gpu_dsp/`` need HVX supported.

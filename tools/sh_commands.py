@@ -902,7 +902,8 @@ def build_run_throughput_test(abi,
         adb_push("codegen/models/%s/%s.data" % dsp_model_tag,
                  phone_data_dir,
                  serialno)
-    adb_push("third_party/nnlib/libhexagon_controller.so",
+
+    adb_push("third_party/nnlib/%s/libhexagon_controller.so" % abi,
              phone_data_dir,
              serialno)
 
