@@ -326,7 +326,7 @@ class MACE_API MaceTensor {
   //        of shared_ptr and manage the life cycle of the buffer by yourself.
   //        For example, std::shared_ptr<float>(raw_buffer, [](float *){});
   MaceTensor(const std::vector<int64_t> &shape,
-             std::shared_ptr<float> data,
+             std::shared_ptr<void> data,
              const DataFormat format = DataFormat::NHWC);
   MaceTensor();
   MaceTensor(const MaceTensor &other);
@@ -339,7 +339,19 @@ class MACE_API MaceTensor {
   const std::vector<int64_t> &shape() const;
   const std::shared_ptr<float> data() const;
   std::shared_ptr<float> data();
+  template <typename T>
+  const std::shared_ptr<T> data() const {
+    return std::static_pointer_cast<T>(raw_data());
+  }
+  template <typename T>
+  std::shared_ptr<T> data() {
+    return std::static_pointer_cast<T>(raw_mutable_data());
+  }
   DataFormat data_format() const;
+
+ private:
+  std::shared_ptr<void> raw_data() const;
+  std::shared_ptr<void> raw_mutable_data();
 
  private:
   class Impl;

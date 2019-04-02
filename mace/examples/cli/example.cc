@@ -267,6 +267,7 @@ bool RunModel(const std::vector<std::string> &input_names,
         std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 1,
                         std::multiplies<int64_t>());
     inputs_size[input_names[i]] = input_size;
+    // Only support float and int32 data type
     auto buffer_in = std::shared_ptr<float>(new float[input_size],
                                             std::default_delete<float[]>());
     inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in,
@@ -277,6 +278,7 @@ bool RunModel(const std::vector<std::string> &input_names,
     int64_t output_size =
         std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 1,
                         std::multiplies<int64_t>());
+    // Only support float and int32 data type
     auto buffer_out = std::shared_ptr<float>(new float[output_size],
                                              std::default_delete<float[]>());
     outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out,

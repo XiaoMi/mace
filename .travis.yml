@@ -114,7 +114,7 @@ jobs:
         - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --target_abis=armeabi-v7a || exit 1
         - python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --target_abis=armeabi-v7a || exit 1
         - echo 'Extra Test'
-        - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=False --target_abis=armeabi-v7a || exit 1
+        - python tools/bazel_adb_run.py --target="//mace/utils:utils_test" --run_target=False --target_abis=armeabi-v7a || exit 1
       env: TYPE=Extra-Test-ARMEABI-v7a
       os: linux
       dist: xenial

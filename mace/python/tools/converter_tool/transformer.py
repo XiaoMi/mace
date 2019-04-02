@@ -323,7 +323,7 @@ class Transformer(base_converter.ConverterInterface):
             input_info.name = input_node.name
             input_info.data_format = input_node.data_format.value
             input_info.dims.extend(input_node.shape)
-            input_info.data_type = mace_pb2.DT_FLOAT
+            input_info.data_type = input_node.data_type
 
         output_nodes = self._option.check_nodes.values()
         for output_node in output_nodes:
@@ -332,7 +332,7 @@ class Transformer(base_converter.ConverterInterface):
             output_info.data_format = output_node.data_format.value
             output_info.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
-            output_info.data_type = mace_pb2.DT_FLOAT
+            output_info.data_type = output_node.data_type
 
         return False
 

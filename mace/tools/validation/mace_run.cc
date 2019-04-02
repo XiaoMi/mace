@@ -317,17 +317,18 @@ bool RunModel(const std::string &model_name,
   std::map<std::string, mace::MaceTensor> outputs;
   for (size_t i = 0; i < input_count; ++i) {
     // Allocate input and output
+    // only support float and int32, use char for generalization
+    // sizeof(int) == 4, sizeof(float) == 4
     int64_t input_size =
-        std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 1,
+        std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 4,
                         std::multiplies<int64_t>());
-    auto buffer_in = std::shared_ptr<float>(new float[input_size],
-                                            std::default_delete<float[]>());
+    auto buffer_in = std::shared_ptr<char>(new char[input_size],
+                                           std::default_delete<char[]>());
     // load input
     std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
                           std::ios::in | std::ios::binary);
     if (in_file.is_open()) {
-      in_file.read(reinterpret_cast<char *>(buffer_in.get()),
-                   input_size * sizeof(float));
+      in_file.read(buffer_in.get(), input_size);
       in_file.close();
     } else {
       LOG(INFO) << "Open input file failed";
@@ -338,11 +339,12 @@ bool RunModel(const std::string &model_name,
   }
 
   for (size_t i = 0; i < output_count; ++i) {
+    // only support float and int32, use char for generalization
     int64_t output_size =
-        std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 1,
+        std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 4,
                         std::multiplies<int64_t>());
-    auto buffer_out = std::shared_ptr<float>(new float[output_size],
-                                             std::default_delete<float[]>());
+    auto buffer_out = std::shared_ptr<char>(new char[output_size],
+                                            std::default_delete<char[]>());
     outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out,
         output_data_formats[i]);
   }
@@ -454,12 +456,12 @@ bool RunModel(const std::string &model_name,
     std::string output_name =
         FLAGS_output_file + "_" + FormatName(output_names[i]);
     std::ofstream out_file(output_name, std::ios::binary);
+    // only support float and int32
     int64_t output_size =
-        std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 1,
+        std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 4,
                         std::multiplies<int64_t>());
     out_file.write(
-        reinterpret_cast<char *>(outputs[output_names[i]].data().get()),
-        output_size * sizeof(float));
+        outputs[output_names[i]].data<char>().get(), output_size);
     out_file.flush();
     out_file.close();
     LOG(INFO) << "Write output file " << output_name << " with size "
@@ -524,6 +526,7 @@ int Main(int argc, char **argv) {
 
   // get cpu capability
   Capability cpu_capability = GetCapability(DeviceType::CPU);
+  float cpu_float32_performance = cpu_capability.float32_performance.exec_time;
 
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
@@ -531,7 +534,7 @@ int Main(int argc, char **argv) {
     ret = RunModel(FLAGS_model_name,
         input_names, input_shape_vec, input_data_formats,
         output_names, output_shape_vec, output_data_formats,
-        cpu_capability.float32_performance.exec_time);
+        cpu_float32_performance);
   }
   if (ret) {
     return 0;

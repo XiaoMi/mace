@@ -284,13 +284,13 @@ MaceStatus MaceEngineConfig::SetCPUThreadPolicy(
 class MaceTensor::Impl {
  public:
   std::vector<int64_t> shape;
-  std::shared_ptr<float> data;
+  std::shared_ptr<void> data;
   DataFormat format;
   int64_t buffer_size;
 };
 
 MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
-                       std::shared_ptr<float> data,
+                       std::shared_ptr<void> data,
                        const DataFormat format) {
   MACE_CHECK_NOTNULL(data.get());
   MACE_CHECK(format == DataFormat::DF_NONE || format == DataFormat::NHWC
@@ -345,9 +345,21 @@ MaceTensor::~MaceTensor() = default;
 
 const std::vector<int64_t> &MaceTensor::shape() const { return impl_->shape; }
 
-const std::shared_ptr<float> MaceTensor::data() const { return impl_->data; }
+const std::shared_ptr<float> MaceTensor::data() const {
+  return std::static_pointer_cast<float>(impl_->data);
+}
 
-std::shared_ptr<float> MaceTensor::data() { return impl_->data; }
+std::shared_ptr<float> MaceTensor::data() {
+  return std::static_pointer_cast<float>(impl_->data);
+}
+
+std::shared_ptr<void> MaceTensor::raw_data() const {
+  return impl_->data;
+}
+
+std::shared_ptr<void> MaceTensor::raw_mutable_data() {
+  return impl_->data;
+}
 
 DataFormat MaceTensor::data_format() const {
   return impl_->format;
@@ -466,8 +478,9 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
+    DataType input_dt = input_info_map_[input_name].data_type();
     Tensor *input_tensor =
-        ws_->CreateTensor(input_name, device_->allocator(), DT_FLOAT);
+        ws_->CreateTensor(input_name, device_->allocator(), input_dt);
     // Resize to possible largest shape to avoid resize during running.
     std::vector<index_t> shape(input_info_map_[input_name].dims_size());
     for (int i = 0; i < input_info_map_[input_name].dims_size(); ++i) {
@@ -485,8 +498,9 @@ MaceStatus MaceEngine::Impl::Init(
                  << MakeString(MapKeys(output_info_map_));
     }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+    DataType output_dt = output_info_map_[output_name].data_type();
     Tensor *output_tensor =
-        ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
+        ws_->CreateTensor(output_name, device_->allocator(), output_dt);
     output_tensor->set_data_format(NHWC);
 #endif
   }
@@ -572,54 +586,71 @@ MaceStatus MaceEngine::Impl::TransposeInput(
     Tensor *input_tensor) {
   bool has_data_format = input_tensor->data_format() != DataFormat::DF_NONE;
   DataFormat data_format = DataFormat::DF_NONE;
+  DataType input_dt = input_tensor->dtype();
   if (has_data_format) {
+    std::vector<int> dst_dims;
     if (device_->device_type() == DeviceType::CPU &&
         input.second.shape().size() == 4 &&
         input.second.data_format() == NHWC &&
         !is_quantized_model_) {
       VLOG(1) << "Transform input " << input.first << " from NHWC to NCHW";
       input_tensor->set_data_format(DataFormat::NCHW);
-      std::vector<int> dst_dims = {0, 3, 1, 2};
-      std::vector<index_t> output_shape =
-          TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
-      MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
-      Tensor::MappingGuard input_guard(input_tensor);
-      float *input_data = input_tensor->mutable_data<float>();
-      return ops::Transpose(input.second.data().get(),
-                            input.second.shape(),
-                            dst_dims,
-                            input_data);
+      dst_dims = {0, 3, 1, 2};
     } else if (
         (is_quantized_model_ || device_->device_type() == DeviceType::GPU) &&
             input.second.shape().size() == 4 &&
             input.second.data_format() == DataFormat::NCHW) {
       VLOG(1) << "Transform input " << input.first << " from NCHW to NHWC";
-      std::vector<int> dst_dims = {0, 2, 3, 1};
       input_tensor->set_data_format(DataFormat::NHWC);
+      dst_dims = {0, 2, 3, 1};
+    }
+    if (!dst_dims.empty()) {
       std::vector<index_t> output_shape =
           TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
       MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
       Tensor::MappingGuard input_guard(input_tensor);
-      float *input_data = input_tensor->mutable_data<float>();
-      return ops::Transpose(input.second.data().get(),
-                            input.second.shape(),
-                            dst_dims,
-                            input_data);
+      if (input_dt == DataType::DT_FLOAT) {
+        auto input_data = input_tensor->mutable_data<float>();
+        return ops::Transpose(input.second.data<float>().get(),
+                              input.second.shape(),
+                              dst_dims,
+                              input_data,
+                              input_dt);
+      } else if (input_dt == DataType::DT_INT32) {
+        auto input_data = input_tensor->mutable_data<int>();
+        return ops::Transpose(input.second.data<int>().get(),
+                              input.second.shape(),
+                              dst_dims,
+                              input_data,
+                              input_dt);
+      } else {
+        LOG(FATAL) << "MACE do not support the input data type: " << input_dt;
+      }
     }
+
     data_format = input.second.data_format();
   }
   input_tensor->set_data_format(data_format);
   MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
   Tensor::MappingGuard input_guard(input_tensor);
-  float *input_data = input_tensor->mutable_data<float>();
-  memcpy(input_data, input.second.data().get(),
-         input_tensor->size() * sizeof(float));
+  if (input_dt == DataType::DT_FLOAT) {
+    auto input_data = input_tensor->mutable_data<float>();
+    memcpy(input_data, input.second.data().get(),
+           input_tensor->size() * sizeof(float));
+  } else if (input_dt == DataType::DT_INT32) {
+    auto input_data = input_tensor->mutable_data<int>();
+    memcpy(input_data, input.second.data().get(),
+           input_tensor->size() * sizeof(int));
+  } else {
+    LOG(FATAL) << "MACE do not support the input data type: " << input_dt;
+  }
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MaceEngine::Impl::TransposeOutput(
     const mace::Tensor *output_tensor,
     std::pair<const std::string, mace::MaceTensor> *output) {
+  DataType output_dt = output_tensor->dtype();
   // save output
   if (output_tensor != nullptr && output->second.data() != nullptr) {
     if (output_tensor->data_format() != DataFormat::DF_NONE &&
@@ -655,11 +686,23 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
         << output->second.impl_->buffer_size;
       output->second.impl_->shape = shape;
       Tensor::MappingGuard output_guard(output_tensor);
-      const float *output_data = output_tensor->data<float>();
-      return ops::Transpose(output_data,
-                            output_tensor->shape(),
-                            dst_dims,
-                            output->second.data().get());
+      if (output_dt == DataType::DT_FLOAT) {
+        auto output_data = output_tensor->data<float>();
+        return ops::Transpose(output_data,
+                              output_tensor->shape(),
+                              dst_dims,
+                              output->second.data<float>().get());
+      } else if (output_dt == DataType::DT_INT32) {
+        auto output_data = output_tensor->data<int>();
+        return ops::Transpose(output_data,
+                              output_tensor->shape(),
+                              dst_dims,
+                              output->second.data<int>().get(),
+                              output_dt);
+      } else {
+        LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
+        return MaceStatus::MACE_INVALID_ARGS;
+      }
     } else {
       Tensor::MappingGuard output_guard(output_tensor);
       auto shape = output_tensor->shape();
@@ -670,8 +713,17 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
         << MakeString<int64_t>(shape) << " vs buffer size "
         << output->second.impl_->buffer_size;
       output->second.impl_->shape = shape;
-      std::memcpy(output->second.data().get(), output_tensor->data<float>(),
-                  output_size * sizeof(float));
+      if (output_dt == DataType::DT_FLOAT) {
+        std::memcpy(output->second.data<float>().get(),
+                    output_tensor->data<float>(),
+                    output_size * sizeof(float));
+      } else if (output_dt == DataType::DT_INT32) {
+        std::memcpy(output->second.data<int>().get(),
+            output_tensor->data<int>(),
+            output_size * sizeof(int));
+      } else {
+        LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
+      }
       return MaceStatus::MACE_SUCCESS;
     }
   } else {

@@ -14,6 +14,8 @@
 
 
 #include "mace/core/operator.h"
+#include "mace/ops/common/transpose.h"
+#include "mace/utils/math.h"
 
 namespace mace {
 namespace ops {
@@ -33,21 +35,35 @@ class ExpandDimsOp<DeviceType::CPU, T> : public Operation {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
     index_t input_dims_size = input->dim_size();
-    if ( axis_ < 0 ) {
+    if (axis_ < 0) {
       axis_ += input_dims_size + 1;
     }
     MACE_CHECK(axis_ >= 0 && axis_ <= input_dims_size,
                "axis is out of bound: ", axis_);
     const std::vector<index_t> input_shape = input->shape();
-    std::vector<index_t> output_shape;
-    output_shape.insert(output_shape.end(), input_shape.begin(),
-                        input_shape.begin() + axis_);
-    output_shape.insert(output_shape.end(), 1);
-    output_shape.insert(output_shape.end(), input_shape.begin() + axis_,
-                        input_shape.end());
+    std::vector<index_t> output_shape(input_shape);
+    output_shape.insert(output_shape.begin() + axis_, 1);
 
-    output->ReuseTensorBuffer(*input);
-    output->Reshape(output_shape);
+    bool has_data_format = Operation::GetOptionalArg<int>(
+        "has_data_format", 0) == 1;
+    if (has_data_format && output_shape.size() == 4) {
+      // only tensorflow support expand dim, so the default format is NHWC
+      // transform NHWC to NCHW
+      auto t_output_shape = TransposeShape<int64_t, int64_t>(output_shape,
+          {0, 3, 1, 2});
+      output->Resize(t_output_shape);
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      auto input_data = input->data<T>();
+      auto output_data = output->mutable_data<T>();
+
+      Transpose(input_data, output_shape, {0, 3, 1, 2}, output_data);
+    } else {
+      output->Resize(output_shape);
+      Tensor::MappingGuard input_guard(input);
+      auto input_data = input->data<T>();
+      output->Copy<T>(input_data, input->size());
+    }
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -62,11 +78,6 @@ void RegisterExpandDims(OpRegistryBase *op_registry) {
 
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
                    DeviceType::CPU, int32_t);
-
-#ifdef MACE_ENABLE_QUANTIZE
-  MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
-                   DeviceType::CPU, uint8_t);
-#endif  // MACE_ENABLE_QUANTIZE
 }
 
 }  // namespace ops

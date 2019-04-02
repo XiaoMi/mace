@@ -47,6 +47,11 @@ data_format_map = {
     'OIHW': cvt.DataFormat.OIHW,
 }
 
+data_type_map = {
+    'float32': mace_pb2.DT_FLOAT,
+    'int32': mace_pb2.DT_INT32,
+}
+
 
 def parse_data_type(data_type, device_type):
     if device_type == cvt.DeviceType.CPU.value or \
@@ -141,6 +146,7 @@ def main(unused_args):
     option.data_type = parse_data_type(FLAGS.data_type, option.device)
 
     input_node_names = FLAGS.input_node.split(',')
+    input_data_types = FLAGS.input_data_types.split(',')
     input_node_shapes = FLAGS.input_shape.split(':')
     input_node_formats = FLAGS.input_data_formats.split(",")
     if FLAGS.input_range:
@@ -152,10 +158,8 @@ def main(unused_args):
     for i in six.moves.range(len(input_node_names)):
         input_node = cvt.NodeInfo()
         input_node.name = input_node_names[i]
-        if len(input_node_formats) == 1:
-            input_node.data_format = data_format_map[input_node_formats[0]]
-        else:
-            input_node.data_format = data_format_map[input_node_formats[i]]
+        input_node.data_type = data_type_map[input_data_types[i]]
+        input_node.data_format = data_format_map[input_node_formats[i]]
         input_node.shape = parse_int_array_from_str(input_node_shapes[i])
         if input_node.data_format == cvt.DataFormat.NCHW and\
                 len(input_node.shape) == 4:
@@ -166,6 +170,7 @@ def main(unused_args):
         option.add_input_node(input_node)
 
     output_node_names = FLAGS.output_node.split(',')
+    output_data_types = FLAGS.output_data_types.split(',')
     output_node_shapes = FLAGS.output_shape.split(':')
     output_node_formats = FLAGS.output_data_formats.split(",")
     if len(output_node_names) != len(output_node_shapes):
@@ -173,10 +178,8 @@ def main(unused_args):
     for i in six.moves.range(len(output_node_names)):
         output_node = cvt.NodeInfo()
         output_node.name = output_node_names[i]
-        if len(output_node_formats) == 1:
-            output_node.data_format = data_format_map[output_node_formats[0]]
-        else:
-            output_node.data_format = data_format_map[output_node_formats[i]]
+        output_node.data_type = data_type_map[output_data_types[i]]
+        output_node.data_format = data_format_map[output_node_formats[i]]
         output_node.shape = parse_int_array_from_str(output_node_shapes[i])
         if output_node.data_format == cvt.DataFormat.NCHW and\
                 len(output_node.shape) == 4:
@@ -291,12 +294,22 @@ def parse_args():
         default="input_node",
         help="e.g., input_node")
     parser.add_argument(
+        "--input_data_types",
+        type=str,
+        default="float32",
+        help="e.g., float32|int32")
+    parser.add_argument(
         "--input_data_formats",
         type=str,
         default="NHWC",
         help="e.g., NHWC,NONE")
     parser.add_argument(
         "--output_node", type=str, default="softmax", help="e.g., softmax")
+    parser.add_argument(
+        "--output_data_types",
+        type=str,
+        default="float32",
+        help="e.g., float32|int32")
     parser.add_argument(
         "--output_data_formats",
         type=str,

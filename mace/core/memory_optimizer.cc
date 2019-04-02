@@ -33,7 +33,7 @@ namespace mace {
 
 bool MemoryOptimizer::IsMemoryReuseOp(const std::string &op_type) {
   static const std::unordered_set<std::string> kReuseOp = {
-      "Reshape", "Identity", "Squeeze", "ExpandDims"
+      "Reshape", "Identity", "Squeeze"
   };
   return kReuseOp.count(op_type) == 1;
 }
