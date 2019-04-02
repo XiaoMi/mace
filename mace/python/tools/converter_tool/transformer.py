@@ -198,7 +198,7 @@ class Transformer(base_converter.ConverterInterface):
                     op.output.extend([input_node.name])
                     output_shape = op.output_shape.add()
                     output_shape.dims.extend(input_node.shape)
-                    if input_node in self._consumers:
+                    if input_node.name in self._consumers:
                         if ConverterUtil.data_format(
                                 self._consumers[input_node.name][0]) \
                                 == DataFormat.NCHW:
