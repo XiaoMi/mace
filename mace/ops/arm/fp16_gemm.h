@@ -17,14 +17,12 @@
 
 #include "mace/core/types.h"
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) && defined(ANDROID)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 #include <arm_neon.h>
 #endif
 
-#if defined(MACE_ENABLE_NEON) && !defined(__aarch64__)
-#if defined(__ANDROID__) && defined(ANDROID)
+#if defined(MACE_ENABLE_NEON) && !defined(__aarch64__) && defined(__ANDROID__)
 #define vaddvq_f32(v) ((v)[0] + (v)[1] + (v)[2] + (v)[3])
-#endif
 #endif
 
 namespace mace {
@@ -39,7 +37,7 @@ void FP16Gemv(const INPUT_TYPE_LEFT *m_ptr,
               const index_t width,
               OUTPUT_TYPE *result);
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) && defined(ANDROID)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 template<>
 void FP16Gemv<float16_t, float, float>(const float16_t *m_ptr,
                                        const float *v_ptr,

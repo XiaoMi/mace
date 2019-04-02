@@ -263,13 +263,17 @@ void MatMulBenchmark(
   OpsTestNet net;
 
   // Add input data
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   if (DataTypeToEnum<T>::value == DT_FLOAT16) {
     net.AddRandomInput<D, float16_t>("A", {batch, height, channels});
     net.AddRandomInput<D, float>("B", {batch, channels, out_width});
   } else {
+#endif
     net.AddRandomInput<D, T>("A", {batch, height, channels});
     net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   }
+#endif
   net.GetTensor("A")->SetIsWeight(true);
   net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -310,13 +314,17 @@ void MatMulTransposeBenchmark(
   OpsTestNet net;
 
   // Add input data
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   if (DataTypeToEnum<T>::value == DT_FLOAT16) {
     net.AddRandomInput<D, float>("A", {batch, height, channels});
     net.AddRandomInput<D, float16_t>("B", {batch, out_width, channels});
   } else {
+#endif
     net.AddRandomInput<D, T>("A", {batch, height, channels});
     net.AddRandomInput<D, float>("B", {batch, out_width, channels});
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   }
+#endif
   net.GetTensor("A")->SetIsWeight(true);
   net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -388,11 +396,16 @@ void MatMulTransposeBenchmark(
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
-#ifdef MACE_ENABLE_QUANTIZE
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float16_t, CPU);     \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
+#else
+#define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
+#endif
 
 MACE_BM_MATMUL_OP(1, 30000, 256, 1);
 MACE_BM_MATMUL_OP(1, 128, 256, 128);

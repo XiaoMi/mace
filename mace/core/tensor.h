@@ -46,7 +46,7 @@ namespace mace {
     break;                            \
   }
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) && defined(ANDROID)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 #define MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)             \
   MACE_CASE(float16_t, MACE_SINGLE_ARG(STATEMENTS))
 #else

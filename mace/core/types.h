@@ -17,7 +17,7 @@
 
 #include <cstdint>
 #include <string>
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) && defined(ANDROID)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 #include <arm_neon.h>
 #endif
 
@@ -54,7 +54,7 @@ struct EnumToDataType;
   };
 
 MACE_MAPPING_DATA_TYPE_AND_ENUM(half, DT_HALF);
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) && defined(ANDROID)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 MACE_MAPPING_DATA_TYPE_AND_ENUM(float16_t, DT_FLOAT16);
 #endif
 MACE_MAPPING_DATA_TYPE_AND_ENUM(float, DT_FLOAT);

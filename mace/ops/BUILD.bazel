@@ -38,7 +38,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -61,7 +61,20 @@ cc_library(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ],
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon-fp16",
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
     deps = [
         "//mace/core",
         "@gtest",
@@ -89,7 +102,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -141,7 +154,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -186,7 +199,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -221,7 +234,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -256,7 +269,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -325,7 +338,6 @@ cc_library(
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",
-    ]) + if_android_armv7([
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -370,7 +382,6 @@ cc_library(
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",
-    ]) + if_android_armv7([
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
