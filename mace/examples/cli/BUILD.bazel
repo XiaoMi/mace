@@ -18,6 +18,7 @@ cc_binary(
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = [
+        "-fuse-ld=gold",
         "-lm",
         "-ldl",
     ] + if_openmp_enabled([
@@ -53,6 +54,7 @@ cc_binary(
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = [
+        "-fuse-ld=gold",
         "-lm",
         "-ldl",
     ] + if_android([
