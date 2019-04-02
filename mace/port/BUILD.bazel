@@ -19,6 +19,8 @@ cc_library(
         "env.h",
         "file_system.h",
         "logger.h",
+        "port.h",
+        "port-arch.h",
     ],
     deps = [
         "//mace/public",

@@ -52,7 +52,7 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
                                            const std::vector<size_t> &cpu_ids,
                                            SchedulePolicy schedule_policy) {
   MaceOpenMPThreadCount = omp_num_threads;
-
+  SchedSetAffinity(cpu_ids);
 #ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
