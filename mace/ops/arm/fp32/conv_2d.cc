@@ -24,6 +24,49 @@ namespace ops {
 namespace arm {
 namespace fp32 {
 
+void Conv2dBase::CalOutputShapeAndInputPadSize(
+    const std::vector<index_t> &input_shape,
+    const std::vector<index_t> &filter_shape,
+    std::vector<index_t> *output_shape,
+    std::vector<int> *in_pad_size) {
+  if (paddings_.empty()) {
+    CalcNCHWPaddingAndOutputSize(input_shape.data(),
+                                 filter_shape.data(),
+                                 dilations_.data(),
+                                 strides_.data(),
+                                 padding_type_,
+                                 output_shape->data(),
+                                 in_pad_size->data());
+  } else {
+    *in_pad_size = paddings_;
+    CalcNCHWOutputSize(input_shape.data(),
+                       filter_shape.data(),
+                       paddings_.data(),
+                       dilations_.data(),
+                       strides_.data(),
+                       RoundType::FLOOR,
+                       output_shape->data());
+  }
+}
+
+void Conv2dBase::CalOutputBoundaryWithoutUsingInputPad(
+    const std::vector<index_t> &output_shape,
+    const std::vector<int> in_pad_size,
+    std::vector<index_t> *out_bound) {
+  const int pad_top = in_pad_size[0] >> 1;
+  const int pad_bottom = in_pad_size[0] - pad_top;
+  const int pad_left = in_pad_size[1] >> 1;
+  const int pad_right = in_pad_size[1] - pad_left;
+  const index_t height = output_shape[2];
+  const index_t width = output_shape[3];
+  *out_bound = {
+      pad_top == 0 ? 0 : (pad_top - 1) / strides_[0] + 1,
+      pad_bottom == 0 ? height : height - ((pad_bottom - 1) / strides_[0] + 1),
+      pad_left == 0 ? 0 : (pad_left - 1) / strides_[1] + 1,
+      pad_right == 0 ? width : width - ((pad_right - 1) / strides_[1] + 1),
+  };
+}
+
 void Conv2dBase::CalOutputShapeAndPadSize(const Tensor *input,
                                           const Tensor *filter,
                                           const int out_tile_height,
@@ -46,24 +89,11 @@ void Conv2dBase::CalOutputShapeAndPadSize(const Tensor *input,
   const index_t filter_w = filter->dim(3);
 
   std::vector<int> paddings(2);
-  if (paddings_.empty()) {
-    CalcNCHWPaddingAndOutputSize(input->shape().data(),
-                                 filter->shape().data(),
-                                 dilations_.data(),
-                                 strides_.data(),
-                                 padding_type_,
-                                 output_shape->data(),
-                                 paddings.data());
-  } else {
-    paddings = paddings_;
-    CalcNCHWOutputSize(input->shape().data(),
-                       filter->shape().data(),
-                       paddings_.data(),
-                       dilations_.data(),
-                       strides_.data(),
-                       RoundType::FLOOR,
-                       output_shape->data());
-  }
+  CalOutputShapeAndInputPadSize(input->shape(),
+                                filter->shape(),
+                                output_shape,
+                                &paddings);
+
   const index_t out_height = (*output_shape)[2];
   const index_t out_width = (*output_shape)[3];
   const index_t
@@ -96,9 +126,9 @@ MaceStatus Conv2dBase::ResizeOutAndPadInOut(const OpContext *context,
                                             const int out_tile_height,
                                             const int out_tile_width,
                                             std::unique_ptr<const Tensor>
-                                                *padded_input,
+                                            *padded_input,
                                             std::unique_ptr<Tensor>
-                                                *padded_output) {
+                                            *padded_output) {
   std::vector<index_t> output_shape;
   std::vector<int> in_pad_size;
   std::vector<int> out_pad_size;
@@ -152,8 +182,9 @@ MaceStatus Conv2dBase::ResizeOutAndPadInOut(const OpContext *context,
   }
   if (is_out_padded) {
     std::unique_ptr<Tensor>
-    padded_out = make_unique<Tensor>(scratch_buffer->Scratch(padded_out_size),
-                                     DataType::DT_FLOAT);
+        padded_out =
+        make_unique<Tensor>(scratch_buffer->Scratch(padded_out_size),
+                            DataType::DT_FLOAT);
     padded_out->Resize({batch, out_channels, padded_out_height,
                         padded_out_width});
     *padded_output = std::move(padded_out);
