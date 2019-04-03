@@ -90,7 +90,7 @@ For android, you can use `ndk-stack tools <https://developer.android.com/ndk/gui
 
   .. code:: sh
 
-    adb logcat | $NDK/ndk-stack -sym /path/to/local/binary/directory/
+    adb logcat | $ANDROID_NDK_HOME/ndk-stack -sym /path/to/local/binary/directory/
 
 
 Debug memory usage

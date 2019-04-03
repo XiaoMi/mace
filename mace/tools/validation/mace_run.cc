@@ -37,6 +37,7 @@
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/string_util.h"
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
@@ -244,7 +245,8 @@ bool RunModel(const std::string &model_name,
   }
 #endif  // MACE_ENABLE_OPENCL
 
-  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
+    make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_file != "") {
     auto fs = GetFileSystem();
     status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
@@ -254,7 +256,8 @@ bool RunModel(const std::string &model_name,
     }
   }
 
-  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data =
+    make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_data_file != "") {
     auto fs = GetFileSystem();
     status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_data_file.c_str(),

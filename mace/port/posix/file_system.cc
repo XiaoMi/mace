@@ -38,8 +38,8 @@ class PosixReadOnlyMemoryRegion : public ReadOnlyMemoryRegion {
       munmap(const_cast<void *>(addr_), length_);
     }
   };
-  const void *data() override { return addr_; };
-  uint64_t length() override { return length_; };
+  const void *data() const override { return addr_; };
+  uint64_t length() const override { return length_; };
 
  private:
   const void *addr_;

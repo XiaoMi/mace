@@ -25,6 +25,7 @@
 #include "mace/port/file_system.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/math.h"
 #include "mace/benchmark/statistics.h"
 #ifdef MODEL_GRAPH_FORMAT_CODE
@@ -284,7 +285,8 @@ int Main(int argc, char **argv) {
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
   // Create Engine
-  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
+    make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_file != "") {
     auto fs = GetFileSystem();
     auto status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
@@ -294,7 +296,8 @@ int Main(int argc, char **argv) {
     }
   }
 
-  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data;
+  std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data =
+    make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_data_file != "") {
     auto fs = GetFileSystem();
     auto status = fs->NewReadOnlyMemoryRegionFromFile(

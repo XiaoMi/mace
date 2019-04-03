@@ -27,8 +27,21 @@ class ReadOnlyMemoryRegion {
  public:
   ReadOnlyMemoryRegion() = default;
   virtual ~ReadOnlyMemoryRegion() = default;
-  virtual const void *data() = 0;
-  virtual uint64_t length() = 0;
+  virtual const void *data() const = 0;
+  virtual uint64_t length() const = 0;
+};
+
+class ReadOnlyBufferMemoryRegion : public ReadOnlyMemoryRegion {
+ public:
+  ReadOnlyBufferMemoryRegion() : data_(nullptr), length_(0) {}
+  ReadOnlyBufferMemoryRegion(const void *data, uint64_t length) :
+    data_(data), length_(length) {}
+  const void *data() const override { return data_; }
+  uint64_t length() const override { return length_; }
+
+ private:
+  const void *data_;
+  uint64_t length_;
 };
 
 class FileSystem {
