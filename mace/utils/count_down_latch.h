@@ -54,6 +54,10 @@ class CountDownLatch {
     count_.store(count, std::memory_order_release);
   }
 
+  int count() const {
+    return count_;
+  }
+
  private:
   int64_t spin_timeout_;
   std::atomic<int> count_;

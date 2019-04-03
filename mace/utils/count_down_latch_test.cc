@@ -39,6 +39,7 @@ TEST_F(CountDownLatchTest, TestWait) {
   for (int i = 0; i < 10; ++i) {
     threads[i].join();
   }
+  MACE_CHECK(latch.count() == 0);
 }
 
 TEST_F(CountDownLatchTest, TestSpinWait) {
@@ -53,6 +54,7 @@ TEST_F(CountDownLatchTest, TestSpinWait) {
   for (int i = 0; i < 10; ++i) {
     threads[i].join();
   }
+  MACE_CHECK(latch.count() == 0);
 }
 
 }  // namespace
