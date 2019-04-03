@@ -104,10 +104,6 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_channel_shuffle,
             TransformerRule.QUANTIZE_SPECIFIC_OPS_ONLY:
                 self.quantize_specific_ops_only,
-            TransformerRule.ADD_TENSORFLOW_PADDING_VALUE:
-                self.add_tensorflow_padding_value,
-            TransformerRule.USE_UINT8_IN_OUT:
-                self.use_uint8_in_out,
         }
 
         self._option = option
@@ -1172,7 +1168,9 @@ class Transformer(base_converter.ConverterInterface):
 
             for op in net.op:
                 if (op.type == MaceOp.Conv2D.name or
-                    op.type == MaceOp.DepthwiseConv2d.name) and\
+                    op.type == MaceOp.Deconv2D.name or
+                    (op.type == MaceOp.DepthwiseConv2d.name and
+                     self._option.device == DeviceType.APU.value)) and\
                         op.input[1] not in transposed_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
@@ -2081,84 +2079,3 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_flag_arg.i = 1
 
             return True
-
-    def add_tensorflow_padding_value(self):
-        if ConverterUtil.get_arg(self._model.op[0],
-                                 MaceKeyword.mace_framework_type_str).i != \
-               FrameworkType.TENSORFLOW.value:
-            return False
-
-        for op in self._model.op:
-            padding_type = ConverterUtil.get_arg(
-                               op, MaceKeyword.mace_padding_str)
-            if padding_type is None:
-                continue
-
-            padding_arg = op.arg.add()
-            padding_arg.name = MaceKeyword.mace_padding_values_str
-            if padding_type.i == PaddingMode.VALID.value:
-                padding_arg.ints.extend([0, 0, 0, 0])
-            elif padding_type.i == PaddingMode.SAME.value:
-                stride = ConverterUtil.get_arg(
-                             op, MaceKeyword.mace_strides_str).ints
-                kernel = []
-                dilation = [1, 1]
-                if op.type == MaceOp.Conv2D.name or \
-                   op.type == MaceOp.DepthwiseConv2d.name:
-                    if ConverterUtil.get_arg(
-                           op, MaceKeyword.mace_dilations_str) is not None:
-                        dilation = ConverterUtil.get_arg(
-                                       op, MaceKeyword.mace_dilations_str).ints
-                    for tensor in self._model.tensors:
-                        if tensor.name == op.input[1]:
-                            kernel = tensor.dims[1:3]
-                            break
-                else:
-                    kernel = ConverterUtil.get_arg(
-                                 op, MaceKeyword.mace_kernel_str).ints
-                in_size = []
-                for input_info in self._model.input_info:
-                    if input_info.name == op.input[0]:
-                        in_size = input_info.dims[1:3]
-                        break
-                for _op in self._model.op:
-                    for out in _op.output:
-                        if out == op.input[0]:
-                            in_size = _op.output_shape[0].dims[1:3]
-                            break
-                    if len(in_size) > 0:
-                        break
-                out_size = op.output_shape[0].dims[1:3]
-                h = (out_size[0] - 1) * stride[0] \
-                    + ((kernel[0] - 1) * dilation[0] + 1) - in_size[0]
-                w = (out_size[1] - 1) * stride[1] \
-                    + ((kernel[1] - 1) * dilation[1] + 1) - in_size[1]
-                top = int(np.floor(h/2))
-                left = int(np.floor(w/2))
-                bottom = h - top
-                right = w - left
-                padding_arg.ints.extend([top, left, bottom, right])
-        return False
-
-    def use_uint8_in_out(self):
-        for input_info in self._model.input_info:
-            if input_info.data_type == mace_pb2.DT_FLOAT:
-                for op in self._model.op:
-                    if op.input[0] == input_info.name \
-                           and op.type == MaceOp.Quantize.name:
-                        input_info.name = op.output[0]
-                        input_info.data_type = mace_pb2.DT_UINT8
-                        input_info.scale = op.quantize_info[0].scale
-                        input_info.zero_point = op.quantize_info[0].zero_point
-                        break
-                self._model.op.remove(op)
-        for output_info in self._model.output_info:
-            if output_info.data_type == mace_pb2.DT_FLOAT:
-                for op in self._model.op:
-                    if op.output[0] == output_info.name \
-                           and op.type == MaceOp.Dequantize.name:
-                        output_info.name = op.input[0]
-                        output_info.data_type = mace_pb2.DT_UINT8
-                        break
-                self._model.op.remove(op)
-        return False

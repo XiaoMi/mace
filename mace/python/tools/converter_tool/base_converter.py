@@ -286,8 +286,6 @@ class TransformerRule(Enum):
     TRANSFORM_CHANNEL_SHUFFLE = 38
     UPDATE_DATA_FORMAT = 39
     QUANTIZE_SPECIFIC_OPS_ONLY = 40
-    ADD_TENSORFLOW_PADDING_VALUE = 41
-    USE_UINT8_IN_OUT = 42
 
 
 class ConverterInterface(object):
@@ -481,7 +479,7 @@ class ConverterOption(object):
                 TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
-                # For BtoS -> conv -> StoB -> BN pattern
+                # For StoB -> conv -> BtoS -> BN pattern
                 # Insert flatten_atrous_conv before fold_xxx_and_bn
                 TransformerRule.FLATTEN_ATROUS_CONV,
                 TransformerRule.FOLD_BATCHNORM,
@@ -517,11 +515,6 @@ class ConverterOption(object):
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
             ]
-            if self._device == DeviceType.APU.value:
-                self._transformer_option = self._transformer_option + [
-                    # Need to be put after ADD_IN_OUT_TENSOR_INFO
-                    TransformerRule.ADD_TENSORFLOW_PADDING_VALUE,
-                ]
             if self._quantize:
                 self._transformer_option = self._transformer_option + [
                     # need to be put after ADD_QUANTIZE_TENSOR_RANGE
@@ -529,11 +522,6 @@ class ConverterOption(object):
                     TransformerRule.QUANTIZE_WEIGHTS,
                     TransformerRule.SORT_BY_EXECUTION,
                     TransformerRule.CHECK_QUANTIZE_INFO,
-                ]
-            if self._device == DeviceType.APU.value and self._quantize:
-                self._transformer_option = self._transformer_option + [
-                    # need to be put after quantize transformers
-                    TransformerRule.USE_UINT8_IN_OUT,
                 ]
 
 
