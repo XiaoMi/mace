@@ -10,7 +10,11 @@ cc_binary(
     ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = if_openmp_enabled(["-fopenmp"]),
+    linkopts = [
+        "-fuse-ld=gold",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkstatic = 1,
     deps = [
         "//external:gflags_nothreads",
@@ -29,7 +33,9 @@ cc_binary(
     ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = if_openmp_enabled([
+    linkopts = [
+        "-fuse-ld=gold",
+    ] + if_openmp_enabled([
         "-fopenmp",
     ]),
     linkstatic = 0,
