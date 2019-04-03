@@ -80,7 +80,9 @@ MACE op's output.
 
 Debug with crash
 --------------------------
-If MACE crashes, a complete stacktrace is needed. You can rebuild `mace_run` with `--debug_mode` option to reserve debug symbols, e.g.,
+When MACE crashes, a complete stacktrace is useful in debugging. But because of `selinux problem <https://github.com/android-ndk/ndk/issues/943#issuecomment-477834810>`__,
+symbols table is not loaded in memory, which leading to no symbol in stack trace.
+To circumvent this problem, you can rebuild `mace_run` with `--debug_mode` option to reserve debug symbols, e.g.,
 
   .. code:: sh
 
