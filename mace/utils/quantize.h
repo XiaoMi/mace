@@ -57,15 +57,8 @@ inline void AdjustRange(const float in_min_data,
     int32_t
         quantized_zero_near_int = static_cast<int32_t>(roundf(quantized_zero));
     *zero_point = quantized_zero_near_int;
-    if (fabs(quantized_zero - quantized_zero_near_int) > kEps) {
-      if (quantized_zero < quantized_zero_near_int || non_zero) {
-        // keep out_max fixed, and move out_min
-        *zero_point = static_cast<int32_t>(std::ceil(quantized_zero));
-        *scale = out_max / (quantized_max - *zero_point);
-      } else {
-        // keep out_min fixed, and move out_max
-        *scale = out_min / (quantized_min - *zero_point);
-      }
+    if (fabs(quantized_zero - quantized_zero_near_int) > kEps && non_zero) {
+      *zero_point = static_cast<int32_t>(std::ceil(quantized_zero));
     }
   } else if (out_min > -kEps) {
     *zero_point = quantized_min;
