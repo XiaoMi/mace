@@ -72,6 +72,7 @@ OnnxSupportedOps = [
     'DimRange',
     'Div',
     'Dropout',
+    'DynamicLstmCell',
     'Elu',
     'Equal',
     # 'Exp',
@@ -90,16 +91,16 @@ OnnxSupportedOps = [
     # 'Hardmax',
     'Identity',
     # 'If',
-    'IfDefined',
+    # 'IfDefined',
     'ImageScaler',
     # 'InstanceNormalization',
     # 'LRN',
     'LSTM',
-    # 'LstmNonlinear',
+    'LstmNonlinear',
     'LeakyRelu',
     # 'Less',
     # 'Log',
-    # 'LogSoftmax',
+    'LogSoftmax',
     # 'Loop',
     # 'LpNormalization',
     # 'LpPool',
@@ -120,6 +121,7 @@ OnnxSupportedOps = [
     # 'Or',
     'PRelu',
     # 'Pad',
+    'PadContext',
     'Padding',
     'PNorm',
     'Pow',
@@ -331,12 +333,11 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
             OnnxOpType.Identity.name: self.convert_identity,
-            OnnxOpType.IfDefined.name: self.convert_identity,
             OnnxOpType.ImageScaler.name: self.convert_imagescaler,
             OnnxOpType.LeakyRelu.name: self.convert_activation,
-            # OnnxOpType.LogSoftmax.name: self.convert_softmax,
-            OnnxOpType.LSTM.name: self.convert_lstm,
-            # OnnxOpType.LstmNonlinear.name: self.convert_lstm_nonlinear,
+            OnnxOpType.LogSoftmax.name: self.convert_softmax,
+            OnnxOpType.LstmNonlinear.name: self.convert_lstm_nonlinear,
+            OnnxOpType.DynamicLstmCell.name: self.convert_dynamic_lstm,
             OnnxOpType.Max.name: self.convert_eltwise,
             OnnxOpType.MaxPool.name: self.convert_pooling,
             OnnxOpType.MatMul.name: self.convert_matmul,
@@ -344,7 +345,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Mul.name: self.convert_eltwise,
             OnnxOpType.Neg.name: self.convert_eltwise,
             OnnxOpType.Normalize: self.convert_normalize,
-            OnnxOpType.Offset.name: self.convert_timeoffset,
+            OnnxOpType.Offset.name: self.convert_identity,
+            OnnxOpType.PadContext.name: self.convert_pad_context,
             OnnxOpType.Padding.name: self.convert_identity,
             OnnxOpType.PNorm.name: self.convert_pnorm,
             OnnxOpType.Pow.name: self.convert_eltwise,
@@ -642,7 +644,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             mace_check(axis_value == 1 or axis_value == -3,
                        "only support concat at channel dimension")
         elif node.op_type == OnnxOpType.Append.name:
-            axis_value = 2
+            axis_value = 1
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = 4 + axis_value if axis_value < 0 else axis_value
@@ -758,14 +760,69 @@ class OnnxConverter(base_converter.ConverterInterface):
         offset = node.attrs['offset']
         starts_arg = op.arg.add()
         starts_arg.name = 'starts'
-        starts_arg.ints.append(offset)
+        starts_arg.ints.extend([offset])
         output_dim = node.attrs['output_dim']
         ends_arg = op.arg.add()
-        ends_arg.name = 'output_dim'
-        ends_arg.ints.append(output_dim)
+        ends_arg.name = 'ends'
+        ends_arg.ints.extend([output_dim + offset])
         axes_arg = op.arg.add()
         axes_arg.name = 'axes'
-        axes_arg.ints.append(-1)
+        axes_arg.ints.extend([-1])
+
+    def convert_dynamic_lstm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.DynamicLSTM.name
+
+        if 'delay_a' in node.attrs:
+            prev_out_delay = node.attrs['delay_a']
+            mace_check(prev_out_delay < 0,
+                       "dynamic's prev_out_delay should <= 0.")
+            prev_out_delay_arg = op.arg.add()
+            prev_out_delay_arg.name = 'prev_out_delay'
+            prev_out_delay_arg.i = prev_out_delay
+        if 'delay_b' in node.attrs:
+            prev_cell_delay = node.attrs['delay_b']
+            mace_check(prev_cell_delay < 0,
+                       "dynamic's prev_cell_delay should < 0.")
+            prev_cell_delay_arg = op.arg.add()
+            prev_cell_delay_arg.name = 'prev_cell_delay'
+            prev_cell_delay_arg.i = prev_cell_delay
+        if 'prev_out_offset' in node.attrs:
+            prev_out_offset = node.attrs['prev_out_offset']
+            mace_check(pre_out_offset >= 0,
+                       "dynamic's prev_out_offset should >= 0.")
+            prev_out_offset_arg = op.arg.add()
+            prev_out_offset_arg.name = 'prev_out_offset'
+            prev_out_offset_arg.i = prev_out_offset
+        if 'prev_a_dim' in node.attrs:
+            prev_out_dim = node.attrs['prev_a_dim']
+            mace_check(prev_out_dim > 0,
+                       "dynamic's prev_out_dim should > 0.")
+            prev_out_dim_arg = op.arg.add()
+            prev_out_dim_arg.name = 'prev_out_dim'
+            prev_out_dim_arg.i = prev_out_dim
+        if 'prev_b_dim' in node.attrs:
+            prev_cell_dim = node.attrs['prev_b_dim']
+            mace_check(prev_cell_dim > 0,
+                       "dynamic's prev_cell_dim should > 0.")
+            prev_cell_dim_arg = op.arg.add()
+            prev_cell_dim_arg.name = 'prev_cell_dim'
+            prev_cell_dim_arg.i = prev_cell_dim
+        if 'bias_a' in node.attrs:
+            bias_a = node.attrs['bias_a']
+            bias_a_arg = op.arg.add()
+            bias_a_arg.name = 'bias_a'
+            bias_a_arg.i = bias_a
+        if 'bias_b' in node.attrs:
+            bias_b = node.attrs['bias_b']
+            bias_b_arg = op.arg.add()
+            bias_b_arg.name = 'bias_b'
+            bias_b_arg.i = bias_b
+        if 'scale' in node.attrs:
+            scale = node.attrs['scale']
+            scale_arg = op.arg.add()
+            scale_arg.name = 'scale'
+            scale_arg.f = scale
 
     def convert_eltwise(self, node):
         op = self.convert_general_op(node)
@@ -925,6 +982,18 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.BatchNorm.name
 
+    def convert_pad_context(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.PadContext.name
+        if 'left_context' in node.attrs:
+            left_context_arg = op.arg.add()
+            left_context_arg.name = 'left_context'
+            left_context_arg.i = node.attrs['left_context']
+        if 'right_context' in node.attrs:
+            right_context_arg = op.arg.add()
+            right_context_arg.name = 'right_context'
+            right_context_arg.i = node.attrs['right_context']
+
     def convert_pnorm(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.PNorm.name
@@ -1010,10 +1079,10 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.Softmax.name
         # TODO: add logsoftmax in softmax op
-        # if node.op_type == OnnxOpType.LogSoftmax.name:
-        #     use_log_arg = op.arg.add()
-        #     use_log_arg.name = 'use_log'
-        #     use_log_arg.i = 1
+        if node.op_type == OnnxOpType.LogSoftmax.name:
+            use_log_arg = op.arg.add()
+            use_log_arg.name = 'use_log'
+            use_log_arg.i = 1
 
     def convert_splice(self, node):
         op = self.convert_general_op(node)
@@ -1103,6 +1172,11 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.type = MaceOp.Identity.name
         else:
             op.type = MaceOp.TimeOffset.name
+
+        chunk_size = node.attrs['chunk_size']
+        chunk_size_arg = op.arg.add()
+        chunk_size_arg.name = 'chunk_size'
+        chunk_size_arg.i = chunk_size
 
         offset_arg = op.arg.add()
         offset_arg.name = 'offset'

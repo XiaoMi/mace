@@ -1143,6 +1143,7 @@ class Transformer(base_converter.ConverterInterface):
                         filter.float_data[:] = filter_data.flat
                         filter.dims[:] = filter_data.shape
                         arg.i = 1
+                        six.print_('transpose matmul weight')
 
     def transpose_filters(self):
         net = self._model
@@ -1192,7 +1193,6 @@ class Transformer(base_converter.ConverterInterface):
             mace_check(filter_format == DataFormat.HWIO,
                        "HEXAGON only support HWIO/HWIM filter format.")
         else:
-            print("Transpose filters to OIHW/MIHW")
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
             if filter_format == DataFormat.HWIO:
                 for op in net.op:
@@ -1201,6 +1201,7 @@ class Transformer(base_converter.ConverterInterface):
                             or op.type == MaceOp.DepthwiseConv2d.name) \
                             and op.input[1] in self._consts \
                             and op.input[1] not in transposed_filter:
+                        print("Transpose Conv2D/Deconv2D filters to OIHW/MIHW")
                         filter = self._consts[op.input[1]]
                         filter_data = np.array(filter.float_data).reshape(
                             filter.dims)
@@ -1208,9 +1209,13 @@ class Transformer(base_converter.ConverterInterface):
                         filter.float_data[:] = filter_data.flat
                         filter.dims[:] = filter_data.shape
                         transposed_filter.add(op.input[1])
-                    if (op.type == MaceOp.MatMul.name
-                            and (ConverterUtil.get_arg(op, MaceKeyword.mace_winograd_filter_transformed) is not None)  # noqa
+                    if (op.type == MaceOp.MatMul.name and
+                            (ConverterUtil.get_arg(
+                                op,
+                                MaceKeyword.mace_winograd_filter_transformed)
+                                 is not None)  # noqa
                             and op.input[1] not in transposed_filter):
+                        print("Transpose Winograd filters to OIHW/MIHW")
                         filter = self._consts[op.input[0]]
                         filter_data = np.array(filter.float_data).reshape(
                             filter.dims)
@@ -1222,6 +1227,8 @@ class Transformer(base_converter.ConverterInterface):
                             and op.input[1] not in transposed_filter:
                         weight = self._consts[op.input[1]]
                         if len(weight.dims) == 4:
+                            print("Transpose FullyConnected filters to"
+                                  " OIHW/MIHW")
                             weight_data = np.array(weight.float_data).reshape(
                                 weight.dims)
                             weight_data = weight_data.transpose(3, 2, 0, 1)

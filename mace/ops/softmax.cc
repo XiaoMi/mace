@@ -42,7 +42,8 @@ template <>
 class SoftmaxOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
-      : Operation(context) {}
+      : Operation(context),
+        use_log_(Operation::GetOptionalArg<bool>("use_log", false)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -88,9 +89,18 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
           sum = std::max(sum, std::numeric_limits<float>::min());
           channel_offset = 0;
-          for (index_t c = 0; c < class_count; ++c) {
-            output_ptr[channel_offset] /= sum;
-            channel_offset += class_size;
+          if (use_log_) {
+            for (index_t c = 0; c < class_count; ++c) {
+              output_ptr[channel_offset] /= sum;
+              output_ptr[channel_offset] =
+                  std::log(output_ptr[channel_offset]);
+              channel_offset += class_size;
+            }
+          } else {
+            for (index_t c = 0; c < class_count; ++c) {
+              output_ptr[channel_offset] /= sum;
+              channel_offset += class_size;
+            }
           }
         }  // k
       }  // b
@@ -123,8 +133,15 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
         }
 
         sum = std::max(sum, std::numeric_limits<float>::min());
-        for (index_t c = 0; c < class_count; ++c) {
-          output_ptr[c] /= sum;
+        if (use_log_) {
+          for (index_t c = 0; c < class_count; ++c) {
+            output_ptr[c] /=  sum;
+            output_ptr[c] = std::log(output_ptr[c]);
+          }
+        } else {
+          for (index_t c = 0; c < class_count; ++c) {
+            output_ptr[c] /=  sum;
+          }
         }
       }
     } else {
@@ -132,6 +149,9 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
     }
     return MaceStatus::MACE_SUCCESS;
   }
+
+ protected:
+  bool use_log_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -142,10 +162,12 @@ template <>
 class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
-      : Operation(context) {}
+      : Operation(context),
+        use_log_(Operation::GetOptionalArg<bool>("use_log", false)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
+    MACE_CHECK(!use_log_, "MACE dose not support quantized logsoftmax yet.");
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
@@ -366,6 +388,9 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
     }
     return MaceStatus::MACE_SUCCESS;
   }
+
+ protected:
+  bool use_log_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -375,11 +400,13 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context) {
+    bool use_log = (
+        Operation::GetOptionalArg<bool>("use_log", false));
     if (context->device()->gpu_runtime()->UseImageMemory()) {
-      kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>();
+      kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>(use_log);
     } else {
       context->set_output_mem_type(MemoryType::GPU_BUFFER);
-      kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>();
+      kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>(use_log);
     }
   }
   MaceStatus Run(OpContext *context) override {

@@ -48,8 +48,6 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
-
-
     const std::vector<index_t> &input_shape = input->shape();
     const index_t dim_size = input_shape.size();
     MACE_CHECK(dim_size >= 1, "PNorm only supports input dim size >= 1");

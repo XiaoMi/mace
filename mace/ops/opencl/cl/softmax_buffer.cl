@@ -75,14 +75,26 @@ __kernel void softmax(BUFFER_OUT_OF_RANGE_PARAMS
     switch(remain_chan) {
       case 3:
         output[offset + 2] = native_exp(CONVERT(input[offset + 2]) - max_value) / sum;
+#ifdef USE_LOG
+        output[offset + 2] = native_log(output[offset + 2]);
+#endif
       case 2:
         output[offset + 1] = native_exp(CONVERT(input[offset + 1]) - max_value) / sum;
+#ifdef USE_LOG
+        output[offset + 1] = native_log(output[offset + 1]);
+#endif
       case 1:
         output[offset] = native_exp(CONVERT(input[offset]) - max_value) / sum;
+#ifdef USE_LOG
+        output[offset] = native_log(output[offset]);
+#endif
     }
   } else {
     data = CONVERT4(vload4(0, input + offset));
     data = native_exp(data - max_value) / sum;
+#ifdef USE_LOG
+    data = native_log(data)
+#endif
     VSTORE4(CONVERT_TO(data, OUT_DATA_TYPE4), output, offset);
   }
 }

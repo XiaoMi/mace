@@ -59,12 +59,16 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 template <typename T>
 class SoftmaxKernel : public OpenCLSoftmaxKernel {
  public:
+  explicit SoftmaxKernel(bool use_log)
+      : use_log_(use_log) {}
+
   MaceStatus Compute(
       OpContext *context,
       const Tensor *logits,
       Tensor *output) override;
 
  private:
+  bool use_log_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
@@ -114,6 +118,8 @@ MaceStatus SoftmaxKernel<T>::Compute(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    if (use_log_)
+      built_options.emplace("-DUSE_LOG");
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("softmax", kernel_name,
                                               built_options, &kernel_));
 

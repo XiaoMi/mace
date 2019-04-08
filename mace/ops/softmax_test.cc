@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// python implementation
+// import numpy as np
+// x = np.asarray([1., 1., 1., 1.], 'f')
+// exp_x = np.exp(x)
+// softmax_x = exp_x / np.sum(exp_x)
+// log_softmax_x = np.log(softmax_x)
+
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -19,18 +26,27 @@ namespace ops {
 namespace test {
 
 class SoftmaxOpTest : public OpsTestBase {};
+class LogSoftmaxOpTest : public OpsTestBase {};
 
 namespace {
 template <DeviceType D>
-void Simple() {
+void Simple(bool use_log = false) {
   // Construct graph
   OpsTestNet net;
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 1, 2, 4},
                                   {1, 1, 1, 1, 1, 2, 3, 4});
+
+  std::vector<float_t> expected_data(8);
+  if (use_log) {
+    expected_data = {-1.3862944, -1.3862944, -1.3862944, -1.3862944,
+                     -3.4401896 , -2.4401896 , -1.4401897 , -0.44018975};
+  } else {
+    expected_data = {0.25, 0.25, 0.25, 0.25,
+                     0.0320586, 0.08714432, 0.23688282, 0.6439142};
+  }
   auto expected = net.CreateTensor<float>(
-      {1, 1, 2, 4},
-      {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
+      {1, 1, 2, 4}, expected_data);
 
   if (D == DeviceType::CPU) {
     // test 4d softmax
@@ -38,6 +54,7 @@ void Simple() {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
+        .AddIntArg("use_log", static_cast<int>(use_log))
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -52,6 +69,7 @@ void Simple() {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("Input2d")
         .Output("Output")
+        .AddIntArg("use_log", static_cast<int>(use_log))
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -62,6 +80,7 @@ void Simple() {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("Input")
         .Output("Output")
+        .AddIntArg("use_log", static_cast<int>(use_log))
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -77,9 +96,13 @@ void Simple() {
 TEST_F(SoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(); }
 TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::GPU>(); }
 
+TEST_F(LogSoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(true); }
+TEST_F(LogSoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::GPU>(true); }
+
 namespace {
 template <DeviceType D>
-void Complex(const std::vector<index_t> &logits_shape) {
+void Complex(const std::vector<index_t> &logits_shape,
+             bool use_log = false) {
   // Construct graph
   OpsTestNet net;
   // Add input data
@@ -91,11 +114,13 @@ void Complex(const std::vector<index_t> &logits_shape) {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
+        .AddIntArg("use_log", static_cast<int>(use_log))
         .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("Input")
         .Output("Output")
+        .AddIntArg("use_log", static_cast<int>(use_log))
         .Finalize(net.NewOperatorDef());
   }
   // Run on cpu
@@ -111,6 +136,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
   OpDefBuilder("Softmax", "SoftmaxTest")
       .Input("Input")
       .Output("Output")
+      .AddIntArg("use_log", static_cast<int>(use_log))
       .Finalize(net.NewOperatorDef());
 
   // Run on gpu
@@ -138,6 +164,26 @@ TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
 TEST_F(SoftmaxOpTest, OPENCLAlignedRank2) {
   Complex<DeviceType::GPU>({1, 1001});
   Complex<DeviceType::GPU>({3, 1001});
+}
+
+TEST_F(LogSoftmaxOpTest, OPENCLAligned) {
+Complex<DeviceType::GPU>({1, 256, 256, 3}, true);
+Complex<DeviceType::GPU>({1, 128, 128, 16}, true);
+}
+
+TEST_F(LogSoftmaxOpTest, OPENCLMulBatchAligned) {
+Complex<DeviceType::GPU>({5, 64, 64, 3}, true);
+Complex<DeviceType::GPU>({8, 128, 128, 8}, true);
+}
+
+TEST_F(LogSoftmaxOpTest, OPENCLUnAligned) {
+Complex<DeviceType::GPU>({1, 113, 107, 13}, true);
+Complex<DeviceType::GPU>({5, 211, 107, 1}, true);
+}
+
+TEST_F(LogSoftmaxOpTest, OPENCLAlignedRank2) {
+Complex<DeviceType::GPU>({1, 1001}, true);
+Complex<DeviceType::GPU>({3, 1001}, true);
 }
 
 namespace {

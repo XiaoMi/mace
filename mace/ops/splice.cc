@@ -14,16 +14,11 @@
 
 // This Op is for SpliceComponent in Kaldi.
 // It splices a context window of frames together [over time]
-// (copy and append the frame whose time-index in in context_)
+// (copy and append the frame whose time-index is in context_)
 // The context_ values indicate which frame (over time) to splice.
-// if context value is less than the first time-index,
-// copy and append the first frame's dada,
-// when context value is larger than frame's count,
-// copy and append the last frame's data.
-// i.e., give input data: [[1, 2, 3], [4, 5, 6]],
-// with input-dim = 3, frame count = 2, context = [-1, 0, 1]
-// Then, the output should be:
-// [1, 2, 3, 1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6, 4, 5, 6]
+// It will reduce frames because of left context and right context.
+// i.e., give input data with shape {20, 40}, and contexts:{-2, -1, 0, 1, 2},
+// the output shape should be {16, 200}
 // if const_component_dim_ != 0, const_dim_ will be used to determine which
 // row of "in" we copy the last part of each row of "out" from (this part is
 // not subject to splicing, it's assumed constant for each frame of "input".
@@ -54,24 +49,34 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     const Tensor *input = this->Input(0);
     MACE_CHECK(context_.size() > 0)
       << "The context param should not be empty in Splice Op.";
+    MACE_CHECK(input->dim_size() >= 2)
+      << "Splice's input's rank should be greater than 2.";
 
     Tensor *output = this->Output(0);
     const std::vector<index_t> &input_shape = input->shape();
 
-    const index_t frames =
-        std::accumulate(input->shape().begin(), input->shape().end() - 1, 1,
+    const index_t batch =
+        std::accumulate(input->shape().begin(), input->shape().end() - 2, 1,
                         std::multiplies<index_t>());
-
     const index_t rank = input->dim_size();
+    const index_t chunk = input_shape[rank - 2];
     const index_t input_dim = input_shape[rank - 1];
+    const index_t input_stride = chunk * input_dim;
 
     const index_t num_splice = static_cast<index_t>(context_.size());
     const index_t dim = input_dim - const_dim_;
+    const index_t left_context = context_[0];
+    const index_t right_context = context_[num_splice -1];
+
+    const index_t out_chunk = chunk - (right_context - left_context);
+
     MACE_CHECK(input_dim > const_dim_,
                "input dim should be greater than const dim.");
     const index_t output_dim = dim * num_splice + const_dim_;
+    const index_t output_stride = out_chunk * output_dim;
 
     std::vector<index_t> output_shape = input->shape();
+    output_shape[rank - 2] = out_chunk;
     output_shape[rank - 1] = output_dim;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
@@ -80,28 +85,32 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t i = 0; i < frames; ++i) {
+#pragma omp parallel for collapse(3) schedule(runtime)
+    for (int b = 0; b < batch; ++b) {
+      for (index_t i = 0; i < out_chunk; ++i) {
         for (index_t c = 0; c < num_splice; ++c) {
-          const index_t offset =
-              Clamp<index_t>(context_[c] + i, 0, frames - 1);
-          T *output_base = output_data + i * output_dim + c * dim;
-          const T *input_base = input_data + offset * input_dim;
+          const index_t offset = i + context_[c] - left_context;
+          T *output_base =
+              output_data + b * output_stride + i * output_dim + c * dim;
+          const T *input_base =
+              input_data + b * input_stride + offset * input_dim;
           memcpy(output_base, input_base, dim * sizeof(T));
         }
       }
+    }
 
     if (const_dim_ > 0) {
       const index_t output_offset = output_dim - const_dim_;
       const index_t input_offset = dim;
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < frames; ++i) {
-          index_t offset = i + context_[0] >= 0 ? i + context_[0] : 0;
-          T *output_base = output_data + i * output_dim;
-          const T *input_base = input_data + offset * input_dim;
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int b = 0; b < batch; ++b) {
+        for (index_t i = 0; i < out_chunk; ++i) {
+          T *output_base = output_data +  + b * output_stride + i * output_dim;
+          const T *input_base = input_data + b * input_stride + i * input_dim;
           memcpy(output_base + output_offset,
                  input_base + input_offset,
                  const_dim_ * sizeof(T));
+        }
       }
     }
     return MaceStatus::MACE_SUCCESS;

@@ -34,6 +34,7 @@ extern void RegisterDeconv2D(OpRegistryBase *op_registry);
 extern void RegisterDepthToSpace(OpRegistryBase *op_registry);
 extern void RegisterDepthwiseConv2d(OpRegistryBase *op_registry);
 extern void RegisterDepthwiseDeconv2d(OpRegistryBase *op_registry);
+extern void RegisterDynamicLSTM(OpRegistryBase *op_registry);
 extern void RegisterEltwise(OpRegistryBase *op_registry);
 extern void RegisterExpandDims(OpRegistryBase *op_registry);
 extern void RegisterFill(OpRegistryBase *op_registry);
@@ -42,9 +43,11 @@ extern void RegisterGather(OpRegistryBase *op_registry);
 extern void RegisterIdentity(OpRegistryBase *op_registry);
 extern void RegisterInferConv2dShape(OpRegistryBase *op_registry);
 extern void RegisterLocalResponseNorm(OpRegistryBase *op_registry);
+extern void RegisterLSTMNonlinear(OpRegistryBase *op_registry);
 extern void RegisterMatMul(OpRegistryBase *op_registry);
 extern void RegisterOneHot(OpRegistryBase *op_registry);
 extern void RegisterPad(OpRegistryBase *op_registry);
+extern void RegisterPadContext(OpRegistryBase *op_registry);
 extern void RegisterPNorm(OpRegistryBase *op_registry);
 extern void RegisterPooling(OpRegistryBase *op_registry);
 extern void RegisterReduce(OpRegistryBase *op_registry);
@@ -68,7 +71,6 @@ extern void RegisterStack(OpRegistryBase *op_registry);
 extern void RegisterStridedSlice(OpRegistryBase *op_registry);
 extern void RegisterSumGroup(OpRegistryBase *op_registry);
 extern void RegisterTargetRMSNorm(OpRegistryBase *op_registry);
-extern void RegisterTimeOffset(OpRegistryBase *op_registry);
 extern void RegisterTranspose(OpRegistryBase *op_registry);
 extern void RegisterUnstack(OpRegistryBase *op_registry);
 
@@ -102,6 +104,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterDepthToSpace(this);
   ops::RegisterDepthwiseConv2d(this);
   ops::RegisterDepthwiseDeconv2d(this);
+  ops::RegisterDynamicLSTM(this);
   ops::RegisterEltwise(this);
   ops::RegisterExpandDims(this);
   ops::RegisterFill(this);
@@ -110,9 +113,11 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterIdentity(this);
   ops::RegisterInferConv2dShape(this);
   ops::RegisterLocalResponseNorm(this);
+  ops::RegisterLSTMNonlinear(this);
   ops::RegisterMatMul(this);
   ops::RegisterOneHot(this);
   ops::RegisterPad(this);
+  ops::RegisterPadContext(this);
   ops::RegisterPNorm(this);
   ops::RegisterPooling(this);
   ops::RegisterReduce(this);
@@ -136,7 +141,6 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterSqueeze(this);
   ops::RegisterSumGroup(this);
   ops::RegisterTargetRMSNorm(this);
-  ops::RegisterTimeOffset(this);
   ops::RegisterTranspose(this);
   ops::RegisterUnstack(this);
 
