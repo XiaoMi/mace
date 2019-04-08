@@ -335,18 +335,17 @@ int Main(int argc, char **argv) {
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;
   for (size_t i = 0; i < input_count; ++i) {
-    // Allocate input and output
+    // only support float and int32, use char for generalization
     int64_t input_size =
-        std::accumulate(input_shape_vec[i].begin(), input_shape_vec[i].end(), 1,
+        std::accumulate(input_shape_vec[i].begin(), input_shape_vec[i].end(), 4,
                         std::multiplies<int64_t>());
-    auto buffer_in = std::shared_ptr<float>(new float[input_size],
-                                            std::default_delete<float[]>());
+    auto buffer_in = std::shared_ptr<char>(new char[input_size],
+                                            std::default_delete<char[]>());
     // load input
     std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
                           std::ios::in | std::ios::binary);
     if (in_file.is_open()) {
-      in_file.read(reinterpret_cast<char *>(buffer_in.get()),
-                   input_size * sizeof(float));
+      in_file.read(buffer_in.get(), input_size);
       in_file.close();
     } else {
       LOG(INFO) << "Open input file failed";
@@ -357,12 +356,13 @@ int Main(int argc, char **argv) {
   }
 
   for (size_t i = 0; i < output_count; ++i) {
+    // only support float and int32, use char for generalization
     int64_t output_size =
         std::accumulate(output_shape_vec[i].begin(),
-                        output_shape_vec[i].end(), 1,
+                        output_shape_vec[i].end(), 4,
                         std::multiplies<int64_t>());
-    auto buffer_out = std::shared_ptr<float>(new float[output_size],
-                                             std::default_delete<float[]>());
+    auto buffer_out = std::shared_ptr<char>(new char[output_size],
+                                            std::default_delete<char[]>());
     outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i],
                                                 buffer_out,
                                                 output_data_formats[i]);

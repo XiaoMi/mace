@@ -298,6 +298,7 @@ class NodeInfo(object):
 
     def __init__(self):
         self._name = None
+        self._data_type = mace_pb2.DT_FLOAT
         self._shape = []
         self._data_format = DataFormat.NHWC
         self._range = [-1.0, 1.0]
@@ -305,6 +306,10 @@ class NodeInfo(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def data_type(self):
+        return self._data_type
 
     @property
     def shape(self):
@@ -321,6 +326,10 @@ class NodeInfo(object):
     @name.setter
     def name(self, name):
         self._name = name
+
+    @data_type.setter
+    def data_type(self, data_type):
+        self._data_type = data_type
 
     @shape.setter
     def shape(self, shape):

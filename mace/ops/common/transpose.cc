@@ -14,19 +14,14 @@
 
 #include "mace/ops/common/transpose.h"
 
-#include <algorithm>
-
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
 #endif
 
-#include "mace/core/types.h"
-#include "mace/utils/logging.h"
-
 namespace mace {
 namespace ops {
 
-namespace {
+namespace transpose {
 void TransposeNHWCToNCHWC3(const float *input,
                            float *output,
                            const index_t height,
@@ -100,119 +95,44 @@ void TransposeNCHWToNHWCC2(const float *input,
 #endif
   }
 }
-}  // namespace
 
-MaceStatus Transpose(const float *input,
-                     const std::vector<int64_t> &input_shape,
-                     const std::vector<int> &dst_dims,
-                     float *output) {
-  MACE_CHECK((input_shape.size() == 2 && dst_dims.size() == 2) ||
-               (input_shape.size() == 4 && dst_dims.size() == 4),
-             "Only support 2D or 4D transpose");
+void TransposeNHWCToNCHWC3(const int *input,
+                           int *output,
+                           const index_t height,
+                           const index_t width) {
+  index_t image_size = height * width;
 
-  std::vector<index_t> output_shape;
-  for (size_t i = 0; i < dst_dims.size(); ++i) {
-    output_shape.push_back(input_shape[dst_dims[i]]);
-  }
+#pragma omp parallel for
+  for (index_t h = 0; h < height; ++h) {
+    index_t in_offset = h * width * 3;
+    index_t out_offset = h * width;
 
-  if (input_shape.size() == 2) {
-    MACE_CHECK(dst_dims[0] == 1 && dst_dims[1] == 0, "no need transform");
-    index_t height = input_shape[0];
-    index_t width = input_shape[1];
-    index_t stride_i = height;
-    index_t stride_j = width;
-    index_t tile_size = height > 512 || width > 512 ? 64 : 32;
-#pragma omp parallel for collapse(2)
-    for (index_t i = 0; i < height; i += tile_size) {
-      for (index_t j = 0; j < width; j += tile_size) {
-        index_t end_i = std::min(i + tile_size, height);
-        index_t end_j = std::min(j + tile_size, width);
-        for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
-          for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
-            output[tile_j * stride_i + tile_i] =
-              input[tile_i * stride_j + tile_j];
-          }
-        }
+    for (index_t w = 0; w < width; ++w) {
+      for (index_t c = 0; c < 3; ++c) {
+        output[out_offset + c * image_size + w] = input[in_offset + w * 3 + c];
       }
     }
-  } else if (input_shape.size() == 4) {
-    std::vector<int> transpose_order_from_NHWC_to_NCHW{0, 3, 1, 2};
-    std::vector<int> transpose_order_from_NCHW_to_NHWC{0, 2, 3, 1};
-    index_t batch_size = input_shape[1] * input_shape[2] * input_shape[3];
-
-    if (dst_dims == transpose_order_from_NHWC_to_NCHW && input_shape[3] == 3) {
-      for (index_t b = 0; b < input_shape[0]; ++b) {
-        TransposeNHWCToNCHWC3(input + b * batch_size,
-                              output + b * batch_size,
-                              input_shape[1],
-                              input_shape[2]);
-      }
-    } else if (dst_dims == transpose_order_from_NCHW_to_NHWC
-      && input_shape[1] == 2) {
-      for (index_t b = 0; b < input_shape[0]; ++b) {
-        TransposeNCHWToNHWCC2(input + b * batch_size,
-                              output + b * batch_size,
-                              input_shape[2],
-                              input_shape[3]);
-      }
-    } else if (dst_dims == std::vector<int>{0, 2, 1, 3}) {
-      index_t height = input_shape[1];
-      index_t width = input_shape[2];
-      index_t channel = input_shape[3];
-      index_t channel_raw_size = channel * sizeof(float);
-      index_t stride_i = height;
-      index_t stride_j = width;
-      index_t tile_size = std::max(static_cast<index_t>(1),
-                                   static_cast<index_t>(std::sqrt(
-                                     8 * 1024 / channel)));
-#pragma omp parallel for collapse(2)
-      for (index_t i = 0; i < height; i += tile_size) {
-        for (index_t j = 0; j < width; j += tile_size) {
-          index_t end_i = std::min(i + tile_size, height);
-          index_t end_j = std::min(j + tile_size, width);
-          for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
-            for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
-              memcpy(output + (tile_j * stride_i + tile_i) * channel,
-                     input + (tile_i * stride_j + tile_j) * channel,
-                     channel_raw_size);
-            }
-          }
-        }
-      }
-    } else {
-      std::vector<index_t>
-        in_stride{input_shape[1] * input_shape[2] * input_shape[3],
-                  input_shape[2] * input_shape[3], input_shape[3], 1};
-      std::vector<index_t>
-        out_stride{output_shape[1] * output_shape[2] * output_shape[3],
-                   output_shape[2] * output_shape[3], output_shape[3], 1};
-
-      std::vector<index_t> idim(4, 0);
-      std::vector<index_t> odim(4, 0);
-      for (odim[0] = 0; odim[0] < output_shape[0]; ++odim[0]) {
-        for (odim[1] = 0; odim[1] < output_shape[1]; ++odim[1]) {
-          for (odim[2] = 0; odim[2] < output_shape[2]; ++odim[2]) {
-            for (odim[3] = 0; odim[3] < output_shape[3]; ++odim[3]) {
-              idim[dst_dims[0]] = odim[0];
-              idim[dst_dims[1]] = odim[1];
-              idim[dst_dims[2]] = odim[2];
-              idim[dst_dims[3]] = odim[3];
-
-              output[odim[0] * out_stride[0] + odim[1] * out_stride[1]
-                + odim[2] * out_stride[2] + odim[3]] =
-                input[idim[0] * in_stride[0] + idim[1] * in_stride[1]
-                  + idim[2] * in_stride[2] + idim[3]];
-            }
-          }
-        }
-      }
-    }
-  } else {
-    MACE_NOT_IMPLEMENTED;
   }
-
-  return MaceStatus::MACE_SUCCESS;
 }
+
+void TransposeNCHWToNHWCC2(const int *input,
+                           int *output,
+                           const index_t height,
+                           const index_t width) {
+  index_t image_size = height * width;
+#pragma omp parallel for
+  for (index_t h = 0; h < height; ++h) {
+    index_t in_offset = h * width;
+    index_t out_offset = h * width * 2;
+
+    for (index_t w = 0; w < width; ++w) {
+      for (index_t c = 0; c < 2; ++c) {
+        output[out_offset + w * 2 + c] = input[in_offset + c * image_size + w];
+      }
+    }
+  }
+}
+}  // namespace transpose
 
 }  // namespace ops
 }  // namespace mace

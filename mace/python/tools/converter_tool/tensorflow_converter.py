@@ -102,6 +102,7 @@ TFSupportedOps = [
     'Mean',
     'Const',
     'Gather',
+    'GatherV2',
     'StridedSlice',
     'Slice',
     'ReverseV2',
@@ -241,6 +242,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Mean.name: self.convert_mean,
             TFOpType.Const.name: self.convert_nop,
             TFOpType.Gather.name: self.convert_gather,
+            TFOpType.GatherV2.name: self.convert_gather,
             TFOpType.StridedSlice.name: self.convert_stridedslice,
             TFOpType.Slice.name: self.convert_slice,
             TFOpType.ReverseV2.name: self.convert_reverse,
@@ -838,16 +840,11 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.ExpandDims.name
 
+        axis_value = tf_op.inputs[1].eval().astype(np.int32)
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
-        try:
-            axis_value = tf_op.get_attr('dim')
-        except ValueError:
-            try:
-                axis_value = tf_op.get_attr('axis')
-            except ValueError:
-                axis_value = 0
         axis_arg.i = axis_value
+        del op.input[1]
 
     def convert_squeeze(self, tf_op):
         op = self.convert_general_op(tf_op)

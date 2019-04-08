@@ -397,6 +397,7 @@ class YAMLKeyword(object):
     runtime = 'runtime'
     data_type = 'data_type'
     input_data_types = 'input_data_types'
+    output_data_types = 'output_data_types'
     input_data_formats = 'input_data_formats'
     output_data_formats = 'output_data_formats'
     limit_opencl_kernel_time = 'limit_opencl_kernel_time'

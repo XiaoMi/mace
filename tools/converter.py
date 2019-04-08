@@ -65,13 +65,13 @@ RuntimeTypeStrs = [
     "cpu+gpu"
 ]
 
-InputDataTypeStrs = [
+InOutDataTypeStrs = [
     "int32",
     "float32",
 ]
 
-InputDataType = Enum('InputDataType',
-                     [(ele, ele) for ele in InputDataTypeStrs],
+InOutDataType = Enum('InputDataType',
+                     [(ele, ele) for ele in InOutDataTypeStrs],
                      type=str)
 
 FPDataTypeStrs = [
@@ -410,17 +410,23 @@ def format_model_config(flags):
                 else:
                     subgraph[key] = []
 
-            input_data_types = subgraph.get(YAMLKeyword.input_data_types, "")
-            if input_data_types:
-                if not isinstance(input_data_types, list):
-                    subgraph[YAMLKeyword.input_data_types] = [input_data_types]
-                for input_data_type in subgraph[YAMLKeyword.input_data_types]:
-                    mace_check(input_data_type in InputDataTypeStrs,
-                               ModuleName.YAML_CONFIG,
-                               "'input_data_types' must be in "
-                               + str(InputDataTypeStrs))
-            else:
-                subgraph[YAMLKeyword.input_data_types] = []
+            for key in [YAMLKeyword.input_data_types,
+                        YAMLKeyword.output_data_types]:
+                if key == YAMLKeyword.input_data_types:
+                    count = input_size
+                else:
+                    count = output_size
+                data_types = subgraph.get(key, "")
+                if data_types:
+                    if not isinstance(data_types, list):
+                        subgraph[key] = [data_types] * count
+                    for data_type in subgraph[key]:
+                        mace_check(data_type in InOutDataTypeStrs,
+                                   ModuleName.YAML_CONFIG,
+                                   key + " must be in "
+                                   + str(InOutDataTypeStrs))
+                else:
+                    subgraph[key] = [InOutDataType.float32] * count
 
             input_data_formats = subgraph.get(YAMLKeyword.input_data_formats,
                                               [])
@@ -722,8 +728,10 @@ def convert_model(configs, cl_mem_type):
             model_config[YAMLKeyword.model_sha256_checksum],
             model_config[YAMLKeyword.weight_sha256_checksum],
             ",".join(subgraphs[0][YAMLKeyword.input_tensors]),
+            ",".join(subgraphs[0][YAMLKeyword.input_data_types]),
             ",".join(subgraphs[0][YAMLKeyword.input_data_formats]),
             ",".join(subgraphs[0][YAMLKeyword.output_tensors]),
+            ",".join(subgraphs[0][YAMLKeyword.output_data_types]),
             ",".join(subgraphs[0][YAMLKeyword.output_data_formats]),
             ",".join(subgraphs[0][YAMLKeyword.check_tensors]),
             runtime,
