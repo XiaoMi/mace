@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_QUANTIZE
+
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
@@ -113,3 +115,5 @@ MACE_BM_DEQUANTIZE(1470000);
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
+
+#endif  // MACE_ENABLE_QUANTIZE

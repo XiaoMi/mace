@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_OPENCL
+
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -96,3 +98,5 @@ MACE_BM_B2I(256, 32, 3, 3);
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
+
+#endif  // MACE_ENABLE_OPENCL

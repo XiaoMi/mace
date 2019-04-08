@@ -64,9 +64,14 @@ void BMBatchToSpace(
   MACE_BENCHMARK(                                                              \
       MACE_BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_BATCH_TO_SPACE(N, H, W, C, ARG)              \
   MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, GPU); \
   MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, CPU);
+#else
+#define MACE_BM_BATCH_TO_SPACE(N, H, W, C, ARG)              \
+  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, CPU);
+#endif
 
 MACE_BM_BATCH_TO_SPACE(128, 8, 8, 128, 2);
 MACE_BM_BATCH_TO_SPACE(4, 128, 128, 32, 2);

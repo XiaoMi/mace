@@ -28,6 +28,7 @@ namespace port {
 class DarwinEnv : public Env {
  public:
   int64_t NowMicros() override;
+  MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
   FileSystem *GetFileSystem() override;
   LogWriter *GetLogWriter() override;
   std::vector<std::string> GetBackTraceUnsafe(int max_steps) override;

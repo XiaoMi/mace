@@ -16,6 +16,7 @@
 #define MACE_UTILS_LOGGING_H_
 
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "mace/port/env.h"
 #include "mace/port/logger.h"
 #include "mace/utils/macros.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/string_util.h"
 
 
@@ -32,6 +34,9 @@ namespace logging_internal {
 
 #define LOG(severity) \
   ::mace::port::Logger(__FILE__, __LINE__, mace::severity)
+
+#define LOG_PTR(severity) \
+  make_unique<mace::port::Logger>(__FILE__, __LINE__, mace::severity)
 
 #define VLOG_IS_ON(vll) (mace::ShouldGenerateVLogMessage(vll))
 #define VLOG(vll) if (VLOG_IS_ON(vll)) LOG(INFO)

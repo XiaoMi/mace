@@ -68,10 +68,15 @@ void DepthToSpace(
   MACE_BENCHMARK(                                                             \
       MACE_BM_DEPTH_TO_SPACE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
 
+#ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_DEPTH_TO_SPACE(N, C, H, W, G)                 \
   MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, CPU);    \
   MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, GPU);    \
   MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, half, GPU);
+#else
+#define MACE_BM_DEPTH_TO_SPACE(N, C, H, W, G)                 \
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, CPU)
+#endif
 
 MACE_BM_DEPTH_TO_SPACE(1, 64, 64, 64, 4);
 MACE_BM_DEPTH_TO_SPACE(1, 64, 128, 128, 4);

@@ -275,10 +275,11 @@ def bazel_build(target,
                 extra_args=""):
     six.print_("* Build %s with ABI %s" % (target, abi))
     if abi == "host":
+        toolchain = platform.system().lower()
         bazel_args = (
             "build",
             "--config",
-            platform.system().lower(),
+            toolchain,
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
             "--define",
@@ -310,7 +311,10 @@ def bazel_build(target,
     if debug_mode:
         bazel_args += ("--config", "debug")
     if not address_sanitizer and not debug_mode:
-        bazel_args += ("--config", "optimization")
+        if toolchain == "darwin" or toolchain == "ios":
+            bazel_args += ("--config", "optimization_darwin")
+        else:
+            bazel_args += ("--config", "optimization")
         if symbol_hidden:
             bazel_args += ("--config", "symbol_hidden")
     if extra_args:

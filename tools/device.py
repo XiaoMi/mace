@@ -59,6 +59,9 @@ class DeviceWrapper:
                 raise e
             self.data_dir = DEVICE_DATA_DIR
             self.interior_dir = self.data_dir + '/interior'
+        elif self.system == SystemType.host:
+            self.data_dir = DEVICE_DATA_DIR
+            self.interior_dir = self.data_dir + '/interior'
 
     ##################
     #  internal use  #

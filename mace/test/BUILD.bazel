@@ -7,12 +7,12 @@ licenses(["notice"])  # Apache 2.0
 load(
     "//mace:mace.bzl",
     "if_android",
-    "if_neon_enabled",
-    "if_openmp_enabled",
     "if_android_armv7",
     "if_hexagon_enabled",
     "if_hta_enabled",
+    "if_neon_enabled",
     "if_opencl_enabled",
+    "if_openmp_enabled",
     "if_quantize_enabled",
 )
 
@@ -21,7 +21,11 @@ cc_library(
     hdrs = [
         "mace_api_test.h",
     ],
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
 )
 
 cc_test(
@@ -33,7 +37,7 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp"
+        "-fopenmp",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
@@ -49,12 +53,14 @@ cc_test(
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
     ]),
-    linkopts = ["-fopenmp"],
+    linkopts = if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkstatic = 1,
     deps = [
         ":mace_api_test_header",
+        "//mace/libmace",
         "//mace/ops:test",
-        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )
@@ -68,7 +74,7 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp"
+        "-fopenmp",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
@@ -84,12 +90,14 @@ cc_test(
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
     ]),
-    linkopts = ["-fopenmp"],
+    linkopts = if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkstatic = 1,
     deps = [
         ":mace_api_test_header",
+        "//mace/libmace",
         "//mace/ops:test",
-        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )
@@ -103,7 +111,7 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp"
+        "-fopenmp",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
@@ -119,11 +127,13 @@ cc_test(
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
     ]),
-    linkopts = ["-fopenmp"],
+    linkopts = if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkstatic = 1,
     deps = [
+        "//mace/libmace",
         "//mace/ops:test",
-        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )
@@ -137,7 +147,7 @@ cc_test(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
-        "-fopenmp"
+        "-fopenmp",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
@@ -153,11 +163,13 @@ cc_test(
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
     ]),
-    linkopts = ["-fopenmp"],
+    linkopts = if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkstatic = 1,
     deps = [
+        "//mace/libmace",
         "//mace/ops:test",
-        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )

@@ -25,7 +25,9 @@ namespace test {
 class Conv2dOpTest : public OpsTestBase {
  protected:
   virtual void SetUp() {
+#ifdef MACE_ENABLE_OPENCL
     OpTestContext::Get()->SetOCLImageTestFlag();
+#endif
   }
 };
 

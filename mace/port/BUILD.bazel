@@ -48,7 +48,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":port",
-        "@gtest//:gtest",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
 )

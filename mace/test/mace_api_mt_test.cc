@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef MACE_ENABLE_OPENCL
+
 #include <thread>  // NOLINT(build/c++11)
 
 #include "mace/test/mace_api_test.h"
@@ -102,3 +104,5 @@ TEST_F(MaceMTAPITest, MultipleThread) {
 
 }  // namespace test
 }  // namespace mace
+
+#endif  // MACE_ENABLE_OPENCL
