@@ -1570,6 +1570,7 @@ class Transformer(base_converter.ConverterInterface):
             else:
                 non_zero = self._option.device == DeviceType.CPU.value
                 quantized_tensor = quantize_util.quantize(tensor.float_data,
+                                                          self._option.device,
                                                           non_zero)
                 tensor.data_type = mace_pb2.DT_UINT8
 
@@ -1594,7 +1595,8 @@ class Transformer(base_converter.ConverterInterface):
 
     def add_quantize_info(self, op, minval, maxval):
         scale, zero, minval, maxval = \
-            quantize_util.adjust_range(minval, maxval, non_zero=False)
+            quantize_util.adjust_range(minval, maxval, self._option.device,
+                                       non_zero=False)
         quantize_info = op.quantize_info.add()
         quantize_info.minval = minval
         quantize_info.maxval = maxval
@@ -1694,8 +1696,9 @@ class Transformer(base_converter.ConverterInterface):
                     min_val, max_val = [float(i) for i in
                                         minmax.strip().split(",")]
                     scale, zero, min_val, max_val = \
-                        quantize_util.adjust_range(
-                            min_val, max_val, non_zero=False)
+                        quantize_util.adjust_range(min_val, max_val,
+                                                   self._option.device,
+                                                   non_zero=False)
                     activation_info = mace_pb2.QuantizeActivationInfo()
                     activation_info.minval = min_val
                     activation_info.maxval = max_val
@@ -1710,9 +1713,8 @@ class Transformer(base_converter.ConverterInterface):
                     mace_check(output in self._quantize_activation_info,
                                "%s does not have quantize activation info"
                                % op)
-                    op.quantize_info.extend([
-                        self._quantize_activation_info[output]
-                        for output in op.output])
+                    op.quantize_info.append(
+                        self._quantize_activation_info[output])
 
         if not self._option.quantize:
             return False
@@ -1726,6 +1728,7 @@ class Transformer(base_converter.ConverterInterface):
                 scale, zero, minval, maxval = \
                     quantize_util.adjust_range(input_node.range[0],
                                                input_node.range[1],
+                                               self._option.device,
                                                non_zero=False)
                 quantize_info = \
                     mace_pb2.QuantizeActivationInfo()
@@ -2002,7 +2005,7 @@ class Transformer(base_converter.ConverterInterface):
                 if input_tensor in self._consts:
                     const_tensor = self._consts[input_tensor]
                     quantized_tensor = quantize_util.quantize(
-                        const_tensor.float_data, non_zero)
+                        const_tensor.float_data, self._option.device, non_zero)
                     del const_tensor.float_data[:]
                     const_tensor.int32_data.extend(quantized_tensor.data)
                     const_tensor.data_type = mace_pb2.DT_UINT8
