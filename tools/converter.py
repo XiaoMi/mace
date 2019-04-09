@@ -832,51 +832,6 @@ def convert_func(flags):
 ################################
 # run
 ################################
-def report_run_statistics(stdout,
-                          abi,
-                          serialno,
-                          model_name,
-                          device_type,
-                          output_dir,
-                          tuned):
-    metrics = [0] * 3
-    for line in stdout.split('\n'):
-        line = line.strip()
-        parts = line.split()
-        if len(parts) == 4 and parts[0].startswith("time"):
-            metrics[0] = str(float(parts[1]))
-            metrics[1] = str(float(parts[2]))
-            metrics[2] = str(float(parts[3]))
-            break
-
-    device_name = ""
-    target_soc = ""
-    if abi != "host":
-        props = sh_commands.adb_getprop_by_serialno(serialno)
-        device_name = props.get("ro.product.model", "")
-        target_soc = props.get("ro.board.platform", "")
-
-    report_filename = output_dir + "/report.csv"
-    if not os.path.exists(report_filename):
-        with open(report_filename, 'w') as f:
-            f.write("model_name,device_name,soc,abi,runtime,"
-                    "init(ms),warmup(ms),run_avg(ms),tuned\n")
-
-    data_str = "{model_name},{device_name},{soc},{abi},{device_type}," \
-               "{init},{warmup},{run_avg},{tuned}\n" \
-        .format(model_name=model_name,
-                device_name=device_name,
-                soc=target_soc,
-                abi=abi,
-                device_type=device_type,
-                init=metrics[0],
-                warmup=metrics[1],
-                run_avg=metrics[2],
-                tuned=tuned)
-    with open(report_filename, 'a') as f:
-        f.write(data_str)
-
-
 def build_mace_run(configs, target_abi, toolchain, enable_openmp,
                    address_sanitizer, mace_lib_type, debug_mode):
     library_name = configs[YAMLKeyword.library_name]

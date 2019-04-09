@@ -736,10 +736,10 @@ class DeviceWrapper:
         for line in self.stdout.split('\n'):
             line = line.strip()
             parts = line.split()
-            if len(parts) == 4 and parts[0].startswith('time'):
-                metrics[0] = str(float(parts[1]))
-                metrics[1] = str(float(parts[2]))
-                metrics[2] = str(float(parts[3]))
+            if len(parts) == 5 and parts[0].startswith('time'):
+                metrics[0] = str(float(parts[2]))
+                metrics[1] = str(float(parts[3]))
+                metrics[2] = str(float(parts[4]))
                 break
         report_filename = output_dir + '/report.csv'
         if not os.path.exists(report_filename):
