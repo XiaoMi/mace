@@ -84,7 +84,7 @@ class ApuConverter(base_converter.ConverterInterface):
         self.add_op_output_type()
         if ConverterUtil.get_arg(self._model.op[0],
                                  MaceKeyword.mace_framework_type_str).i == \
-               FrameworkType.TENSORFLOW.value:
+           FrameworkType.TENSORFLOW.value:
             self.add_tensorflow_padding_value()
         const_data_num_arg = self._model.arg.add()
         const_data_num_arg.name = MaceKeyword.mace_const_data_num_arg_str
