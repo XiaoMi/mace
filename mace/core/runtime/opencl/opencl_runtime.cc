@@ -364,7 +364,8 @@ OpenCLRuntime::OpenCLRuntime(
 #endif
   }
   if (err != CL_SUCCESS) {
-    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    LOG(ERROR) << "Failed to create OpenCL Context: "
+               << OpenCLErrorToString(err);
     return;
   }
 
@@ -373,7 +374,8 @@ OpenCLRuntime::OpenCLRuntime(
                                                       properties,
                                                       &err);
   if (err != CL_SUCCESS) {
-    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    LOG(ERROR) << "Failed to create OpenCL CommandQueue: "
+               << OpenCLErrorToString(err);
     return;
   }
 

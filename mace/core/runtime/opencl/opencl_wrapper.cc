@@ -802,8 +802,19 @@ CL_API_ENTRY cl_command_queue clCreateCommandQueueWithProperties(
     MACE_LATENCY_LOGGER(3, "clCreateCommandQueueWithProperties");
     return func(context, device, properties, errcode_ret);
   } else {
-    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
-    return nullptr;
+    // Fix MediaTek MT6771 OpenCL driver breakage
+    VLOG(2) << "Fallback to clCreateCommandQueue";
+    if (properties[0] == CL_QUEUE_PROPERTIES) {
+      // When calling with OpenCL-CLHPP, the 2nd param is provided by caller.
+#pragma GCC diagnostic push  // disable warning both for clang and gcc
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+      return clCreateCommandQueue(context, device, properties[1], errcode_ret);
+#pragma GCC diagnostic pop
+    } else {
+      LOG(FATAL) << "Unknown calling parameters, check the code here";
+      if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+      return nullptr;
+    }
   }
 }
 
