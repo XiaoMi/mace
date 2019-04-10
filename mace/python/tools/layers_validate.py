@@ -160,6 +160,7 @@ def main(unused_args):
                     dequantize_op.node_input[0].node_id = op.node_id
                     dequantize_op.node_input[1].node_id = op.node_id
                     dequantize_op.node_input[2].node_id = op.node_id
+                    del dequantize_op.node_input[3:]
 
         model_path = save_model_to_proto(net, normalize_op_name(op_name),
                                          FLAGS.output_dir)

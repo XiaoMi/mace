@@ -119,9 +119,10 @@ class HexagonConverter(base_converter.ConverterInterface):
         self._quantize_activation_info = quantize_activation_info
 
     def run(self):
-        mace_check(len(self._option.input_nodes) == 1
-                   and len(self._option.output_nodes) == 1,
-                   'dsp only support single input and output')
+        if self._option.device == DeviceType.HTA.value:
+            mace_check(len(self._option.input_nodes) == 1
+                       and len(self._option.output_nodes) == 1,
+                       'hta only support single input and output')
 
         for tensor in self._model.tensors:
             self._consts[tensor.name] = tensor
@@ -129,13 +130,7 @@ class HexagonConverter(base_converter.ConverterInterface):
         # convert op node
         self.convert_ops()
 
-        self.add_input_output_node()
-        if not self._option.check_nodes:
-            output_name = list(self._option.output_nodes.values())[0].name
-        else:
-            output_name = list(self._option.check_nodes.values())[0].name
-        output_name = normalize_name(output_name)
-        self._model = graph_util.sort_mace_graph(self._model, output_name)
+        self.convert_input_output_node()
 
         self.add_node_id()
 
@@ -399,20 +394,41 @@ class HexagonConverter(base_converter.ConverterInterface):
             elif op.input[i] == input_op + ':2':
                 op.input[i] = input_max
 
-    def add_input_output_node(self):
-        mace_check(
-            self._model.op[0].type == HexagonOp.QuantizeINPUT_f_to_8.name,
-            "Not started with Quantize op.")
+    def convert_input_output_node(self):
         quantize_input_op = self._model.op[0]
+        mace_check(
+            quantize_input_op.type == HexagonOp.QuantizeINPUT_f_to_8.name,
+            "Not started with Quantize op.")
         del quantize_input_op.input[:]
 
-        mace_check(
-            self._model.op[-1].type == HexagonOp.DequantizeOUTPUT_8tof.name,
-            "Not ended with Dequantize op.")
         dequantize_output_op = self._model.op[-1]
+        mace_check(dequantize_output_op.type
+                   == HexagonOp.DequantizeOUTPUT_8tof.name,
+                   "Not ended with Dequantize op.")
+        dequantize_input = [input for input in dequantize_output_op.input]
+        del dequantize_output_op.input[:]
         del dequantize_output_op.output_shape[:]
         del dequantize_output_op.output_type[:]
         del dequantize_output_op.out_max_byte_size[:]
+
+        index = 1
+        while index < len(self._model.op) - 1:
+            op = self._model.op[index]
+            if op.type == HexagonOp.QuantizeINPUT_f_to_8.name:
+                quantize_input_op.output.extend(op.output)
+                quantize_input_op.output_shape.extend(op.output_shape)
+                quantize_input_op.output_type.extend(op.output_type)
+                quantize_input_op.out_max_byte_size.extend(
+                    op.out_max_byte_size)
+                del self._model.op[index]
+
+            elif op.type == HexagonOp.DequantizeOUTPUT_8tof.name:
+                dequantize_output_op.input.extend(op.input)
+                del self._model.op[index]
+
+            index += 1
+        # input order matters
+        dequantize_output_op.input.extend(dequantize_input)
 
         if self._option.device == DeviceType.HTA.value:
             # replace QuantizeINPUT_f_to_8 with INPUT

@@ -15,6 +15,8 @@
 #ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_HTA_WRAPPER_H_
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_HTA_WRAPPER_H_
 
+#include <map>
+#include <string>
 #include <vector>
 
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
@@ -35,8 +37,8 @@ class HexagonHTAWrapper : public HexagonControlWrapper {
                   const unsigned char *model_data) override;
   bool ExecuteGraph(const Tensor &input_tensor,
                     Tensor *output_tensor) override;
-  bool ExecuteGraphNew(const std::vector<Tensor *> &input_tensors,
-                       std::vector<Tensor *> *output_tensors) override;
+  bool ExecuteGraphNew(const std::map<std::string, Tensor*> &input_tensors,
+                       std::map<std::string, Tensor*> *output_tensors) override;
   bool TeardownGraph() override;
   void PrintLog() override;
   void PrintGraph() override;
