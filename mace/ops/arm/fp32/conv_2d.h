@@ -49,6 +49,18 @@ class Conv2dBase {
       Tensor *output) = 0;
 
  protected:
+  void CalOutputShapeAndInputPadSize(const std::vector<index_t> &input_shape,
+                                     const std::vector<index_t> &filter_shape,
+                                     std::vector<index_t> *output_shape,
+                                     std::vector<int> *in_pad_size);
+
+  void CalOutputBoundaryWithoutUsingInputPad(const std::vector<index_t>
+                                             &output_shape,
+                                             const std::vector<int>
+                                             in_pad_size,
+                                             std::vector<index_t>
+                                             *out_bound);
+
   void CalOutputShapeAndPadSize(const Tensor *input,
                                 const Tensor *filter,
                                 const int out_tile_height,

@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
-#endif
-
-#include "mace/utils/macros.h"
-#include "mace/ops/arm/depthwise_conv2d_neon.h"
+#include "mace/ops/arm/fp32/depthwise_conv_2d_3x3.h"
 
 namespace mace {
 namespace ops {
+namespace arm {
+namespace fp32 {
 
 namespace {
 void DepthwiseConv2dPixel(const float *in_base,
@@ -49,41 +47,57 @@ void DepthwiseConv2dPixel(const float *in_base,
 }
 }  // namespace
 
-// Ho = 2, Wo = 4, Co = 1
-void DepthwiseConv2dNeonK3x3S1(const float *input,
-                               const float *filter,
-                               const index_t *in_shape,
-                               const index_t *out_shape,
-                               const int *pad_hw,
-                               const index_t valid_h_start,
-                               const index_t valid_h_stop,
-                               const index_t valid_w_start,
-                               const index_t valid_w_stop,
-                               float *output) {
-#if !defined(MACE_ENABLE_NEON)
-  MACE_UNUSED(valid_w_start);
-  MACE_UNUSED(valid_w_stop);
-#endif
+MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
+                                          const mace::Tensor *input,
+                                          const mace::Tensor *filter,
+                                          mace::Tensor *output) {
+  MACE_UNUSED(context);
+  std::vector<index_t> out_shape(4);
+  std::vector<int> paddings(2);
+  auto &in_shape = input->shape();
+  auto &filter_shape = filter->shape();
+  CalOutputShapeAndInputPadSize(in_shape, filter_shape, &out_shape, &paddings);
+  out_shape[1] *= filter_shape[1];
+  MACE_RETURN_IF_ERROR(output->Resize(out_shape));
+  output->Clear();
+
+  const int pad_top = paddings[0] / 2;
+  const int pad_left = paddings[1] / 2;
+
   const index_t multiplier = out_shape[1] / in_shape[1];
   const index_t in_image_size = in_shape[2] * in_shape[3];
   const index_t out_image_size = out_shape[2] * out_shape[3];
   const index_t in_batch_size = in_shape[1] * in_image_size;
   const index_t out_batch_size = out_shape[1] * out_image_size;
 
+  std::vector<index_t> out_bounds;
+  CalOutputBoundaryWithoutUsingInputPad(out_shape, paddings, &out_bounds);
+
+  Tensor::MappingGuard in_guard(input);
+  Tensor::MappingGuard filter_guard(filter);
+  Tensor::MappingGuard out_guard(output);
+  auto filter_data = filter->data<float>();
+  auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+
 #pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < in_shape[0]; ++b) {
     for (index_t m = 0; m < out_shape[1]; ++m) {
-      index_t c = m / multiplier;
-      index_t multi_index = m % multiplier;
-      const float *in_base = input + b * in_batch_size + c * in_image_size;
-      const float *filter_ptr = filter + multi_index * in_shape[1] * 9 + c * 9;
-      float *out_base = output + b * out_batch_size + m * out_image_size;
+      const index_t c = m / multiplier;
+      const index_t multi_index = m % multiplier;
+      const float *in_base = input_data + b * in_batch_size + c * in_image_size;
+      const float
+          *filter_ptr = filter_data + multi_index * in_shape[1] * 9 + c * 9;
+      float *out_base = output_data + b * out_batch_size + m * out_image_size;
       index_t h, w;
-      const index_t pad_top = pad_hw[0];
-      const index_t pad_left = pad_hw[1];
       const index_t out_width = out_shape[3];
       const index_t in_height = in_shape[2];
       const index_t in_width = in_shape[3];
+
+      const index_t valid_h_start = out_bounds[0];
+      const index_t valid_h_stop = out_bounds[1];
+      const index_t valid_w_start = out_bounds[2];
+      const index_t valid_w_stop = out_bounds[3];
 
       // top
       for (h = 0; h < valid_h_start; ++h) {
@@ -94,7 +108,6 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
         }
       }
 
-#if defined(MACE_ENABLE_NEON)
       // load filter (1 outch x 3 height x 3 width): vf_outch_height
       float32x4_t vf00, vf01, vf02;
       vf00 = vld1q_f32(filter_ptr);
@@ -208,15 +221,7 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
                                3, out_base);
         }
       }  // h
-#else
-      for (index_t ih = valid_h_start; ih < valid_h_stop; ++ih) {
-        for (index_t iw = 0; iw < out_shape[3]; ++iw) {
-          DepthwiseConv2dPixel(in_base, filter_ptr, ih, iw, ih - pad_top,
-                               iw - pad_left, out_width, in_height, in_width, 3,
-                               3, out_base);
-        }
-      }
-#endif
+
 
       // bottom
       for (; h < out_shape[2]; ++h) {
@@ -228,42 +233,64 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
       }
     }  // m
   }    // b
+
+  return MaceStatus::MACE_SUCCESS;
 }
 
-void DepthwiseConv2dNeonK3x3S2(const float *input,
-                               const float *filter,
-                               const index_t *in_shape,
-                               const index_t *out_shape,
-                               const int *pad_hw,
-                               const index_t valid_h_start,
-                               const index_t valid_h_stop,
-                               const index_t valid_w_start,
-                               const index_t valid_w_stop,
-                               float *output) {
-#if !defined(MACE_ENABLE_NEON)
-  MACE_UNUSED(valid_w_start);
-  MACE_UNUSED(valid_w_stop);
-#endif
+MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
+                                          const mace::Tensor *input,
+                                          const mace::Tensor *filter,
+                                          mace::Tensor *output) {
+  MACE_UNUSED(context);
+
+  std::vector<index_t> out_shape(4);
+  std::vector<int> paddings(2);
+  auto &in_shape = input->shape();
+  auto &filter_shape = filter->shape();
+
+  CalOutputShapeAndInputPadSize(in_shape, filter_shape, &out_shape, &paddings);
+  out_shape[1] *= in_shape[1];
+  MACE_RETURN_IF_ERROR(output->Resize(out_shape));
+  output->Clear();
+
+  const int pad_top = paddings[0] / 2;
+  const int pad_left = paddings[1] / 2;
+
   const index_t multiplier = out_shape[1] / in_shape[1];
   const index_t in_image_size = in_shape[2] * in_shape[3];
   const index_t out_image_size = out_shape[2] * out_shape[3];
   const index_t in_batch_size = in_shape[1] * in_image_size;
   const index_t out_batch_size = out_shape[1] * out_image_size;
 
+  std::vector<index_t> out_bounds;
+  CalOutputBoundaryWithoutUsingInputPad(out_shape, paddings, &out_bounds);
+
+  Tensor::MappingGuard in_guard(input);
+  Tensor::MappingGuard filter_guard(filter);
+  Tensor::MappingGuard out_guard(output);
+  auto filter_data = filter->data<float>();
+  auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+
 #pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < in_shape[0]; ++b) {
     for (index_t m = 0; m < out_shape[1]; ++m) {
       index_t c = m / multiplier;
       index_t multi_index = m % multiplier;
-      const float *in_base = input + b * in_batch_size + c * in_image_size;
-      const float *filter_ptr = filter + multi_index * in_shape[1] * 9 + c * 9;
-      float *out_base = output + b * out_batch_size + m * out_image_size;
+      const float *in_base = input_data + b * in_batch_size + c * in_image_size;
+      const float
+          *filter_ptr = filter_data + multi_index * in_shape[1] * 9 + c * 9;
+      float *out_base = output_data + b * out_batch_size + m * out_image_size;
       index_t h, w;
-      const index_t pad_top = pad_hw[0];
-      const index_t pad_left = pad_hw[1];
       const index_t out_width = out_shape[3];
       const index_t in_height = in_shape[2];
       const index_t in_width = in_shape[3];
+
+      const index_t valid_h_start = out_bounds[0];
+      const index_t valid_h_stop = out_bounds[1];
+      const index_t valid_w_start = out_bounds[2];
+      const index_t valid_w_stop = out_bounds[3];
+
       // top
       for (h = 0; h < valid_h_start; ++h) {
         for (w = 0; w < out_width; ++w) {
@@ -273,7 +300,6 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
         }
       }
 
-#if defined(MACE_ENABLE_NEON)
       // load filter (1 outch x 3 height x 3 width): vf_outch_height
       float32x4_t vf00, vf01, vf02;
       vf00 = vld1q_f32(filter_ptr);
@@ -359,15 +385,7 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
                                3, 3, out_base);
         }
       }  // h
-#else
-      for (index_t ih = valid_h_start; ih < valid_h_stop; ++ih) {
-        for (index_t iw = 0; iw < out_width; ++iw) {
-          DepthwiseConv2dPixel(in_base, filter_ptr, ih, iw, ih * 2 - pad_top,
-                               iw * 2 - pad_left, out_width, in_height,
-                               in_width, 3, 3, out_base);
-        }
-      }
-#endif
+
 
       // bottom
       for (; h < out_shape[2]; ++h) {
@@ -379,7 +397,11 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
       }
     }  // m
   }    // b
+
+  return MaceStatus::MACE_SUCCESS;
 }
 
+}  // namespace fp32
+}  // namespace arm
 }  // namespace ops
 }  // namespace mace

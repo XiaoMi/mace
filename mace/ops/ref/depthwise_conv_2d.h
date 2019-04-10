@@ -13,8 +13,8 @@
 // limitations under the License.
 
 
-#ifndef MACE_OPS_REF_CONV_2D_H_
-#define MACE_OPS_REF_CONV_2D_H_
+#ifndef MACE_OPS_REF_DEPTHWISE_CONV_2D_H_
+#define MACE_OPS_REF_DEPTHWISE_CONV_2D_H_
 
 #include <vector>
 
@@ -28,17 +28,17 @@ namespace ops {
 namespace ref {
 
 template<typename OUTPUT_TYPE>
-class Conv2d {
+class DepthwiseConv2d {
  public:
-  Conv2d(const std::vector<int> strides,
-         const std::vector<int> dilations,
-         const std::vector<int> paddings,
-         const Padding padding_type)
+  DepthwiseConv2d(const std::vector<int> strides,
+                  const std::vector<int> dilations,
+                  const std::vector<int> paddings,
+                  const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),
         paddings_(paddings),
         padding_type_(padding_type) {}
-  ~Conv2d() {}
+  ~DepthwiseConv2d() {}
   MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
@@ -53,17 +53,17 @@ class Conv2d {
 };
 
 template<>
-class Conv2d<float> {
+class DepthwiseConv2d<float> {
  public:
-  Conv2d(const std::vector<int> strides,
-         const std::vector<int> dilations,
-         const std::vector<int> paddings,
-         const Padding padding_type)
+  DepthwiseConv2d(const std::vector<int> strides,
+                  const std::vector<int> dilations,
+                  const std::vector<int> paddings,
+                  const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),
         paddings_(paddings),
         padding_type_(padding_type) {}
-  ~Conv2d() {}
+  ~DepthwiseConv2d() {}
 
   MaceStatus Compute(
       const OpContext *context,
@@ -82,5 +82,5 @@ class Conv2d<float> {
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_REF_CONV_2D_H_
+#endif  // MACE_OPS_REF_DEPTHWISE_CONV_2D_H_
 
