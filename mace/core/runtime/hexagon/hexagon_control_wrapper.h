@@ -15,7 +15,9 @@
 #ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
 
+#include <map>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -25,17 +27,20 @@
 namespace mace {
 
 struct InOutInfo {
-  InOutInfo(const std::vector<index_t> &shape,
+  InOutInfo(const std::string &name,
+            const std::vector<index_t> &shape,
             const DataType data_type,
             const float scale,
             const int32_t zero_point,
             std::unique_ptr<Tensor> tensor_u8)
-      :  shape(shape),
+      :  name(name),
+         shape(shape),
          data_type(data_type),
          scale(scale),
          zero_point(zero_point),
          tensor_u8(std::move(tensor_u8)) {}
 
+  std::string name;
   std::vector<index_t> shape;
   DataType data_type;
   float scale;
@@ -56,8 +61,9 @@ class HexagonControlWrapper {
                           const unsigned char *model_data) = 0;
   virtual bool ExecuteGraph(const Tensor &input_tensor,
                             Tensor *output_tensor) = 0;
-  virtual bool ExecuteGraphNew(const std::vector<Tensor *> &input_tensors,
-                               std::vector<Tensor *> *output_tensors) = 0;
+  virtual bool ExecuteGraphNew(
+      const std::map<std::string, Tensor*> &input_tensors,
+      std::map<std::string, Tensor*> *output_tensors) = 0;
   virtual bool TeardownGraph() = 0;
   virtual void PrintLog() = 0;
   virtual void PrintGraph() = 0;

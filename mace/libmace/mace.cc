@@ -736,8 +736,8 @@ MaceStatus MaceEngine::Impl::Run(
     std::map<std::string, MaceTensor> *outputs,
     RunMetadata *run_metadata) {
   MACE_CHECK_NOTNULL(outputs);
-  std::vector<Tensor *> input_tensors;
-  std::vector<Tensor *> output_tensors;
+  std::map<std::string, Tensor*> input_tensors;
+  std::map<std::string, Tensor*> output_tensors;
   for (auto &input : inputs) {
     if (input_info_map_.find(input.first) == input_info_map_.end()) {
       LOG(FATAL) << "'" << input.first
@@ -746,7 +746,7 @@ MaceStatus MaceEngine::Impl::Run(
     }
     Tensor *input_tensor = ws_->GetTensor(input.first);
     MACE_RETURN_IF_ERROR(TransposeInput(input, input_tensor));
-    input_tensors.push_back(input_tensor);
+    input_tensors[input.first] = input_tensor;
   }
   for (auto &output : *outputs) {
     if (output_info_map_.find(output.first) == output_info_map_.end()) {
@@ -755,12 +755,14 @@ MaceStatus MaceEngine::Impl::Run(
                  << MakeString(MapKeys(output_info_map_));
     }
     Tensor *output_tensor = ws_->GetTensor(output.first);
-    output_tensors.push_back(output_tensor);
+    output_tensors[output.first] = output_tensor;
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
-    MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
-               "HEXAGON not support multiple inputs and outputs yet.");
+    if (device_type_ == HTA) {
+      MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
+                 "HTA not support multiple inputs and outputs yet.");
+    }
     hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <map>
 #include <memory>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
@@ -239,7 +240,8 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     while (input_shape.size() < 4) {
       input_shape.insert(input_shape.begin(), 1);
     }
-    input_info_.emplace_back(input_shape,
+    input_info_.emplace_back(input_info.name(),
+                             input_shape,
                              input_info.data_type(),
                              input_info.scale(),
                              input_info.zero_point(),
@@ -255,7 +257,8 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     while (output_shape.size() < 4) {
       output_shape.insert(output_shape.begin(), 1);
     }
-    output_info_.emplace_back(output_shape,
+    output_info_.emplace_back(output_info.name(),
+                              output_shape,
                               output_info.data_type(),
                               output_info.scale(),
                               output_info.zero_point(),
@@ -396,8 +399,8 @@ bool HexagonDSPWrapper::ExecuteGraph(const Tensor &input_tensor,
                                      Tensor *output_tensor) {
   VLOG(2) << "Execute graph: " << nn_id_;
   // single input and single output
-  MACE_ASSERT(num_inputs_ == 1, "Wrong inputs num");
-  MACE_ASSERT(num_outputs_ == 1, "Wrong outputs num");
+  MACE_CHECK(num_inputs_ == 1, "Wrong inputs num");
+  MACE_CHECK(num_outputs_ == 1, "Wrong outputs num");
   output_tensor->SetDtype(output_info_[0].data_type);
   output_tensor->Resize(output_info_[0].shape);
   std::vector<uint32_t> output_shape(4);
@@ -419,26 +422,27 @@ bool HexagonDSPWrapper::ExecuteGraph(const Tensor &input_tensor,
       &output_bytes);
   MACE_CHECK(res == 0, "execute error");
 
-  MACE_ASSERT(output_shape.size() == output_info_[0].shape.size(),
-              "wrong output shape inferred");
+  MACE_CHECK(output_shape.size() == output_info_[0].shape.size(),
+             "wrong output shape inferred");
   for (size_t i = 0; i < output_shape.size(); ++i) {
-    MACE_ASSERT(static_cast<index_t>(output_shape[i])
-                    == output_info_[0].shape[i],
-                "wrong output shape inferred");
+    MACE_CHECK(static_cast<index_t>(output_shape[i])
+                   == output_info_[0].shape[i],
+               "wrong output shape inferred");
   }
-  MACE_ASSERT(output_bytes == output_tensor->raw_size(),
-              "wrong output bytes inferred.");
+  MACE_CHECK(output_bytes == output_tensor->raw_size(),
+             "wrong output bytes inferred.");
   return res == 0;
 }
 
 bool HexagonDSPWrapper::ExecuteGraphNew(
-    const std::vector<Tensor *> &input_tensors,
-    std::vector<Tensor *> *output_tensors) {
+    const std::map<std::string, Tensor*> &input_tensors,
+    std::map<std::string, Tensor*> *output_tensors) {
   VLOG(2) << "Execute graph new: " << nn_id_;
   uint32_t num_inputs = static_cast<uint32_t>(input_tensors.size());
   uint32_t num_outputs = static_cast<uint32_t>(output_tensors->size());
-  MACE_ASSERT(num_inputs_ == num_inputs, "Wrong inputs num");
-  MACE_ASSERT(num_outputs_ == num_outputs, "Wrong outputs num");
+  MACE_CHECK(num_inputs_ == static_cast<int>(num_inputs), "Wrong inputs num");
+  MACE_CHECK(num_outputs_ == static_cast<int>(num_outputs),
+             "Wrong outputs num");
 
   std::vector<hexagon_nn_tensordef> inputs(num_inputs * kNumMetaData);
   std::vector<hexagon_nn_tensordef> outputs(num_outputs * kNumMetaData);
@@ -447,17 +451,18 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
 
   // transform mace input to hexagon input
   for (size_t i = 0; i < num_inputs; ++i) {
-    std::vector<index_t> input_shape = input_tensors[i]->shape();
+    const auto input_tensor = input_tensors.at(input_info_[i].name);
+    const auto &input_shape = input_tensor->shape();
     size_t index = i * kNumMetaData;
     inputs[index].batches = static_cast<uint32_t>(input_shape[0]);
     inputs[index].height = static_cast<uint32_t>(input_shape[1]);
     inputs[index].width = static_cast<uint32_t>(input_shape[2]);
     inputs[index].depth = static_cast<uint32_t>(input_shape[3]);
     inputs[index].data = const_cast<unsigned char *>(
-        reinterpret_cast<const unsigned char *>(input_tensors[i]->raw_data()));
-    inputs[index].dataLen = static_cast<int>(input_tensors[i]->raw_size());
+        reinterpret_cast<const unsigned char *>(input_tensor->raw_data()));
+    inputs[index].dataLen = static_cast<int>(input_tensor->raw_size());
     inputs[index].data_valid_len =
-        static_cast<uint32_t>(input_tensors[i]->raw_size());
+        static_cast<uint32_t>(input_tensor->raw_size());
     inputs[index].unused = 0;
     input_metadata[i].Init(.0f, .0f, 1);
     AddInputMetadata(input_metadata[i].min_val, &inputs[index + 1]);
@@ -467,13 +472,14 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
 
   // transform mace output to hexagon output
   for (size_t i = 0; i < num_outputs; ++i) {
+    auto output_tensor = output_tensors->at(output_info_[i].name);
     size_t index = i * kNumMetaData;
-    (*output_tensors)[i]->SetDtype(output_info_[i].data_type);
-    (*output_tensors)[i]->Resize(output_info_[i].shape);
+    output_tensor->SetDtype(output_info_[i].data_type);
+    output_tensor->Resize(output_info_[i].shape);
 
     outputs[index].data = reinterpret_cast<unsigned char *>(
-        (*output_tensors)[i]->raw_mutable_data());
-    outputs[index].dataLen = static_cast<int>((*output_tensors)[i]->raw_size());
+        output_tensor->raw_mutable_data());
+    outputs[index].dataLen = static_cast<int>(output_tensor->raw_size());
     output_metadata[i].Init(.0f, .0f, 1);
 
     AddOutputMetadata(output_metadata[i].min_val, &outputs[index + 1]);
@@ -495,17 +501,20 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
     std::vector<uint32_t> output_shape{
         outputs[index].batches, outputs[index].height, outputs[index].width,
         outputs[index].depth};
-    MACE_ASSERT(output_shape.size() == output_info_[i].shape.size(),
+    MACE_CHECK(output_shape.size() == output_info_[i].shape.size(),
+               output_shape.size(), " vs ", output_info_[i].shape.size(),
                 "wrong output shape inferred");
     for (size_t j = 0; j < output_shape.size(); ++j) {
-      MACE_ASSERT(static_cast<index_t>(output_shape[j])
-                      == output_info_[i].shape[j],
-                  "wrong output shape inferred");
+      MACE_CHECK(static_cast<index_t>(output_shape[j])
+                     == output_info_[i].shape[j],
+                 output_shape[j], " vs ", output_info_[i].shape[j],
+                 "wrong output shape inferred");
     }
-
-    MACE_ASSERT(static_cast<index_t>(outputs[index].data_valid_len)
-                    == (*output_tensors)[i]->raw_size(),
-                "wrong output bytes inferred.");
+    auto output_tensor = output_tensors->at(output_info_[i].name);
+    MACE_CHECK(static_cast<index_t>(outputs[index].data_valid_len)
+                    == output_tensor->raw_size(),
+               outputs[index].data_valid_len, " vs ", output_tensor->raw_size(),
+               " wrong output bytes inferred.");
   }
 
   return res == 0;
