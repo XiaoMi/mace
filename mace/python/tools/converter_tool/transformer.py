@@ -1713,8 +1713,8 @@ class Transformer(base_converter.ConverterInterface):
                     mace_check(output in self._quantize_activation_info,
                                "%s does not have quantize activation info"
                                % op)
-                    op.quantize_info.append(
-                        self._quantize_activation_info[output])
+                    op.quantize_info.extend([
+                        self._quantize_activation_info[output]])
 
         if not self._option.quantize:
             return False
