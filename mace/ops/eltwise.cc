@@ -902,6 +902,9 @@ class EltwiseOp : public Operation {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
+    MACE_CHECK(this->InputSize() < 3,
+               "Element-Wise does not support 3 or higher inputs,"
+               " you could change your model to multiple Element-Wise");
     const Tensor *input0 = this->Input(0);
     const Tensor *input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
     Tensor *output = this->Output(0);
@@ -1192,6 +1195,9 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     }
   }
   MaceStatus Run(OpContext *context) override {
+    MACE_CHECK(this->InputSize() < 3,
+               "Element-Wise does not support 3 or higher inputs,"
+               " you could change your model to multiple Element-Wise");
     const Tensor *input0 = this->Input(0);
     const Tensor *input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
     Tensor *output = this->Output(0);

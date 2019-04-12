@@ -787,7 +787,7 @@ def validate_model(abi,
                 "--output_data_format=%s" % ",".join(output_data_formats),
                 "--validation_threshold=%f" % validation_threshold,
                 "--input_data_type=%s" % ",".join(input_data_types),
-                "--backend=%s" % ",".join(backend),
+                "--backend=%s" % backend,
                 "--validation_outputs_data=%s" % ",".join(
                     validation_outputs_data),
                 "--log_file=%s" % log_file,
