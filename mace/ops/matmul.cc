@@ -45,7 +45,7 @@
 #include "mace/ops/opencl/image/matmul.h"
 #endif  // MACE_ENABLE_OPENCL
 #ifdef MACE_ENABLE_NEON
-#include "mace/ops/arm/fp16_gemm.h"
+#include "mace/ops/arm/fp16/gemv.h"
 #endif
 
 namespace mace {

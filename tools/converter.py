@@ -745,7 +745,6 @@ def convert_model(configs, cl_mem_type):
             model_config[YAMLKeyword.winograd],
             model_config[YAMLKeyword.quantize],
             quantize_range_file_path,
-            model_config.get(YAMLKeyword.fp16_matmul_file, ""),
             model_config[YAMLKeyword.change_concat_ranges],
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.model_graph_format],

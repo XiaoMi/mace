@@ -330,6 +330,69 @@ void QuantOutputInt32(const std::vector<index_t> &batch,
 }
 }  // namespace
 
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+namespace {
+void FloatOutput16(const std::vector<index_t> &batch,
+                      const index_t rows,
+                      const index_t depth,
+                      const index_t cols,
+                      const bool transpose_lhs,
+                      const bool transpose_rhs,
+                      const bool lhs_batched = true,
+                      const bool rhs_batched = true) {
+  // Construct graph
+  OpsTestNet net;
+
+  index_t lhs_rows = transpose_lhs ? depth : rows;
+  index_t lhs_cols = transpose_lhs ? rows : depth;
+  index_t rhs_rows = transpose_rhs ? cols : depth;
+  index_t rhs_cols = transpose_rhs ? depth: cols;
+  std::vector<index_t> lhs_shape = {lhs_rows, lhs_cols};
+  std::vector<index_t> rhs_shape = {rhs_rows, rhs_cols};
+  if (lhs_batched) {
+    lhs_shape.insert(lhs_shape.begin(), batch.begin(), batch.end());
+  }
+  if (rhs_batched) {
+    rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
+  }
+  net.AddRandomInput<CPU, float>("A", lhs_shape);
+  net.AddRandomInput<CPU, float>("B", rhs_shape);
+
+  OpDefBuilder("MatMul", "MatMulTest")
+      .Input("A")
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
+      .Input("B")
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
+      .Output("Output")
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  OpDefBuilder("Cast", "CastTest")
+      .Input("B")
+      .Output("HalveB")
+      .OutputType({DT_FLOAT16})
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("MatMul", "Float16MatMulTest")
+      .Input("A")
+      .AddIntArg("transpose_a", transpose_lhs ? 1 : 0)
+      .Input("HalveB")
+      .AddIntArg("transpose_b", transpose_rhs ? 1 : 0)
+      .Output("Float16Output")
+      .AddIntArg("T", DT_FLOAT16)
+      .OutputType({DT_FLOAT})
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("Float16Output"), 0.01);
+}
+}  // namespace
+#endif  // MACE_ENABLE_NEON
+
 TEST_F(MatMulOpTest, QuantOutputUint8) {
   QuantOutputUint8({1}, 64, 128, 32, false, false);
   QuantOutputUint8({1}, 64, 32, 128, false, false);
@@ -381,6 +444,19 @@ TEST_F(MatMulOpTest, QuantOutputInt32) {
   QuantOutputInt32({2, 3}, 31, 61, 67, true, true, false, true);
 }
 
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+TEST_F(MatMulOpTest, FloatOutput16) {
+  FloatOutput16({1}, 1, 512, 30745, false, true, false, false);
+  FloatOutput16({1}, 1, 256, 30000, false, true, false, false);
+  FloatOutput16({1}, 1, 256, 2048, false, true, false, false);
+  FloatOutput16({1}, 1, 2048, 256, false, true, false, false);
+
+  FloatOutput16({1}, 1, 512, 30000, false, true, false, false);
+  FloatOutput16({1}, 1, 512, 512, false, true, false, false);
+  FloatOutput16({1}, 1, 512, 2048, false, true, false, false);
+  FloatOutput16({1}, 1, 2048, 512, false, true, false, false);
+}
+#endif  // MACE_ENABLE_NEON
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

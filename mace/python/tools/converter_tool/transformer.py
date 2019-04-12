@@ -1905,25 +1905,14 @@ class Transformer(base_converter.ConverterInterface):
         if self._option.device != DeviceType.CPU.value:
             return
 
-        if self._option.fp16_matmul_file:
-            with open(self._option.fp16_matmul_file) as f:
-                lines = f.readlines()
-            specific_matmul_names = [x.strip() for x in lines]
-            print('Convert matmul weights to fp16 for:')
-            for name in specific_matmul_names:
-                print('\t%s' % name)
-        else:
-            specific_matmul_names = None
-            print('Convert matmul weights to fp16 for specific matmul: activation + weights')  # noqa
+        print('Convert matmul weights to fp16 for specific matmul: activation + weights')  # noqa
 
         for op in self._model.op:
             if op.type != MaceOp.MatMul.name:
                 continue
-            if specific_matmul_names is not None and str(op.name) not in specific_matmul_names:  # noqa
+            if op.input[0] not in self._consts and op.input[1] not in self._consts:  # noqa
                 continue
-            if specific_matmul_names is None and op.input[0] not in self._consts and op.input[1] not in self._consts:  # noqa
-                continue
-            if specific_matmul_names is None and op.input[0] in self._consts and op.input[1] in self._consts:  # noqa
+            if op.input[0] in self._consts and op.input[1] in self._consts:
                 continue
 
             # Matmul fp16 Op only support fp32[1,k] x fp16[w,k]T or fp16[w,k] x fp32[k,1] now!  # noqa

@@ -124,6 +124,7 @@ cc_library(
     srcs = glob(
         [
             "arm/fp32/*.cc",
+            "arm/fp16/gemv.h",
         ],
         exclude = [
             "arm/fp32/*_test.cc",

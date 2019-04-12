@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_FP16_GEMM_H_
-#define MACE_OPS_ARM_FP16_GEMM_H_
+#ifndef MACE_OPS_ARM_FP16_GEMV_H_
+#define MACE_OPS_ARM_FP16_GEMV_H_
 
 #include "mace/core/types.h"
 
@@ -117,4 +117,4 @@ void FP16Gemv<float16_t, float, float>(const float16_t *m_ptr,
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_FP16_GEMM_H_
+#endif  // MACE_OPS_ARM_FP16_GEMV_H_

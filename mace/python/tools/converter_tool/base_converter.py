@@ -391,7 +391,6 @@ class ConverterOption(object):
         self._winograd = 0
         self._quantize = False
         self._quantize_range_file = ""
-        self._fp16_matmul_file = ""
         self._change_concat_ranges = False
         self._transformer_option = None
         self._cl_mem_type = ""
@@ -431,10 +430,6 @@ class ConverterOption(object):
     @property
     def quantize_range_file(self):
         return self._quantize_range_file
-
-    @property
-    def fp16_matmul_file(self):
-        return self._fp16_matmul_file
 
     @property
     def transformer_option(self):
@@ -487,10 +482,6 @@ class ConverterOption(object):
     @quantize_range_file.setter
     def quantize_range_file(self, quantize_range_file):
         self._quantize_range_file = quantize_range_file
-
-    @fp16_matmul_file.setter
-    def fp16_matmul_file(self, fp16_matmul_file):
-        self._fp16_matmul_file = fp16_matmul_file
 
     @change_concat_ranges.setter
     def change_concat_ranges(self, change_concat_ranges):

@@ -416,7 +416,6 @@ class YAMLKeyword(object):
     docker_image_tag = 'docker_image_tag'
     dockerfile_path = 'dockerfile_path'
     dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'
-    fp16_matmul_file = 'fp16_matmul_file'
 
 
 ################################
