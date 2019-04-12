@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/ops/arm/fp32/conv_2d.h"
+
 #include <memory>
 #include <utility>
 #include <algorithm>
 
-#include "mace/ops/arm/fp32/conv_2d.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -195,7 +196,7 @@ MaceStatus Conv2dBase::ResizeOutAndPadInOut(const OpContext *context,
 void Conv2dBase::PadInput(const Tensor &src,
                           const int pad_top,
                           const int pad_left,
-                          mace::Tensor *dst) {
+                          Tensor *dst) {
   if (dst == &src) return;
   const index_t batch = src.dim(0);
   const index_t channels = src.dim(1);
@@ -211,7 +212,6 @@ void Conv2dBase::PadInput(const Tensor &src,
   const index_t img_size = height * width;
   const index_t padded_img_size = padded_height * padded_width;
 
-#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < batch; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const index_t bc = b * channels + c;
@@ -238,7 +238,7 @@ void Conv2dBase::PadInput(const Tensor &src,
   }
 }
 
-void Conv2dBase::UnPadOutput(const mace::Tensor &src, mace::Tensor *dst) {
+void Conv2dBase::UnPadOutput(const Tensor &src, Tensor *dst) {
   if (dst == &src) return;
   const index_t batch = dst->dim(0);
   const index_t channels = dst->dim(1);
@@ -253,7 +253,6 @@ void Conv2dBase::UnPadOutput(const mace::Tensor &src, mace::Tensor *dst) {
   const index_t img_size = height * width;
   const index_t padded_img_size = padded_height * padded_width;
 
-#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < batch; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const index_t bc = (b * channels + c);

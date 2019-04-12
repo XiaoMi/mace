@@ -21,6 +21,11 @@
 
 #if defined(MACE_ENABLE_NEON)
 #include "mace/ops/arm/fp32/depthwise_conv_2d_3x3.h"
+#include "mace/ops/arm/fp32/bias_add.h"
+#include "mace/ops/arm/fp32/activation.h"
+#else
+#include "mace/ops/ref/activation.h"
+#include "mace/ops/ref/bias_add.h"
 #endif  // MACE_ENABLE_NEON
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -36,7 +41,7 @@
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/public/mace.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/buffer/depthwise_conv2d.h"
@@ -69,7 +74,10 @@ template<>
 class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
-      : DepthwiseConv2dOpBase(context) {}
+      : DepthwiseConv2dOpBase(context),
+        activation_delegator_(activation_,
+                              relux_max_limit_,
+                              leakyrelu_coefficient_) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -129,30 +137,8 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
     ref_conv2d_delegator_->Compute(context, input, filter, output);
 #endif  // MACE_ENABLE_NEON
 
-    Tensor::MappingGuard bias_guard(bias);
-    Tensor::MappingGuard output_guard(output);
-    auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
-    auto output_data = output->mutable_data<float>();
-
-    const index_t batch = output->dim(0);
-    const index_t channels = output->dim(1);
-    const index_t height = output->dim(2);
-    const index_t width = output->dim(3);
-
-    if (bias_data != nullptr) {
-#pragma omp parallel for collapse(2)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channels; ++c) {
-          for (index_t i = 0; i < height * width; ++i) {
-            output_data[(b * channels + c) * height * width + i] +=
-                bias_data[c];
-          }
-        }
-      }
-    }
-
-    DoActivation(output_data, output_data, output->size(), activation_,
-                 relux_max_limit_, leakyrelu_coefficient_);
+    bias_add_delegator_.Compute(context, output, bias, output);
+    activation_delegator_.Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -160,6 +146,11 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
  private:
 #ifdef MACE_ENABLE_NEON
   std::unique_ptr<arm::fp32::Conv2dBase> conv2d_delegator_;
+  arm::fp32::BiasAdd bias_add_delegator_;
+  arm::fp32::Activation activation_delegator_;
+#else
+  ref::BiasAdd bias_add_delegator_;
+  ref::Activation activation_delegator_;
 #endif  // MACE_ENABLE_NEON
   std::unique_ptr<ref::DepthwiseConv2d<float>> ref_conv2d_delegator_;
 
@@ -169,7 +160,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
-template <>
+template<>
 class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
     : public DepthwiseConv2dOpBase {
  public:
@@ -269,7 +260,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
       float output_multiplier =
           input->scale() * filter->scale() / output->scale();
       const int pad_hw[2] = {pad_top, pad_left};
-      DepthwiseConv2dGeneral(
+      DepthwiseConv2dGeneral(context,
           input_data, filter_data, bias_data, input->shape().data(),
           output_shape.data(), filter->shape().data(), input->zero_point(),
           filter->zero_point(), output->zero_point(), output_multiplier,
@@ -279,7 +270,8 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
     return MaceStatus::MACE_SUCCESS;
   }
  private:
-  void DepthwiseConv2dGeneral(const uint8_t *input,
+  void DepthwiseConv2dGeneral(const OpContext *context,
+                              const uint8_t *input,
                               const uint8_t *filter,
                               const int32_t *bias,
                               const index_t *in_shape,
@@ -293,54 +285,60 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
                               const int *dilation_hw,
                               const int *pad_hw,
                               uint8_t *output) {
-#pragma omp parallel for collapse(2)
-    for (index_t b = 0; b < out_shape[0]; ++b) {
-      for (index_t h = 0; h < out_shape[1]; ++h) {
-        for (index_t w = 0; w < out_shape[2]; ++w) {
-          for (index_t m = 0; m < out_shape[3]; ++m) {
-            const index_t filter_height = filter_shape[0];
-            const index_t filter_width = filter_shape[1];
-            const index_t in_channels = filter_shape[2];
-            const index_t depth_multiplier = filter_shape[3];
-            const index_t in_height = in_shape[1];
-            const index_t in_width = in_shape[2];
-            const index_t out_height = out_shape[1];
-            const index_t out_width = out_shape[2];
-            const index_t out_channels = out_shape[3];
-            index_t out_offset =
-                ((b * out_height + h) * out_width + w) * out_channels + m;
-            index_t c = m / depth_multiplier;
-            index_t o = m % depth_multiplier;
-            index_t ih_base = h * stride_hw[0] - pad_hw[0];
-            index_t iw_base = w * stride_hw[1] - pad_hw[1];
-            int32_t sum = 0;
-            for (index_t kh = 0; kh < filter_height; ++kh) {
-              const index_t ih = ih_base + kh * dilation_hw[0];
-              for (index_t kw = 0; kw < filter_width; ++kw) {
-                const index_t iw = iw_base + kw * dilation_hw[1];
-                if (ih >= 0 && ih < in_height && iw >= 0 && iw < in_width) {
-                  index_t in_offset =
-                      ((b * in_height + ih) * in_width + iw) * in_channels + c;
-                  index_t filter_offset =
-                      ((kh * filter_width + kw) * in_channels + c)
-                          * depth_multiplier + o;
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-                  sum += (input[in_offset] - input_zero) *
-                      (filter[filter_offset] - filter_zero);
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      for (index_t b = start0; b < end0; b += step0) {
+        for (index_t h = start1; h < end1; h += step1) {
+          for (index_t w = 0; w < out_shape[2]; ++w) {
+            for (index_t m = 0; m < out_shape[3]; ++m) {
+              const index_t filter_height = filter_shape[0];
+              const index_t filter_width = filter_shape[1];
+              const index_t in_channels = filter_shape[2];
+              const index_t depth_multiplier = filter_shape[3];
+              const index_t in_height = in_shape[1];
+              const index_t in_width = in_shape[2];
+              const index_t out_height = out_shape[1];
+              const index_t out_width = out_shape[2];
+              const index_t out_channels = out_shape[3];
+              index_t out_offset =
+                  ((b * out_height + h) * out_width + w) * out_channels + m;
+              index_t c = m / depth_multiplier;
+              index_t o = m % depth_multiplier;
+              index_t ih_base = h * stride_hw[0] - pad_hw[0];
+              index_t iw_base = w * stride_hw[1] - pad_hw[1];
+              int32_t sum = 0;
+              for (index_t kh = 0; kh < filter_height; ++kh) {
+                const index_t ih = ih_base + kh * dilation_hw[0];
+                for (index_t kw = 0; kw < filter_width; ++kw) {
+                  const index_t iw = iw_base + kw * dilation_hw[1];
+                  if (ih >= 0 && ih < in_height && iw >= 0 && iw < in_width) {
+                    index_t in_offset =
+                        ((b * in_height + ih) * in_width + iw) * in_channels
+                            + c;
+                    index_t filter_offset =
+                        ((kh * filter_width + kw) * in_channels + c)
+                            * depth_multiplier + o;
+
+                    sum += (input[in_offset] - input_zero) *
+                        (filter[filter_offset] - filter_zero);
+                  }
                 }
               }
+              if (bias) {
+                sum += bias[m];
+              }
+              sum = static_cast<int32_t>(std::round(sum * output_multiplier));
+              sum += output_zero;
+              output[out_offset] =
+                  static_cast<uint8_t>(std::min(255, std::max(0, sum)));
             }
-            if (bias) {
-              sum += bias[m];
-            }
-            sum = static_cast<int32_t>(std::round(sum * output_multiplier));
-            sum += output_zero;
-            output[out_offset] =
-                static_cast<uint8_t>(std::min(255, std::max(0, sum)));
           }
         }
       }
-    }
+    }, 0, out_shape[0], 1, 0, out_shape[1], 1);
   }
 
   inline tflite::Dims<4> ShapeToTfliteDims(const std::vector<index_t> &shape) {

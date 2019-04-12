@@ -30,9 +30,9 @@ namespace ref {
 template<typename OUTPUT_TYPE>
 class Conv2d {
  public:
-  Conv2d(const std::vector<int> strides,
-         const std::vector<int> dilations,
-         const std::vector<int> paddings,
+  Conv2d(const std::vector<int> &strides,
+         const std::vector<int> &dilations,
+         const std::vector<int> &paddings,
          const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),
@@ -55,9 +55,9 @@ class Conv2d {
 template<>
 class Conv2d<float> {
  public:
-  Conv2d(const std::vector<int> strides,
-         const std::vector<int> dilations,
-         const std::vector<int> paddings,
+  Conv2d(const std::vector<int> &strides,
+         const std::vector<int> &dilations,
+         const std::vector<int> &paddings,
          const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),

@@ -163,7 +163,7 @@ void CheckOutputs(const NetDef &net_def,
     std::unique_ptr<Tensor> tmp_tensor(
         new Tensor(allocator.get(),
                    DataTypeToEnum<float>::v()));
-    auto output_shape = output.second.shape();
+    auto &output_shape = output.second.shape();
     const int64_t data_size = std::accumulate(output_shape.begin(),
                                               output_shape.end(), 1,
                                               std::multiplies<float>());

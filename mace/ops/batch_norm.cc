@@ -18,6 +18,13 @@
 
 #include "mace/core/operator.h"
 #include "mace/ops/activation.h"
+
+#if defined(MACE_ENABLE_NEON)
+#include "mace/ops/arm/fp32/activation.h"
+#else
+#include "mace/ops/ref/activation.h"
+#endif
+
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/batch_norm.h"
@@ -27,21 +34,22 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class BatchNormOp;
 
-template <>
+template<>
 class BatchNormOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit BatchNormOp(OpConstructContext *context)
       : Operation(context),
         epsilon_(Operation::GetOptionalArg<float>("epsilon",
                                                   static_cast<float>(1e-4))),
-        activation_(ops::StringToActivationType(
-            Operation::GetOptionalArg<std::string>("activation", "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-              "leakyrelu_coefficient", 0.0f)) {}
+        activation_delegator_(
+            ops::StringToActivationType(
+                Operation::GetOptionalArg<std::string>("activation", "NOOP")),
+            Operation::GetOptionalArg<float>("max_limit", 0.0f),
+            Operation::GetOptionalArg<float>(
+                "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -73,73 +81,84 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
     const index_t height = input->dim(2);
     const index_t width = input->dim(3);
 
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard scale_mapper(scale);
-    Tensor::MappingGuard offset_mapper(offset);
-    Tensor::MappingGuard output_mapper(output);
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-    const float *input_ptr = input->data<float>();
-    const float *scale_ptr = scale->data<float>();
-    const float *offset_ptr = offset->data<float>();
-    float *output_ptr = output->mutable_data<float>();
+    {
+      Tensor::MappingGuard input_mapper(input);
+      Tensor::MappingGuard scale_mapper(scale);
+      Tensor::MappingGuard offset_mapper(offset);
+      Tensor::MappingGuard output_mapper(output);
 
-    std::vector<float> new_scale;
-    std::vector<float> new_offset;
-    if (not_folded) {
-      const Tensor *mean = this->Input(MEAN);
-      const Tensor *var = this->Input(VAR);
-      MACE_CHECK(mean->dim_size() == 1, "mean must be 1-dimensional. ",
-                 mean->dim_size());
-      MACE_CHECK(var->dim_size() == 1, "var must be 1-dimensional. ",
-                 var->dim_size());
-      new_scale.resize(channels);
-      new_offset.resize(channels);
-      Tensor::MappingGuard mean_mapper(mean);
-      Tensor::MappingGuard var_mapper(var);
-      const float *mean_ptr = mean->data<float>();
-      const float *var_ptr = var->data<float>();
-#pragma omp parallel for
-      for (index_t c = 0; c < channels; ++c) {
-        new_scale[c] = scale_ptr[c] / std::sqrt(var_ptr[c] + epsilon_);
-        new_offset[c] = offset_ptr[c] - mean_ptr[c] * new_scale[c];
+      const float *input_ptr = input->data<float>();
+      const float *scale_ptr = scale->data<float>();
+      const float *offset_ptr = offset->data<float>();
+      float *output_ptr = output->mutable_data<float>();
+
+      std::vector<float> new_scale;
+      std::vector<float> new_offset;
+      if (not_folded) {
+        const Tensor *mean = this->Input(MEAN);
+        const Tensor *var = this->Input(VAR);
+        MACE_CHECK(mean->dim_size() == 1, "mean must be 1-dimensional. ",
+                   mean->dim_size());
+        MACE_CHECK(var->dim_size() == 1, "var must be 1-dimensional. ",
+                   var->dim_size());
+        new_scale.resize(channels);
+        new_offset.resize(channels);
+        Tensor::MappingGuard mean_mapper(mean);
+        Tensor::MappingGuard var_mapper(var);
+        const float *mean_ptr = mean->data<float>();
+        const float *var_ptr = var->data<float>();
+
+        thread_pool.Compute1D([=, &new_scale, &new_offset](index_t start,
+                                                           index_t end,
+                                                           index_t step) {
+          for (index_t c = start; c < end; c += step) {
+            new_scale[c] = scale_ptr[c] / std::sqrt(var_ptr[c] + epsilon_);
+            new_offset[c] = offset_ptr[c] - mean_ptr[c] * new_scale[c];
+          }
+        }, 0, channels, 1);
       }
-    }
 
-    const float *scale_data = not_folded ? new_scale.data() : scale_ptr;
-    const float
-        *offset_data = not_folded ? new_offset.data() : offset_ptr;
+      const float *scale_data = not_folded ? new_scale.data() : scale_ptr;
+      const float
+          *offset_data = not_folded ? new_offset.data() : offset_ptr;
 
-    index_t channel_size = height * width;
-    index_t batch_size = channels * channel_size;
+      index_t channel_size = height * width;
+      index_t batch_size = channels * channel_size;
 
-    // NEON is slower, so stick to the trivial implementaion
-#pragma omp parallel for collapse(2)
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t c = 0; c < channels; ++c) {
-        index_t offset = b * batch_size + c * channel_size;
-        for (index_t hw = 0; hw < height * width; ++hw) {
-          output_ptr[offset + hw] =
-              scale_data[c] * input_ptr[offset + hw] + offset_data[c];
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            index_t offset = b * batch_size + c * channel_size;
+            for (index_t hw = 0; hw < height * width; ++hw) {
+              output_ptr[offset + hw] =
+                  scale_data[c] * input_ptr[offset + hw] + offset_data[c];
+            }
+          }
         }
-      }
+      }, 0, batch, 1, 0, channels, 1);
     }
-    DoActivation(output_ptr, output_ptr, output->size(), activation_,
-                 relux_max_limit_, leakyrelu_coefficient_);
+
+    activation_delegator_.Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
   float epsilon_;
-  const ActivationType activation_;
-  const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+#ifdef MACE_ENABLE_NEON
+  arm::fp32::Activation activation_delegator_;
+#else
+  ref::Activation activation_delegator_;
+#endif  // MACE_ENABLE_NEON
 
  protected:
   MACE_OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
-
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -212,7 +231,6 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 #endif  // MACE_ENABLE_OPENCL
-
 
 void RegisterBatchNorm(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,

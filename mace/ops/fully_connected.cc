@@ -22,8 +22,8 @@
 #include "mace/ops/activation.h"
 
 #ifdef MACE_ENABLE_NEON
-
 #include "mace/ops/arm/fp32/gemv.h"
+#include "mace/ops/arm/fp32/activation.h"
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/arm/q8/gemv.h"
@@ -31,6 +31,7 @@
 
 #else
 #include "mace/ops/ref/gemv.h"
+#include "mace/ops/ref/activation.h"
 #endif  // MACE_ENABLE_NEON
 
 #ifdef MACE_ENABLE_OPENCL
@@ -69,7 +70,10 @@ template<>
 class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
-      : FullyConnectedOpBase(context) {}
+      : FullyConnectedOpBase(context),
+        activation_delegator_(activation_,
+                              relux_max_limit_,
+                              leakyrelu_coefficient_) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -106,10 +110,8 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
                   false,
                   true,
                   output);
-    Tensor::MappingGuard guard_output(output);
-    float *output_ptr = output->mutable_data<float>();
-    DoActivation(output_ptr, output_ptr, output->size(), activation_,
-                 relux_max_limit_, leakyrelu_coefficient_);
+
+    activation_delegator_.Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
@@ -117,8 +119,10 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
  private:
 #ifdef MACE_ENABLE_NEON
   arm::fp32::Gemv gemv_;
+  arm::fp32::Activation activation_delegator_;
 #else
   ref::Gemv<float> gemv_;
+  ref::Activation activation_delegator_;
 #endif  // MACE_ENABLE_NEON
 };
 

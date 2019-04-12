@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_COMMON_NEON_H_
-#define MACE_OPS_ARM_COMMON_NEON_H_
+#ifndef MACE_OPS_ARM_FP32_COMMON_NEON_H_
+#define MACE_OPS_ARM_FP32_COMMON_NEON_H_
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
@@ -21,6 +21,8 @@
 
 namespace mace {
 namespace ops {
+namespace arm {
+namespace fp32 {
 
 #ifdef MACE_ENABLE_NEON
 inline float32x4_t neon_vfma_lane_0(float32x4_t a,
@@ -64,7 +66,9 @@ inline float32x4_t neon_vfma_lane_3(float32x4_t a,
 }
 #endif
 
+}  // namespace fp32
+}  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_COMMON_NEON_H_
+#endif  // MACE_OPS_ARM_FP32_COMMON_NEON_H_

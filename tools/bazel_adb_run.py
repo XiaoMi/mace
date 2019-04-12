@@ -107,8 +107,8 @@ def parse_args():
     parser.add_argument(
         "--enable_openmp",
         type=str2bool,
-        default=True,
-        help="Disable openmp for multiple thread.")
+        default=False,
+        help="Whether to use openmp")
     parser.add_argument(
         '--address_sanitizer',
         action="store_true",
@@ -143,9 +143,9 @@ def main(unused_args):
             abi=target_abi,
             toolchain=toolchain,
             enable_neon=FLAGS.enable_neon,
+            enable_openmp=FLAGS.enable_openmp,
             address_sanitizer=FLAGS.address_sanitizer,
-            debug_mode=FLAGS.debug_mode,
-            enable_openmp=FLAGS.enable_openmp)
+            debug_mode=FLAGS.debug_mode)
         if FLAGS.run_target:
             target_devices = DeviceManager.list_devices(FLAGS.device_yml)
             if FLAGS.target_socs != TargetSOCTag.all and\

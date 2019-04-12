@@ -54,8 +54,12 @@ void TestGemvInt32(const index_t batch,
     GenerateRandomIntTypeData<int32_t>(bias.shape(), bias_data);
   }
 
+  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
+  thread_pool.Init();
+  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
+  OpContext context(nullptr, &cpu_device);
   mace::ops::arm::q8::Gemv<int32_t> gemv;
-  gemv.Compute(nullptr,
+  gemv.Compute(&context,
                &lhs,
                &rhs,
                &bias,
@@ -122,8 +126,12 @@ void TestGemvUint8(const index_t batch,
     GenerateRandomIntTypeData<int32_t>(bias.shape(), bias_data);
   }
 
+  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
+  thread_pool.Init();
+  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
+  OpContext context(nullptr, &cpu_device);
   mace::ops::arm::q8::Gemv<uint8_t> gemv;
-  gemv.Compute(nullptr,
+  gemv.Compute(&context,
                &lhs,
                &rhs,
                &bias,

@@ -37,54 +37,55 @@ class ThreadPool {
 
   void Init();
 
-  void Run(const std::function<void(size_t)> &func, size_t iterations);
+  void Run(const std::function<void(const int64_t)> &func,
+           const int64_t iterations);
 
-  void Compute1D(const std::function<void(size_t /* start */,
-                                          size_t /* end */,
-                                          size_t /* step */)> &func,
-                 size_t start,
-                 size_t end,
-                 size_t step,
-                 size_t tile_size = 0,
+  void Compute1D(const std::function<void(int64_t /* start */,
+                                          int64_t /* end */,
+                                          int64_t /* step */)> &func,
+                 int64_t start,
+                 int64_t end,
+                 int64_t step,
+                 int64_t tile_size = 0,
                  int cost_per_item = -1);
 
-  void Compute2D(const std::function<void(size_t /* start */,
-                                          size_t /* end */,
-                                          size_t /* step */,
-                                          size_t /* start */,
-                                          size_t /* end */,
-                                          size_t /* step */)> &func,
-                 size_t start0,
-                 size_t end0,
-                 size_t step0,
-                 size_t start1,
-                 size_t end1,
-                 size_t step1,
-                 size_t tile_size0 = 0,
-                 size_t tile_size1 = 0,
+  void Compute2D(const std::function<void(int64_t /* start */,
+                                          int64_t /* end */,
+                                          int64_t /* step */,
+                                          int64_t /* start */,
+                                          int64_t /* end */,
+                                          int64_t /* step */)> &func,
+                 int64_t start0,
+                 int64_t end0,
+                 int64_t step0,
+                 int64_t start1,
+                 int64_t end1,
+                 int64_t step1,
+                 int64_t tile_size0 = 0,
+                 int64_t tile_size1 = 0,
                  int cost_per_item = -1);
 
-  void Compute3D(const std::function<void(size_t /* start */,
-                                          size_t /* end */,
-                                          size_t /* step */,
-                                          size_t /* start */,
-                                          size_t /* end */,
-                                          size_t /* step */,
-                                          size_t /* start */,
-                                          size_t /* end */,
-                                          size_t /* step */)> &func,
-                 size_t start0,
-                 size_t end0,
-                 size_t step0,
-                 size_t start1,
-                 size_t end1,
-                 size_t step1,
-                 size_t start2,
-                 size_t end2,
-                 size_t step2,
-                 size_t tile_size0 = 0,
-                 size_t tile_size1 = 0,
-                 size_t tile_size2 = 0,
+  void Compute3D(const std::function<void(int64_t /* start */,
+                                          int64_t /* end */,
+                                          int64_t /* step */,
+                                          int64_t /* start */,
+                                          int64_t /* end */,
+                                          int64_t /* step */,
+                                          int64_t /* start */,
+                                          int64_t /* end */,
+                                          int64_t /* step */)> &func,
+                 int64_t start0,
+                 int64_t end0,
+                 int64_t step0,
+                 int64_t start1,
+                 int64_t end1,
+                 int64_t step1,
+                 int64_t start2,
+                 int64_t end2,
+                 int64_t step2,
+                 int64_t tile_size0 = 0,
+                 int64_t tile_size1 = 0,
+                 int64_t tile_size2 = 0,
                  int cost_per_item = -1);
 
  private:
@@ -100,16 +101,16 @@ class ThreadPool {
   std::mutex run_mutex_;
 
   struct ThreadInfo {
-    size_t range_start;
-    std::atomic<size_t> range_end;
-    std::atomic<size_t> range_len;
+    std::atomic<int64_t> range_start;
+    std::atomic<int64_t> range_end;
+    std::atomic<int64_t> range_len;
     uintptr_t func;
     std::vector<size_t> cpu_cores;
   };
   std::vector<ThreadInfo> thread_infos_;
   std::vector<std::thread> threads_;
 
-  size_t default_tile_count_;
+  int64_t default_tile_count_;
 };
 
 }  // namespace utils

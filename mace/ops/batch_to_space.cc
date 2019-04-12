@@ -125,7 +125,6 @@ class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
         std::max(static_cast<index_t>(1), 8 * 1024 / block_shape_w / out_width);
 
     // make channel outter loop so we can make best use of cache
-#pragma omp parallel for collapse(3) schedule(runtime)
     for (index_t c = 0; c < channels; ++c) {
       for (index_t block_h = 0; block_h < in_height;
            block_h += block_h_size) {
@@ -214,7 +213,6 @@ class BatchToSpaceNDOp<DeviceType::CPU, uint8_t> : public BatchToSpaceOpBase {
     index_t out_width = space_tensor->dim(2);
     index_t channels = space_tensor->dim(3);
 
-#pragma omp parallel for schedule(runtime)
     for (index_t in_b = 0; in_b < in_batches; ++in_b) {
       const index_t b = in_b % out_batches;
       const index_t tile_index = in_b / out_batches;

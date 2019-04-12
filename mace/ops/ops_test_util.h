@@ -26,21 +26,19 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "mace/core/types.h"
 #include "mace/core/net.h"
 #include "mace/core/device_context.h"
+#include "mace/core/runtime/opencl/gpu_device.h"
+#include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/ops/ops_registry.h"
 #include "mace/public/mace.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #include "mace/ops/testing/test_utils.h"
-
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/gpu_device.h"
-#include "mace/core/runtime/opencl/opencl_util.h"
-#endif
 
 namespace mace {
 namespace ops {
@@ -79,30 +77,26 @@ class OpTestContext {
  public:
   static OpTestContext *Get(
       int num_threads = -1,
-      CPUAffinityPolicy cpu_affinity_policy = AFFINITY_BIG_ONLY,
-      bool use_gemmlowp = true);
-  Device *GetDevice(DeviceType device_type);
-
-#ifdef MACE_ENABLE_OPENCL
+      CPUAffinityPolicy cpu_affinity_policy = AFFINITY_BIG_ONLY);
   std::shared_ptr<GPUContext> gpu_context() const;
+  Device *GetDevice(DeviceType device_type);
   std::vector<MemoryType> opencl_mem_types();
   void SetOCLBufferTestFlag();
   void SetOCLImageTestFlag();
   void SetOCLImageAndBufferTestFlag();
-#endif
+  utils::ThreadPool *thread_pool() {
+    return thread_pool_.get();
+  }
 
  private:
   OpTestContext(int num_threads,
-                CPUAffinityPolicy cpu_affinity_policy,
-                bool use_gemmlowp);
+                CPUAffinityPolicy cpu_affinity_policy);
   MACE_DISABLE_COPY_AND_ASSIGN(OpTestContext);
 
-  std::map<DeviceType, std::unique_ptr<Device>> device_map_;
-
-#ifdef MACE_ENABLE_OPENCL
   std::shared_ptr<GPUContext> gpu_context_;
   std::vector<MemoryType> opencl_mem_types_;
-#endif
+  std::map<DeviceType, std::unique_ptr<Device>> device_map_;
+  std::unique_ptr<utils::ThreadPool> thread_pool_;
 };
 
 class OpsTestNet {
@@ -430,9 +424,7 @@ class OpsTestBase : public ::testing::Test {
   }
 
   virtual void TearDown() {
-#ifdef MACE_ENABLE_OPENCL
     OpTestContext::Get()->SetOCLImageTestFlag();
-#endif
   }
 };
 

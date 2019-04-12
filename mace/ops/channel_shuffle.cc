@@ -56,7 +56,6 @@ class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
     index_t batch_size = channels * image_size;
     index_t channels_per_group = channels / groups_;
 
-#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t b = 0; b < batch; ++b) {
       for (index_t c = 0; c < channels; ++c) {
         index_t g = c % groups_;

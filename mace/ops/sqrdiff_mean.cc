@@ -65,7 +65,7 @@ class SqrDiffMeanOp : public Operation {
 
     const index_t img_size = input0->dim(2) * input0->dim(3);
     const index_t bc = input0->dim(0) * input0->dim(1);
-#pragma omp parallel for schedule(runtime)
+
     for (int i = 0; i < bc; ++i) {
       for (int j = 0; j < img_size; ++j) {
         T diff = input_ptr0[i * img_size + j] - input_ptr1[i];

@@ -35,7 +35,7 @@ template <typename T>
 class ReduceKernel : public OpenCLReduceKernel {
  public:
   ReduceKernel(ReduceType type,
-               const std::vector<int> axis,
+               const std::vector<int> &axis,
                const bool keep_dims)
       : reduce_type_(type), axis_(axis), keep_dims_(keep_dims) {}
 

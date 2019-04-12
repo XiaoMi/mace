@@ -16,10 +16,13 @@
 #define MACE_OPS_COMMON_LSTM_H_
 
 #include "mace/core/types.h"
+#include "mace/core/op_context.h"
+
 namespace mace {
 namespace ops {
 
-void LSTMNonlinearKernel(const float *input_data,
+void LSTMNonlinearKernel(const OpContext *opContext,
+                         const float *input_data,
                          const float *prev_data,
                          const float *scale_data,
                          const float *params_data,
@@ -28,7 +31,6 @@ void LSTMNonlinearKernel(const float *input_data,
                          index_t cell_dim,
                          float *output_cell,
                          float *output_data);
-
 
 }  // namespace ops
 }  // namespace mace

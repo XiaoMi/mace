@@ -28,7 +28,7 @@ namespace fp32 {
 
 class Conv2dK7x7S1 : public Conv2dBase {
  public:
-  Conv2dK7x7S1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK7x7S1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK7x7S1() {}
 
@@ -36,12 +36,12 @@ class Conv2dK7x7S1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 class Conv2dK7x7S2 : public Conv2dBase {
  public:
-  Conv2dK7x7S2(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK7x7S2(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({2, 2}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK7x7S2() {}
 
@@ -49,12 +49,12 @@ class Conv2dK7x7S2 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 class Conv2dK7x7S3 : public Conv2dBase {
  public:
-  Conv2dK7x7S3(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK7x7S3(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({3, 3}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK7x7S3() {}
 
@@ -62,7 +62,7 @@ class Conv2dK7x7S3 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 }  // namespace fp32

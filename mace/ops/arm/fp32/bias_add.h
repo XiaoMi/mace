@@ -12,23 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_ACTIVATION_NEON_H_
-#define MACE_OPS_ARM_ACTIVATION_NEON_H_
+#ifndef MACE_OPS_ARM_FP32_BIAS_ADD_H_
+#define MACE_OPS_ARM_FP32_BIAS_ADD_H_
 
-#include "mace/core/types.h"
+#include "mace/core/op_context.h"
 
 namespace mace {
 namespace ops {
+namespace arm {
+namespace fp32 {
 
-void ReluNeon(const float *input, const index_t size, float *output);
+class BiasAdd {
+ public:
+  BiasAdd() = default;
+  ~BiasAdd() = default;
 
-void ReluxNeon(const float *input, const float limit,
-               const index_t size, float *output);
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *bias,
+      Tensor *output);
 
-void LeakyReluNeon(const float *input, const float alpha,
-                   const index_t size, float *output);
+ private:
+  void AddBias(const OpContext *context,
+               const Tensor *input,
+               const Tensor *bias,
+               Tensor *output);
+};
 
+}  // namespace fp32
+}  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_ACTIVATION_NEON_H_
+#endif  // MACE_OPS_ARM_FP32_BIAS_ADD_H_

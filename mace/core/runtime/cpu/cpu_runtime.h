@@ -35,24 +35,17 @@ class CPURuntime {
  public:
   CPURuntime(const int num_threads,
              CPUAffinityPolicy policy,
-             bool use_gemmlowp)
+             utils::ThreadPool *thread_pool)
       : num_threads_(num_threads),
         policy_(policy),
         gemm_context_(nullptr),
-        thread_pool_(static_cast<size_t>(num_threads), policy) {
+        thread_pool_(thread_pool) {
 #ifdef MACE_ENABLE_QUANTIZE
-    if (use_gemmlowp) {
-      MACE_CHECK_NOTNULL(GetGemmlowpContext());
-    }
-#else
-    MACE_UNUSED(use_gemmlowp);
+    MACE_CHECK_NOTNULL(GetGemmlowpContext());
 #endif  // MACE_ENABLE_QUANTIZE
     SetOpenMPThreadsAndAffinityPolicy(num_threads_,
                                       policy_,
                                       gemm_context_);
-    // TODO(liyin): After we replace OpenMP to thread_pool, uncomment the
-    // following line.
-    // thread_pool_.Init();
   }
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -80,12 +73,8 @@ class CPURuntime {
     return policy_;
   }
 
-  bool use_gemmlowp() const {
-    return gemm_context_ != nullptr;
-  }
-
   utils::ThreadPool &thread_pool() {
-    return thread_pool_;
+    return *thread_pool_;
   }
 
  private:
@@ -97,7 +86,7 @@ class CPURuntime {
   int num_threads_;
   CPUAffinityPolicy policy_;
   void *gemm_context_;
-  utils::ThreadPool thread_pool_;
+  utils::ThreadPool *thread_pool_;
 };
 }  // namespace mace
 

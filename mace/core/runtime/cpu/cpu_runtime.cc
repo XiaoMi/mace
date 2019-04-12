@@ -68,7 +68,7 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 #else
   MACE_UNUSED(omp_num_threads);
   MACE_UNUSED(schedule_policy);
-  LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
+  VLOG(2) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
 
 #ifdef MACE_ENABLE_OPENMP
@@ -143,7 +143,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
 #ifdef MACE_ENABLE_OPENMP
     omp_set_num_threads(num_threads_hint);
 #else
-    LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
+    VLOG(2) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
     return MaceStatus::MACE_SUCCESS;
   }

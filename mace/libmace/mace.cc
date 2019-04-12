@@ -149,7 +149,7 @@ GPUContextBuilder &GPUContextBuilder::SetOpenCLBinaryPaths(
   return *this;
 }
 
-GPUContextBuilder& GPUContextBuilder::SetOpenCLBinary(
+GPUContextBuilder &GPUContextBuilder::SetOpenCLBinary(
     const unsigned char *data, const size_t size) {
   impl_->SetOpenCLBinary(data, size);
   return *this;
@@ -161,7 +161,7 @@ GPUContextBuilder &GPUContextBuilder::SetOpenCLParameterPath(
   return *this;
 }
 
-GPUContextBuilder& GPUContextBuilder::SetOpenCLParameter(
+GPUContextBuilder &GPUContextBuilder::SetOpenCLParameter(
     const unsigned char *data, const size_t size) {
   impl_->SetOpenCLParameter(data, size);
   return *this;
@@ -181,8 +181,7 @@ class MaceEngineConfig::Impl {
   MaceStatus SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
-                                CPUAffinityPolicy policy,
-                                bool use_gemmlowp);
+                                CPUAffinityPolicy policy);
 
   inline DeviceType device_type() const {
     return device_type_;
@@ -194,10 +193,6 @@ class MaceEngineConfig::Impl {
 
   inline CPUAffinityPolicy cpu_affinity_policy() const {
     return cpu_affinity_policy_;
-  }
-
-  inline bool use_gemmlowp() const {
-    return use_gemmlowp_;
   }
 
   inline std::shared_ptr<GPUContext> gpu_context() const {
@@ -216,7 +211,6 @@ class MaceEngineConfig::Impl {
   DeviceType device_type_;
   int num_threads_;
   CPUAffinityPolicy cpu_affinity_policy_;
-  bool use_gemmlowp_;
   std::shared_ptr<GPUContext> gpu_context_;
   GPUPriorityHint gpu_priority_hint_;
   GPUPerfHint gpu_perf_hint_;
@@ -226,7 +220,6 @@ MaceEngineConfig::Impl::Impl(const DeviceType device_type)
     : device_type_(device_type),
       num_threads_(-1),
       cpu_affinity_policy_(CPUAffinityPolicy::AFFINITY_NONE),
-      use_gemmlowp_(false),
       gpu_context_(new GPUContext),
       gpu_priority_hint_(GPUPriorityHint::PRIORITY_LOW),
       gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {}
@@ -247,14 +240,11 @@ MaceStatus MaceEngineConfig::Impl::SetGPUHints(
 
 MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
     int num_threads,
-    CPUAffinityPolicy policy,
-    bool use_gemmlowp) {
+    CPUAffinityPolicy policy) {
   num_threads_ = num_threads;
   cpu_affinity_policy_ = policy;
-  use_gemmlowp_ = use_gemmlowp;
   return MaceStatus::MACE_SUCCESS;
 }
-
 
 MaceEngineConfig::MaceEngineConfig(
     const DeviceType device_type)
@@ -275,9 +265,8 @@ MaceStatus MaceEngineConfig::SetGPUHints(
 
 MaceStatus MaceEngineConfig::SetCPUThreadPolicy(
     int num_threads_hint,
-    CPUAffinityPolicy policy,
-    bool use_gemmlowp) {
-  return impl_->SetCPUThreadPolicy(num_threads_hint, policy, use_gemmlowp);
+    CPUAffinityPolicy policy) {
+  return impl_->SetCPUThreadPolicy(num_threads_hint, policy);
 }
 
 // Mace Tensor
@@ -407,6 +396,7 @@ class MaceEngine::Impl {
 #endif
   std::map<std::string, mace::InputOutputInfo> input_info_map_;
   std::map<std::string, mace::InputOutputInfo> output_info_map_;
+  std::unique_ptr<utils::ThreadPool> thread_pool_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };
@@ -418,16 +408,19 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
       device_(nullptr),
       ws_(new Workspace()),
       net_(nullptr),
-      is_quantized_model_(false)
+      is_quantized_model_(false),
+      thread_pool_(new utils::ThreadPool(config.impl_->num_threads(),
+                                         config.impl_->cpu_affinity_policy()))
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-      , hexagon_controller_(nullptr)
+, hexagon_controller_(nullptr)
 #endif
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
+  thread_pool_->Init();
   if (device_type_ == DeviceType::CPU) {
     device_.reset(new CPUDevice(config.impl_->num_threads(),
                                 config.impl_->cpu_affinity_policy(),
-                                config.impl_->use_gemmlowp()));
+                                thread_pool_.get()));
   }
 #ifdef MACE_ENABLE_OPENCL
   if (device_type_ == DeviceType::GPU) {
@@ -439,12 +432,13 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
         config.impl_->gpu_context()->opencl_binary_storage(),
         config.impl_->num_threads(),
         config.impl_->cpu_affinity_policy(),
-        config.impl_->use_gemmlowp()));
+        thread_pool_.get()));
   }
 #endif
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-  if (device_type_ == DeviceType::HEXAGON || device_type_ == DeviceType::HTA) {
-    device_.reset(new HexagonDevice(device_type_));
+  if (device_type_ == DeviceType::HEXAGON
+      || device_type_ == DeviceType::HTA) {
+    device_.reset(new HexagonDevice(device_type_, thread_pool_.get()));
   }
 #endif
   MACE_CHECK_NOTNULL(device_);
@@ -506,7 +500,7 @@ MaceStatus MaceEngine::Impl::Init(
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
-    hexagon_controller_ = CreateHexagonControlWrapper(device_type_);
+    hexagon_controller_ = CreateHexagonControlWrapper(device_.get());
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
@@ -518,26 +512,26 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
-                                              device_.get(),
-                                              model_data));
+  MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
+                                            device_.get(),
+                                            model_data));
 
-    MemoryOptimizer mem_optimizer;
-    // Init model
-    net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
-                                                  net_def,
-                                                  ws_.get(),
-                                                  device_.get(),
-                                                  &mem_optimizer));
+  MemoryOptimizer mem_optimizer;
+  // Init model
+  net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
+                                                net_def,
+                                                ws_.get(),
+                                                device_.get(),
+                                                &mem_optimizer));
 
-    // Preallocate all output tensors of ops
-    MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(*net_def,
-                                                      &mem_optimizer,
-                                                      device_.get()));
-    if (device_type_ == DeviceType::GPU) {
-      ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
-    }
-    MACE_RETURN_IF_ERROR(net_->Init());
+  // Preallocate all output tensors of ops
+  MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(*net_def,
+                                                    &mem_optimizer,
+                                                    device_.get()));
+  if (device_type_ == DeviceType::GPU) {
+    ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
+  }
+  MACE_RETURN_IF_ERROR(net_->Init());
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
@@ -554,10 +548,10 @@ MaceStatus MaceEngine::Impl::Init(
 
   auto fs = GetFileSystem();
   MACE_RETURN_IF_ERROR(fs->NewReadOnlyMemoryRegionFromFile(
-        model_data_file.c_str(), &model_data_));
+      model_data_file.c_str(), &model_data_));
 
   MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes,
-        reinterpret_cast<const unsigned char *>(model_data_->data())));
+      reinterpret_cast<const unsigned char *>(model_data_->data())));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
       device_type_ == DeviceType::HTA ||
@@ -611,18 +605,18 @@ MaceStatus MaceEngine::Impl::TransposeInput(
       Tensor::MappingGuard input_guard(input_tensor);
       if (input_dt == DataType::DT_FLOAT) {
         auto input_data = input_tensor->mutable_data<float>();
-        return ops::Transpose(input.second.data<float>().get(),
+        return ops::Transpose(thread_pool_.get(),
+                              input.second.data<float>().get(),
                               input.second.shape(),
                               dst_dims,
-                              input_data,
-                              input_dt);
+                              input_data);
       } else if (input_dt == DataType::DT_INT32) {
         auto input_data = input_tensor->mutable_data<int>();
-        return ops::Transpose(input.second.data<int>().get(),
+        return ops::Transpose(thread_pool_.get(),
+                              input.second.data<int>().get(),
                               input.second.shape(),
                               dst_dims,
-                              input_data,
-                              input_dt);
+                              input_data);
       } else {
         LOG(FATAL) << "MACE do not support the input data type: " << input_dt;
       }
@@ -668,7 +662,7 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
           output->second.data_format() == NCHW) {
         dst_dims = {0, 3, 1, 2};
       } else {
-        LOG(FATAL) <<"Not supported output data format: "
+        LOG(FATAL) << "Not supported output data format: "
                    << output->second.data_format() << " vs "
                    << output_tensor->data_format();
       }
@@ -688,17 +682,18 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
       Tensor::MappingGuard output_guard(output_tensor);
       if (output_dt == DataType::DT_FLOAT) {
         auto output_data = output_tensor->data<float>();
-        return ops::Transpose(output_data,
+        return ops::Transpose(thread_pool_.get(),
+                              output_data,
                               output_tensor->shape(),
                               dst_dims,
                               output->second.data<float>().get());
       } else if (output_dt == DataType::DT_INT32) {
         auto output_data = output_tensor->data<int>();
-        return ops::Transpose(output_data,
+        return ops::Transpose(thread_pool_.get(),
+                              output_data,
                               output_tensor->shape(),
                               dst_dims,
-                              output->second.data<int>().get(),
-                              output_dt);
+                              output->second.data<int>().get());
       } else {
         LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
         return MaceStatus::MACE_INVALID_ARGS;
@@ -719,8 +714,8 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
                     output_size * sizeof(float));
       } else if (output_dt == DataType::DT_INT32) {
         std::memcpy(output->second.data<int>().get(),
-            output_tensor->data<int>(),
-            output_size * sizeof(int));
+                    output_tensor->data<int>(),
+                    output_size * sizeof(int));
       } else {
         LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
       }
@@ -736,8 +731,8 @@ MaceStatus MaceEngine::Impl::Run(
     std::map<std::string, MaceTensor> *outputs,
     RunMetadata *run_metadata) {
   MACE_CHECK_NOTNULL(outputs);
-  std::map<std::string, Tensor*> input_tensors;
-  std::map<std::string, Tensor*> output_tensors;
+  std::map<std::string, Tensor *> input_tensors;
+  std::map<std::string, Tensor *> output_tensors;
   for (auto &input : inputs) {
     if (input_info_map_.find(input.first) == input_info_map_.end()) {
       LOG(FATAL) << "'" << input.first
@@ -766,7 +761,7 @@ MaceStatus MaceEngine::Impl::Run(
     hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif
-    MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
+  MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
@@ -785,7 +780,7 @@ MaceStatus MaceEngine::Impl::Run(
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceEngine::MaceEngine(const MaceEngineConfig &config):
+MaceEngine::MaceEngine(const MaceEngineConfig &config) :
     impl_(make_unique<MaceEngine::Impl>(config)) {}
 
 MaceEngine::~MaceEngine() = default;
@@ -796,7 +791,6 @@ MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const unsigned char *model_data) {
   return impl_->Init(net_def, input_nodes, output_nodes, model_data);
 }
-
 
 MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const std::vector<std::string> &input_nodes,

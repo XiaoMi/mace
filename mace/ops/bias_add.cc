@@ -18,6 +18,13 @@
 
 #include "mace/core/operator.h"
 #include "mace/ops/activation.h"
+
+#ifdef MACE_ENABLE_NEON
+#include "mace/ops/arm/fp32/bias_add.h"
+#else
+#include "mace/ops/ref/bias_add.h"
+#endif  // MACE_ENABLE_NEON
+
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/bias_add.h"
@@ -47,36 +54,26 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
                bias->dim_size());
 
     Tensor *output = this->Output(0);
-    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard bias_mapper(bias);
-    Tensor::MappingGuard output_mapper(output);
-
-    const float *input_ptr = input->data<float>();
-    const float *bias_ptr = bias->data<float>();
-    float *output_ptr = output->mutable_data<float>();
 
     if (input->dim_size() == 4 && has_data_format_) {
-      const index_t batch = input->dim(0);
-      const index_t channels = input->dim(1);
-      const index_t height_width = input->dim(2) * input->dim(3);
-
-#pragma omp parallel for collapse(2)
-      for (index_t n = 0; n < batch; ++n) {
-        for (index_t c = 0; c < channels; ++c) {
-          for (index_t hw = 0; hw < height_width; ++hw) {
-            index_t pos = (n * channels + c) * height_width + hw;
-            output_ptr[pos] = input_ptr[pos] + bias_ptr[c];
-          }
-        }
-      }
+      bias_add_delegator_.Compute(context, input, bias, output);
     } else {
+      // TODO(liyin): remove it and tranform bias to add (eltwise)
+      MACE_RETURN_IF_ERROR(output->ResizeLike(input));
+
+      Tensor::MappingGuard input_mapper(input);
+      Tensor::MappingGuard bias_mapper(bias);
+      Tensor::MappingGuard output_mapper(output);
+
+      const float *input_ptr = input->data<float>();
+      const float *bias_ptr = bias->data<float>();
+      float *output_ptr = output->mutable_data<float>();
+
       const std::vector<index_t> &shape = input->shape();
       const index_t fused_batch = std::accumulate(
           shape.begin(), shape.end() - 1, 1, std::multiplies<index_t>());
       const index_t channels = *shape.rbegin();
-#pragma omp parallel for
+
       for (index_t n = 0; n < fused_batch; ++n) {
         index_t pos = n * channels;
         for (index_t c = 0; c < channels; ++c) {
@@ -91,6 +88,11 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
 
  private:
   int has_data_format_;
+#ifdef MACE_ENABLE_NEON
+  arm::fp32::BiasAdd bias_add_delegator_;
+#else
+  ref::BiasAdd bias_add_delegator_;
+#endif  // MACE_ENABLE_NEON
 };
 
 #ifdef MACE_ENABLE_OPENCL

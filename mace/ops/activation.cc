@@ -15,8 +15,13 @@
 #include "mace/ops/activation.h"
 
 #include <memory>
-
 #include "mace/core/operator.h"
+
+#if defined(MACE_ENABLE_NEON)
+#include "mace/ops/arm/fp32/activation.h"
+#else
+#include "mace/ops/ref/activation.h"
+#endif
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -27,51 +32,53 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class ActivationOp;
 
-template <>
+template<>
 class ActivationOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit ActivationOp(OpConstructContext *context)
       : Operation(context),
-        activation_(ops::StringToActivationType(
+        activation_type_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
                                                    "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit",
-                                                          0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-              "leakyrelu_coefficient", 0.0f)) {}
+        activation_delegator_(activation_type_,
+                              Operation::GetOptionalArg<float>("max_limit",
+                                                               0.0f),
+                              Operation::GetOptionalArg<float>(
+                                  "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
-    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
-    const float *input_ptr = input->data<float>();
-    float *output_ptr = output->mutable_data<float>();
-    if (activation_ == PRELU) {
+    if (activation_type_ == PRELU) {
+      MACE_RETURN_IF_ERROR(output->ResizeLike(input));
+      const float *input_ptr = input->data<float>();
+      float *output_ptr = output->mutable_data<float>();
       MACE_CHECK(this->InputSize() > 1);
       const Tensor *alpha = this->Input(1);
       const float *alpha_ptr = alpha->data<float>();
       const index_t outer_size = output->dim(0);
       const index_t inner_size = output->dim(2) * output->dim(3);
-      PReLUActivation(input_ptr, outer_size, input->dim(1), inner_size,
+      PReLUActivation(context, input_ptr, outer_size, input->dim(1), inner_size,
                       alpha_ptr, output_ptr);
     } else {
-      DoActivation(input_ptr, output_ptr, output->size(), activation_,
-                   relux_max_limit_, leakyrelu_coefficient_);
+      activation_delegator_.Compute(context, input, output);
     }
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-  ActivationType activation_;
-  float relux_max_limit_;
-  float leakyrelu_coefficient_;
+  ActivationType activation_type_;
+#if defined(MACE_ENABLE_NEON)
+  arm::fp32::Activation activation_delegator_;
+#else
+  ref::Activation activation_delegator_;
+#endif  // MACE_ENABLE_NEON
 };
-
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -113,7 +120,6 @@ class ActivationOp<DeviceType::GPU, T> : public Operation {
   std::unique_ptr<OpenCLActivationKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
-
 
 void RegisterActivation(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,

@@ -167,8 +167,7 @@ bool RunModel(const std::string &model_name,
   MaceEngineConfig config(device_type);
   status = config.SetCPUThreadPolicy(
           FLAGS_omp_num_threads,
-          static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy),
-          true);
+          static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
   if (status != MaceStatus::MACE_SUCCESS) {
     LOG(WARNING) << "Set openmp or cpu affinity failed.";
   }

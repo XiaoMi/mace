@@ -77,7 +77,8 @@ inline float Interpolate1D(const std::vector<float> &weights,
       values[2] * weights[2] + values[3] * weights[3];
 }
 
-inline void ResizeImage(const float *images,
+inline void ResizeImage(const OpContext *context,
+                        const float *images,
                         const index_t batch_size,
                         const index_t in_height,
                         const index_t in_width,
@@ -87,47 +88,52 @@ inline void ResizeImage(const float *images,
                         const float height_scale,
                         const float width_scale,
                         float *output) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < batch_size; ++b) {
-    for (index_t y = 0; y < out_height; ++y) {
-      std::vector<float> y_weights;
-      std::vector<index_t> y_indices;
-      GetWeightsAndIndices(height_scale, y, in_height, &y_weights,
-                           &y_indices);
-      for (index_t x = 0; x < out_width; ++x) {
-        std::vector<float> x_weights;
-        std::vector<index_t> x_indices;
-        GetWeightsAndIndices(width_scale, x, in_width, &x_weights,
-                             &x_indices);
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-        for (index_t c = 0; c < channels; ++c) {
-          // Use a 4x4 patch to compute the interpolated output value at
-          // (b, y, x, c).
-          const float *channel_input_ptr =
-              images + (b * channels + c) * in_height * in_width;
-          float *channel_output_ptr =
-              output + (b * channels + c) * out_height * out_width;
-          std::vector<float> coeff(4, 0.0);
-          for (index_t i = 0; i < 4; ++i) {
-            const std::vector<float> values = {
-                channel_input_ptr[y_indices[i] * in_width + x_indices[0]],
-                channel_input_ptr[y_indices[i] * in_width + x_indices[1]],
-                channel_input_ptr[y_indices[i] * in_width + x_indices[2]],
-                channel_input_ptr[y_indices[i] * in_width + x_indices[3]]};
-            coeff[i] = Interpolate1D(x_weights, values);
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t y = start1; y < end1; y += step1) {
+        std::vector<float> y_weights;
+        std::vector<index_t> y_indices;
+        GetWeightsAndIndices(height_scale, y, in_height, &y_weights,
+                             &y_indices);
+        for (index_t x = 0; x < out_width; ++x) {
+          std::vector<float> x_weights;
+          std::vector<index_t> x_indices;
+          GetWeightsAndIndices(width_scale, x, in_width, &x_weights,
+                               &x_indices);
+
+          for (index_t c = 0; c < channels; ++c) {
+            // Use a 4x4 patch to compute the interpolated output value at
+            // (b, y, x, c).
+            const float *channel_input_ptr =
+                images + (b * channels + c) * in_height * in_width;
+            float *channel_output_ptr =
+                output + (b * channels + c) * out_height * out_width;
+            std::vector<float> coeff(4, 0.0);
+            for (index_t i = 0; i < 4; ++i) {
+              const std::vector<float> values = {
+                  channel_input_ptr[y_indices[i] * in_width + x_indices[0]],
+                  channel_input_ptr[y_indices[i] * in_width + x_indices[1]],
+                  channel_input_ptr[y_indices[i] * in_width + x_indices[2]],
+                  channel_input_ptr[y_indices[i] * in_width + x_indices[3]]};
+              coeff[i] = Interpolate1D(x_weights, values);
+            }
+            channel_output_ptr[y * out_width + x] =
+                Interpolate1D(y_weights, coeff);
           }
-          channel_output_ptr[y * out_width + x] =
-              Interpolate1D(y_weights, coeff);
         }
       }
     }
-  }
+  }, 0, batch_size, 1, 0, out_height, 1);
 }
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class ResizeBicubicOp;
 
-template <>
+template<>
 class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit ResizeBicubicOp(OpConstructContext *context)
@@ -175,8 +181,17 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
                                              out_width,
                                              align_corners_);
 
-    ResizeImage(input_data, batch, in_height, in_width, out_height, out_width,
-                channels, height_scale, width_scale, output_data);
+    ResizeImage(context,
+                input_data,
+                batch,
+                in_height,
+                in_width,
+                out_height,
+                out_width,
+                channels,
+                height_scale,
+                width_scale,
+                output_data);
 
     return MaceStatus::MACE_SUCCESS;
   }

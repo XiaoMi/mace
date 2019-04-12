@@ -78,7 +78,6 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
     const index_t cum_size = input_shape[axis_];
 
     if (!reverse_) {
-#pragma omp parallel for
       for (index_t outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
         index_t start_idx = outer_idx * cum_size * inner_size;
         for (index_t cum_idx = 0; cum_idx < cum_size; ++cum_idx) {
@@ -105,7 +104,6 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
         }
       }
     } else {
-#pragma omp parallel for
       for (index_t outer_idx = outer_size - 1; outer_idx >= 0; --outer_idx) {
         index_t start_idx = outer_idx * cum_size * inner_size;
         for (index_t cum_idx = cum_size - 1; cum_idx >= 0; --cum_idx) {

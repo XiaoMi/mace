@@ -279,7 +279,6 @@ cc_library(
     srcs = glob(
         [
             "*.cc",
-            "arm/*.cc",  # remove it after refactor
         ],
         exclude = [
             "*_test.cc",
@@ -303,7 +302,6 @@ cc_library(
     hdrs = glob(
         [
             "*.h",
-            "arm/*.h",  # remove it after refactor
         ],
         exclude = [
             "ops_registry.h",

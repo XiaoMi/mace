@@ -78,7 +78,6 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
       const index_t batch = input->dim(0);
 
       if (axis == 1) {
-#pragma omp parallel for collapse(2)
         for (index_t i = 0; i < batch; ++i) {
           for (index_t j = 0; j < depth_; ++j) {
             output_ptr[i * depth_ + j] = input_ptr[i] == j ? on_value_ :
@@ -86,7 +85,6 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
         for (index_t i = 0; i < depth_; ++i) {
           for (index_t j = 0; j < batch; ++j) {
             output_ptr[i * batch + j] = input_ptr[j] == i ? on_value_ :

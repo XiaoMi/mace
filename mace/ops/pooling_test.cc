@@ -216,7 +216,7 @@ TEST_F(PoolingOpTest, OPENCLSimpleMaxPooling3S2) { SimpleMaxPooling3S2<GPU>(); }
 namespace {
 template <DeviceType D, typename T>
 void MaxPooling3S2(const std::vector<index_t> &input_shape,
-                   const std::vector<int> strides,
+                   const std::vector<int> &strides,
                    Padding padding) {
   // Construct graph
   OpsTestNet net;

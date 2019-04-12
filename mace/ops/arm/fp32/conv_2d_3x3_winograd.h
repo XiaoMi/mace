@@ -31,7 +31,7 @@ namespace fp32 {
 
 class Conv2dK3x3Winograd : public Conv2dBase {
  public:
-  Conv2dK3x3Winograd(const std::vector<int> paddings,
+  Conv2dK3x3Winograd(const std::vector<int> &paddings,
                      const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type),
         gemm_(),
@@ -44,20 +44,23 @@ class Conv2dK3x3Winograd : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 
  private:
-  void TransformFilter4x4(const float *filter,
+  void TransformFilter4x4(const OpContext *context,
+                          const float *filter,
                           const index_t in_channels,
                           const index_t out_channels,
                           float *output);
 
-  void TransformFilter8x8(const float *filter,
+  void TransformFilter8x8(const OpContext *context,
+                          const float *filter,
                           const index_t in_channels,
                           const index_t out_channels,
                           float *output);
 
-  void TransformInput4x4(const float *input,
+  void TransformInput4x4(const OpContext *context,
+                         const float *input,
                          const index_t batch,
                          const index_t in_height,
                          const index_t in_width,
@@ -65,7 +68,8 @@ class Conv2dK3x3Winograd : public Conv2dBase {
                          const index_t tile_count,
                          float *output);
 
-  void TransformInput8x8(const float *input,
+  void TransformInput8x8(const OpContext *context,
+                         const float *input,
                          const index_t batch,
                          const index_t in_height,
                          const index_t in_width,
@@ -73,7 +77,8 @@ class Conv2dK3x3Winograd : public Conv2dBase {
                          const index_t tile_count,
                          float *output);
 
-  void TransformOutput4x4(const float *input,
+  void TransformOutput4x4(const OpContext *context,
+                          const float *input,
                           index_t batch,
                           index_t out_height,
                           index_t out_width,
@@ -81,7 +86,8 @@ class Conv2dK3x3Winograd : public Conv2dBase {
                           index_t tile_count,
                           float *output);
 
-  void TransformOutput8x8(const float *input,
+  void TransformOutput8x8(const OpContext *context,
+                          const float *input,
                           index_t batch,
                           index_t out_height,
                           index_t out_width,

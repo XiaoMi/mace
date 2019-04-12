@@ -29,7 +29,7 @@ namespace fp32 {
 
 class Conv2dK1x1 : public Conv2dBase {
  public:
-  Conv2dK1x1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK1x1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK1x1() {}
 
@@ -37,7 +37,7 @@ class Conv2dK1x1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 
  private:
   Gemm gemm_;

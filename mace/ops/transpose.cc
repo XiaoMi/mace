@@ -26,10 +26,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class TransposeOp;
 
-template <DeviceType D>
+template<DeviceType D>
 class TransposeOp<D, float> : public Operation {
  public:
   explicit TransposeOp(OpConstructContext *context)
@@ -55,7 +55,8 @@ class TransposeOp<D, float> : public Operation {
     const float *input_data = input->data<float>();
     float *output_data = output->mutable_data<float>();
 
-    return Transpose(input_data, input->shape(), dims_, output_data);
+    return Transpose(&context->device()->cpu_runtime()->thread_pool(),
+                     input_data, input->shape(), dims_, output_data);
   }
 
  private:

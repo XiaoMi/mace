@@ -81,7 +81,6 @@ class SumGroupOp<DeviceType::CPU, T> : public Operation {
         << "size value over-ranged:" << cur_index << "<=" << input_dim;
     }
 
-#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t i = 0; i < bh; ++i) {
       for (index_t j = 0; j < output_dim; ++j) {
         int start_col = sum_indexes[j].first;

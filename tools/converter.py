@@ -983,7 +983,7 @@ def run_mace(flags):
                     build_example(configs,
                                   target_abi,
                                   toolchain,
-                                  not flags.disable_openmp,
+                                  flags.enable_openmp,
                                   flags.mace_lib_type,
                                   flags.cl_binary_to_code,
                                   device,
@@ -992,7 +992,7 @@ def run_mace(flags):
                     build_mace_run(configs,
                                    target_abi,
                                    toolchain,
-                                   not flags.disable_openmp,
+                                   flags.enable_openmp,
                                    flags.address_sanitizer,
                                    flags.mace_lib_type,
                                    flags.debug_mode)
@@ -1081,7 +1081,7 @@ def benchmark_model(flags):
                 build_benchmark_model(configs,
                                       target_abi,
                                       toolchain,
-                                      not flags.disable_openmp,
+                                      flags.enable_openmp,
                                       flags.mace_lib_type,
                                       flags.debug_mode)
                 device = DeviceWrapper(dev)
@@ -1171,9 +1171,9 @@ def parse_args():
         default=DefaultValues.mace_lib_type,
         help="[static | dynamic], Which type MACE library to use.")
     run_bm_parent_parser.add_argument(
-        "--disable_openmp",
+        "--enable_openmp",
         action="store_true",
-        help="Disable openmp for multiple thread.")
+        help="Enable openmp for multiple thread.")
     run_bm_parent_parser.add_argument(
         "--omp_num_threads",
         type=int,

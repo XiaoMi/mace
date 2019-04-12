@@ -15,43 +15,152 @@
 #ifndef MACE_OPS_COMMON_TRANSPOSE_H_
 #define MACE_OPS_COMMON_TRANSPOSE_H_
 
+#if defined(MACE_ENABLE_NEON)
+#include <arm_neon.h>
+#endif  // MACE_ENABLE_NEON
 #include <algorithm>
 #include <vector>
-
+#include "mace/core/op_context.h"
 #include "mace/public/mace.h"
-#include "mace/core/tensor.h"
 
 namespace mace {
 namespace ops {
-namespace transpose {
 
-void TransposeNHWCToNCHWC3(const float *input,
-                           float *output,
+template<typename T>
+void TransposeNHWCToNCHWC3(utils::ThreadPool *thread_pool,
+                           const T *input,
+                           T *output,
                            const index_t height,
-                           const index_t width);
+                           const index_t width) {
+  index_t image_size = height * width;
 
-void TransposeNHWCToNCHWC3(const int *input,
-                           int *output,
+  thread_pool->Compute1D([=](index_t start, index_t end, index_t step) {
+    for (index_t h = start; h < end; h += step) {
+      index_t in_offset = h * width * 3;
+      index_t out_offset = h * width;
+
+      for (index_t w = 0; w < width; ++w) {
+        for (index_t c = 0; c < 3; ++c) {
+          output[out_offset + c * image_size + w] =
+              input[in_offset + w * 3 + c];
+        }
+      }
+    }
+  }, 0, height, 1);
+}
+
+template<>
+inline void TransposeNHWCToNCHWC3<float>(utils::ThreadPool *thread_pool,
+                                         const float *input,
+                                         float *output,
+                                         const index_t height,
+                                         const index_t width) {
+  index_t image_size = height * width;
+
+  thread_pool->Compute1D([=](index_t start, index_t end, index_t step) {
+    for (index_t h = start; h < end; h += step) {
+      index_t in_offset = h * width * 3;
+      index_t out_offset = h * width;
+
+#if defined(MACE_ENABLE_NEON)
+      index_t w;
+      for (w = 0; w + 3 < width; w += 4) {
+        float32x4x3_t vi = vld3q_f32(input + in_offset);
+        vst1q_f32(output + out_offset, vi.val[0]);
+        vst1q_f32(output + out_offset + image_size, vi.val[1]);
+        vst1q_f32(output + out_offset + image_size * 2, vi.val[2]);
+
+        in_offset += 12;
+        out_offset += 4;
+      }
+      for (; w < width; ++w) {
+        for (index_t c = 0; c < 3; ++c) {
+          output[h * width + image_size * c + w] =
+              input[h * width * 3 + w * 3 + c];
+        }
+      }
+#else
+      for (index_t w = 0; w < width; ++w) {
+        for (index_t c = 0; c < 3; ++c) {
+          output[out_offset + c * image_size + w] =
+              input[in_offset + w * 3 + c];
+        }
+      }
+#endif
+    }
+  }, 0, height, 1);
+}
+
+template<typename T>
+void TransposeNCHWToNHWCC2(utils::ThreadPool *thread_pool,
+                           const T *input,
+                           T *output,
                            const index_t height,
-                           const index_t width);
+                           const index_t width) {
+  index_t image_size = height * width;
 
-void TransposeNCHWToNHWCC2(const float *input,
-                           float *output,
-                           const index_t height,
-                           const index_t width);
+  thread_pool->Compute1D([=](index_t start, index_t end, index_t step) {
+    for (index_t h = start; h < end; h += step) {
+      index_t in_offset = h * width;
+      index_t out_offset = h * width * 2;
 
-void TransposeNCHWToNHWCC2(const int *input,
-                           int *output,
-                           const index_t height,
-                           const index_t width);
-}  // namespace transpose
+      for (index_t w = 0; w < width; ++w) {
+        for (index_t c = 0; c < 2; ++c) {
+          output[out_offset + w * 2 + c] =
+              input[in_offset + c * image_size + w];
+        }
+      }
+    }
+  }, 0, height, 1);
+}
 
-template <typename T>
-MaceStatus Transpose(const T *input,
+template<>
+inline void TransposeNCHWToNHWCC2<float>(utils::ThreadPool *thread_pool,
+                                         const float *input,
+                                         float *output,
+                                         const index_t height,
+                                         const index_t width) {
+  index_t image_size = height * width;
+
+  thread_pool->Compute1D([=](index_t start, index_t end, index_t step) {
+    for (index_t h = start; h < end; h += step) {
+      index_t in_offset = h * width;
+      index_t out_offset = h * width * 2;
+
+#if defined(MACE_ENABLE_NEON)
+      index_t w;
+      for (w = 0; w + 3 < width; w += 4) {
+        float32x4_t vi0 = vld1q_f32(input + in_offset);
+        float32x4_t vi1 = vld1q_f32(input + in_offset + image_size);
+        float32x4x2_t vi = {vi0, vi1};
+        vst2q_f32(output + out_offset, vi);
+        in_offset += 4;
+        out_offset += 8;
+      }
+      for (; w < width; ++w) {
+        for (index_t c = 0; c < 2; ++c) {
+          output[h * width * 2 + w * 2 + c] =
+              input[h * width + image_size * c + w];
+        }
+      }
+#else
+      for (index_t w = 0; w < width; ++w) {
+        for (index_t c = 0; c < 2; ++c) {
+          output[out_offset + w * 2 + c] =
+              input[in_offset + c * image_size + w];
+        }
+      }
+#endif
+    }
+  }, 0, height, 1);
+}
+
+template<typename T>
+MaceStatus Transpose(utils::ThreadPool *thread_pool,
+                     const T *input,
                      const std::vector<int64_t> &input_shape,
                      const std::vector<int> &dst_dims,
-                     T *output,
-                     DataType data_type = DataType::DT_FLOAT) {
+                     T *output) {
   MACE_CHECK((input_shape.size() == 2 && dst_dims.size() == 2) ||
       (input_shape.size() == 4 && dst_dims.size() == 4),
              "Only support 2D or 4D transpose");
@@ -68,41 +177,43 @@ MaceStatus Transpose(const T *input,
     index_t stride_i = height;
     index_t stride_j = width;
     index_t tile_size = height > 512 || width > 512 ? 64 : 32;
-#pragma omp parallel for collapse(2)
-    for (index_t i = 0; i < height; i += tile_size) {
-      for (index_t j = 0; j < width; j += tile_size) {
-        index_t end_i = std::min(i + tile_size, height);
-        index_t end_j = std::min(j + tile_size, width);
-        for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
-          for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
-            output[tile_j * stride_i + tile_i] =
-                input[tile_i * stride_j + tile_j];
+
+    thread_pool->Compute2D([=](index_t start0, index_t end0, index_t step0,
+                               index_t start1, index_t end1, index_t step1) {
+      for (index_t i = start0; i < end0; i += step0) {
+        for (index_t j = start1; j < end1; j += step1) {
+          index_t end_i = std::min(i + tile_size, height);
+          index_t end_j = std::min(j + tile_size, width);
+          for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
+            for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
+              output[tile_j * stride_i + tile_i] =
+                  input[tile_i * stride_j + tile_j];
+            }
           }
         }
       }
-    }
+    }, 0, height, tile_size, 0, width, tile_size);
   } else if (input_shape.size() == 4) {
     std::vector<int> transpose_order_from_NHWC_to_NCHW{0, 3, 1, 2};
     std::vector<int> transpose_order_from_NCHW_to_NHWC{0, 2, 3, 1};
     index_t batch_size = input_shape[1] * input_shape[2] * input_shape[3];
-    bool supported_dt = (data_type == DataType::DT_FLOAT ||
-        data_type == DataType::DT_INT32);
 
-    if (dst_dims == transpose_order_from_NHWC_to_NCHW && input_shape[3] == 3 &&
-        supported_dt) {
+    if (dst_dims == transpose_order_from_NHWC_to_NCHW && input_shape[3] == 3) {
       for (index_t b = 0; b < input_shape[0]; ++b) {
-        transpose::TransposeNHWCToNCHWC3(input + b * batch_size,
-                                         output + b * batch_size,
-                                         input_shape[1],
-                                         input_shape[2]);
+        TransposeNHWCToNCHWC3(thread_pool,
+                              input + b * batch_size,
+                              output + b * batch_size,
+                              input_shape[1],
+                              input_shape[2]);
       }
     } else if (dst_dims == transpose_order_from_NCHW_to_NHWC
-        && input_shape[1] == 2 && supported_dt) {
+        && input_shape[1] == 2) {
       for (index_t b = 0; b < input_shape[0]; ++b) {
-        transpose::TransposeNCHWToNHWCC2(input + b * batch_size,
-                                         output + b * batch_size,
-                                         input_shape[2],
-                                         input_shape[3]);
+        TransposeNCHWToNHWCC2(thread_pool,
+                              input + b * batch_size,
+                              output + b * batch_size,
+                              input_shape[2],
+                              input_shape[3]);
       }
     } else if (dst_dims == std::vector<int>{0, 2, 1, 3}) {
       index_t height = input_shape[1];
@@ -114,7 +225,6 @@ MaceStatus Transpose(const T *input,
       index_t tile_size = std::max(static_cast<index_t>(1),
                                    static_cast<index_t>(std::sqrt(
                                        8 * 1024 / channel)));
-#pragma omp parallel for collapse(2)
       for (index_t i = 0; i < height; i += tile_size) {
         for (index_t j = 0; j < width; j += tile_size) {
           index_t end_i = std::min(i + tile_size, height);
@@ -162,7 +272,6 @@ MaceStatus Transpose(const T *input,
 
   return MaceStatus::MACE_SUCCESS;
 }
-
 
 }  // namespace ops
 }  // namespace mace

@@ -49,8 +49,12 @@ void TestGemvFloat32(const index_t batch,
     GenerateRandomRealTypeData<float>(rhs.shape(), rhs_data);
     GenerateRandomRealTypeData<float>(bias.shape(), bias_data);
   }
+  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
+  thread_pool.Init();
+  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
+  OpContext context(nullptr, &cpu_device);
   ::mace::ops::arm::fp32::Gemv gemv;
-  gemv.Compute(nullptr,
+  gemv.Compute(&context,
                &lhs,
                &rhs,
                &bias,

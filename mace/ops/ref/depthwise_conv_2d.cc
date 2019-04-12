@@ -69,7 +69,6 @@ MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
   auto filter_data = filter->data<float>();
   auto output_data = output->mutable_data<float>();
 
-#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < in_shape[0]; b++) {
     for (index_t m = 0; m < out_shape[1]; ++m) {
       const index_t c = m / multiplier;
@@ -119,5 +118,3 @@ MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
 }  // namespace ref
 }  // namespace ops
 }  // namespace mace
-
-

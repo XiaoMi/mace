@@ -31,9 +31,9 @@ namespace fp32 {
 
 class Conv2dBase {
  public:
-  Conv2dBase(const std::vector<int> strides,
-             const std::vector<int> dilations,
-             const std::vector<int> paddings,
+  Conv2dBase(const std::vector<int> &strides,
+             const std::vector<int> &dilations,
+             const std::vector<int> &paddings,
              const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),

@@ -51,7 +51,11 @@ void TestGemmFloat32(const index_t batch,
     GenerateRandomRealTypeData<float>(output.shape(), output_data);
   }
   ::mace::ops::arm::fp32::Gemm gemm;
-  gemm.Compute(nullptr,
+  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
+  thread_pool.Init();
+  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
+  OpContext context(nullptr, &cpu_device);
+  gemm.Compute(&context,
                &lhs,
                &rhs,
                batch,
