@@ -18,7 +18,7 @@
 [中文](README_zh.md)
 
 **Mobile AI Compute Engine** (or **MACE** for short) is a deep learning inference framework optimized for
-mobile heterogeneous computing platforms. The design focuses on the following
+mobile heterogeneous computing on Android, iOS and Linux devices. The design focuses on the following
 targets:
 * Performance
   * Runtime is optimized with NEON, OpenCL and Hexagon, and
@@ -41,8 +41,7 @@ targets:
     code and literal obfuscations.
 * Platform coverage
   * Good coverage of recent Qualcomm, MediaTek, Pinecone and other ARM based
-    chips. CPU runtime is also compatible with most POSIX systems and
-    architectures with limited performance.
+    chips. CPU runtime supports Android, iOS and Linux.
 * Rich model formats support
   * [TensorFlow](https://github.com/tensorflow/tensorflow),
     [Caffe](https://github.com/BVLC/caffe) and
