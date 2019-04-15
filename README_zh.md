@@ -15,7 +15,7 @@
 [加入我们](JOBS.md) |
 [English](README.md)
 
-**Mobile AI Compute Engine (MACE)** 是一个专为移动端异构计算平台优化的神经网络计算框架。
+**Mobile AI Compute Engine (MACE)** 是一个专为移动端异构计算平台(支持Android, iOS, Linux)优化的神经网络计算框架。
 主要从以下的角度做了专门的优化：
 * 性能
   * 代码经过NEON指令，OpenCL以及Hexagon HVX专门优化，并且采用
@@ -32,8 +32,7 @@
 * 模型加密与保护
   * 模型保护是重要设计目标之一。支持将模型转换成C++代码，以及关键常量字符混淆，增加逆向的难度。
 * 硬件支持范围
-  * 支持高通，联发科，以及松果等系列芯片的CPU，GPU与DSP(目前仅支持Hexagon)计算加速。
-  同时支持在具有POSIX接口的系统的CPU上运行。
+  * 支持高通，联发科，以及松果等系列芯片的CPU，GPU与DSP(目前仅支持Hexagon)计算加速。CPU模式支持Android, iOS, Linux等系统。
 * 模型格式支持
   * 支持[TensorFlow](https://github.com/tensorflow/tensorflow)，
   [Caffe](https://github.com/BVLC/caffe)和[ONNX](https://github.com/onnx/onnx)等模型格式。
