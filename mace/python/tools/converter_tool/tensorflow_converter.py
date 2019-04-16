@@ -1004,19 +1004,22 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     def convert_split(self, tf_op):
         op = self.convert_general_op(tf_op)
-        op.type = MaceOp.Split.name
-        axis = tf_op.inputs[0].eval().astype(np.int32)
-        axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
+        num_or_size_splits = tf_op.get_attr('num_split')
+        if num_or_size_splits == 1:
+            op.type = MaceOp.Identity.name
+        else:
+            op.type = MaceOp.Split.name
+            axis = tf_op.inputs[0].eval().astype(np.int32)
+            axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
+
+            axis_arg = op.arg.add()
+            axis_arg.name = MaceKeyword.mace_axis_str
+            axis_arg.i = axis
+
+            num_split_arg = op.arg.add()
+            num_split_arg.name = MaceKeyword.mace_num_split_str
+            num_split_arg.i = num_or_size_splits
         del op.input[0]
-
-        axis_arg = op.arg.add()
-        axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = axis
-
-        num_split_arg = op.arg.add()
-        num_split_arg.name = MaceKeyword.mace_num_split_str
-        num_split_arg.i = tf_op.get_attr('num_split')
-
         self._skip_tensor.add(tf_op.inputs[0].name)
 
     def convert_fake_quantize(self, tf_op):
