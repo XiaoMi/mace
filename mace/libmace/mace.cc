@@ -391,12 +391,12 @@ class MaceEngine::Impl {
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
   bool is_quantized_model_;
-#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-  std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
-#endif
   std::map<std::string, mace::InputOutputInfo> input_info_map_;
   std::map<std::string, mace::InputOutputInfo> output_info_map_;
   std::unique_ptr<utils::ThreadPool> thread_pool_;
+#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
+#endif
 
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };

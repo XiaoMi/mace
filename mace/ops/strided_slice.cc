@@ -199,7 +199,7 @@ class StridedSliceOp : public Operation {
             strides_indices_vec[d] > 0 ? 0 : -1,
             strides_indices_vec[d] > 0 ? dim_len : dim_len - 1};
 
-        auto format_indices = [valid_range, d, dim_len](index_t indice) {
+        auto format_indices = [valid_range, dim_len](index_t indice) {
           index_t forward = indice < 0 ? indice + dim_len : indice;
           return Clamp(forward, valid_range[0], valid_range[1]);
         };

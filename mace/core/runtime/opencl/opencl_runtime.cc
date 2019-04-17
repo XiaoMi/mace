@@ -713,7 +713,7 @@ std::vector<uint64_t> OpenCLRuntime::GetMaxImage2DSize() {
     LOG(ERROR) << "error: " << OpenCLErrorToString(err);
     return {};
   }
-  return {max_height, max_width};
+  return {max_width, max_height};
 }
 
 uint64_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {

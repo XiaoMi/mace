@@ -93,6 +93,12 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                  << image_shape[0] << ", " << image_shape[1]
                  << "] failed because of "
                  << OpenCLErrorToString(error);
+    // Many users have doubts at CL_INVALID_IMAGE_SIZE, add some tips.
+    if (error == CL_INVALID_IMAGE_SIZE) {
+      auto max_2d_size = opencl_runtime_->GetMaxImage2DSize();
+      LOG(WARNING) << "The allowable OpenCL image size is: "
+                   << max_2d_size[0] << "x" << max_2d_size[1];
+    }
     delete cl_image;
     *result = nullptr;
     return MaceStatus::MACE_OUT_OF_RESOURCES;

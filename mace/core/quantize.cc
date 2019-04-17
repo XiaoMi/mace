@@ -77,7 +77,7 @@ void QuantizeUtil<uint8_t>::Dequantize(const uint8_t *input,
   thread_pool_->Compute1D([=](index_t start, index_t end, index_t step) {
     for (index_t i = start; i < end; i += step) {
       uint8x16_t vi = vld1q_u8(input + i * 16);
-      float32x4x4_t vo = {
+      float32x4x4_t vo = {{
           vmulq_f32(vscale,
                     vcvtq_f32_s32(vsubq_s32(vreinterpretq_s32_u32(vmovl_u16(
                         vget_low_u16(vmovl_u8(vget_low_u8(vi))))), vzero))),
@@ -90,7 +90,7 @@ void QuantizeUtil<uint8_t>::Dequantize(const uint8_t *input,
           vmulq_f32(vscale,
                     vcvtq_f32_s32(vsubq_s32(vreinterpretq_s32_u32(vmovl_u16(
                         vget_high_u16(vmovl_u8(vget_high_u8(vi))))), vzero))),
-      };
+      }};
       vst1q_f32(output + i * 16, vo.val[0]);
       vst1q_f32(output + i * 16 + 4, vo.val[1]);
       vst1q_f32(output + i * 16 + 8, vo.val[2]);

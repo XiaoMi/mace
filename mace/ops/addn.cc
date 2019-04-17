@@ -29,8 +29,6 @@
 namespace mace {
 namespace ops {
 
-static constexpr int kCostPerGroup = 1024;
-
 template <DeviceType D, class T>
 class AddNOp;
 

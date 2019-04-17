@@ -19,6 +19,9 @@ build:android --linkopt=-lm
 build:android --distinct_host_configuration=true
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:android --copt -Wall
+build:android --copt -Wno-mismatched-tags
+build:android --copt -Wno-missing-braces
 
 # Linux host build, --config linux
 build:linux --define linux=true
