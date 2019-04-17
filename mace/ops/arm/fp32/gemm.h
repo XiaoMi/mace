@@ -32,8 +32,7 @@ namespace fp32 {
 class Gemm {
  public:
   explicit Gemm(const bool should_cache_pack)
-      : tmp_scratch_buffer_(GetCPUAllocator()),
-        pack_cache_(GetCPUAllocator()),
+      : pack_cache_(GetCPUAllocator()),
         should_cache_pack_(should_cache_pack),
         cached_(0) {}
   Gemm() : Gemm(false) {}
@@ -126,7 +125,6 @@ class Gemm {
     }
   }
 
-  ScratchBuffer tmp_scratch_buffer_;
   Buffer pack_cache_;
 
   bool should_cache_pack_;

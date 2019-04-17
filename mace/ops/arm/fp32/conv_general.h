@@ -28,9 +28,9 @@ namespace fp32 {
 
 class Conv2dGeneral : public Conv2dBase {
  public:
-  Conv2dGeneral(const std::vector<int> strides,
-                const std::vector<int> dilations,
-                const std::vector<int> paddings,
+  Conv2dGeneral(const std::vector<int> &strides,
+                const std::vector<int> &dilations,
+                const std::vector<int> &paddings,
                 const Padding padding_type)
       : Conv2dBase(strides, dilations, paddings, padding_type) {}
   virtual ~Conv2dGeneral() {}
@@ -39,7 +39,7 @@ class Conv2dGeneral : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 }  // namespace fp32

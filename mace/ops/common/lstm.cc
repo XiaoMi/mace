@@ -21,7 +21,8 @@
 namespace mace {
 namespace ops {
 
-void LSTMNonlinearKernel(const float *input_data,
+void LSTMNonlinearKernel(const OpContext *context,
+                         const float *input_data,
                          const float *prev_data,
                          const float *scale_data,
                          const float *params_data,
@@ -34,41 +35,44 @@ void LSTMNonlinearKernel(const float *input_data,
   float f_scale = (embed_scales && scale_data) ? scale_data[1] : 1.0f;
   float o_scale = (embed_scales && scale_data) ? scale_data[2] : 1.0f;
 
-  if (prev_data == nullptr) {
-#pragma omp parallel for schedule(runtime)
-    for (int c = 0; c < cell_dim; ++c) {
-      float i_part = input_data[c];
-      float c_part = input_data[c + 2 * cell_dim];
-      float o_part = input_data[c + 3 * cell_dim];
-      float w_oc = params_data[c + params_stride * 2];
-      float i_t = ScalarSigmoid(i_part);
-      float c_t = i_t * i_scale * std::tanh(c_part);
-      float o_t = ScalarSigmoid(o_part + w_oc * c_t);
-      float m_t = o_t * o_scale * std::tanh(c_t);
-      output_cell[c] = c_t;
-      output_data[c] = m_t;
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+    if (prev_data == nullptr) {
+      for (index_t c = start; c < end; c += step) {
+        float i_part = input_data[c];
+        float c_part = input_data[c + 2 * cell_dim];
+        float o_part = input_data[c + 3 * cell_dim];
+        float w_oc = params_data[c + params_stride * 2];
+        float i_t = ScalarSigmoid(i_part);
+        float c_t = i_t * i_scale * std::tanh(c_part);
+        float o_t = ScalarSigmoid(o_part + w_oc * c_t);
+        float m_t = o_t * o_scale * std::tanh(c_t);
+        output_cell[c] = c_t;
+        output_data[c] = m_t;
+      }
+    } else {
+      for (index_t c = start; c < end; c += step) {
+        float i_part = input_data[c];
+        float f_part = input_data[c + cell_dim];
+        float c_part = input_data[c + 2 * cell_dim];
+        float o_part = input_data[c + 3 * cell_dim];
+        float c_prev = prev_data[c];
+        float w_ic = params_data[c];
+        float w_fc = params_data[c + params_stride];
+        float w_oc = params_data[c + params_stride * 2];
+        float i_t = ScalarSigmoid(i_part + w_ic * c_prev);
+        float f_t = ScalarSigmoid(f_part + w_fc * c_prev);
+        float c_t =
+            f_t * f_scale * c_prev + i_t * i_scale * std::tanh(c_part);
+        float o_t = ScalarSigmoid(o_part + w_oc * c_t);
+        float m_t = o_t * o_scale * std::tanh(c_t);
+        output_cell[c] = c_t;
+        output_data[c] = m_t;
+      }
     }
-  } else {
-#pragma omp parallel for schedule(runtime)
-    for (int c = 0; c < cell_dim; ++c) {
-      float i_part = input_data[c];
-      float f_part = input_data[c + cell_dim];
-      float c_part = input_data[c + 2 * cell_dim];
-      float o_part = input_data[c + 3 * cell_dim];
-      float c_prev = prev_data[c];
-      float w_ic = params_data[c];
-      float w_fc = params_data[c + params_stride];
-      float w_oc = params_data[c + params_stride * 2];
-      float i_t = ScalarSigmoid(i_part + w_ic * c_prev);
-      float f_t = ScalarSigmoid(f_part + w_fc * c_prev);
-      float c_t =
-          f_t * f_scale * c_prev + i_t * i_scale * std::tanh(c_part);
-      float o_t = ScalarSigmoid(o_part + w_oc * c_t);
-      float m_t = o_t * o_scale * std::tanh(c_t);
-      output_cell[c] = c_t;
-      output_data[c] = m_t;
-    }
-  }
+  }, 0, cell_dim, 1);
 }
 
 }  // namespace ops

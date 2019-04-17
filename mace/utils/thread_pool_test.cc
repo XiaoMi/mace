@@ -30,27 +30,29 @@ class ThreadPoolTest : public ::testing::Test {
   ThreadPool thread_pool;
 };
 
-void Test1D(size_t start, size_t end, size_t step, std::vector<int> *res) {
-  for (size_t i = start; i < end; i += step) {
+void Test1D(int64_t start, int64_t end, int64_t step, std::vector<int> *res) {
+  for (int64_t i = start; i < end; i += step) {
     (*res)[i]++;
   }
 }
 
-void Test2D(size_t start0, size_t end0, size_t step0,
-            size_t start1, size_t end1, size_t step1, std::vector<int> *res) {
-  for (size_t i = start0; i < end0; i += step0) {
-    for (size_t j = start1; j < end1; j += step1) {
+void Test2D(int64_t start0, int64_t end0, int64_t step0,
+            int64_t start1, int64_t end1, int64_t step1,
+            std::vector<int> *res) {
+  for (int64_t i = start0; i < end0; i += step0) {
+    for (int64_t j = start1; j < end1; j += step1) {
       (*res)[i * 100 + j]++;
     }
   }
 }
 
-void Test3D(size_t start0, size_t end0, size_t step0,
-            size_t start1, size_t end1, size_t step1,
-            size_t start2, size_t end2, size_t step2, std::vector<int> *res) {
-  for (size_t i = start0; i < end0; i += step0) {
-    for (size_t j = start1; j < end1; j += step1) {
-      for (size_t k = start2; k < end2; k += step2) {
+void Test3D(int64_t start0, int64_t end0, int64_t step0,
+            int64_t start1, int64_t end1, int64_t step1,
+            int64_t start2, int64_t end2, int64_t step2,
+            std::vector<int> *res) {
+  for (int64_t i = start0; i < end0; i += step0) {
+    for (int64_t j = start1; j < end1; j += step1) {
+      for (int64_t k = start2; k < end2; k += step2) {
         (*res)[(i * 100 + j) * 100 + k]++;
       }
     }
@@ -58,47 +60,47 @@ void Test3D(size_t start0, size_t end0, size_t step0,
 }
 
 TEST_F(ThreadPoolTest, Compute1D) {
-  size_t test_size = 100;
+  int64_t test_size = 100;
   std::vector<int> actual(test_size, 0);
-  thread_pool.Compute1D([&](size_t start, size_t end, size_t step) {
+  thread_pool.Compute1D([&](int64_t start, int64_t end, int64_t step) {
     Test1D(start, end, step, &actual);
   }, 0, test_size, 2);
   std::vector<int> expected(test_size, 0);
   Test1D(0, test_size, 2, &expected);
 
-  for (size_t i = 0; i < test_size; ++i) {
+  for (int64_t i = 0; i < test_size; ++i) {
     EXPECT_EQ(expected[i], actual[i]);
   }
 }
 
 TEST_F(ThreadPoolTest, Compute2D) {
-  size_t test_size = 100;
+  int64_t test_size = 100;
   std::vector<int> actual(test_size * test_size, 0);
-  thread_pool.Compute2D([&](size_t start0, size_t end0, size_t step0,
-                             size_t start1, size_t end1, size_t step1) {
+  thread_pool.Compute2D([&](int64_t start0, int64_t end0, int64_t step0,
+                             int64_t start1, int64_t end1, int64_t step1) {
     Test2D(start0, end0, step0, start1, end1, step1, &actual);
   }, 0, test_size, 2, 0, test_size, 2);
   std::vector<int> expected(test_size * test_size, 0);
   Test2D(0, test_size, 2, 0, test_size, 2, &expected);
 
-  for (size_t i = 0; i < test_size * test_size; ++i) {
+  for (int64_t i = 0; i < test_size * test_size; ++i) {
     EXPECT_EQ(expected[i], actual[i]);
   }
 }
 
 TEST_F(ThreadPoolTest, Compute3D) {
-  size_t test_size = 100;
+  int64_t test_size = 100;
   std::vector<int> actual(test_size * test_size * test_size, 0);
-  thread_pool.Compute3D([&](size_t start0, size_t end0, size_t step0,
-                             size_t start1, size_t end1, size_t step1,
-                             size_t start2, size_t end2, size_t step2) {
+  thread_pool.Compute3D([&](int64_t start0, int64_t end0, int64_t step0,
+                             int64_t start1, int64_t end1, int64_t step1,
+                             int64_t start2, int64_t end2, int64_t step2) {
     Test3D(start0, end0, step0, start1, end1, step1, start2, end2, step2,
            &actual);
   }, 0, test_size, 2, 0, test_size, 2, 0, test_size, 2);
   std::vector<int> expected(test_size * test_size * test_size, 0);
   Test3D(0, test_size, 2, 0, test_size, 2, 0, test_size, 2, &expected);
 
-  for (size_t i = 0; i < test_size * test_size * test_size; ++i) {
+  for (int64_t i = 0; i < test_size * test_size * test_size; ++i) {
     EXPECT_EQ(expected[i], actual[i]);
   }
 }

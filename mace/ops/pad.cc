@@ -84,7 +84,6 @@ class PadOp<DeviceType::CPU, T> : public Operation {
     if (type_ == PadType::CONSTANT) {
       std::fill(output_ptr, output_ptr + output->size(), this->constant_value_);
 
-#pragma omp parallel for collapse(3)
       for (index_t b = 0; b < batch; ++b) {
         for (index_t c = 0; c < channel; ++c) {
           for (index_t h = 0; h < height; ++h) {
@@ -109,7 +108,6 @@ class PadOp<DeviceType::CPU, T> : public Operation {
       const int l_add = type_ == PadType::REFLECT ?  0 : -1;
       const int r_add = type_ == PadType::REFLECT ? -2 : -1;
 
-#pragma omp parallel for collapse(1)
       for (index_t h = 0; h < o_height; ++h) {
         index_t h_in = get_src_idx(h, height, paddings_[4], l_add, r_add);
 

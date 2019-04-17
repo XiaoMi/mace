@@ -33,10 +33,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class DynamicLSTMOp;
 
-template <typename T>
+template<typename T>
 class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit DynamicLSTMOp(OpConstructContext *context)
@@ -58,7 +58,6 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     if (std::abs(scale - 1.f) < 1e-6)
       return;
     const index_t rounds = cell_dim / 4;
-#pragma omp parallel for schedule(runtime)
     for (index_t i = 0; i < rounds * 4; i += 4) {
 #ifdef MACE_ENABLE_NEON
       float32x4_t in_vec = vld1q_f32(cell_data + i);
@@ -86,7 +85,6 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     }
 
     const index_t rounds = cell_dim / 4;
-#pragma omp parallel for schedule(runtime)
     for (index_t i = 0; i < rounds * 4; i += 4) {
 #ifdef MACE_ENABLE_NEON
       float32x4_t in_vec = vld1q_f32(src_data + i);
@@ -156,8 +154,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     MACE_CHECK(lstm_params->dim(0) == 3 &&
         params_stride == lstm_cell_dim && lstm_cell_dim == prev_cell_dim_)
       << "lstm params rows:" << lstm_params->dim(0)
-      << "params_stride:"<< params_stride
-      << "!=" << "cell_dim:"<< lstm_cell_dim << std::endl;
+      << "params_stride:" << params_stride
+      << "!=" << "cell_dim:" << lstm_cell_dim << std::endl;
     const index_t affine_b_out_dim = weights_b->dim(0);
     const index_t affine_b_depth = weights_b->dim(1);
     const index_t affine_b_in_dim = lstm_cell_dim;
@@ -262,7 +260,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         float *curr_cell_ptr =
             prev_cell_data + i % cell_buf_chunk * prev_cell_dim_;
         // LSTMNonlinear
-        LSTMNonlinearKernel(affine_a_out_data,
+        LSTMNonlinearKernel(context,
+                            affine_a_out_data,
                             prev_cell_ptr,
                             nullptr,
                             lstm_params_data,

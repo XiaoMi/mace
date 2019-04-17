@@ -28,7 +28,7 @@ namespace fp32 {
 
 class Conv2dK5x5S1 : public Conv2dBase {
  public:
-  Conv2dK5x5S1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK5x5S1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK5x5S1() {}
 
@@ -36,7 +36,7 @@ class Conv2dK5x5S1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 

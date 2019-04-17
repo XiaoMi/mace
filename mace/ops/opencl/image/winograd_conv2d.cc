@@ -241,7 +241,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   bool input_changed = !IsVecEqual(*prev_input_shape, input->shape());
   *prev_input_shape = input->shape();
 
-  auto output_shape = output->shape();
+  auto &output_shape = output->shape();
   const index_t round_h =
       (output_shape[1] + wino_blk_size - 1) / wino_blk_size;
   const index_t round_w =

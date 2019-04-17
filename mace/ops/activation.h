@@ -20,8 +20,8 @@
 #include <string>
 
 #include "mace/core/types.h"
+#include "mace/core/op_context.h"
 #include "mace/ops/common/activation_type.h"
-#include "mace/ops/arm/activation_neon.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
@@ -41,118 +41,39 @@ inline ActivationType StringToActivationType(const std::string type) {
   } else if (type == "NOOP") {
     return ActivationType::NOOP;
   } else if (type == "LEAKYRELU") {
-    return ActivationType ::LEAKYRELU;
+    return ActivationType::LEAKYRELU;
   } else {
     LOG(FATAL) << "Unknown activation type: " << type;
   }
   return ActivationType::NOOP;
 }
 
-template <typename T>
-void DoActivation(const T *input_ptr,
-                  T *output_ptr,
-                  const index_t size,
-                  const ActivationType type,
-                  const float relux_max_limit,
-                  const float leakyrelu_coefficient) {
-  MACE_CHECK(DataTypeToEnum<T>::value != DataType::DT_HALF);
-
-  switch (type) {
-    case NOOP:
-      break;
-    case RELU:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0));
-      }
-      break;
-    case RELUX:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = std::min(std::max(input_ptr[i], static_cast<T>(0)),
-                                 static_cast<T>(relux_max_limit));
-      }
-      break;
-    case TANH:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = std::tanh(input_ptr[i]);
-      }
-      break;
-    case SIGMOID:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
-      }
-      break;
-    case LEAKYRELU:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0))
-          + leakyrelu_coefficient * std::min(input_ptr[i], static_cast<T>(0));
-      }
-      break;
-    default:
-      LOG(FATAL) << "Unknown activation type: " << type;
-  }
-}
-
-template<>
-inline void DoActivation(const float *input_ptr,
-                         float *output_ptr,
-                         const index_t size,
-                         const ActivationType type,
-                         const float relux_max_limit,
-                         const float leakyrelu_coefficient) {
-  switch (type) {
-    case NOOP:
-      break;
-    case RELU:
-      ReluNeon(input_ptr, size, output_ptr);
-      break;
-    case RELUX:
-      ReluxNeon(input_ptr, relux_max_limit, size, output_ptr);
-      break;
-    case TANH:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = std::tanh(input_ptr[i]);
-      }
-      break;
-    case SIGMOID:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
-      }
-      break;
-    case LEAKYRELU:
-      LeakyReluNeon(input_ptr, leakyrelu_coefficient, size, output_ptr);
-      break;
-    default:
-      LOG(FATAL) << "Unknown activation type: " << type;
-  }
-}
-
-template <typename T>
-void PReLUActivation(const T *input_ptr,
+template<typename T>
+void PReLUActivation(const OpContext *context,
+                     const T *input_ptr,
                      const index_t outer_size,
                      const index_t input_chan,
                      const index_t inner_size,
                      const T *alpha_ptr,
                      T *output_ptr) {
-#pragma omp parallel for collapse(3) schedule(runtime)
-  for (index_t i = 0; i < outer_size; ++i) {
-    for (index_t chan_idx = 0; chan_idx < input_chan; ++chan_idx) {
-      for (index_t j = 0; j < inner_size; ++j) {
-        index_t idx = i * input_chan * inner_size + chan_idx * inner_size + j;
-        if (input_ptr[idx] < 0) {
-          output_ptr[idx] = input_ptr[idx] * alpha_ptr[chan_idx];
-        } else {
-          output_ptr[idx] = input_ptr[idx];
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t i = start0; i < end0; i += step0) {
+      for (index_t chan_idx = start1; chan_idx < end1; chan_idx += step1) {
+        for (index_t j = 0; j < inner_size; ++j) {
+          index_t idx = i * input_chan * inner_size + chan_idx * inner_size + j;
+          if (input_ptr[idx] < 0) {
+            output_ptr[idx] = input_ptr[idx] * alpha_ptr[chan_idx];
+          } else {
+            output_ptr[idx] = input_ptr[idx];
+          }
         }
       }
     }
-  }
+  }, 0, outer_size, 1, 0, input_chan, 1);
 }
 
 }  // namespace ops

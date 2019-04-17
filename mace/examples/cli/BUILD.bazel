@@ -5,6 +5,7 @@ load(
     "if_darwin",
     "if_hexagon_enabled",
     "if_hta_enabled",
+    "if_linux",
     "if_opencl_enabled",
     "if_openmp_enabled",
 )
@@ -21,13 +22,12 @@ cc_binary(
     linkopts = [
         "-lm",
         "-ldl",
-    ] + if_darwin(
-        [],
+    ] + if_linux(["-lpthread"]) + if_darwin(
+        ["-lpthread"],
         default_value = ["-fuse-ld=gold"],
     ) + if_openmp_enabled([
         "-fopenmp",
     ]) + if_android([
-        "-ldl",
         "-pie",
         "-llog",
     ]),
@@ -60,11 +60,10 @@ cc_binary(
     linkopts = [
         "-lm",
         "-ldl",
-    ] + if_darwin(
-        [],
+    ] + if_linux(["-lpthread"]) + if_darwin(
+        ["-lpthread"],
         default_value = ["-fuse-ld=gold"],
     ) + if_android([
-        "-ldl",
         "-pie",
         "-llog",
     ]),

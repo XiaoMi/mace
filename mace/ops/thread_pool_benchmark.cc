@@ -29,16 +29,16 @@ namespace test {
 
 namespace {
 
-const size_t kMaxSize = 100000000;
-const size_t image_size = 56 * 56;
-std::vector<float>  output_data(kMaxSize), bias_data(kMaxSize);
+const index_t kMaxSize = 100000000;
+const index_t image_size = 56 * 56;
+std::vector<float> output_data(kMaxSize), bias_data(kMaxSize);
 
 void OpenMPBenchmark1D(int iters, int size) {
   while (iters--) {
     const int b = 0;
 #pragma omp parallel for schedule(runtime)
     for (int c = 0; c < size; ++c) {
-      for (size_t i = 0; i < image_size; ++i) {
+      for (index_t i = 0; i < image_size; ++i) {
         output_data[(b * size + c) * image_size + i] += bias_data[c];
       }
     }
@@ -52,11 +52,10 @@ void ThreadPoolBenchmark1D(int iters, int size) {
   mace::testing::StartTiming();
 
   while (iters--) {
-    const int b = 0;  // 'const' keyword affects performance
-    int batch_size = size * image_size;
-    thread_pool.Compute1D([&](size_t start0, size_t end0, size_t step0) {
-      for (size_t c = start0; c < end0; c += step0) {
-        for (size_t i = 0; i < image_size; ++i) {
+    const int b = 0;
+    thread_pool.Compute1D([=](index_t start0, index_t end0, index_t step0) {
+      for (index_t c = start0; c < end0; c += step0) {
+        for (index_t i = 0; i < image_size; ++i) {
           output_data[(b * size + c) * image_size + i] += bias_data[c];
         }
       }
@@ -67,14 +66,13 @@ void ThreadPoolBenchmark1D(int iters, int size) {
 void OpenMPBenchmark2D(int iters, int size0, int size1) {
   while (iters--) {
 #pragma omp parallel for collapse(2) schedule(runtime)
-      for (int b = 0; b < size0; ++b) {
-        for (int c = 0; c < size1; ++c) {
-          for (size_t i = 0; i < image_size; ++i) {
-            // it seems like OpenMP optimize the following mac
-            output_data[(b * size1 + c) * image_size + i] += bias_data[c];
-          }
+    for (int b = 0; b < size0; ++b) {
+      for (int c = 0; c < size1; ++c) {
+        for (index_t i = 0; i < image_size; ++i) {
+          output_data[(b * size1 + c) * image_size + i] += bias_data[c];
         }
       }
+    }
   }
 }
 
@@ -85,11 +83,11 @@ void ThreadPoolBenchmark2D(int iters, int size0, int size1) {
   mace::testing::StartTiming();
 
   while (iters--) {
-    thread_pool.Compute2D([&](size_t start0, size_t end0, size_t step0,
-                              size_t start1, size_t end1, size_t step1) {
-      for (size_t b = start0; b < end0; b += step0) {
-        for (size_t c = start1; c < end1; c += step1) {
-          for (size_t i = 0; i < image_size; ++i) {
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      for (index_t b = start0; b < end0; b += step0) {
+        for (index_t c = start1; c < end1; c += step1) {
+          for (index_t i = 0; i < image_size; ++i) {
             output_data[(b * size1 + c) * image_size + i] += bias_data[c];
           }
         }

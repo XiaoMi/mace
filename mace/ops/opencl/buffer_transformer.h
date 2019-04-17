@@ -29,7 +29,7 @@
 namespace mace {
 namespace ops {
 // Only used for GPU Operation(BufferTransform)
-template <typename T>
+template<typename T>
 class OpenCLBufferTransformer {
  public:
   OpenCLBufferTransformer(const MemoryType in_mem_type,
@@ -79,10 +79,12 @@ class OpenCLBufferTransformer {
           const float *input_ptr = input->data<float>();
           Tensor::MappingGuard guard(internal_tensor);
           float *internal_ptr = internal_tensor->mutable_data<float>();
-          MACE_RETURN_IF_ERROR(ops::Transpose(input_ptr,
-                                              input->shape(),
-                                              dst_dims,
-                                              internal_ptr));
+          MACE_RETURN_IF_ERROR(ops::Transpose(
+              &context->device()->cpu_runtime()->thread_pool(),
+              input_ptr,
+              input->shape(),
+              dst_dims,
+              internal_ptr));
         } else {
           internal_tensor->Resize(input->shape());
           const uint8_t *input_ptr = input->data<uint8_t>();
@@ -117,7 +119,8 @@ class OpenCLBufferTransformer {
         const float *internal_ptr = internal_tensor.data<float>();
         output->Resize(output_shape);
         float *output_ptr = output->mutable_data<float>();
-        return ops::Transpose(internal_ptr,
+        return ops::Transpose(&context->device()->cpu_runtime()->thread_pool(),
+                              internal_ptr,
                               internal_tensor.shape(),
                               dst_dims,
                               output_ptr);
@@ -147,7 +150,7 @@ class OpenCLBufferTransformer {
 
 std::string TransformedFilterName(const std::string &name);
 
-template <typename T>
+template<typename T>
 MaceStatus TransformFilter(
     mace::OpConstructContext *context,
     OperatorDef *op_def,

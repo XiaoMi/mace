@@ -19,7 +19,7 @@
 
 #include "mace/core/arg_helper.h"
 #include "mace/core/memory_optimizer.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
@@ -95,8 +95,8 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
     model_data_size = std::max(
         model_data_size,
         static_cast<index_t>(const_tensor.offset() +
-                             const_tensor.data_size() *
-                             GetEnumTypeSize(const_tensor.data_type())));
+            const_tensor.data_size() *
+                GetEnumTypeSize(const_tensor.data_type())));
   }
   VLOG(3) << "Model data size: " << model_data_size;
 
@@ -163,11 +163,13 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
             auto quantized_data = reinterpret_cast<const uint8_t *>(
                 model_data + const_tensor.offset());
             auto dequantized_data = tensor->mutable_data<float>();
-            Dequantize(quantized_data,
-                       tensor->size(),
-                       const_tensor.scale(),
-                       const_tensor.zero_point(),
-                       dequantized_data);
+            QuantizeUtil<uint8_t>
+                quantize_util(&device->cpu_runtime()->thread_pool());
+            quantize_util.Dequantize(quantized_data,
+                                     tensor->size(),
+                                     const_tensor.scale(),
+                                     const_tensor.zero_point(),
+                                     dequantized_data);
           } else {
             tensor->CopyBytes(model_data + const_tensor.offset(),
                               const_tensor.data_size() *
@@ -185,14 +187,14 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
       if (device_type == DeviceType::CPU) {
         tensor_buffer_ = std::unique_ptr<Buffer>(
             new Buffer(device->allocator(),
-                       const_cast<unsigned char*>(model_data),
+                       const_cast<unsigned char *>(model_data),
                        model_data_size));
       } else {
         tensor_buffer_ = std::unique_ptr<Buffer>(
             new Buffer(device->allocator()));
         MACE_RETURN_IF_ERROR(tensor_buffer_->Allocate(model_data_size));
         tensor_buffer_->Map(nullptr);
-        tensor_buffer_->Copy(const_cast<unsigned char*>(model_data),
+        tensor_buffer_->Copy(const_cast<unsigned char *>(model_data),
                              0, model_data_size);
         tensor_buffer_->UnMap();
       }

@@ -19,15 +19,18 @@
 #include <string>
 #include <vector>
 
+#include "mace/utils/thread_pool.h"
+#include "mace/core/quantize.h"
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/tensor.h"
+#include "mace/core/device.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 
 class HexagonHTAWrapper : public HexagonControlWrapper {
  public:
-  HexagonHTAWrapper() = default;
+  explicit HexagonHTAWrapper(Device *device);
 
   int GetVersion() override;
   bool Config() override;
@@ -46,6 +49,9 @@ class HexagonHTAWrapper : public HexagonControlWrapper {
   void ResetPerfInfo() override;
   void SetDebugLevel(int level) override;
 
+ private:
+  Device *device_;
+  QuantizeUtil<uint8_t> quantize_util_;
   MACE_DISABLE_COPY_AND_ASSIGN(HexagonHTAWrapper);
 };
 }  // namespace mace

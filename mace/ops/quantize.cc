@@ -19,15 +19,15 @@
 
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class QuantizeOp;
 
-template <>
+template<>
 class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
   explicit QuantizeOp(OpConstructContext *context)
@@ -36,7 +36,8 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
             static_cast<bool>(Operation::GetOptionalArg<int>("non_zero", 0))),
         find_range_every_time_(static_cast<bool>(Operation::GetOptionalArg<int>(
             "find_range_every_time",
-            0))) {}
+            0))),
+        quantize_util_(&context->device()->cpu_runtime()->thread_pool()) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -48,20 +49,20 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
     const float *input_data = input->data<float>();
     uint8_t *output_data = output->mutable_data<uint8_t>();
     if (!find_range_every_time_ && output->scale() > 0.f) {
-      QuantizeWithScaleAndZeropoint(input_data,
-                                    input->size(),
-                                    output->scale(),
-                                    output->zero_point(),
-                                    output_data);
+      quantize_util_.QuantizeWithScaleAndZeropoint(input_data,
+                                                   input->size(),
+                                                   output->scale(),
+                                                   output->zero_point(),
+                                                   output_data);
     } else {
       float scale;
       int32_t zero_point;
-      Quantize(input_data,
-               input->size(),
-               non_zero_,
-               output_data,
-               &scale,
-               &zero_point);
+      quantize_util_.Quantize(input_data,
+                              input->size(),
+                              non_zero_,
+                              output_data,
+                              &scale,
+                              &zero_point);
       output->SetScale(scale);
       output->SetZeroPoint(zero_point);
     }
@@ -71,16 +72,18 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
  private:
   bool non_zero_;
   bool find_range_every_time_;
+  QuantizeUtil<uint8_t> quantize_util_;
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class DequantizeOp;
 
-template <typename T>
+template<typename T>
 class DequantizeOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit DequantizeOp(OpConstructContext *context)
-      : Operation(context) {}
+      : Operation(context),
+        quantize_util_(&context->device()->cpu_runtime()->thread_pool()) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -91,13 +94,16 @@ class DequantizeOp<DeviceType::CPU, T> : public Operation {
     Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     float *output_data = output->mutable_data<float>();
-    Dequantize<T>(input_data,
-               input->size(),
-               input->scale(),
-               input->zero_point(),
-               output_data);
+    quantize_util_.Dequantize(input_data,
+                              input->size(),
+                              input->scale(),
+                              input->zero_point(),
+                              output_data);
     return MaceStatus::MACE_SUCCESS;
   }
+
+ private:
+  QuantizeUtil<T> quantize_util_;
 };
 
 void RegisterQuantize(OpRegistryBase *op_registry) {

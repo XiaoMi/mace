@@ -33,7 +33,7 @@ class GPUDevice : public CPUDevice {
             std::shared_ptr<KVStorage> opencl_binary_storage = nullptr,
             const int num_threads = -1,
             CPUAffinityPolicy cpu_affinity_policy = AFFINITY_NONE,
-            bool use_gemmlowp = false);
+            utils::ThreadPool *thread_pool = nullptr);
   ~GPUDevice();
   GPURuntime *gpu_runtime() override;
   Allocator *allocator() override;

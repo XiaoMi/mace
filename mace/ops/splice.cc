@@ -32,10 +32,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class SpliceOp;
 
-template <typename T>
+template<typename T>
 class SpliceOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit SpliceOp(OpConstructContext *context)
@@ -85,7 +85,6 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-#pragma omp parallel for collapse(3) schedule(runtime)
     for (int b = 0; b < batch; ++b) {
       for (index_t i = 0; i < out_chunk; ++i) {
         for (index_t c = 0; c < num_splice; ++c) {
@@ -102,7 +101,6 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     if (const_dim_ > 0) {
       const index_t output_offset = output_dim - const_dim_;
       const index_t input_offset = dim;
-#pragma omp parallel for collapse(2) schedule(runtime)
       for (int b = 0; b < batch; ++b) {
         for (index_t i = 0; i < out_chunk; ++i) {
           T *output_base = output_data +  + b * output_stride + i * output_dim;

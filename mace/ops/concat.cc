@@ -15,7 +15,7 @@
 #include <memory>
 
 #include "mace/core/operator.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #include "mace/utils/memory.h"
 
 #ifdef MACE_ENABLE_OPENCL

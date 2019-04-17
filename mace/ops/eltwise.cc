@@ -31,7 +31,7 @@
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/eltwise.h"
@@ -39,7 +39,6 @@
 
 namespace mace {
 namespace ops {
-
 
 inline index_t GetIndex(const std::vector<index_t> &shape,
                         const std::vector<index_t> &index) {
@@ -64,8 +63,9 @@ inline void IncreaseIndex(const std::vector<index_t> &shape,
   }
 }
 
-template <typename T, typename DstType>
+template<typename T, typename DstType>
 inline void TensorGeneralBroadcastEltwise(
+    const OpContext *context,
     const EltwiseType type,
     const T *input0,
     const T *input1,
@@ -75,6 +75,8 @@ inline void TensorGeneralBroadcastEltwise(
     const std::vector<index_t> &input1_shape,
     const std::vector<index_t> &output_shape,
     DstType *output) {
+  MACE_UNUSED(context);
+
   const index_t output_size = std::accumulate(
       output_shape.begin(), output_shape.end(), 1, std::multiplies<index_t>());
   std::vector<index_t> out_index(output_shape.size(), 0);
@@ -209,13 +211,13 @@ inline void TensorGeneralBroadcastEltwise(
         IncreaseIndex(output_shape, &out_index);
       }
       break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
+    default:LOG(FATAL) << "Eltwise op not support type " << type;
   }
 }
 
-template <typename T, typename DstType>
-inline void TensorBroadcastEltwise(const EltwiseType type,
+template<typename T, typename DstType>
+inline void TensorBroadcastEltwise(const OpContext *context,
+                                   const EltwiseType type,
                                    const T *input0,
                                    const T *input1,
                                    const std::vector<float> &coeff,
@@ -223,437 +225,408 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
                                    const index_t common_size,
                                    const bool swapped,
                                    DstType *output) {
-  switch (type) {
-    case SUM:
-      if (coeff.empty()) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
-            output[i + d * common_size] =
-                input0[i + d * common_size] + input1[i];
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    switch (type) {
+      case SUM:
+        if (coeff.empty()) {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  input0[i + d * common_size] + input1[i];
+            }
+          }
+        } else {
+          std::vector<float> coeff_copy = coeff;
+          if (swapped) {
+            std::swap(coeff_copy[0], coeff_copy[1]);
+          }
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  input0[i + d * common_size] * coeff_copy[0] +
+                      input1[i] * coeff_copy[1];
+            }
           }
         }
-      } else {
-        std::vector<float> coeff_copy = coeff;
-        if (swapped) {
-          std::swap(coeff_copy[0], coeff_copy[1]);
-        }
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
-            output[i + d * common_size] =
-                input0[i + d * common_size] * coeff_copy[0] +
-                    input1[i] * coeff_copy[1];
+        break;
+      case SUB:
+        if (!swapped) {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  input0[i + d * common_size] - input1[i];
+            }
+          }
+        } else {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  input1[i] - input0[i + d * common_size];
+            }
           }
         }
-      }
-      break;
-    case SUB:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
+        break;
+      case PROD:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
             output[i + d * common_size] =
-                input0[i + d * common_size] - input1[i];
+                input0[i + d * common_size] * input1[i];
           }
         }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
-            output[i + d * common_size] =
-                input1[i] - input0[i + d * common_size];
+        break;
+      case DIV:
+        if (!swapped) {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  input0[i + d * common_size] / input1[i];
+            }
+          }
+        } else {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  input1[i] / input0[i + d * common_size];
+            }
           }
         }
-      }
-      break;
-    case PROD:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t d = 0; d < diff_size; ++d) {
-        for (index_t i = 0; i < common_size; ++i) {
-          output[i + d * common_size] = input0[i + d * common_size] * input1[i];
-        }
-      }
-      break;
-    case DIV:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
-            output[i + d * common_size] =
-                input0[i + d * common_size] / input1[i];
+        break;
+      case FLOOR_DIV:
+        if (!swapped) {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  std::floor(input0[i + d * common_size] / input1[i]);
+            }
+          }
+        } else {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  std::floor(input1[i] / input0[i + d * common_size]);
+            }
           }
         }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
+        break;
+      case MIN:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
             output[i + d * common_size] =
-                input1[i] / input0[i + d * common_size];
+                std::min(input0[i + d * common_size], input1[i]);
           }
         }
-      }
-      break;
-    case FLOOR_DIV:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
+        break;
+      case MAX:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
             output[i + d * common_size] =
-                std::floor(input0[i + d * common_size] / input1[i]);
+                std::max(input0[i + d * common_size], input1[i]);
           }
         }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
+        break;
+      case SQR_DIFF:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
             output[i + d * common_size] =
-                std::floor(input1[i] / input0[i + d * common_size]);
+                std::pow(input0[i + d * common_size] - input1[i], 2.f);
           }
         }
-      }
-      break;
-    case MIN:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t d = 0; d < diff_size; ++d) {
-        for (index_t i = 0; i < common_size; ++i) {
-          output[i + d * common_size] =
-              std::min(input0[i + d * common_size], input1[i]);
-        }
-      }
-      break;
-    case MAX:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t d = 0; d < diff_size; ++d) {
-        for (index_t i = 0; i < common_size; ++i) {
-          output[i + d * common_size] =
-              std::max(input0[i + d * common_size], input1[i]);
-        }
-      }
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t d = 0; d < diff_size; ++d) {
-        for (index_t i = 0; i < common_size; ++i) {
-          output[i + d * common_size] =
-              std::pow(input0[i + d * common_size] - input1[i], 2.f);
-        }
-      }
-      break;
-    case POW:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
-            output[i + d * common_size] =
-                std::pow(input0[i + d * common_size], input1[i]);
+        break;
+      case POW:
+        if (!swapped) {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  std::pow(input0[i + d * common_size], input1[i]);
+            }
+          }
+        } else {
+          for (index_t d = start0; d < end0; d += step0) {
+            for (index_t i = start1; i < end1; i += step1) {
+              output[i + d * common_size] =
+                  std::pow(input1[i], input0[i + d * common_size]);
+            }
           }
         }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t d = 0; d < diff_size; ++d) {
-          for (index_t i = 0; i < common_size; ++i) {
-            output[i + d * common_size] =
-                std::pow(input1[i], input0[i + d * common_size]);
+        break;
+      case NEG:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
+            output[i + d * common_size] = -input0[i + d * common_size];
           }
         }
-      }
-      break;
-    case NEG:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < diff_size * common_size; ++i) {
-        output[i] = -input0[i];
-      }
-      break;
-    case ABS:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < diff_size * common_size; ++i) {
-        output[i] = std::fabs(input0[i]);
-      }
-      break;
-    case EQUAL:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t d = 0; d < diff_size; ++d) {
-        for (index_t i = 0; i < common_size; ++i) {
-          output[i + d * common_size] =
-              input0[i + d * common_size] == input1[i];
+        break;
+      case ABS:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
+            output[i + d * common_size] =
+                std::fabs(input0[i + d * common_size]);
+          }
         }
-      }
-      break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
-  }
+        break;
+      case EQUAL:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
+            output[i + d * common_size] =
+                input0[i + d * common_size] == input1[i];
+          }
+        }
+        break;
+      default:LOG(FATAL) << "Eltwise op not support type " << type;
+    }
+  }, 0, diff_size, 1, 0, common_size, 1);
 }
 
 // Multiplication is costly, so we specialize the following case.
-template <typename T, typename DstType>
-inline void TensorEltwise(const EltwiseType type,
+template<typename T, typename DstType>
+inline void TensorEltwise(const OpContext *context,
+                          const EltwiseType type,
                           const T *input0,
                           const T *input1,
                           const std::vector<float> &coeff,
                           const index_t size,
                           const bool swapped,
                           DstType *output) {
-  switch (type) {
-    case SUM:
-      if (coeff.empty()) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] + input1[i];
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+    switch (type) {
+      case SUM:
+        if (coeff.empty()) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] + input1[i];
+          }
+
+        } else {
+          std::vector<float> coeff_copy = coeff;
+          if (swapped) {
+            std::swap(coeff_copy[0], coeff_copy[1]);
+          }
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] * coeff_copy[0] + input1[i] * coeff_copy[1];
+          }
+        }
+        break;
+      case SUB:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] - input1[i];
+          }
+
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input1[i] - input0[i];
+          }
+        }
+        break;
+      case PROD:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = input0[i] * input1[i];
         }
 
-      } else {
-        std::vector<float> coeff_copy = coeff;
-        if (swapped) {
-          std::swap(coeff_copy[0], coeff_copy[1]);
+        break;
+      case DIV:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] / input1[i];
+          }
+
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input1[i] / input0[i];
+          }
         }
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] * coeff_copy[0] + input1[i] * coeff_copy[1];
+        break;
+      case FLOOR_DIV:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::floor(input0[i] / input1[i]);
+          }
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::floor(input1[i] / input0[i]);
+          }
         }
-      }
-      break;
-    case SUB:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] - input1[i];
+        break;
+      case MIN:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::min(input0[i], input1[i]);
         }
 
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input1[i] - input0[i];
-        }
-      }
-      break;
-    case PROD:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] * input1[i];
-      }
-
-      break;
-    case DIV:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] / input1[i];
+        break;
+      case MAX:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::max(input0[i], input1[i]);
         }
 
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input1[i] / input0[i];
+        break;
+      case SQR_DIFF:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::pow(input0[i] - input1[i], 2.f);
         }
-      }
-      break;
-    case FLOOR_DIV:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::floor(input0[i] / input1[i]);
-        }
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::floor(input1[i] / input0[i]);
-        }
-      }
-      break;
-    case MIN:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::min(input0[i], input1[i]);
-      }
 
-      break;
-    case MAX:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::max(input0[i], input1[i]);
-      }
-
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::pow(input0[i] - input1[i], 2.f);
-      }
-
-      break;
-    case POW:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::pow(input0[i], input1[i]);
+        break;
+      case POW:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::pow(input0[i], input1[i]);
+          }
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::pow(input1[i], input0[i]);
+          }
         }
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::pow(input1[i], input0[i]);
+        break;
+      case NEG:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = -input0[i];
         }
-      }
-      break;
-    case NEG:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = -input0[i];
-      }
-      break;
-    case ABS:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::fabs(input0[i]);
-      }
-      break;
-    case EQUAL:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] == input1[i];
-      }
-      break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
-  }
+        break;
+      case ABS:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::fabs(input0[i]);
+        }
+        break;
+      case EQUAL:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = input0[i] == input1[i];
+        }
+        break;
+      default:LOG(FATAL) << "Eltwise op not support type " << type;
+    }
+  }, 0, size, 1);
 }
 
 // Multiplication is costly, so we specialize the following case.
-template <typename T, typename DstType>
-inline void TensorScalarEltwise(const EltwiseType type,
+template<typename T, typename DstType>
+inline void TensorScalarEltwise(const OpContext *context,
+                                const EltwiseType type,
                                 const T *input0,
                                 const T input1,
                                 const std::vector<float> &coeff,
                                 const index_t size,
                                 const bool swapped,
                                 DstType *output) {
-  switch (type) {
-    case SUM:
-      if (coeff.empty()) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] + input1;
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+    switch (type) {
+      case SUM:
+        if (coeff.empty()) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] + input1;
+          }
+
+        } else {
+          std::vector<float> coeff_copy = coeff;
+          if (swapped) {
+            std::swap(coeff_copy[0], coeff_copy[1]);
+          }
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] * coeff_copy[0] + input1 * coeff_copy[1];
+          }
+        }
+        break;
+      case SUB:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] - input1;
+          }
+
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input1 - input0[i];
+          }
+        }
+        break;
+      case PROD:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = input0[i] * input1;
         }
 
-      } else {
-        std::vector<float> coeff_copy = coeff;
-        if (swapped) {
-          std::swap(coeff_copy[0], coeff_copy[1]);
+        break;
+      case DIV:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input0[i] / input1;
+          }
+
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = input1 / input0[i];
+          }
         }
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] * coeff_copy[0] + input1 * coeff_copy[1];
+        break;
+      case FLOOR_DIV:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::floor(input0[i] / input1);
+          }
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::floor(input1 / input0[i]);
+          }
         }
-      }
-      break;
-    case SUB:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] - input1;
+        break;
+      case MIN:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::min(input0[i], input1);
         }
 
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input1 - input0[i];
-        }
-      }
-      break;
-    case PROD:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] * input1;
-      }
-
-      break;
-    case DIV:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input0[i] / input1;
+        break;
+      case MAX:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::max(input0[i], input1);
         }
 
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = input1 / input0[i];
+        break;
+      case SQR_DIFF:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::pow(input0[i] - input1, 2.f);
         }
-      }
-      break;
-    case FLOOR_DIV:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::floor(input0[i] / input1);
-        }
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::floor(input1 / input0[i]);
-        }
-      }
-      break;
-    case MIN:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::min(input0[i], input1);
-      }
 
-      break;
-    case MAX:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::max(input0[i], input1);
-      }
-
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::pow(input0[i] - input1, 2.f);
-      }
-
-      break;
-    case POW:
-      if (!swapped) {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::pow(input0[i], input1);
+        break;
+      case POW:
+        if (!swapped) {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::pow(input0[i], input1);
+          }
+        } else {
+          for (index_t i = start; i < end; i += step) {
+            output[i] = std::pow(input1, input0[i]);
+          }
         }
-      } else {
-#pragma omp parallel for schedule(runtime)
-        for (index_t i = 0; i < size; ++i) {
-          output[i] = std::pow(input1, input0[i]);
+        break;
+      case NEG:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = -input0[i];
         }
-      }
-      break;
-    case NEG:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = -input0[i];
-      }
-      break;
-    case ABS:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::fabs(input0[i]);
-      }
-      break;
-    case EQUAL:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] == input1;
-      }
+        break;
+      case ABS:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::fabs(input0[i]);
+        }
+        break;
+      case EQUAL:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = input0[i] == input1;
+        }
 
-      break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
-  }
+        break;
+      default:LOG(FATAL) << "Eltwise op not support type " << type;
+    }
+  }, 0, size, 1);
 }
 
-template <typename T, typename DstType>
-inline void TensorEltwisePerChannel(const EltwiseType type,
+template<typename T, typename DstType>
+inline void TensorEltwisePerChannel(const OpContext *context,
+                                    const EltwiseType type,
                                     const T *input0,
                                     const T *input1,
                                     const std::vector<float> &coeff,
@@ -663,230 +636,227 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
                                     const index_t image_size,
                                     const bool swapped,
                                     DstType *output) {
-  switch (type) {
-    case SUM:
-      if (coeff.empty()) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    switch (type) {
+      case SUM:
+        if (coeff.empty()) {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = in0_ptr[i] + in1_ptr[c];
+              }
+            }
+          }
+        } else {
+          std::vector<float> coeff_copy = coeff;
+          if (swapped) {
+            std::swap(coeff_copy[0], coeff_copy[1]);
+          }
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] =
+                    in0_ptr[i] * coeff_copy[0] + in1_ptr[c] * coeff_copy[1];
+              }
+            }
+          }
+        }
+        break;
+      case SUB:
+        if (!swapped) {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = in0_ptr[i] - in1_ptr[c];
+              }
+            }
+          }
+        } else {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = in1_ptr[c] - in0_ptr[i];
+              }
+            }
+          }
+        }
+        break;
+      case PROD:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
             const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = in0_ptr[i] + in1_ptr[c];
+              out_ptr[i] = in0_ptr[i] * in1_ptr[c];
             }
           }
         }
-      } else {
-        std::vector<float> coeff_copy = coeff;
-        if (swapped) {
-          std::swap(coeff_copy[0], coeff_copy[1]);
+        break;
+      case DIV:
+        if (!swapped) {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = in0_ptr[i] / in1_ptr[c];
+              }
+            }
+          }
+        } else {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = in1_ptr[c] / in0_ptr[i];
+              }
+            }
+          }
         }
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
+        break;
+      case FLOOR_DIV:
+        if (!swapped) {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = std::floor(in0_ptr[i] / in1_ptr[c]);
+              }
+            }
+          }
+        } else {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = std::floor(in1_ptr[c] / in0_ptr[i]);
+              }
+            }
+          }
+        }
+        break;
+      case MIN:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
             const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] =
-                  in0_ptr[i] * coeff_copy[0] + in1_ptr[c] * coeff_copy[1];
+              out_ptr[i] = std::min(in0_ptr[i], in1_ptr[c]);
             }
           }
         }
-      }
-      break;
-    case SUB:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
+        break;
+      case MAX:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
             const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = in0_ptr[i] - in1_ptr[c];
+              out_ptr[i] = std::max(in0_ptr[i], in1_ptr[c]);
             }
           }
         }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
+        break;
+      case SQR_DIFF:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
             const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = in1_ptr[c] - in0_ptr[i];
+              out_ptr[i] = std::pow(in0_ptr[i] - in1_ptr[c], 2.f);
             }
           }
         }
-      }
-      break;
-    case PROD:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t b = 0; b < batch0; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-          const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-          DstType *out_ptr = output + ((b * channel) + c) * image_size;
-          for (index_t i = 0; i < image_size; ++i) {
-            out_ptr[i] = in0_ptr[i] * in1_ptr[c];
+        break;
+      case POW:
+        if (!swapped) {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = std::pow(in0_ptr[i], in1_ptr[c]);
+              }
+            }
+          }
+        } else {
+          for (index_t b = start0; b < end0; b += step0) {
+            for (index_t c = start1; c < end1; c += step1) {
+              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              for (index_t i = 0; i < image_size; ++i) {
+                out_ptr[i] = std::pow(in1_ptr[c], in0_ptr[i]);
+              }
+            }
           }
         }
-      }
-      break;
-    case DIV:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
+        break;
+      case NEG:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = -input0[i];
+            }
+          }
+        }
+        break;
+      case ABS:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            for (index_t i = 0; i < image_size; ++i) {
+              output[i] = std::fabs(input0[i]);
+            }
+          }
+        }
+        break;
+      case EQUAL:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
             const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = in0_ptr[i] / in1_ptr[c];
+              out_ptr[i] = in0_ptr[i] == in1_ptr[c];
             }
           }
         }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
-            for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = in1_ptr[c] / in0_ptr[i];
-            }
-          }
-        }
-      }
-      break;
-    case FLOOR_DIV:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
-            for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = std::floor(in0_ptr[i] / in1_ptr[c]);
-            }
-          }
-        }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
-            for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = std::floor(in1_ptr[c] / in0_ptr[i]);
-            }
-          }
-        }
-      }
-      break;
-    case MIN:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t b = 0; b < batch0; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-          const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-          DstType *out_ptr = output + ((b * channel) + c) * image_size;
-          for (index_t i = 0; i < image_size; ++i) {
-            out_ptr[i] = std::min(in0_ptr[i], in1_ptr[c]);
-          }
-        }
-      }
-      break;
-    case MAX:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t b = 0; b < batch0; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-          const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-          DstType *out_ptr = output + ((b * channel) + c) * image_size;
-          for (index_t i = 0; i < image_size; ++i) {
-            out_ptr[i] = std::max(in0_ptr[i], in1_ptr[c]);
-          }
-        }
-      }
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t b = 0; b < batch0; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-          const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-          DstType *out_ptr = output + ((b * channel) + c) * image_size;
-          for (index_t i = 0; i < image_size; ++i) {
-            out_ptr[i] = std::pow(in0_ptr[i] - in1_ptr[c], 2.f);
-          }
-        }
-      }
-      break;
-    case POW:
-      if (!swapped) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
-            for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = std::pow(in0_ptr[i], in1_ptr[c]);
-            }
-          }
-        }
-      } else {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t b = 0; b < batch0; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
-            for (index_t i = 0; i < image_size; ++i) {
-              out_ptr[i] = std::pow(in1_ptr[c], in0_ptr[i]);
-            }
-          }
-        }
-      }
-      break;
-    case NEG:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < batch0 * channel * image_size; ++i) {
-        output[i] = -input0[i];
-      }
-      break;
-    case ABS:
-#pragma omp parallel for schedule(runtime)
-      for (index_t i = 0; i < batch0 * channel * image_size; ++i) {
-        output[i] = std::fabs(input0[i]);
-      }
-      break;
-    case EQUAL:
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t b = 0; b < batch0; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-          const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-          DstType *out_ptr = output + ((b * channel) + c) * image_size;
-          for (index_t i = 0; i < image_size; ++i) {
-            out_ptr[i] = in0_ptr[i] == in1_ptr[c];
-          }
-        }
-      }
-      break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
-  }
+        break;
+      default:LOG(FATAL) << "Eltwise op not support type " << type;
+    }
+  }, 0, batch0, 1, 0, channel, 1);
 }
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class EltwiseOp : public Operation {
  public:
   explicit EltwiseOp(OpConstructContext *context)
@@ -915,15 +885,16 @@ class EltwiseOp : public Operation {
 
     if (IsLogicalType(type_)) {
       // as we do not have bool-type tensor, we use int type
-      return DoEltwise<int32_t>(input0, input1, output);
+      return DoEltwise<int32_t>(context, input0, input1, output);
     } else {
-      return DoEltwise<T>(input0, input1, output);
+      return DoEltwise<T>(context, input0, input1, output);
     }
   }
 
  private:
-  template <typename DstType>
-  MaceStatus DoEltwise(const Tensor *input0,
+  template<typename DstType>
+  MaceStatus DoEltwise(const OpContext *context,
+                       const Tensor *input0,
                        const Tensor *input1,
                        Tensor *output) {
     bool swapped = false;
@@ -970,12 +941,20 @@ class EltwiseOp : public Operation {
       Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
       if (input1->size() < input0->size()) {
-        TensorEltwisePerChannel(
-            type_, input0_ptr, input1_ptr, coeff_, input0->dim(0),
-            input1->dim_size() == 1 ? 1 : input1->dim(0), input0->dim(1),
-            input0->dim(2) * input0->dim(3), swapped, output_ptr);
+        TensorEltwisePerChannel(context,
+                                type_,
+                                input0_ptr,
+                                input1_ptr,
+                                coeff_,
+                                input0->dim(0),
+                                input1->dim_size() == 1 ? 1 : input1->dim(0),
+                                input0->dim(1),
+                                input0->dim(2) * input0->dim(3),
+                                swapped,
+                                output_ptr);
       } else {
-        TensorEltwise(type_, input0_ptr, input1_ptr, coeff_, input0->size(),
+        TensorEltwise(context,
+                      type_, input0_ptr, input1_ptr, coeff_, input0->size(),
                       swapped, output_ptr);
       }
     } else {
@@ -1002,19 +981,23 @@ class EltwiseOp : public Operation {
       }
 
       if (input1->size() == 1) {
-        TensorScalarEltwise(type_, input0_ptr, input1_ptr[0], coeff_,
+        TensorScalarEltwise(context,
+                            type_, input0_ptr, input1_ptr[0], coeff_,
                             input0->size(), swapped, output_ptr);
       } else if (input0_shape == input1_shape) {
-        TensorEltwise(type_, input0_ptr, input1_ptr, coeff_, input0->size(),
+        TensorEltwise(context,
+                      type_, input0_ptr, input1_ptr, coeff_, input0->size(),
                       swapped, output_ptr);
       } else if (need_general_broadcast) {
-        TensorGeneralBroadcastEltwise(type_, input0_ptr, input1_ptr, coeff_,
+        TensorGeneralBroadcastEltwise(context,
+                                      type_, input0_ptr, input1_ptr, coeff_,
                                       swapped, input0_shape, input1_shape,
                                       output_shape, output_ptr);
       } else {
         index_t common_size = input1->size();
         index_t diff_size = input0->size() / common_size;
-        TensorBroadcastEltwise(type_, input0_ptr, input1_ptr, coeff_,
+        TensorBroadcastEltwise(context,
+                               type_, input0_ptr, input1_ptr, coeff_,
                                diff_size, common_size, swapped, output_ptr);
       }
     }
@@ -1096,37 +1079,41 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
     auto input0_ptr = input0->data<uint8_t>();
     auto input1_ptr = input1->data<uint8_t>();
     auto output_ptr = output->mutable_data<uint8_t>();
-#pragma omp parallel for schedule(runtime)
-    for (index_t i = 0; i < output->size(); ++i) {
-      const int32_t offset_input0 = input0_ptr[i] - input0->zero_point();
-      const int32_t offset_input1 = input1_ptr[i] - input1->zero_point();
-      const int32_t shifted_input0 = offset_input0 * (1 << left_shift);
-      const int32_t shifted_input1 = offset_input1 * (1 << left_shift);
-      const int32_t multiplied_input0 =
-          gemmlowp::RoundingDivideByPOT(
-              gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input0,
-                                                          input0_multiplier),
-              -input0_shift);
-      const int32_t multiplied_input1 =
-          gemmlowp::RoundingDivideByPOT(
-              gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input1,
-                                                          input1_multiplier),
-              -input1_shift);
 
-      int32_t res;
-      if (type_ == SUM) {
-        res = multiplied_input0 + multiplied_input1;
-      } else {
-        res = multiplied_input0 - multiplied_input1;
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+      for (index_t i = start; i < end; i += step) {
+        const int32_t offset_input0 = input0_ptr[i] - input0->zero_point();
+        const int32_t offset_input1 = input1_ptr[i] - input1->zero_point();
+        const int32_t shifted_input0 = offset_input0 * (1 << left_shift);
+        const int32_t shifted_input1 = offset_input1 * (1 << left_shift);
+        const int32_t multiplied_input0 =
+            gemmlowp::RoundingDivideByPOT(
+                gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input0,
+                                                            input0_multiplier),
+                -input0_shift);
+        const int32_t multiplied_input1 =
+            gemmlowp::RoundingDivideByPOT(
+                gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input1,
+                                                            input1_multiplier),
+                -input1_shift);
+
+        int32_t res;
+        if (type_ == SUM) {
+          res = multiplied_input0 + multiplied_input1;
+        } else {
+          res = multiplied_input0 - multiplied_input1;
+        }
+
+        const int32_t output_val =
+            gemmlowp::RoundingDivideByPOT(
+                gemmlowp::SaturatingRoundingDoublingHighMul(res,
+                                                            output_multiplier),
+                -output_shift) + output->zero_point();
+        output_ptr[i] = Saturate<uint8_t>(output_val);
       }
-
-      const int32_t output_val =
-          gemmlowp::RoundingDivideByPOT(
-              gemmlowp::SaturatingRoundingDoublingHighMul(res,
-                                                          output_multiplier),
-              -output_shift) + output->zero_point();
-      output_ptr[i] = Saturate<uint8_t>(output_val);
-    }
+    }, 0, output->size(), 1);
 #endif  // NEON
 
     return MaceStatus::MACE_SUCCESS;
@@ -1202,7 +1189,6 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
   std::unique_ptr<OpenCLEltwiseKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
-
 
 void RegisterEltwise(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,

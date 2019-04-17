@@ -33,12 +33,12 @@ namespace ops {
 class ReduceOpBase : public Operation {
  public:
   explicit ReduceOpBase(OpConstructContext *context)
-  : Operation(context),
-    reduce_type_(
-        static_cast<ReduceType>(Operation::GetOptionalArg<int>(
-            "reduce_type", static_cast<int>(MEAN)))),
-    axis_(Operation::GetRepeatedArgs<int>("axis")),
-    keep_dims_(Operation::GetOptionalArg<bool>("keepdims", false)) {
+      : Operation(context),
+        reduce_type_(
+            static_cast<ReduceType>(Operation::GetOptionalArg<int>(
+                "reduce_type", static_cast<int>(MEAN)))),
+        axis_(Operation::GetRepeatedArgs<int>("axis")),
+        keep_dims_(Operation::GetOptionalArg<bool>("keepdims", false)) {
   }
 
  protected:
@@ -54,15 +54,15 @@ class ReduceOpBase : public Operation {
   }
 
  protected:
-  ReduceType  reduce_type_;
+  ReduceType reduce_type_;
   std::vector<int> axis_;
   bool keep_dims_;
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class ReduceOp;
 
-template <typename T>
+template<typename T>
 class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
  public:
   explicit ReduceOp(OpConstructContext *context)
@@ -78,7 +78,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     output->SetScale(input->scale());
     output->SetZeroPoint(input->zero_point());
     output->Resize(out_shape_);
-    Compute(input, output);
+    Compute(context, input, output);
     return MaceStatus::MACE_SUCCESS;
   }
 
@@ -92,8 +92,8 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     } else {
       for (unsigned int i = 0; i < axis_.size(); ++i) {
         int index = axis_[i] >= 0 ?
-                          axis_[i] :
-                          axis_[i] + input->dim_size();
+                    axis_[i] :
+                    axis_[i] + input->dim_size();
         auto has_df = Operation::GetOptionalArg<int>(
             "has_data_format", 0);
         if (has_df && DataTypeToEnum<T>::value != DT_UINT8
@@ -128,7 +128,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
         if (n == 1) {
           bitmap[dim_index] = bitmap[dim_index - 1];
         }
-        if (bitmap[dim_index-1] != bitmap[dim_index]) {
+        if (bitmap[dim_index - 1] != bitmap[dim_index]) {
           data_reshape_.push_back(n);
         } else {
           data_reshape_.back() *= n;
@@ -137,7 +137,11 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-  void Reduce1Dims(const T *input, ReduceType type, T *output) {
+  void Reduce1Dims(const OpContext *context,
+                   const T *input,
+                   ReduceType type,
+                   T *output) {
+    MACE_UNUSED(context);
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
         T tmp = 0;
@@ -157,13 +161,13 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
           tmp = std::max<T>(tmp, input[i]);
         }
         output[0] = tmp;
-      }  else if (type == ReduceType::PROD) {
+      } else if (type == ReduceType::PROD) {
         T tmp = input[0];
         for (int i = 1; i < data_reshape_[0]; ++i) {
           tmp = tmp * input[i];
         }
         output[0] = tmp;
-      }  else {
+      } else {
         MACE_NOT_IMPLEMENTED;
       }
     } else {
@@ -171,359 +175,367 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
   }
 
-  void Reduce2Dims(const T *input, ReduceType type, T *output) {
+  void Reduce2Dims(const OpContext *context,
+                   const T *input,
+                   ReduceType type,
+                   T *output) {
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
     if (reduce_first_axis_) {
-      if (type == ReduceType::MEAN) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = 0;
-          for (int j = 0; j < data_reshape_[0]; ++j) {
-            tmp += input[j * data_reshape_[1] + i];
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        if (type == ReduceType::MEAN) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = 0;
+            for (int j = 0; j < data_reshape_[0]; ++j) {
+              tmp += input[j * data_reshape_[1] + i];
+            }
+            output[i] = tmp / data_reshape_[0];
           }
-          output[i] = tmp / data_reshape_[0];
-        }
-      } else if (type == ReduceType::MIN) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = input[i];
-          for (int j = 1; j < data_reshape_[0]; ++j) {
-            tmp = std::min(tmp, input[j * data_reshape_[1] + i]);
+        } else if (type == ReduceType::MIN) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i];
+            for (int j = 1; j < data_reshape_[0]; ++j) {
+              tmp = std::min(tmp, input[j * data_reshape_[1] + i]);
+            }
+            output[i] = tmp;
           }
-          output[i] = tmp;
-        }
-      } else if (type == ReduceType::MAX) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = input[i];
-          for (int j = 1; j < data_reshape_[0]; ++j) {
-            tmp = std::max(tmp, input[j * data_reshape_[1] + i]);
+        } else if (type == ReduceType::MAX) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i];
+            for (int j = 1; j < data_reshape_[0]; ++j) {
+              tmp = std::max(tmp, input[j * data_reshape_[1] + i]);
+            }
+            output[i] = tmp;
           }
-          output[i] = tmp;
-        }
-      } else if (type == ReduceType::PROD) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = input[i];
-          for (int j = 1; j < data_reshape_[0]; ++j) {
-            tmp = tmp * input[j * data_reshape_[1] + i];
+        } else if (type == ReduceType::PROD) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i];
+            for (int j = 1; j < data_reshape_[0]; ++j) {
+              tmp = tmp * input[j * data_reshape_[1] + i];
+            }
+            output[i] = tmp;
           }
-          output[i] = tmp;
+        } else {
+          MACE_NOT_IMPLEMENTED;
         }
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
+      }, 0, data_reshape_[1], 1);
     } else {
-      if (type == ReduceType::MEAN) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          T tmp = 0;
-          for (int j = 0; j < data_reshape_[1]; ++j) {
-            tmp += input[i * data_reshape_[1] + j];
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        if (type == ReduceType::MEAN) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = 0;
+            for (int j = 0; j < data_reshape_[1]; ++j) {
+              tmp += input[i * data_reshape_[1] + j];
+            }
+            output[i] = tmp / data_reshape_[1];
           }
-          output[i] = tmp / data_reshape_[1];
-        }
-      } else if (type == ReduceType::MIN) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          T tmp = input[i * data_reshape_[1]];
-          for (int j = 1; j < data_reshape_[1]; ++j) {
-            tmp = std::min(tmp, input[i * data_reshape_[1] + j]);
+        } else if (type == ReduceType::MIN) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i * data_reshape_[1]];
+            for (int j = 1; j < data_reshape_[1]; ++j) {
+              tmp = std::min(tmp, input[i * data_reshape_[1] + j]);
+            }
+            output[i] = tmp;
           }
-          output[i] = tmp;
-        }
-      } else if (type == ReduceType::MAX) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          T tmp = input[i * data_reshape_[1]];
-          for (int j = 1; j < data_reshape_[1]; ++j) {
-            tmp = std::max(tmp, input[i * data_reshape_[1] + j]);
+        } else if (type == ReduceType::MAX) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i * data_reshape_[1]];
+            for (int j = 1; j < data_reshape_[1]; ++j) {
+              tmp = std::max(tmp, input[i * data_reshape_[1] + j]);
+            }
+            output[i] = tmp;
           }
-          output[i] = tmp;
-        }
-      } else if (type == ReduceType::PROD) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          T tmp = input[i * data_reshape_[1]];
-          for (int j = 1; j < data_reshape_[1]; ++j) {
-            tmp = tmp * input[i * data_reshape_[1] + j];
+        } else if (type == ReduceType::PROD) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i * data_reshape_[1]];
+            for (int j = 1; j < data_reshape_[1]; ++j) {
+              tmp = tmp * input[i * data_reshape_[1] + j];
+            }
+            output[i] = tmp;
           }
-          output[i] = tmp;
+        } else {
+          MACE_NOT_IMPLEMENTED;
         }
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
+      }, 0, data_reshape_[0], 1);
     }
   }
 
-  void Reduce3Dims(const T *input, ReduceType type, T *output) {
-    if (reduce_first_axis_) {
-      if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(1) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            for (int k = 0; k < data_reshape_[0]; ++k) {
-              output[i] +=
-                  input[(k * data_reshape_[1] + i) * data_reshape_[2]
-                      + j];
-            }
-          }
-          output[i] /= (data_reshape_[0] * data_reshape_[2]);
-        }
-      } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(1) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = input[i * data_reshape_[2]];
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            for (int k = 0; k < data_reshape_[0]; ++k) {
-              tmp = std::min(tmp,
-                  input[(k * data_reshape_[1] + i) * data_reshape_[2]
-                      + j]);
-            }
-          }
-          output[i] = tmp;
-        }
-      } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(1) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = input[i * data_reshape_[2]];
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            for (int k = 0; k < data_reshape_[0]; ++k) {
-              tmp =
-                  std::max(tmp,
-                           input[(k * data_reshape_[1] + i)
-                               * data_reshape_[2] + j]);
-            }
-          }
-          output[i] = tmp;
-        }
-      } else if (type == ReduceType::PROD) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          T tmp = 1;
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            for (int k = 0; k < data_reshape_[0]; ++k) {
-              tmp *=
-                  input[(k * data_reshape_[1] + i) * data_reshape_[2]
-                      + j];
-            }
-          }
-          output[i] = tmp;
-        }
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
-    } else {
-      if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            for (int k = 0; k < data_reshape_[1]; ++k) {
-              output[i * data_reshape_[2] + j] +=
-                  input[(i * data_reshape_[1] + k) * data_reshape_[2]
-                      + j];
-            }
-            output[i * data_reshape_[2] + j] /= data_reshape_[1];
-          }
-        }
-      } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            T tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
-            for (int k = 1; k < data_reshape_[1]; ++k) {
-              tmp = std::min(tmp,
-                             input[(i * data_reshape_[1] + k) *
-                                 data_reshape_[2] + j]);
-            }
-            output[i * data_reshape_[2] + j] = tmp;
-          }
-        }
-      } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            T tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
-            for (int k = 1; k < data_reshape_[1]; ++k) {
-              tmp = std::max(tmp,
-                             input[(i * data_reshape_[1] + k) *
-                                 data_reshape_[2] + j]);
-            }
-            output[i * data_reshape_[2] + j] = tmp;
-          }
-        }
-      } else if (type == ReduceType::PROD) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            T tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
-            for (int k = 1; k < data_reshape_[1]; ++k) {
-              tmp *= input[(i * data_reshape_[1] + k) *
-                                data_reshape_[2] + j];
-            }
-            output[i * data_reshape_[2] + j] = tmp;
-          }
-        }
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
-    }
-  }
+  void Reduce3Dims(const OpContext *context,
+                   const T *input,
+                   ReduceType type,
+                   T *output) {
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-  void Reduce4Dims(const T *input, ReduceType type, T *output) {
     if (reduce_first_axis_) {
-      if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          for (int j = 0; j < data_reshape_[3]; ++j) {
-            for (int k = 0; k < data_reshape_[2]; ++k) {
-              for (int t = 0; t < data_reshape_[0]; ++t) {
-                output[i * data_reshape_[3] + j] +=
-                    input[((t * data_reshape_[1] + i) *
-                        data_reshape_[2] + k)*data_reshape_[3] + j];
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        if (type == ReduceType::MEAN) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[0]; ++k) {
+                output[i] +=
+                    input[(k * data_reshape_[1] + i) * data_reshape_[2]
+                        + j];
               }
             }
-            output[i * data_reshape_[3] + j] /=
-                (data_reshape_[0] * data_reshape_[2]);
+            output[i] /= (data_reshape_[0] * data_reshape_[2]);
           }
-        }
-      } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          for (int j = 0; j < data_reshape_[3]; ++j) {
-            T tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
-            for (int k = 0; k < data_reshape_[2]; ++k) {
-              for (int t = 0; t < data_reshape_[0]; ++t) {
+        } else if (type == ReduceType::MIN) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i * data_reshape_[2]];
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[0]; ++k) {
                 tmp = std::min(tmp,
-                               input[((t * data_reshape_[1] + i) *
-                        data_reshape_[2] + k)*data_reshape_[3] + j]);
+                               input[
+                                   (k * data_reshape_[1] + i) * data_reshape_[2]
+                                       + j]);
               }
             }
-            output[i * data_reshape_[3] + j] = tmp;
+            output[i] = tmp;
           }
-        }
-      } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          for (int j = 0; j < data_reshape_[3]; ++j) {
-            T tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
-            for (int k = 0; k < data_reshape_[2]; ++k) {
-              for (int t = 0; t < data_reshape_[0]; ++t) {
-                tmp = std::max(tmp,
-                               input[((t * data_reshape_[1] + i) *
-                                   data_reshape_[2] + k)*data_reshape_[3] + j]);
-              }
-            }
-            output[i * data_reshape_[3] + j] = tmp;
-          }
-        }
-      } else if (type == ReduceType::PROD) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[1]; ++i) {
-          for (int j = 0; j < data_reshape_[3]; ++j) {
-            T tmp = 1;
-            for (int k = 0; k < data_reshape_[2]; ++k) {
-              for (int t = 0; t < data_reshape_[0]; ++t) {
-                tmp = tmp * input[((t * data_reshape_[1] + i) *
-                                   data_reshape_[2] + k)*data_reshape_[3] + j];
-              }
-            }
-            output[i * data_reshape_[3] + j] = tmp;
-          }
-        }
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
-    } else {
-      if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            for (int k = 0; k < data_reshape_[1]; ++k) {
-              for (int t = 0; t < data_reshape_[3]; ++t) {
-                output[i * data_reshape_[2] + j] +=
-                    input[((i * data_reshape_[1] + k) *
-                        data_reshape_[2] + j)*data_reshape_[3] + t];
-              }
-            }
-            output[i * data_reshape_[2] + j] /=
-                (data_reshape_[1] * data_reshape_[3]);
-          }
-        }
-      } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            T tmp = input[(i * data_reshape_[1] *
-                data_reshape_[2] + j)*data_reshape_[3]];
-            for (int k = 0; k < data_reshape_[1]; ++k) {
-              for (int t = 0; t < data_reshape_[3]; ++t) {
-                tmp =
-                    std::min(tmp,
-                             input[((i * data_reshape_[1] + k) *
-                        data_reshape_[2] + j)*data_reshape_[3] + t]);
-              }
-            }
-            output[i * data_reshape_[2] + j] = tmp;
-          }
-        }
-      } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
-            T tmp = input[(i * data_reshape_[1] *
-                data_reshape_[2] + j)*data_reshape_[3]];
-            for (int k = 0; k < data_reshape_[1]; ++k) {
-              for (int t = 0; t < data_reshape_[3]; ++t) {
+        } else if (type == ReduceType::MAX) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = input[i * data_reshape_[2]];
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[0]; ++k) {
                 tmp =
                     std::max(tmp,
-                             input[((i * data_reshape_[1] + k) *
-                                 data_reshape_[2] + j)*data_reshape_[3] + t]);
+                             input[(k * data_reshape_[1] + i)
+                                 * data_reshape_[2] + j]);
               }
             }
-            output[i * data_reshape_[2] + j] = tmp;
+            output[i] = tmp;
           }
-        }
-      } else if (type == ReduceType::PROD) {
-#pragma omp parallel for schedule(runtime)
-        for (int i = 0; i < data_reshape_[0]; ++i) {
-          for (int j = 0; j < data_reshape_[2]; ++j) {
+        } else if (type == ReduceType::PROD) {
+          for (index_t i = start; i < end; i += step) {
             T tmp = 1;
-            for (int k = 0; k < data_reshape_[1]; ++k) {
-              for (int t = 0; t < data_reshape_[3]; ++t) {
-                tmp = tmp * input[((i * data_reshape_[1] + k) *
-                    data_reshape_[2] + j)*data_reshape_[3] + t];
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[0]; ++k) {
+                tmp *=
+                    input[(k * data_reshape_[1] + i) * data_reshape_[2]
+                        + j];
               }
             }
-            output[i * data_reshape_[2] + j] = tmp;
+            output[i] = tmp;
           }
+        } else {
+          MACE_NOT_IMPLEMENTED;
         }
-      } else {
-        MACE_NOT_IMPLEMENTED;
-      }
+      }, 0, data_reshape_[1], 1);
+    } else {
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        if (type == ReduceType::MEAN) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                output[i * data_reshape_[2] + j] +=
+                    input[(i * data_reshape_[1] + k) * data_reshape_[2]
+                        + j];
+              }
+              output[i * data_reshape_[2] + j] /= data_reshape_[1];
+            }
+          }
+        } else if (type == ReduceType::MIN) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              T tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+              for (int k = 1; k < data_reshape_[1]; ++k) {
+                tmp = std::min(tmp,
+                               input[(i * data_reshape_[1] + k) *
+                                   data_reshape_[2] + j]);
+              }
+              output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::MAX) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              T tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+              for (int k = 1; k < data_reshape_[1]; ++k) {
+                tmp = std::max(tmp,
+                               input[(i * data_reshape_[1] + k) *
+                                   data_reshape_[2] + j]);
+              }
+              output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::PROD) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              T tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+              for (int k = 1; k < data_reshape_[1]; ++k) {
+                tmp *= input[(i * data_reshape_[1] + k) *
+                    data_reshape_[2] + j];
+              }
+              output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else {
+          MACE_NOT_IMPLEMENTED;
+        }
+      }, 0, data_reshape_[0], 1);
     }
   }
 
-  void Compute(const Tensor *input, Tensor *output) {
+  void Reduce4Dims(const OpContext *context,
+                   const T *input,
+                   ReduceType type,
+                   T *output) {
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+    if (reduce_first_axis_) {
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        if (type == ReduceType::MEAN) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              for (int k = 0; k < data_reshape_[2]; ++k) {
+                for (int t = 0; t < data_reshape_[0]; ++t) {
+                  output[i * data_reshape_[3] + j] +=
+                      input[((t * data_reshape_[1] + i) *
+                          data_reshape_[2] + k) * data_reshape_[3] + j];
+                }
+              }
+              output[i * data_reshape_[3] + j] /=
+                  (data_reshape_[0] * data_reshape_[2]);
+            }
+          }
+        } else if (type == ReduceType::MIN) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              T tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
+              for (int k = 0; k < data_reshape_[2]; ++k) {
+                for (int t = 0; t < data_reshape_[0]; ++t) {
+                  tmp = std::min(tmp,
+                                 input[((t * data_reshape_[1] + i) *
+                                     data_reshape_[2] + k) * data_reshape_[3]
+                                     + j]);
+                }
+              }
+              output[i * data_reshape_[3] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::MAX) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              T tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
+              for (int k = 0; k < data_reshape_[2]; ++k) {
+                for (int t = 0; t < data_reshape_[0]; ++t) {
+                  tmp = std::max(tmp,
+                                 input[((t * data_reshape_[1] + i) *
+                                     data_reshape_[2] + k) * data_reshape_[3]
+                                     + j]);
+                }
+              }
+              output[i * data_reshape_[3] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::PROD) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              T tmp = 1;
+              for (int k = 0; k < data_reshape_[2]; ++k) {
+                for (int t = 0; t < data_reshape_[0]; ++t) {
+                  tmp = tmp * input[((t * data_reshape_[1] + i) *
+                      data_reshape_[2] + k) * data_reshape_[3] + j];
+                }
+              }
+              output[i * data_reshape_[3] + j] = tmp;
+            }
+          }
+        } else {
+          MACE_NOT_IMPLEMENTED;
+        }
+      }, 0, data_reshape_[1], 1, 0, data_reshape_[3], 1);
+    } else {
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        if (type == ReduceType::MEAN) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                for (int t = 0; t < data_reshape_[3]; ++t) {
+                  output[i * data_reshape_[2] + j] +=
+                      input[((i * data_reshape_[1] + k) *
+                          data_reshape_[2] + j) * data_reshape_[3] + t];
+                }
+              }
+              output[i * data_reshape_[2] + j] /=
+                  (data_reshape_[1] * data_reshape_[3]);
+            }
+          }
+        } else if (type == ReduceType::MIN) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              T tmp = input[(i * data_reshape_[1] *
+                  data_reshape_[2] + j) * data_reshape_[3]];
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                for (int t = 0; t < data_reshape_[3]; ++t) {
+                  tmp =
+                      std::min(tmp,
+                               input[((i * data_reshape_[1] + k) *
+                                   data_reshape_[2] + j) * data_reshape_[3]
+                                   + t]);
+                }
+              }
+              output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::MAX) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              T tmp = input[(i * data_reshape_[1] *
+                  data_reshape_[2] + j) * data_reshape_[3]];
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                for (int t = 0; t < data_reshape_[3]; ++t) {
+                  tmp =
+                      std::max(tmp,
+                               input[((i * data_reshape_[1] + k) *
+                                   data_reshape_[2] + j) * data_reshape_[3]
+                                   + t]);
+                }
+              }
+              output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::PROD) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              T tmp = 1;
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                for (int t = 0; t < data_reshape_[3]; ++t) {
+                  tmp = tmp * input[((i * data_reshape_[1] + k) *
+                      data_reshape_[2] + j) * data_reshape_[3] + t];
+                }
+              }
+              output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else {
+          MACE_NOT_IMPLEMENTED;
+        }
+      }, 0, data_reshape_[0], 1, 0, data_reshape_[2], 1);
+    }
+  }
+
+  void Compute(const OpContext *context, const Tensor *input, Tensor *output) {
     Tensor::MappingGuard input_mapper(input);
     const T *input_ptr = input->data<T>();
     Tensor::MappingGuard output_map(output);
     T *output_ptr = output->mutable_data<T>();
     memset(output_ptr, 0, output->size() * sizeof(T));
     switch (data_reshape_.size()) {
-      case 1:
-        Reduce1Dims(input_ptr, reduce_type_, output_ptr);
+      case 1:Reduce1Dims(context, input_ptr, reduce_type_, output_ptr);
         break;
-      case 2:
-        Reduce2Dims(input_ptr, reduce_type_, output_ptr);
+      case 2:Reduce2Dims(context, input_ptr, reduce_type_, output_ptr);
         break;
-      case 3:
-        Reduce3Dims(input_ptr, reduce_type_, output_ptr);
+      case 3:Reduce3Dims(context, input_ptr, reduce_type_, output_ptr);
         break;
-      case 4:
-        Reduce4Dims(input_ptr, reduce_type_, output_ptr);
+      case 4:Reduce4Dims(context, input_ptr, reduce_type_, output_ptr);
         break;
-      default:
-        MACE_CHECK(false, "not implemented in mace")
+      default:MACE_CHECK(false, "not implemented in mace")
           << "data reshape size" << data_reshape_.size()
           << "reduce first axis:" << reduce_first_axis_;
         break;
@@ -537,9 +549,11 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
-template <>
+template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
+    const OpContext *context,
     const uint8_t *input, ReduceType type, uint8_t *output) {
+  MACE_UNUSED(context);
   if (reduce_first_axis_) {
     if (type == ReduceType::MEAN) {
       uint32_t tmp = 0;
@@ -568,275 +582,286 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
   }
 }
 
-template <>
+template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
+    const OpContext *context,
     const uint8_t *input, ReduceType type, uint8_t *output) {
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
   if (reduce_first_axis_) {
-    if (type == ReduceType::MEAN) {
-#pragma omp parallel for schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        uint32_t tmp = 0;
-        for (int j = 0; j < data_reshape_[0]; ++j) {
-          tmp += input[j * data_reshape_[1] + i];
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+      if (type == ReduceType::MEAN) {
+        for (index_t i = start; i < end; i += step) {
+          uint32_t tmp = 0;
+          for (int j = 0; j < data_reshape_[0]; ++j) {
+            tmp += input[j * data_reshape_[1] + i];
+          }
+          output[i] = static_cast<uint8_t>(
+              (tmp + data_reshape_[0] / 2) / data_reshape_[0]);
         }
-        output[i] = static_cast<uint8_t>(
-            (tmp + data_reshape_[0] / 2) / data_reshape_[0]);
-      }
-    } else if (type == ReduceType::MIN) {
-#pragma omp parallel for schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        uint8_t tmp = input[i];
-        for (int j = 1; j < data_reshape_[0]; ++j) {
-          tmp = std::min(tmp, input[j * data_reshape_[1] + i]);
+      } else if (type == ReduceType::MIN) {
+        for (index_t i = start; i < end; i += step) {
+          uint8_t tmp = input[i];
+          for (int j = 1; j < data_reshape_[0]; ++j) {
+            tmp = std::min(tmp, input[j * data_reshape_[1] + i]);
+          }
+          output[i] = tmp;
         }
-        output[i] = tmp;
-      }
-    } else if (type == ReduceType::MAX) {
-#pragma omp parallel for schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        uint8_t tmp = input[i];
-        for (int j = 1; j < data_reshape_[0]; ++j) {
-          tmp = std::max(tmp, input[j * data_reshape_[1] + i]);
+      } else if (type == ReduceType::MAX) {
+        for (index_t i = start; i < end; i += step) {
+          uint8_t tmp = input[i];
+          for (int j = 1; j < data_reshape_[0]; ++j) {
+            tmp = std::max(tmp, input[j * data_reshape_[1] + i]);
+          }
+          output[i] = tmp;
         }
-        output[i] = tmp;
+      } else {
+        MACE_NOT_IMPLEMENTED;
       }
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
+    }, 0, data_reshape_[1], 1);
   } else {
-    if (type == ReduceType::MEAN) {
-#pragma omp parallel for schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        uint32_t tmp = 0;
-        for (int j = 0; j < data_reshape_[1]; ++j) {
-          tmp += input[i * data_reshape_[1] + j];
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+      if (type == ReduceType::MEAN) {
+        for (index_t i = start; i < end; i += step) {
+          uint32_t tmp = 0;
+          for (int j = 0; j < data_reshape_[1]; ++j) {
+            tmp += input[i * data_reshape_[1] + j];
+          }
+          output[i] = static_cast<uint8_t>(
+              (tmp + data_reshape_[1] / 2) / data_reshape_[1]);
         }
-        output[i] = static_cast<uint8_t>(
-            (tmp + data_reshape_[1] / 2) / data_reshape_[1]);
-      }
-    } else if (type == ReduceType::MIN) {
-#pragma omp parallel for schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        uint8_t tmp = input[i * data_reshape_[1]];
-        for (int j = 1; j < data_reshape_[1]; ++j) {
-          tmp = std::min(tmp, input[i * data_reshape_[1] + j]);
+      } else if (type == ReduceType::MIN) {
+        for (index_t i = start; i < end; i += step) {
+          uint8_t tmp = input[i * data_reshape_[1]];
+          for (int j = 1; j < data_reshape_[1]; ++j) {
+            tmp = std::min(tmp, input[i * data_reshape_[1] + j]);
+          }
+          output[i] = tmp;
         }
-        output[i] = tmp;
-      }
-    } else if (type == ReduceType::MAX) {
-#pragma omp parallel for schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        uint8_t tmp = input[i * data_reshape_[1]];
-        for (int j = 1; j < data_reshape_[1]; ++j) {
-          tmp = std::max(tmp, input[i * data_reshape_[1] + j]);
+      } else if (type == ReduceType::MAX) {
+        for (index_t i = start; i < end; i += step) {
+          uint8_t tmp = input[i * data_reshape_[1]];
+          for (int j = 1; j < data_reshape_[1]; ++j) {
+            tmp = std::max(tmp, input[i * data_reshape_[1] + j]);
+          }
+          output[i] = tmp;
         }
-        output[i] = tmp;
+      } else {
+        MACE_NOT_IMPLEMENTED;
       }
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
+    }, 0, data_reshape_[0], 1);
   }
 }
 
-template <>
+template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
+    const OpContext *context,
     const uint8_t *input, ReduceType type, uint8_t *output) {
-  if (reduce_first_axis_) {
-    if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(1) schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        uint32_t tmp = 0;
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          for (int k = 0; k < data_reshape_[0]; ++k) {
-            tmp += input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
-          }
-        }
-        index_t dim = data_reshape_[0] * data_reshape_[2];
-        output[i] = static_cast<uint8_t>((tmp + dim / 2) / dim);
-      }
-    } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(1) schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        uint8_t tmp = input[i * data_reshape_[2]];
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          for (int k = 0; k < data_reshape_[0]; ++k) {
-            tmp = std::min(tmp,
-                           input[(k * data_reshape_[1] + i) * data_reshape_[2]
-                               + j]);
-          }
-        }
-        output[i] = tmp;
-      }
-    } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(1) schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        uint8_t tmp = input[i * data_reshape_[2]];
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          for (int k = 0; k < data_reshape_[0]; ++k) {
-            tmp =
-                std::max(tmp,
-                         input[(k * data_reshape_[1] + i)
-                             * data_reshape_[2] + j]);
-          }
-        }
-        output[i] = tmp;
-      }
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
-  } else {
-    if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          uint32_t tmp = 0;
-          for (int k = 0; k < data_reshape_[1]; ++k) {
-            tmp += input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
-          }
-          output[i * data_reshape_[2] + j] =
-              static_cast<uint8_t>((tmp + data_reshape_[1] / 2) /
-                  data_reshape_[1]);
-        }
-      }
-    } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          uint8_t tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
-          for (int k = 1; k < data_reshape_[1]; ++k) {
-            tmp = std::min(tmp,
-                           input[(i * data_reshape_[1] + k) *
-                               data_reshape_[2] + j]);
-          }
-          output[i * data_reshape_[2] + j] = tmp;
-        }
-      }
-    } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          uint8_t tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
-          for (int k = 1; k < data_reshape_[1]; ++k) {
-            tmp = std::max(tmp,
-                           input[(i * data_reshape_[1] + k) *
-                               data_reshape_[2] + j]);
-          }
-          output[i * data_reshape_[2] + j] = tmp;
-        }
-      }
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
-  }
-}
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-template <>
-void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
-    const uint8_t *input, ReduceType type, uint8_t *output) {
   if (reduce_first_axis_) {
-    if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        for (int j = 0; j < data_reshape_[3]; ++j) {
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+      if (type == ReduceType::MEAN) {
+        for (index_t i = start; i < end; i += step) {
           uint32_t tmp = 0;
-          for (int k = 0; k < data_reshape_[2]; ++k) {
-            for (int t = 0; t < data_reshape_[0]; ++t) {
-              tmp += input[((t * data_reshape_[1] + i) *
-                  data_reshape_[2] + k)*data_reshape_[3] + j];
+          for (int j = 0; j < data_reshape_[2]; ++j) {
+            for (int k = 0; k < data_reshape_[0]; ++k) {
+              tmp += input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
             }
           }
           index_t dim = data_reshape_[0] * data_reshape_[2];
-          output[i * data_reshape_[3] + j] =
-              static_cast<uint8_t>((tmp + dim / 2) / dim);
+          output[i] = static_cast<uint8_t>((tmp + dim / 2) / dim);
         }
-      }
-    } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        for (int j = 0; j < data_reshape_[3]; ++j) {
-          uint8_t tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
-          for (int k = 0; k < data_reshape_[2]; ++k) {
-            for (int t = 0; t < data_reshape_[0]; ++t) {
+      } else if (type == ReduceType::MIN) {
+        for (index_t i = start; i < end; i += step) {
+          uint8_t tmp = input[i * data_reshape_[2]];
+          for (int j = 0; j < data_reshape_[2]; ++j) {
+            for (int k = 0; k < data_reshape_[0]; ++k) {
               tmp = std::min(tmp,
-                             input[((t * data_reshape_[1] + i) *
-                                 data_reshape_[2] + k)*data_reshape_[3] + j]);
+                             input[(k * data_reshape_[1] + i) * data_reshape_[2]
+                                 + j]);
             }
           }
-          output[i * data_reshape_[3] + j] = tmp;
+          output[i] = tmp;
         }
-      }
-    } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[1]; ++i) {
-        for (int j = 0; j < data_reshape_[3]; ++j) {
-          uint8_t tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
-          for (int k = 0; k < data_reshape_[2]; ++k) {
-            for (int t = 0; t < data_reshape_[0]; ++t) {
-              tmp = std::max(tmp,
-                             input[((t * data_reshape_[1] + i) *
-                                 data_reshape_[2] + k)*data_reshape_[3] + j]);
-            }
-          }
-          output[i * data_reshape_[3] + j] = tmp;
-        }
-      }
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
-  } else {
-    if (type == ReduceType::MEAN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          uint32_t tmp = 0;
-          for (int k = 0; k < data_reshape_[1]; ++k) {
-            for (int t = 0; t < data_reshape_[3]; ++t) {
-              tmp += input[((i * data_reshape_[1] + k) *
-                  data_reshape_[2] + j)*data_reshape_[3] + t];
-            }
-          }
-          index_t dim = data_reshape_[1] * data_reshape_[3];
-          output[i * data_reshape_[2] + j] =
-              static_cast<uint8_t>((tmp + dim / 2) / dim);
-        }
-      }
-    } else if (type == ReduceType::MIN) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          uint8_t tmp = input[(i * data_reshape_[1] *
-              data_reshape_[2] + j)*data_reshape_[3]];
-          for (int k = 0; k < data_reshape_[1]; ++k) {
-            for (int t = 0; t < data_reshape_[3]; ++t) {
-              tmp =
-                  std::min(tmp,
-                           input[((i * data_reshape_[1] + k) *
-                               data_reshape_[2] + j)*data_reshape_[3] + t]);
-            }
-          }
-          output[i * data_reshape_[2] + j] = tmp;
-        }
-      }
-    } else if (type == ReduceType::MAX) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (int i = 0; i < data_reshape_[0]; ++i) {
-        for (int j = 0; j < data_reshape_[2]; ++j) {
-          uint8_t tmp = input[(i * data_reshape_[1] *
-              data_reshape_[2] + j)*data_reshape_[3]];
-          for (int k = 0; k < data_reshape_[1]; ++k) {
-            for (int t = 0; t < data_reshape_[3]; ++t) {
+      } else if (type == ReduceType::MAX) {
+        for (index_t i = start; i < end; i += step) {
+          uint8_t tmp = input[i * data_reshape_[2]];
+          for (int j = 0; j < data_reshape_[2]; ++j) {
+            for (int k = 0; k < data_reshape_[0]; ++k) {
               tmp =
                   std::max(tmp,
-                           input[((i * data_reshape_[1] + k) *
-                               data_reshape_[2] + j)*data_reshape_[3] + t]);
+                           input[(k * data_reshape_[1] + i)
+                               * data_reshape_[2] + j]);
             }
           }
-          output[i * data_reshape_[2] + j] = tmp;
+          output[i] = tmp;
         }
+      } else {
+        MACE_NOT_IMPLEMENTED;
       }
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
+    }, 0, data_reshape_[1], 1);
+  } else {
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      if (type == ReduceType::MEAN) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint32_t tmp = 0;
+            for (int k = 0; k < data_reshape_[1]; ++k) {
+              tmp += input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
+            }
+            output[i * data_reshape_[2] + j] =
+                static_cast<uint8_t>((tmp + data_reshape_[1] / 2) /
+                    data_reshape_[1]);
+          }
+        }
+      } else if (type == ReduceType::MIN) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint8_t tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+            for (int k = 1; k < data_reshape_[1]; ++k) {
+              tmp = std::min(tmp,
+                             input[(i * data_reshape_[1] + k) *
+                                 data_reshape_[2] + j]);
+            }
+            output[i * data_reshape_[2] + j] = tmp;
+          }
+        }
+      } else if (type == ReduceType::MAX) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint8_t tmp = input[i * data_reshape_[1] * data_reshape_[2] + j];
+            for (int k = 1; k < data_reshape_[1]; ++k) {
+              tmp = std::max(tmp,
+                             input[(i * data_reshape_[1] + k) *
+                                 data_reshape_[2] + j]);
+            }
+            output[i * data_reshape_[2] + j] = tmp;
+          }
+        }
+      } else {
+        MACE_NOT_IMPLEMENTED;
+      }
+    }, 0, data_reshape_[0], 1, 0, data_reshape_[2], 1);
+  }
+}
+
+template<>
+void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
+    const OpContext *context,
+    const uint8_t *input, ReduceType type, uint8_t *output) {
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  if (reduce_first_axis_) {
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      if (type == ReduceType::MEAN) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint32_t tmp = 0;
+            for (int k = 0; k < data_reshape_[2]; ++k) {
+              for (int t = 0; t < data_reshape_[0]; ++t) {
+                tmp += input[((t * data_reshape_[1] + i) *
+                    data_reshape_[2] + k) * data_reshape_[3] + j];
+              }
+            }
+            index_t dim = data_reshape_[0] * data_reshape_[2];
+            output[i * data_reshape_[3] + j] =
+                static_cast<uint8_t>((tmp + dim / 2) / dim);
+          }
+        }
+      } else if (type == ReduceType::MIN) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint8_t tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
+            for (int k = 0; k < data_reshape_[2]; ++k) {
+              for (int t = 0; t < data_reshape_[0]; ++t) {
+                tmp = std::min(tmp,
+                               input[((t * data_reshape_[1] + i) *
+                                   data_reshape_[2] + k) * data_reshape_[3]
+                                   + j]);
+              }
+            }
+            output[i * data_reshape_[3] + j] = tmp;
+          }
+        }
+      } else if (type == ReduceType::MAX) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint8_t tmp = input[i * data_reshape_[2] * data_reshape_[3] + j];
+            for (int k = 0; k < data_reshape_[2]; ++k) {
+              for (int t = 0; t < data_reshape_[0]; ++t) {
+                tmp = std::max(tmp,
+                               input[((t * data_reshape_[1] + i) *
+                                   data_reshape_[2] + k) * data_reshape_[3]
+                                   + j]);
+              }
+            }
+            output[i * data_reshape_[3] + j] = tmp;
+          }
+        }
+      } else {
+        MACE_NOT_IMPLEMENTED;
+      }
+    }, 0, data_reshape_[1], 1, 0, data_reshape_[3], 1);
+  } else {
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      if (type == ReduceType::MEAN) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint32_t tmp = 0;
+            for (int k = 0; k < data_reshape_[1]; ++k) {
+              for (int t = 0; t < data_reshape_[3]; ++t) {
+                tmp += input[((i * data_reshape_[1] + k) *
+                    data_reshape_[2] + j) * data_reshape_[3] + t];
+              }
+            }
+            index_t dim = data_reshape_[1] * data_reshape_[3];
+            output[i * data_reshape_[2] + j] =
+                static_cast<uint8_t>((tmp + dim / 2) / dim);
+          }
+        }
+      } else if (type == ReduceType::MIN) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint8_t tmp = input[(i * data_reshape_[1] *
+                data_reshape_[2] + j) * data_reshape_[3]];
+            for (int k = 0; k < data_reshape_[1]; ++k) {
+              for (int t = 0; t < data_reshape_[3]; ++t) {
+                tmp =
+                    std::min(tmp,
+                             input[((i * data_reshape_[1] + k) *
+                                 data_reshape_[2] + j) * data_reshape_[3] + t]);
+              }
+            }
+            output[i * data_reshape_[2] + j] = tmp;
+          }
+        }
+      } else if (type == ReduceType::MAX) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint8_t tmp = input[(i * data_reshape_[1] *
+                data_reshape_[2] + j) * data_reshape_[3]];
+            for (int k = 0; k < data_reshape_[1]; ++k) {
+              for (int t = 0; t < data_reshape_[3]; ++t) {
+                tmp =
+                    std::max(tmp,
+                             input[((i * data_reshape_[1] + k) *
+                                 data_reshape_[2] + j) * data_reshape_[3] + t]);
+              }
+            }
+            output[i * data_reshape_[2] + j] = tmp;
+          }
+        }
+      } else {
+        MACE_NOT_IMPLEMENTED;
+      }
+    }, 0, data_reshape_[0], 1, 0, data_reshape_[2], 1);
   }
 }
 #endif  // MACE_ENABLE_QUANTIZE

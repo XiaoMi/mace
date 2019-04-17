@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/runtime/hexagon/hexagon_dsp_wrapper.h"
+
 #include <algorithm>
 #include <iomanip>
 #include <map>
@@ -22,7 +24,6 @@
 #include <string>
 #include <utility>
 
-#include "mace/core/runtime/hexagon/hexagon_dsp_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_dsp_ops.h"
 #include "mace/core/types.h"
 #include "mace/port/env.h"

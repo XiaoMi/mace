@@ -33,8 +33,7 @@ int main(int argc, char **argv) {
   // config runtime
   mace::ops::test::OpTestContext::Get(
       FLAGS_omp_num_threads,
-      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy),
-      true);
+      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));
 
   mace::testing::Benchmark::Run(FLAGS_filter.c_str());
   return 0;

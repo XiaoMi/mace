@@ -30,9 +30,9 @@ namespace ref {
 template<typename OUTPUT_TYPE>
 class DepthwiseConv2d {
  public:
-  DepthwiseConv2d(const std::vector<int> strides,
-                  const std::vector<int> dilations,
-                  const std::vector<int> paddings,
+  DepthwiseConv2d(const std::vector<int> &strides,
+                  const std::vector<int> &dilations,
+                  const std::vector<int> &paddings,
                   const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),
@@ -55,9 +55,9 @@ class DepthwiseConv2d {
 template<>
 class DepthwiseConv2d<float> {
  public:
-  DepthwiseConv2d(const std::vector<int> strides,
-                  const std::vector<int> dilations,
-                  const std::vector<int> paddings,
+  DepthwiseConv2d(const std::vector<int> &strides,
+                  const std::vector<int> &dilations,
+                  const std::vector<int> &paddings,
                   const Padding padding_type)
       : strides_(strides),
         dilations_(dilations),

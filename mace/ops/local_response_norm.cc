@@ -20,10 +20,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class LocalResponseNormOp;
 
-template <>
+template<>
 class LocalResponseNormOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit LocalResponseNormOp(OpConstructContext *context)
@@ -51,29 +51,35 @@ class LocalResponseNormOp<DeviceType::CPU, float> : public Operation {
     const float *input_ptr = input->data<float>();
     float *output_ptr = output->mutable_data<float>();
 
-    index_t image_size = height * width;
-    index_t batch_size = channels * image_size;
+    const index_t image_size = height * width;
+    const index_t batch_size = channels * image_size;
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t c = 0; c < channels; ++c) {
-        const int begin_input_c = std::max(static_cast<index_t>(0),
-                                           c - depth_radius_);
-        const int end_input_c = std::min(channels, c + depth_radius_ + 1);
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-        index_t pos = b * batch_size;
-        for (index_t hw = 0; hw < height * width; ++hw, ++pos) {
-          float accum = 0.f;
-          for (int input_c = begin_input_c; input_c < end_input_c; ++input_c) {
-            const float input_val = input_ptr[pos + input_c * image_size];
-            accum += input_val * input_val;
+    thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
+      for (index_t b = start0; b < end0; b += step0) {
+        for (index_t c = start1; c < end1; c += step1) {
+          const index_t begin_input_c = std::max(static_cast<index_t>(0),
+                                                 c - depth_radius_);
+          const index_t end_input_c = std::min(channels, c + depth_radius_ + 1);
+
+          index_t pos = b * batch_size;
+          for (index_t hw = 0; hw < height * width; ++hw, ++pos) {
+            float accum = 0.f;
+            for (index_t input_c = begin_input_c; input_c < end_input_c;
+                 ++input_c) {
+              const float input_val = input_ptr[pos + input_c * image_size];
+              accum += input_val * input_val;
+            }
+            const float multiplier = std::pow(bias_ + alpha_ * accum, -beta_);
+            output_ptr[pos + c * image_size] =
+                input_ptr[pos + c * image_size] * multiplier;
           }
-          const float multiplier = std::pow(bias_ + alpha_ * accum, -beta_);
-          output_ptr[pos + c * image_size] =
-              input_ptr[pos + c * image_size] * multiplier;
         }
       }
-    }
+    }, 0, batch, 1, 0, channels, 1);
 
     return MaceStatus::MACE_SUCCESS;
   }

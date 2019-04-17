@@ -66,7 +66,6 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
   auto filter_data = filter->data<float>();
   auto output_data = output->mutable_data<float>();
 
-#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < in_shape[0]; b++) {
     for (index_t m = 0; m < filter_shape[0]; ++m) {
       const index_t in_height = in_shape[2];

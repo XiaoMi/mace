@@ -261,7 +261,9 @@ void QuantRandom(const index_t batch,
   auto bias_data = bias->data<float>();
   float bias_scale = q_input->scale() * q_weight->scale();
   std::vector<int32_t> q_bias(bias->size());
-  QuantizeWithScaleAndZeropoint(
+
+  QuantizeUtil<int32_t> quantize_util(OpTestContext::Get()->thread_pool());
+  quantize_util.QuantizeWithScaleAndZeropoint(
       bias_data, bias->size(), bias_scale, 0, q_bias.data());
   net.AddInputFromArray<DeviceType::CPU, int32_t>(
       "QuantizedBias", {out_channel}, q_bias, true, bias_scale, 0);

@@ -24,10 +24,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class SplitOp;
 
-template <typename T>
+template<typename T>
 class SplitOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit SplitOp(OpConstructContext *context)
@@ -70,19 +70,18 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
                                                output_shape.end(),
                                                1,
                                                std::multiplies<index_t>());
-    for (size_t i= 0; i < outputs_count; ++i) {
+    for (size_t i = 0; i < outputs_count; ++i) {
       MACE_RETURN_IF_ERROR(output_list[i]->Resize(output_shape));
       output_ptrs[i] = output_list[i]->mutable_data<T>();
     }
     const T *input_ptr = input->data<T>();
 
-#pragma omp parallel for
     for (int outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
       index_t input_idx = outer_idx * input_channels * inner_size;
       index_t output_idx = outer_idx * output_channels * inner_size;
       for (size_t i = 0; i < outputs_count; ++i) {
         if (DataTypeCanUseMemcpy(DataTypeToEnum<T>::v())) {
-          memcpy(output_ptrs[i]+output_idx, input_ptr+input_idx,
+          memcpy(output_ptrs[i] + output_idx, input_ptr + input_idx,
                  output_channels * inner_size * sizeof(T));
         } else {
           for (index_t k = 0; k < output_channels * inner_size; ++k) {
@@ -99,7 +98,6 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
   int32_t axis_;
   bool checked_;
 };
-
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -130,7 +128,6 @@ class SplitOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterSplit(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Split", SplitOp,
                    DeviceType::CPU, float);
@@ -150,15 +147,15 @@ void RegisterSplit(OpRegistryBase *op_registry) {
               [](OpConstructContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "axis", 3);
                 if (axis != 3 || op->output_shape(0).dims_size() != 4 ||
                     (op->output_shape(0).dims()[3] % 4 != 0)) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

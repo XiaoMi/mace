@@ -20,10 +20,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class ExpandDimsOp;
 
-template <typename T>
+template<typename T>
 class ExpandDimsOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ExpandDimsOp(OpConstructContext *context)
@@ -50,14 +50,15 @@ class ExpandDimsOp<DeviceType::CPU, T> : public Operation {
       // only tensorflow support expand dim, so the default format is NHWC
       // transform NHWC to NCHW
       auto t_output_shape = TransposeShape<int64_t, int64_t>(output_shape,
-          {0, 3, 1, 2});
+                                                             {0, 3, 1, 2});
       output->Resize(t_output_shape);
       Tensor::MappingGuard input_guard(input);
       Tensor::MappingGuard output_guard(output);
       auto input_data = input->data<T>();
       auto output_data = output->mutable_data<T>();
 
-      Transpose(input_data, output_shape, {0, 3, 1, 2}, output_data);
+      Transpose(&context->device()->cpu_runtime()->thread_pool(),
+                input_data, output_shape, {0, 3, 1, 2}, output_data);
     } else {
       output->Resize(output_shape);
       Tensor::MappingGuard input_guard(input);

@@ -53,16 +53,15 @@ class GatherOp : public Operation {
     const T *params_data = params->data<T>();
     T *output_data = output->mutable_data<T>();
 
-    index_t axis_dim_size = params->dim(axis_);
-    index_t lhs_size = std::accumulate(params->shape().begin(),
+    const index_t axis_dim_size = params->dim(axis_);
+    const index_t lhs_size = std::accumulate(params->shape().begin(),
                                        params->shape().begin() + axis_, 1,
                                        std::multiplies<index_t>());
-    index_t rhs_size =
+    const index_t rhs_size =
         std::accumulate(params->shape().begin() + (axis_ + 1),
                         params->shape().end(), 1, std::multiplies<index_t>());
-    index_t index_size = indices->size();
+    const index_t index_size = indices->size();
 
-#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t l = 0; l < lhs_size; ++l) {
       for (index_t idx = 0; idx < index_size; ++idx) {
         MACE_ASSERT(indices_data[idx] < axis_dim_size, "idx out of bound: ",

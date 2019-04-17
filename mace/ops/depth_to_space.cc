@@ -58,7 +58,6 @@ class DepthToSpaceOp : public Operation {
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-#pragma omp parallel for schedule(runtime)
     for (index_t b = 0; b < batch_size; ++b) {
       for (index_t d = 0; d < output_depth; ++d) {
         for (index_t h = 0; h < output_height; ++h) {

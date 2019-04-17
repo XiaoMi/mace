@@ -19,7 +19,7 @@
 
 #include "public/gemmlowp.h"
 #include "mace/core/types.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 
 namespace mace {
 

@@ -49,9 +49,9 @@ docs:
 platform_compatible_tests:
   stage: platform_compatible_tests
   script:
-    - bazel build mace/core:core --define openmp=true
-    - bazel build --config arm_linux_gnueabihf --define openmp=true --define opencl=true --define neon=true //mace/libmace:libmace.so
-    - bazel build --config aarch64_linux_gnu --define openmp=true --define opencl=true --define neon=true //mace/libmace:libmace.so
+    - bazel build mace/core:core --define openmp=false
+    - bazel build --config arm_linux_gnueabihf --define openmp=false --define opencl=true --define neon=true //mace/libmace:libmace.so
+    - bazel build --config aarch64_linux_gnu --define openmp=false --define opencl=true --define neon=true //mace/libmace:libmace.so
 
 build_libraries:
   stage: build_libraries
@@ -202,13 +202,13 @@ so_size_check:
   stage: so_size_check
   script:
     - DYNAMIC_LIB_PATH="bazel-bin/mace/libmace/libmace.so"
-    - bazel build -s --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define openmp=true --define opencl=false --define quantize=false --cpu=armeabi-v7a
+    - bazel build -s --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define openmp=false --define opencl=false --define quantize=false --cpu=armeabi-v7a
     - CURRENT_LIBMACE_SO_SIZE=`ls -l $DYNAMIC_LIB_PATH --block-size=K -s | cut -f 1 -d "K"`
     - TARGET_MACE_WORK_DIR=`mktemp -d`
     - pushd $TARGET_MACE_WORK_DIR
     - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace.git
     - pushd mace
-    - bazel build -s --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define openmp=true --define opencl=false --define quantize=false --cpu=armeabi-v7a
+    - bazel build -s --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define openmp=false --define opencl=false --define quantize=false --cpu=armeabi-v7a
     - TARGET_LIBMACE_SO_SIZE=`ls -l $DYNAMIC_LIB_PATH --block-size=K -s | cut -f 1 -d "K"`
     - popd
     - popd

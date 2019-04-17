@@ -48,8 +48,8 @@ MaceStatus Gemv::Compute(const OpContext *context,
                          Tensor *output) {
   MACE_UNUSED(context);
 
-  MACE_CHECK(output->size() >= batch * lhs_height,
-             "Output buffer is not large enough for computing gemv.");
+  MACE_CHECK(output->size() == batch * lhs_height,
+             "Need resize output tensor before call gemv.");
 
   Tensor::MappingGuard lhs_guard(lhs);
   Tensor::MappingGuard rhs_guard(rhs);
@@ -70,24 +70,29 @@ MaceStatus Gemv::Compute(const OpContext *context,
   const index_t w_block_count = lhs_width / w_block_size;
   const index_t w_remain = lhs_width - w_block_size * w_block_count;
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t h_block_idx = 0; h_block_idx < h_block_count; ++h_block_idx) {
-      const index_t h_start = h_block_idx * h_block_size;
-      const float
-          *lhs_ptr = lhs_data
-          + static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
-          + lhs_width * h_start;
-      const float *rhs_ptr =
-          rhs_data + static_cast<index_t>(rhs_batched) * b * lhs_width;
-      float
-          *ret_ptr = output_data + b * lhs_height + h_start;
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-      const index_t h_block_len =
-          std::min(h_block_size, lhs_height - h_start);
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t h_block_idx = start1; h_block_idx < end1;
+           h_block_idx += step1) {
+        const index_t h_start = h_block_idx * h_block_size;
+        const float
+            *lhs_ptr = lhs_data
+            + static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
+            + lhs_width * h_start;
+        const float *rhs_ptr =
+            rhs_data + static_cast<index_t>(rhs_batched) * b * lhs_width;
+        float
+            *ret_ptr = output_data + b * lhs_height + h_start;
+
+        const index_t h_block_len =
+            std::min(h_block_size, lhs_height - h_start);
 
 #ifdef MACE_GEMV_UNROLL
-      if (h_block_len == 4) {
+        if (h_block_len == 4) {
         float32x4_t vo0 = vdupq_n_f32(0);
         float32x4_t vo1 = vdupq_n_f32(0);
         float32x4_t vo2 = vdupq_n_f32(0);
@@ -360,10 +365,11 @@ MaceStatus Gemv::Compute(const OpContext *context,
         }  // h
 
 #ifdef MACE_GEMV_UNROLL
-      }  // if
+        }  // if
 #endif  // MACE_GEMV_UNROLL
-    }  // h_block_idx
-  }  // b
+      }  // h_block_idx
+    }  // b
+  }, 0, batch, 1, 0, h_block_count, 1);
 
   return MaceStatus::MACE_SUCCESS;
 }

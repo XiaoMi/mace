@@ -195,12 +195,18 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
         Tensor::MappingGuard c_guard(C);
         const float *bias_data = bias->data<float>();
         float *c_data = C->mutable_data<float>();
-#pragma omp parallel for collapse(2) schedule(runtime)
-        for (index_t i = 0; i < batch * rows; ++i) {
-          for (index_t w = 0; w < cols; ++w) {
-            c_data[i * cols + w] += bias_data[w];
+
+        utils::ThreadPool
+            &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+        thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                  index_t start1, index_t end1, index_t step1) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t w = start1; w < end1; w += step1) {
+              c_data[i * cols + w] += bias_data[w];
+            }
           }
-        }
+        }, 0, batch * rows, 1, 0, cols, 1);
       }
 
       return ret;

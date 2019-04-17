@@ -31,8 +31,9 @@ namespace mace {
 
 class HexagonDevice : public CPUDevice {
  public:
-  explicit HexagonDevice(DeviceType device_type)
-      : CPUDevice(0, AFFINITY_NONE, false),
+  explicit HexagonDevice(DeviceType device_type,
+                         utils::ThreadPool *thread_pool)
+      : CPUDevice(0, AFFINITY_NONE, thread_pool),
         device_type_(device_type) {}
 
   DeviceType device_type() const override {
@@ -44,9 +45,9 @@ class HexagonDevice : public CPUDevice {
 };
 
 std::unique_ptr<HexagonControlWrapper> CreateHexagonControlWrapper(
-    DeviceType device_type) {
+    Device *device) {
   std::unique_ptr<HexagonControlWrapper> hexagon_controller;
-
+  auto device_type = device->device_type();
   switch (device_type) {
 #ifdef MACE_ENABLE_HEXAGON
     case HEXAGON:
@@ -55,11 +56,10 @@ std::unique_ptr<HexagonControlWrapper> CreateHexagonControlWrapper(
 #endif
 #ifdef MACE_ENABLE_HTA
     case HTA:
-      hexagon_controller = make_unique<HexagonHTAWrapper>();
+      hexagon_controller = make_unique<HexagonHTAWrapper>(device);
       break;
 #endif
-    default:
-      LOG(FATAL) << "Not supported Hexagon device type: " << device_type;
+    default:LOG(FATAL) << "Not supported Hexagon device type: " << device_type;
   }
 
   return hexagon_controller;

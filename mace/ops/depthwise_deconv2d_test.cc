@@ -252,7 +252,7 @@ TEST_F(DepthwiseDeconv2dOpTest, RandomTestFloat) {
   RandomTest<float>(1, 4, 256, 256, 5, 1, 3);
   RandomTest<float>(1, 4, 256, 256, 5, 2, 4);
 }
-//
+
 TEST_F(DepthwiseDeconv2dOpTest, RandomTestHalf) {
   RandomTest<half>(1, 32, 256, 256, 5, 1, 2);
   RandomTest<half>(1, 3, 256, 256, 5, 1, 1);

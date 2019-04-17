@@ -19,7 +19,7 @@
 #include <algorithm>
 
 #include "mace/utils/math.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 
 #if !defined(__aarch64__)
 
@@ -82,91 +82,94 @@ MaceStatus Gemv<OUTPUT_TYPE>::Compute(const OpContext *context,
       sum_rhs += static_cast<uint32_t>(rhs_base[i]);
     }
 
-#pragma omp parallel for schedule(runtime)
-    for (index_t h = 0; h < lhs_height; ++h) {
-      const uint8_t *lhs_ptr = lhs_data
-          + static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
-          + h * lhs_width;
-      const uint8_t *rhs_ptr = rhs_base;
-      OUTPUT_TYPE *output_ptr = output_data + b * lhs_height + h;
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+      for (index_t h = start; h < end; h += step) {
+        const uint8_t *lhs_ptr = lhs_data
+            + static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
+            + h * lhs_width;
+        const uint8_t *rhs_ptr = rhs_base;
+        OUTPUT_TYPE *output_ptr = output_data + b * lhs_height + h;
 
-      uint32_t dot = 0;
-      uint32_t sum_lhs = 0;
-      uint32x4_t vo0_high_u32 = vdupq_n_u32(0);
-      uint32x4_t vo0_low_u32 = vdupq_n_u32(0);
-      uint32x4_t vo1_high_u32 = vdupq_n_u32(0);
-      uint32x4_t vo1_low_u32 = vdupq_n_u32(0);
-      uint32x4_t sum_lhs_low_u32 = vdupq_n_u32(0);
-      uint32x4_t sum_lhs_high_u32 = vdupq_n_u32(0);
+        uint32_t dot = 0;
+        uint32_t sum_lhs = 0;
+        uint32x4_t vo0_high_u32 = vdupq_n_u32(0);
+        uint32x4_t vo0_low_u32 = vdupq_n_u32(0);
+        uint32x4_t vo1_high_u32 = vdupq_n_u32(0);
+        uint32x4_t vo1_low_u32 = vdupq_n_u32(0);
+        uint32x4_t sum_lhs_low_u32 = vdupq_n_u32(0);
+        uint32x4_t sum_lhs_high_u32 = vdupq_n_u32(0);
 
-      for (index_t w_block_idx = 0; w_block_idx < w_block_count;
-           ++w_block_idx) {
-        uint8x8_t vl0_u8 = vld1_u8(lhs_ptr);
-        uint8x8_t vl1_u8 = vld1_u8(lhs_ptr + 8);
+        for (index_t w_block_idx = 0; w_block_idx < w_block_count;
+             ++w_block_idx) {
+          uint8x8_t vl0_u8 = vld1_u8(lhs_ptr);
+          uint8x8_t vl1_u8 = vld1_u8(lhs_ptr + 8);
 
-        uint8x8_t vr0_u8 = vld1_u8(rhs_ptr);
-        uint8x8_t vr1_u8 = vld1_u8(rhs_ptr + 8);
+          uint8x8_t vr0_u8 = vld1_u8(rhs_ptr);
+          uint8x8_t vr1_u8 = vld1_u8(rhs_ptr + 8);
 
-        uint16x8_t vl0_u16 = vmovl_u8(vl0_u8);
-        uint16x8_t vl1_u16 = vmovl_u8(vl1_u8);
+          uint16x8_t vl0_u16 = vmovl_u8(vl0_u8);
+          uint16x8_t vl1_u16 = vmovl_u8(vl1_u8);
 
-        uint16x8_t vr0_u16 = vmovl_u8(vr0_u8);
-        uint16x8_t vr1_u16 = vmovl_u8(vr1_u8);
+          uint16x8_t vr0_u16 = vmovl_u8(vr0_u8);
+          uint16x8_t vr1_u16 = vmovl_u8(vr1_u8);
 
-        vo0_high_u32 = vmlal_u16(vo0_high_u32,
-                                 vget_high_u16(vl0_u16),
-                                 vget_high_u16(vr0_u16));
-        vo0_low_u32 = vmlal_u16(vo0_low_u32,
-                                vget_low_u16(vl0_u16),
-                                vget_low_u16(vr0_u16));
-        vo1_high_u32 = vmlal_u16(vo1_high_u32,
-                                 vget_high_u16(vl1_u16),
-                                 vget_high_u16(vr1_u16));
-        vo1_low_u32 = vmlal_u16(vo1_low_u32,
-                                vget_low_u16(vl1_u16),
-                                vget_low_u16(vr1_u16));
+          vo0_high_u32 = vmlal_u16(vo0_high_u32,
+                                   vget_high_u16(vl0_u16),
+                                   vget_high_u16(vr0_u16));
+          vo0_low_u32 = vmlal_u16(vo0_low_u32,
+                                  vget_low_u16(vl0_u16),
+                                  vget_low_u16(vr0_u16));
+          vo1_high_u32 = vmlal_u16(vo1_high_u32,
+                                   vget_high_u16(vl1_u16),
+                                   vget_high_u16(vr1_u16));
+          vo1_low_u32 = vmlal_u16(vo1_low_u32,
+                                  vget_low_u16(vl1_u16),
+                                  vget_low_u16(vr1_u16));
 
-        // It can be precuculated if lhs is const, but for this case
-        // computation is not bottleneck
-        sum_lhs_high_u32 += vaddl_u16(vget_high_u16(vl0_u16),
-                                      vget_high_u16(vl1_u16));
-        sum_lhs_low_u32 += vaddl_u16(vget_low_u16(vl0_u16),
-                                     vget_low_u16(vl1_u16));
+          // It can be precalculated if lhs is const, but for this case
+          // computation is not bottleneck
+          sum_lhs_high_u32 += vaddl_u16(vget_high_u16(vl0_u16),
+                                        vget_high_u16(vl1_u16));
+          sum_lhs_low_u32 += vaddl_u16(vget_low_u16(vl0_u16),
+                                       vget_low_u16(vl1_u16));
 
-        lhs_ptr += 16;
-        rhs_ptr += 16;
-      }
+          lhs_ptr += 16;
+          rhs_ptr += 16;
+        }
 
-      vo0_low_u32 = vaddq_u32(vo0_high_u32, vo0_low_u32);
-      vo1_low_u32 = vaddq_u32(vo1_high_u32, vo1_low_u32);
-      vo0_low_u32 = vaddq_u32(vo0_low_u32, vo1_low_u32);
-      dot += vaddvq_u32(vo0_low_u32);
+        vo0_low_u32 = vaddq_u32(vo0_high_u32, vo0_low_u32);
+        vo1_low_u32 = vaddq_u32(vo1_high_u32, vo1_low_u32);
+        vo0_low_u32 = vaddq_u32(vo0_low_u32, vo1_low_u32);
+        dot += vaddvq_u32(vo0_low_u32);
 
-      sum_lhs_low_u32 = vaddq_u32(sum_lhs_high_u32, sum_lhs_low_u32);
-      sum_lhs = vaddvq_u32(sum_lhs_low_u32);
+        sum_lhs_low_u32 = vaddq_u32(sum_lhs_high_u32, sum_lhs_low_u32);
+        sum_lhs = vaddvq_u32(sum_lhs_low_u32);
 
-      for (index_t w = 0; w < w_block_remain; ++w) {
-        dot += (*lhs_ptr) * (*rhs_ptr);
-        sum_lhs += (*lhs_ptr);
-        ++lhs_ptr;
-        ++rhs_ptr;
-      }
+        for (index_t w = 0; w < w_block_remain; ++w) {
+          dot += (*lhs_ptr) * (*rhs_ptr);
+          sum_lhs += (*lhs_ptr);
+          ++lhs_ptr;
+          ++rhs_ptr;
+        }
 
-      const auto zero_point_dot =
-          static_cast<int32_t>(lhs_zero_point * rhs_zero_point * lhs_width);
-      int32_t ret = dot - sum_lhs * rhs_zero_point - sum_rhs * lhs_zero_point
-          + zero_point_dot;
-      if (bias) {
-        ret += bias->data<int32_t>()[h];
-      }
+        const auto zero_point_dot =
+            static_cast<int32_t>(lhs_zero_point * rhs_zero_point * lhs_width);
+        int32_t ret = dot - sum_lhs * rhs_zero_point - sum_rhs * lhs_zero_point
+            + zero_point_dot;
+        if (bias) {
+          ret += bias->data<int32_t>()[h];
+        }
 
-      if (is_output_type_uint8_) {
-        *output_ptr =
-            Saturate<uint8_t>(std::roundf(ret * output_multiplier_float));
-      } else {
-        *output_ptr = ret;
-      }
-    }  // h
+        if (is_output_type_uint8_) {
+          *output_ptr =
+              Saturate<uint8_t>(std::roundf(ret * output_multiplier_float));
+        } else {
+          *output_ptr = ret;
+        }
+      }  // h
+    }, 0, lhs_height, 1);
   }  // b
 
 

@@ -39,8 +39,6 @@ MaceStatus Gemm::Compute(const OpContext *context,
                          const bool lhs_batched,
                          const bool rhs_batched,
                          Tensor *output) {
-  MACE_UNUSED(context);
-
   MACE_CHECK(output->size() == batch * rows * cols,
              "Need resize output tensor before call gemm.");
   Tensor::MappingGuard lhs_guard(lhs);
@@ -63,10 +61,8 @@ MaceStatus Gemm::Compute(const OpContext *context,
   const index_t cols_padded = RoundUp(cols, col_block_size);
   const index_t depth_padded = RoundUp(depth, depth_block_size);
 
-  ScratchBuffer *scratch = &tmp_scratch_buffer_;
-  if (context != nullptr && context->device()->scratch_buffer() != nullptr) {
-    scratch = context->device()->scratch_buffer();
-  }
+  ScratchBuffer *scratch = context->device()->scratch_buffer();
+
   index_t packed_lhs_size =
       PadAlignSize(sizeof(float) * rows_padded * depth_padded);
   index_t packed_rhs_size =
@@ -101,6 +97,9 @@ MaceStatus Gemm::Compute(const OpContext *context,
     }
   }
 
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
   for (index_t b = 0; b < batch; ++b) {
     MatrixMap<const float>
         lhs_matrix
@@ -119,17 +118,21 @@ MaceStatus Gemm::Compute(const OpContext *context,
 
     // pack lhs
     if (cached_ != kCacheLhs) {
-#pragma omp parallel for schedule(runtime)
-      for (index_t row_block_idx = 0; row_block_idx < row_block_count;
-           ++row_block_idx) {
-        const index_t start_row = row_block_idx * row_block_size;
-        const index_t
-            row_block_len = std::min(row_block_size, rows - start_row);
-        float *packed_lhs_data_block =
-            packed_lhs_data + row_block_idx * row_block_size * depth_padded;
-        PackLhs(lhs_matrix.block(start_row, 0, row_block_len, depth),
-                packed_lhs_data_block);
-      }
+      thread_pool.Compute1D([=, &lhs_matrix](index_t start,
+                                             index_t end,
+                                             index_t step) {
+        for (index_t row_block_idx = start; row_block_idx < end;
+             row_block_idx += step) {
+          const index_t start_row = row_block_idx * row_block_size;
+          const index_t
+              row_block_len = std::min(row_block_size, rows - start_row);
+          float *packed_lhs_data_block =
+              packed_lhs_data + row_block_idx * row_block_size * depth_padded;
+          PackLhs(lhs_matrix.block(start_row, 0, row_block_len, depth),
+                  packed_lhs_data_block);
+        }
+      }, 0, row_block_count, 1);
+
       if (cache_side == kCacheLhs) {
         cached_ = kCacheLhs;
         if (lhs->UnderlyingBuffer()->OnHost()) {
@@ -142,17 +145,21 @@ MaceStatus Gemm::Compute(const OpContext *context,
 
     // pack rhs
     if (cached_ != kCacheRhs) {
-#pragma omp parallel for schedule(runtime)
-      for (index_t col_block_idx = 0; col_block_idx < col_block_count;
-           ++col_block_idx) {
-        const index_t start_col = col_block_idx * col_block_size;
-        const index_t
-            col_block_len = std::min(col_block_size, cols - start_col);
-        float *packed_rhs_data_block =
-            packed_rhs_data + col_block_idx * col_block_size * depth_padded;
-        PackRhs(rhs_matrix.block(0, start_col, depth, col_block_len),
-                packed_rhs_data_block);
-      }
+      thread_pool.Compute1D([=, &rhs_matrix](index_t start,
+                                             index_t end,
+                                             index_t step) {
+        for (index_t col_block_idx = start; col_block_idx < end;
+             col_block_idx += step) {
+          const index_t start_col = col_block_idx * col_block_size;
+          const index_t
+              col_block_len = std::min(col_block_size, cols - start_col);
+          float *packed_rhs_data_block =
+              packed_rhs_data + col_block_idx * col_block_size * depth_padded;
+          PackRhs(rhs_matrix.block(0, start_col, depth, col_block_len),
+                  packed_rhs_data_block);
+        }
+      }, 0, col_block_count, 1);
+
       if (cache_side == kCacheRhs) {
         cached_ = kCacheRhs;
         if (rhs->UnderlyingBuffer()->OnHost()) {
@@ -164,35 +171,39 @@ MaceStatus Gemm::Compute(const OpContext *context,
     }
 
     // multiply lhs and rhs
-#pragma omp parallel for schedule(runtime)
-    for (index_t row_block_idx = 0; row_block_idx < row_block_count;
-         ++row_block_idx) {
-      const index_t start_row = row_block_idx * row_block_size;
-      const index_t row_block_len = std::min(row_block_size, rows - start_row);
-      const float *packed_lhs_data_block =
-          packed_lhs_data + row_block_idx * row_block_size * depth_padded;
-
-      for (index_t col_block_idx = 0; col_block_idx < col_block_count;
-           ++col_block_idx) {
-        const index_t start_col = col_block_idx * col_block_size;
+    thread_pool.Compute1D([=, &output_matrix](index_t start,
+                                              index_t end,
+                                              index_t step) {
+      for (index_t row_block_idx = start; row_block_idx < end;
+           row_block_idx += step) {
+        const index_t start_row = row_block_idx * row_block_size;
         const index_t
-            col_block_len = std::min(col_block_size, cols - start_col);
-        const float *packed_rhs_data_block =
-            packed_rhs_data + col_block_idx * col_block_size * depth_padded;
-        float *packed_output_data_block =
-            packed_output_data + row_block_idx * row_block_size * cols_padded
-                + col_block_idx * col_block_size;
-        ComputeBlock(packed_lhs_data_block,
-                     packed_rhs_data_block,
-                     depth_padded,
-                     packed_output_data_block);
-        MatrixMap<float> output_block = output_matrix.block(start_row,
-                                                            start_col,
-                                                            row_block_len,
-                                                            col_block_len);
-        UnpackOutput(packed_output_data_block, &output_block);
-      }  // col_block_idx
-    }  // row_block_idx
+            row_block_len = std::min(row_block_size, rows - start_row);
+        const float *packed_lhs_data_block =
+            packed_lhs_data + row_block_idx * row_block_size * depth_padded;
+
+        for (index_t col_block_idx = 0; col_block_idx < col_block_count;
+             ++col_block_idx) {
+          const index_t start_col = col_block_idx * col_block_size;
+          const index_t
+              col_block_len = std::min(col_block_size, cols - start_col);
+          const float *packed_rhs_data_block =
+              packed_rhs_data + col_block_idx * col_block_size * depth_padded;
+          float *packed_output_data_block =
+              packed_output_data + row_block_idx * row_block_size * cols_padded
+                  + col_block_idx * col_block_size;
+          ComputeBlock(packed_lhs_data_block,
+                       packed_rhs_data_block,
+                       depth_padded,
+                       packed_output_data_block);
+          MatrixMap<float> output_block = output_matrix.block(start_row,
+                                                              start_col,
+                                                              row_block_len,
+                                                              col_block_len);
+          UnpackOutput(packed_output_data_block, &output_block);
+        }  // col_block_idx
+      }  // row_block_idx
+    }, 0, row_block_count, 1);
   }  // b
 
   return MaceStatus::MACE_SUCCESS;
@@ -530,140 +541,140 @@ void Gemm::ComputeBlock(const float *packed_lhs_data,
     MACE_UNUSED(r_depth_block_count);
 
     asm volatile(
-        "mov r0, #0\n"
-        "vdup.f32 q8, r0 \n"
-        "vdup.f32 q9, r0 \n"
-        "vdup.f32 q10, r0 \n"
-        "vdup.f32 q11, r0 \n"
-        "vdup.f32 q12, r0 \n"
-        "vdup.f32 q13, r0 \n"
-        "vdup.f32 q14, r0 \n"
-        "vdup.f32 q15, r0 \n"
+    "mov r0, #0\n"
+    "vdup.f32 q8, r0 \n"
+    "vdup.f32 q9, r0 \n"
+    "vdup.f32 q10, r0 \n"
+    "vdup.f32 q11, r0 \n"
+    "vdup.f32 q12, r0 \n"
+    "vdup.f32 q13, r0 \n"
+    "vdup.f32 q14, r0 \n"
+    "vdup.f32 q15, r0 \n"
 
-        // prelogue
-        "vld1.f32 {d0-d1}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d2-d3}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d4-d5}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d6-d7}, [%[lhs_ptr]]! \n"
+    // prelogue
+    "vld1.f32 {d0-d1}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d2-d3}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d4-d5}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d6-d7}, [%[lhs_ptr]]! \n"
 
-        "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
 
-        "subs %[r_depth_block_count], %[r_depth_block_count], #1 \n"
-        "beq 1f\n"
+    "subs %[r_depth_block_count], %[r_depth_block_count], #1 \n"
+    "beq 1f\n"
 
-        "0: \n"
+    "0: \n"
 
-        "vmla.f32 q8, q4, d0[0] \n"
-        "vmla.f32 q9, q5, d0[0] \n"
-        "vmla.f32 q10, q4, d0[1] \n"
-        "vmla.f32 q11, q5, d0[1] \n"
-        "vmla.f32 q12, q4, d1[0] \n"
-        "vmla.f32 q13, q5, d1[0] \n"
-        "vmla.f32 q14, q4, d1[1] \n"
-        "vmla.f32 q15, q5, d1[1] \n"
+    "vmla.f32 q8, q4, d0[0] \n"
+    "vmla.f32 q9, q5, d0[0] \n"
+    "vmla.f32 q10, q4, d0[1] \n"
+    "vmla.f32 q11, q5, d0[1] \n"
+    "vmla.f32 q12, q4, d1[0] \n"
+    "vmla.f32 q13, q5, d1[0] \n"
+    "vmla.f32 q14, q4, d1[1] \n"
+    "vmla.f32 q15, q5, d1[1] \n"
 
-        "vld1.f32 {d0-d1}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d0-d1}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
 
-        "vmla.f32 q8, q6, d2[0] \n"
-        "vmla.f32 q9, q7, d2[0] \n"
-        "vmla.f32 q10, q6, d2[1] \n"
-        "vmla.f32 q11, q7, d2[1] \n"
-        "vmla.f32 q12, q6, d3[0] \n"
-        "vmla.f32 q13, q7, d3[0] \n"
-        "vmla.f32 q14, q6, d3[1] \n"
-        "vmla.f32 q15, q7, d3[1] \n"
+    "vmla.f32 q8, q6, d2[0] \n"
+    "vmla.f32 q9, q7, d2[0] \n"
+    "vmla.f32 q10, q6, d2[1] \n"
+    "vmla.f32 q11, q7, d2[1] \n"
+    "vmla.f32 q12, q6, d3[0] \n"
+    "vmla.f32 q13, q7, d3[0] \n"
+    "vmla.f32 q14, q6, d3[1] \n"
+    "vmla.f32 q15, q7, d3[1] \n"
 
-        "vld1.f32 {d2-d3}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d2-d3}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
 
-        "vmla.f32 q8, q4, d4[0] \n"
-        "vmla.f32 q9, q5, d4[0] \n"
-        "vmla.f32 q10, q4, d4[1] \n"
-        "vmla.f32 q11, q5, d4[1] \n"
-        "vmla.f32 q12, q4, d5[0] \n"
-        "vmla.f32 q13, q5, d5[0] \n"
-        "vmla.f32 q14, q4, d5[1] \n"
-        "vmla.f32 q15, q5, d5[1] \n"
+    "vmla.f32 q8, q4, d4[0] \n"
+    "vmla.f32 q9, q5, d4[0] \n"
+    "vmla.f32 q10, q4, d4[1] \n"
+    "vmla.f32 q11, q5, d4[1] \n"
+    "vmla.f32 q12, q4, d5[0] \n"
+    "vmla.f32 q13, q5, d5[0] \n"
+    "vmla.f32 q14, q4, d5[1] \n"
+    "vmla.f32 q15, q5, d5[1] \n"
 
-        "vld1.f32 {d4-d5}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d4-d5}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
 
-        "subs %[r_depth_block_count], %[r_depth_block_count], #1 \n"
+    "subs %[r_depth_block_count], %[r_depth_block_count], #1 \n"
 
-        "vmla.f32 q8, q6, d6[0] \n"
-        "vmla.f32 q9, q7, d6[0] \n"
-        "vmla.f32 q10, q6, d6[1] \n"
-        "vmla.f32 q11, q7, d6[1] \n"
-        "vmla.f32 q12, q6, d7[0] \n"
-        "vmla.f32 q13, q7, d7[0] \n"
-        "vmla.f32 q14, q6, d7[1] \n"
-        "vmla.f32 q15, q7, d7[1] \n"
+    "vmla.f32 q8, q6, d6[0] \n"
+    "vmla.f32 q9, q7, d6[0] \n"
+    "vmla.f32 q10, q6, d6[1] \n"
+    "vmla.f32 q11, q7, d6[1] \n"
+    "vmla.f32 q12, q6, d7[0] \n"
+    "vmla.f32 q13, q7, d7[0] \n"
+    "vmla.f32 q14, q6, d7[1] \n"
+    "vmla.f32 q15, q7, d7[1] \n"
 
-        "vld1.f32 {d6-d7}, [%[lhs_ptr]]! \n"
-        "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d6-d7}, [%[lhs_ptr]]! \n"
+    "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
 
-        "bne 0b \n"
+    "bne 0b \n"
 
-        // prologue
-        "1:\n"
-        "vmla.f32 q8, q4, d0[0] \n"
-        "vmla.f32 q9, q5, d0[0] \n"
-        "vmla.f32 q10, q4, d0[1] \n"
-        "vmla.f32 q11, q5, d0[1] \n"
-        "vmla.f32 q12, q4, d1[0] \n"
-        "vmla.f32 q13, q5, d1[0] \n"
-        "vmla.f32 q14, q4, d1[1] \n"
-        "vmla.f32 q15, q5, d1[1] \n"
+    // prologue
+    "1:\n"
+    "vmla.f32 q8, q4, d0[0] \n"
+    "vmla.f32 q9, q5, d0[0] \n"
+    "vmla.f32 q10, q4, d0[1] \n"
+    "vmla.f32 q11, q5, d0[1] \n"
+    "vmla.f32 q12, q4, d1[0] \n"
+    "vmla.f32 q13, q5, d1[0] \n"
+    "vmla.f32 q14, q4, d1[1] \n"
+    "vmla.f32 q15, q5, d1[1] \n"
 
-        "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d8-d9}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d10-d11}, [%[rhs_ptr]]! \n"
 
-        "vmla.f32 q8, q6, d2[0] \n"
-        "vmla.f32 q9, q7, d2[0] \n"
-        "vmla.f32 q10, q6, d2[1] \n"
-        "vmla.f32 q11, q7, d2[1] \n"
-        "vmla.f32 q12, q6, d3[0] \n"
-        "vmla.f32 q13, q7, d3[0] \n"
-        "vmla.f32 q14, q6, d3[1] \n"
-        "vmla.f32 q15, q7, d3[1] \n"
+    "vmla.f32 q8, q6, d2[0] \n"
+    "vmla.f32 q9, q7, d2[0] \n"
+    "vmla.f32 q10, q6, d2[1] \n"
+    "vmla.f32 q11, q7, d2[1] \n"
+    "vmla.f32 q12, q6, d3[0] \n"
+    "vmla.f32 q13, q7, d3[0] \n"
+    "vmla.f32 q14, q6, d3[1] \n"
+    "vmla.f32 q15, q7, d3[1] \n"
 
-        "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
-        "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d12-d13}, [%[rhs_ptr]]! \n"
+    "vld1.f32 {d14-d15}, [%[rhs_ptr]]! \n"
 
-        "vmla.f32 q8, q4, d4[0] \n"
-        "vmla.f32 q9, q5, d4[0] \n"
-        "vmla.f32 q10, q4, d4[1] \n"
-        "vmla.f32 q11, q5, d4[1] \n"
-        "vmla.f32 q12, q4, d5[0] \n"
-        "vmla.f32 q13, q5, d5[0] \n"
-        "vmla.f32 q14, q4, d5[1] \n"
-        "vmla.f32 q15, q5, d5[1] \n"
+    "vmla.f32 q8, q4, d4[0] \n"
+    "vmla.f32 q9, q5, d4[0] \n"
+    "vmla.f32 q10, q4, d4[1] \n"
+    "vmla.f32 q11, q5, d4[1] \n"
+    "vmla.f32 q12, q4, d5[0] \n"
+    "vmla.f32 q13, q5, d5[0] \n"
+    "vmla.f32 q14, q4, d5[1] \n"
+    "vmla.f32 q15, q5, d5[1] \n"
 
-        "vmla.f32 q8, q6, d6[0] \n"
-        "vmla.f32 q9, q7, d6[0] \n"
-        "vmla.f32 q10, q6, d6[1] \n"
-        "vmla.f32 q11, q7, d6[1] \n"
-        "vmla.f32 q12, q6, d7[0] \n"
-        "vmla.f32 q13, q7, d7[0] \n"
-        "vmla.f32 q14, q6, d7[1] \n"
-        "vmla.f32 q15, q7, d7[1] \n"
+    "vmla.f32 q8, q6, d6[0] \n"
+    "vmla.f32 q9, q7, d6[0] \n"
+    "vmla.f32 q10, q6, d6[1] \n"
+    "vmla.f32 q11, q7, d6[1] \n"
+    "vmla.f32 q12, q6, d7[0] \n"
+    "vmla.f32 q13, q7, d7[0] \n"
+    "vmla.f32 q14, q6, d7[1] \n"
+    "vmla.f32 q15, q7, d7[1] \n"
 
-        "vst1.f32 {d16-d17}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d18-d19}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d20-d21}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d22-d23}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d24-d25}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d26-d27}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d28-d29}, [%[packed_output_data]]! \n"
-        "vst1.f32 {d30-d31}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d16-d17}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d18-d19}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d20-d21}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d22-d23}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d24-d25}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d26-d27}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d28-d29}, [%[packed_output_data]]! \n"
+    "vst1.f32 {d30-d31}, [%[packed_output_data]]! \n"
     :  // outputs
     [lhs_ptr] "+r"(lhs_ptr),
     [rhs_ptr] "+r"(rhs_ptr),

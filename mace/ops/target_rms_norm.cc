@@ -91,7 +91,6 @@ class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
     const float *input_data = input->data<float>();
     float *output_data = output->mutable_data<float>();
 
-#pragma omp parallel for schedule(runtime)
     for (index_t i = 0; i < bh; ++i) {
       float scale = SquareSum(input_data + i * dim, dim);
       scale = static_cast<float>(1.0 / std::sqrt(scale / d_scale));

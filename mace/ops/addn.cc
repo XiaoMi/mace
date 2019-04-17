@@ -42,61 +42,23 @@ class AddNOp<DeviceType::CPU, float> : public Operation {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    Tensor *output_tensor = this->Output(0);
-    size_t input_size = this->inputs_.size();
-    MACE_RETURN_IF_ERROR(output_tensor->ResizeLike(inputs_[0]));
-    index_t size = output_tensor->size();
-    Tensor::MappingGuard output_map(output_tensor);
-    float *output_data = output_tensor->mutable_data<float>();
+    Tensor *output = this->Output(0);
+    MACE_RETURN_IF_ERROR(output->ResizeLike(inputs_[0]));
+    const index_t size = output->size();
+
+    Tensor::MappingGuard output_guard(output);
+    auto output_data = output->mutable_data<float>();
     memset(output_data, 0, size * sizeof(float));
-    int64_t cost = size * input_size;
-    int64_t groups = 1;
-    if (cost > kCostPerGroup) {
-      groups = cost / kCostPerGroup;
-    }
-    int64_t element_per_group = size / groups;
 
-    std::vector<Tensor::MappingGuard> mappers;
-    for (size_t i = 0; i < input_size; ++i) {
-      MACE_CHECK(inputs_[0]->dim_size() == inputs_[i]->dim_size());
-      MACE_CHECK(inputs_[0]->size() == inputs_[i]->size())
-        << "Input 0: " << MakeString(inputs_[0]->shape())
-        << ", size: " << inputs_[0]->size() << ". Input " << i << ": "
-        << MakeString(inputs_[i]->shape()) << ", size: " << inputs_[i]->size();
-      mappers.emplace_back(Tensor::MappingGuard(inputs_[i]));
-    }
+    for (auto &input : inputs_) {
+      Tensor::MappingGuard input_guard(input);
+      auto input_data = input->data<float>();
 
-#pragma omp parallel for
-    for (int64_t i = 0; i < size; i += element_per_group) {
-      int64_t count = std::min(element_per_group, size - i);
-      int nn = count >> 2;
-      int remain = count - (nn << 2);
-      for (size_t j = 0; j < input_size; ++j) {
-        const float *input_data = inputs_[j]->data<float>();
-        const float *input_ptr = input_data + i;
-        float *output_ptr = output_data + i;
-        for (int k = 0; k < nn; ++k) {
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
-          float32x4_t in = vld1q_f32(input_ptr);
-          float32x4_t out = vld1q_f32(output_ptr);
-          out = vaddq_f32(out, in);
-          vst1q_f32(output_ptr, out);
-#else
-          for (int m = 0; m < 4; ++m) {
-            output_ptr[m] += input_ptr[m];
-          }
-#endif
-
-          input_ptr += 4;
-          output_ptr += 4;
-        }
-        for (int k = 0; k < remain; ++k) {
-          *output_ptr += *input_ptr;
-          ++input_ptr;
-          ++output_ptr;
-        }
+      for (index_t j = 0; j < size; ++j) {
+        output_data[j] += input_data[j];
       }
     }
+
     return MaceStatus::MACE_SUCCESS;
   }
 };

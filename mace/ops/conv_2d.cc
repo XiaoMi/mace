@@ -41,6 +41,11 @@
 #include "mace/ops/arm/fp32/conv_2d_7x7.h"
 #include "mace/ops/arm/fp32/conv_2d_1xn.h"
 #include "mace/ops/arm/fp32/conv_general.h"
+#include "mace/ops/arm/fp32/bias_add.h"
+#include "mace/ops/arm/fp32/activation.h"
+#else
+#include "mace/ops/ref/activation.h"
+#include "mace/ops/ref/bias_add.h"
 #endif  // MACE_ENABLE_NEON
 
 #include "mace/ops/ref/conv_2d.h"
@@ -67,20 +72,19 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
-        activation_(ops::StringToActivationType(
+        activation_delegator_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
-                                                   "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-            "leakyrelu_coefficient", 0.0f)) {}
+                                                   "NOOP")),
+                              Operation::GetOptionalArg<float>("max_limit",
+                                                               0.0f),
+                              Operation::GetOptionalArg<float>(
+                                  "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
-
-    const index_t channels = filter->dim(0);
 
 #ifdef MACE_ENABLE_NEON
     // the following params are used to decide which conv delegator to use
@@ -91,11 +95,12 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     const index_t filter_h = filter->dim(2);
     const index_t filter_w = filter->dim(3);
     const index_t input_channels = input->dim(1);
+    const index_t channels = filter->dim(0);
 
     // NOTE: delegator is fixed after first round of running,
     // although winograd depends on input params.
     // We do not support changeable filter for now.
-    if (conv2d_delegator_.get() == nullptr) {
+    if (conv2d_delegator_ == nullptr) {
       if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
           && dilation_h == 1 && dilation_w == 1) {
         conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x1>(
@@ -166,7 +171,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
 
     conv2d_delegator_->Compute(context, input, filter, output);
 #else
-    if (ref_conv2d_delegator_.get() == nullptr) {
+    if (ref_conv2d_delegator_ == nullptr) {
       ref_conv2d_delegator_ = make_unique<ref::Conv2d<float>>(strides_,
                                                               dilations_,
                                                               paddings_,
@@ -175,53 +180,21 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     ref_conv2d_delegator_->Compute(context, input, filter, output);
 #endif
 
-    Tensor::MappingGuard bias_guard(bias);
-    Tensor::MappingGuard output_guard(output);
-    auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
-    auto output_data = output->mutable_data<float>();
-    if (bias_data != nullptr) {
-      const index_t batch = input->dim(0);
-      const index_t height = output->dim(2);
-      const index_t width = output->dim(3);
-      const index_t image_size = height * width;
-#pragma omp parallel for collapse(2) schedule(runtime)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channels; ++c) {
-          float *output_ptr = output_data + (b * channels + c) * image_size;
-          const float bias = bias_data[c];
-#if defined(MACE_ENABLE_NEON)
-          float32x4_t vbias = vdupq_n_f32(bias);
-          for (index_t i = 0; i <= image_size - 4; i += 4) {
-            float32x4_t v = vld1q_f32(output_ptr + i);
-            v = vaddq_f32(v, vbias);
-            vst1q_f32(output_ptr + i, v);
-          }
-          for (index_t i = (image_size >> 2) << 2; i < image_size; ++i) {
-            output_ptr[i] += bias;
-          }
-#else
-          for (index_t i = 0; i < image_size; ++i) {
-            output_ptr[i] += bias;
-          }
-#endif
-        }
-      }
-    }
-
-    DoActivation(output_data, output_data, output->size(), activation_,
-                 relux_max_limit_, leakyrelu_coefficient_);
+    bias_add_delegator_.Compute(context, output, bias, output);
+    activation_delegator_.Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-  const ActivationType activation_;
-  const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
 #ifdef MACE_ENABLE_NEON
   std::unique_ptr<arm::fp32::Conv2dBase> conv2d_delegator_;
+  arm::fp32::BiasAdd bias_add_delegator_;
+  arm::fp32::Activation activation_delegator_;
 #else
   std::unique_ptr<ref::Conv2d<float>> ref_conv2d_delegator_;
+  ref::BiasAdd bias_add_delegator_;
+  ref::Activation activation_delegator_;
 #endif  // MACE_ENABLE_NEON
 
  private:
@@ -230,17 +203,17 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
-template <>
+template<>
 class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
-                                                  "NOOP"))),
+                                                   "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
         leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-              "leakyrelu_coefficient", 0.0f)) {}
+            "leakyrelu_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
@@ -334,7 +307,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
       scratch->GrowSize(im2col_size);
       im2col = make_unique<Tensor>(scratch->Scratch(im2col_size), DT_UINT8);
       uint8_t *im2col_data = im2col->mutable_data<uint8_t>();
-      Im2col(input_data, input->shape(), filter_h, filter_w, stride_h,
+      Im2col(context, input_data, input->shape(), filter_h, filter_w, stride_h,
              stride_w, static_cast<uint8_t>(input->zero_point()),
              paddings[0], paddings[1], output->shape(), depth, im2col_data);
       gemm_input_data = im2col_data;
@@ -366,87 +339,98 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
   }
 
  private:
-  template <typename T>
+  template<typename T>
   inline void Im2col(
+      const OpContext *context,
       const T *in_data, const std::vector<index_t> &in_shape,
       const index_t filter_h, const index_t filter_w, const index_t stride_h,
       const index_t stride_w, const T zero_point, const int pad_height,
       const int pad_width, const std::vector<index_t> &out_shape,
-      const index_t depth, T* im2col_data) {
+      const index_t depth, T *im2col_data) {
     const index_t input_row_size = in_shape[2] * in_shape[3];
     const index_t patch_row_size = filter_w * in_shape[3];
 
-#pragma omp parallel for collapse(3) schedule(runtime)
-    for (index_t b = 0; b < out_shape[0]; ++b) {
-      for (index_t h = 0; h < out_shape[1]; ++h) {
-        for (index_t w = 0; w < out_shape[2]; ++w) {
-          // Reshape a patch of input to column, which is corresponding to
-          // a column of output(:, column).
-          const index_t ih_begin = h * stride_h - (pad_height >> 1);
-          const index_t ih_end = ih_begin + filter_h;
-          const index_t iw_begin = w * stride_w - (pad_width >> 1);
-          const index_t iw_end = iw_begin + filter_w;
-          // gate height and width to separate padding
-          const index_t ih_begin_gated = std::max<index_t>(0, ih_begin);
-          const index_t ih_end_gated = std::min<index_t>(ih_end, in_shape[1]);
-          const index_t iw_begin_gated = std::max<index_t>(0, iw_begin);
-          const index_t iw_end_gated = std::min<index_t>(iw_end, in_shape[2]);
-          const index_t pad_top = std::max<index_t>(0, -ih_begin);
-          const index_t pad_bottom = ih_end - ih_end_gated;
-          const index_t pad_left = std::max<index_t>(0, -iw_begin);
-          const index_t pad_right = iw_end - iw_end_gated;
-          index_t im2col_column_offset =
-              ((b * out_shape[1] + h) * out_shape[2] + w) * depth;
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-          // fill in padding top
-          if (pad_top > 0) {
-            std::fill_n(im2col_data + im2col_column_offset,
-                        pad_top * patch_row_size, zero_point);
-          }
+    thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1,
+                              index_t start2, index_t end2, index_t step2) {
+      for (index_t b = start0; b < end0; b += step0) {
+        for (index_t h = start1; h < end1; h += step1) {
+          for (index_t w = start2; w < end2; w += step2) {
+            // Reshape a patch of input to column, which is corresponding to
+            // a column of output(:, column).
+            const index_t ih_begin = h * stride_h - (pad_height >> 1);
+            const index_t ih_end = ih_begin + filter_h;
+            const index_t iw_begin = w * stride_w - (pad_width >> 1);
+            const index_t iw_end = iw_begin + filter_w;
+            // gate height and width to separate padding
+            const index_t ih_begin_gated = std::max<index_t>(0, ih_begin);
+            const index_t ih_end_gated = std::min<index_t>(ih_end, in_shape[1]);
+            const index_t iw_begin_gated = std::max<index_t>(0, iw_begin);
+            const index_t iw_end_gated = std::min<index_t>(iw_end, in_shape[2]);
+            const index_t pad_top = std::max<index_t>(0, -ih_begin);
+            const index_t pad_bottom = ih_end - ih_end_gated;
+            const index_t pad_left = std::max<index_t>(0, -iw_begin);
+            const index_t pad_right = iw_end - iw_end_gated;
+            index_t im2col_column_offset =
+                ((b * out_shape[1] + h) * out_shape[2] + w) * depth;
 
-          const index_t patch_row_size_gated =
-              std::min(filter_w - pad_left,
-                       in_shape[2] - iw_begin_gated) * in_shape[3];
-          MACE_CHECK(patch_row_size_gated ==
-              ((filter_w - (pad_left + pad_right)) * in_shape[3]));
-          const index_t pad_left_size = pad_left * in_shape[3];
-          const index_t pad_right_size = pad_right * in_shape[3];
-          index_t im2col_offset = im2col_column_offset +
-              (pad_top * filter_w + pad_left) * in_shape[3];
-          index_t in_offset = ((b * in_shape[1] + ih_begin_gated) * in_shape[2]
-              + iw_begin_gated) * in_shape[3];
-
-          // fill in effective rows
-          for (index_t ih = ih_begin_gated; ih < ih_end_gated; ++ih) {
-            // fill in padding left
-            if (pad_left > 0) {
-              const index_t left_offset = im2col_offset - pad_left_size;
-              std::fill_n(im2col_data + left_offset, pad_left_size, zero_point);
+            // fill in padding top
+            if (pad_top > 0) {
+              std::fill_n(im2col_data + im2col_column_offset,
+                          pad_top * patch_row_size, zero_point);
             }
-            // copy effective data
-            std::copy_n(in_data + in_offset, patch_row_size_gated,
-                        im2col_data + im2col_offset);
-            // fill in padding right
-            if (pad_right > 0) {
-              const index_t right_offset = im2col_offset + patch_row_size_gated;
-              std::fill_n(im2col_data + right_offset, pad_right_size,
+
+            const index_t patch_row_size_gated =
+                std::min(filter_w - pad_left,
+                         in_shape[2] - iw_begin_gated) * in_shape[3];
+            MACE_CHECK(patch_row_size_gated ==
+                ((filter_w - (pad_left + pad_right)) * in_shape[3]));
+            const index_t pad_left_size = pad_left * in_shape[3];
+            const index_t pad_right_size = pad_right * in_shape[3];
+            index_t im2col_offset = im2col_column_offset +
+                (pad_top * filter_w + pad_left) * in_shape[3];
+            index_t
+                in_offset = ((b * in_shape[1] + ih_begin_gated) * in_shape[2]
+                + iw_begin_gated) * in_shape[3];
+
+            // fill in effective rows
+            for (index_t ih = ih_begin_gated; ih < ih_end_gated; ++ih) {
+              // fill in padding left
+              if (pad_left > 0) {
+                const index_t left_offset = im2col_offset - pad_left_size;
+                std::fill_n(im2col_data + left_offset,
+                            pad_left_size,
+                            zero_point);
+              }
+              // copy effective data
+              std::copy_n(in_data + in_offset, patch_row_size_gated,
+                          im2col_data + im2col_offset);
+              // fill in padding right
+              if (pad_right > 0) {
+                const index_t
+                    right_offset = im2col_offset + patch_row_size_gated;
+                std::fill_n(im2col_data + right_offset, pad_right_size,
+                            zero_point);
+              }
+              in_offset += input_row_size;
+              im2col_offset += patch_row_size;
+            }
+
+            // fill in padding bottom
+            if (pad_bottom > 0) {
+              const index_t pad_bottom_size = pad_bottom * patch_row_size;
+              const index_t bottom_offset =
+                  im2col_column_offset + depth - pad_bottom_size;
+              std::fill_n(im2col_data + bottom_offset, pad_bottom_size,
                           zero_point);
             }
-            in_offset += input_row_size;
-            im2col_offset += patch_row_size;
-          }
-
-          // fill in padding bottom
-          if (pad_bottom > 0) {
-            const index_t pad_bottom_size = pad_bottom * patch_row_size;
-            const index_t bottom_offset =
-                im2col_column_offset + depth - pad_bottom_size;
-            std::fill_n(im2col_data + bottom_offset, pad_bottom_size,
-                        zero_point);
           }
         }
       }
-    }
+    }, 0, out_shape[0], 1, 0, out_shape[1], 1, 0, out_shape[2], 1);
   }
 
  private:

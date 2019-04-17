@@ -20,7 +20,7 @@
 
 #include "mace/core/operator.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bilinear.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -51,7 +51,7 @@ inline void ComputeInterpolationWeights(
   }
 }
 
-template <typename T>
+template<typename T>
 inline T ComputeLerp(const T top_left,
                      const T top_right,
                      const T bottom_left,
@@ -59,7 +59,7 @@ inline T ComputeLerp(const T top_left,
                      const float x_lerp,
                      const float y_lerp);
 
-template <>
+template<>
 inline float ComputeLerp<float>(const float top_left,
                                 const float top_right,
                                 const float bottom_left,
@@ -71,7 +71,7 @@ inline float ComputeLerp<float>(const float top_left,
   return top + (bottom - top) * y_lerp;
 }
 
-template <>
+template<>
 inline uint8_t ComputeLerp<uint8_t>(const uint8_t top_left,
                                     const uint8_t top_right,
                                     const uint8_t bottom_left,
@@ -83,8 +83,9 @@ inline uint8_t ComputeLerp<uint8_t>(const uint8_t top_left,
   return Saturate<uint8_t>(roundf(top + (bottom - top) * y_lerp));
 }
 
-template <typename T>
-inline void ResizeImageNCHW(const T *images,
+template<typename T>
+inline void ResizeImageNCHW(const OpContext *context,
+                            const T *images,
                             const index_t batch_size,
                             const index_t in_height,
                             const index_t in_width,
@@ -96,38 +97,44 @@ inline void ResizeImageNCHW(const T *images,
                             T *output) {
   const CachedInterpolation *xs = xs_vec.data();
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < batch_size; ++b) {
-    for (index_t c = 0; c < channels; ++c) {
-      const T
-          *channel_input_ptr =
-          images + (b * channels + c) * in_height * in_width;
-      T *channel_output_ptr =
-          output + (b * channels + c) * out_height * out_width;
-      for (index_t y = 0; y < out_height; ++y) {
-        const T *y_lower_input_ptr =
-            channel_input_ptr + ys[y].lower * in_width;
-        const T *y_upper_input_ptr =
-            channel_input_ptr + ys[y].upper * in_width;
-        const float ys_lerp = ys[y].lerp;
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-        for (index_t x = 0; x < out_width; ++x) {
-          const float xs_lerp = xs[x].lerp;
-          const T top_left = y_lower_input_ptr[xs[x].lower];
-          const T top_right = y_lower_input_ptr[xs[x].upper];
-          const T bottom_left = y_upper_input_ptr[xs[x].lower];
-          const T bottom_right = y_upper_input_ptr[xs[x].upper];
-          channel_output_ptr[y * out_width + x] =
-              ComputeLerp(top_left, top_right, bottom_left,
-                          bottom_right, xs_lerp, ys_lerp);
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t c = start1; c < end1; c += step1) {
+        const T
+            *channel_input_ptr =
+            images + (b * channels + c) * in_height * in_width;
+        T *channel_output_ptr =
+            output + (b * channels + c) * out_height * out_width;
+        for (index_t y = 0; y < out_height; ++y) {
+          const T *y_lower_input_ptr =
+              channel_input_ptr + ys[y].lower * in_width;
+          const T *y_upper_input_ptr =
+              channel_input_ptr + ys[y].upper * in_width;
+          const float ys_lerp = ys[y].lerp;
+
+          for (index_t x = 0; x < out_width; ++x) {
+            const float xs_lerp = xs[x].lerp;
+            const T top_left = y_lower_input_ptr[xs[x].lower];
+            const T top_right = y_lower_input_ptr[xs[x].upper];
+            const T bottom_left = y_upper_input_ptr[xs[x].lower];
+            const T bottom_right = y_upper_input_ptr[xs[x].upper];
+            channel_output_ptr[y * out_width + x] =
+                ComputeLerp(top_left, top_right, bottom_left,
+                            bottom_right, xs_lerp, ys_lerp);
+          }
         }
       }
     }
-  }
+  }, 0, batch_size, 1, 0, channels, 1);
 }
 
-template <typename T>
-inline void ResizeImageNHWC(const T *images,
+template<typename T>
+inline void ResizeImageNHWC(const OpContext *context,
+                            const T *images,
                             const index_t batch_size,
                             const index_t in_height,
                             const index_t in_width,
@@ -138,40 +145,45 @@ inline void ResizeImageNHWC(const T *images,
                             const std::vector<CachedInterpolation> &ys,
                             T *output) {
   const CachedInterpolation *xs = xs_vec.data();
+
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
   for (index_t b = 0; b < batch_size; ++b) {
     const T *input_base = images + b * channels * in_height * in_width;
     T *output_base = output + b * channels * out_height * out_width;
-#pragma omp parallel for schedule(runtime)
-    for (index_t y = 0; y < out_height; ++y) {
-      const T
-          *y_lower_input_ptr = input_base + ys[y].lower * in_width * channels;
-      const T
-          *y_upper_input_ptr = input_base + ys[y].upper * in_width * channels;
-      const float ys_lerp = ys[y].lerp;
 
-      for (index_t x = 0; x < out_width; ++x) {
-        const float xs_lerp = xs[x].lerp;
-        const T *top_left = y_lower_input_ptr + xs[x].lower * channels;
-        const T *top_right = y_lower_input_ptr + xs[x].upper * channels;
-        const T *bottom_left = y_upper_input_ptr + xs[x].lower * channels;
-        const T *bottom_right = y_upper_input_ptr + xs[x].upper * channels;
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+      for (index_t y = start; y < end; y += step) {
+        const T
+            *y_lower_input_ptr = input_base + ys[y].lower * in_width * channels;
+        const T
+            *y_upper_input_ptr = input_base + ys[y].upper * in_width * channels;
+        const float ys_lerp = ys[y].lerp;
 
-        T *output_ptr = output_base + (y * out_width + x) * channels;
-        for (index_t c = 0; c < channels; ++c) {
-          output_ptr[c] =
-              ComputeLerp(top_left[c], top_right[c], bottom_left[c],
-                          bottom_right[c], xs_lerp, ys_lerp);
+        for (index_t x = 0; x < out_width; ++x) {
+          const float xs_lerp = xs[x].lerp;
+          const T *top_left = y_lower_input_ptr + xs[x].lower * channels;
+          const T *top_right = y_lower_input_ptr + xs[x].upper * channels;
+          const T *bottom_left = y_upper_input_ptr + xs[x].lower * channels;
+          const T *bottom_right = y_upper_input_ptr + xs[x].upper * channels;
+
+          T *output_ptr = output_base + (y * out_width + x) * channels;
+          for (index_t c = 0; c < channels; ++c) {
+            output_ptr[c] =
+                ComputeLerp(top_left[c], top_right[c], bottom_left[c],
+                            bottom_right[c], xs_lerp, ys_lerp);
+          }
         }
       }
-    }
+    }, 0, out_height, 1);
   }
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class ResizeBilinearOp;
 
-template <typename T>
+template<typename T>
 class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ResizeBilinearOp(OpConstructContext *context)
@@ -226,7 +238,8 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
     ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
 
-    ResizeImageNCHW(input_data,
+    ResizeImageNCHW(context,
+                    input_data,
                     batch,
                     in_height,
                     in_width,
@@ -301,7 +314,8 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
     ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
 
-    ResizeImageNHWC(input_data,
+    ResizeImageNHWC(context,
+                    input_data,
                     batch,
                     in_height,
                     in_width,

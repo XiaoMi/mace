@@ -90,7 +90,7 @@ class CropOp<DeviceType::CPU, T> : public Operation {
     const index_t in_img_size =
         input_shape[1] * input_shape[2] * input_shape[3];
     const index_t in_hw = input_shape[2] * input_shape[3];
-#pragma omp parallel for collapse(3)
+
     for (int b = 0; b < output_shape[0]; ++b) {
       for (int c = 0; c < output_shape[1]; ++c) {
         for (int h = 0; h < output_shape[2]; ++h) {

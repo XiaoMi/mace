@@ -26,10 +26,14 @@
 #include "mace/core/runtime/hexagon/hexagon_hta_ops.h"
 #include "mace/core/types.h"
 #include "mace/utils/memory.h"
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #include "third_party/hta/hta_hexagon_api.h"
 
 namespace mace {
+
+HexagonHTAWrapper::HexagonHTAWrapper(Device *device)
+    : device_(device), quantize_util_(&device->cpu_runtime()->thread_pool()) {
+}
 
 int HexagonHTAWrapper::GetVersion() {
   int version;
@@ -237,8 +241,8 @@ bool HexagonHTAWrapper::ExecuteGraph(const Tensor &input_tensor,
 }
 
 bool HexagonHTAWrapper::ExecuteGraphNew(
-    const std::map<std::string, Tensor*> &input_tensors,
-    std::map<std::string, Tensor*> *output_tensors) {
+    const std::map<std::string, Tensor *> &input_tensors,
+    std::map<std::string, Tensor *> *output_tensors) {
   VLOG(2) << "Execute graph new: " << nn_id_;
   uint32_t num_inputs = static_cast<uint32_t>(input_tensors.size());
   uint32_t num_outputs = static_cast<uint32_t>(output_tensors->size());
@@ -261,11 +265,11 @@ bool HexagonHTAWrapper::ExecuteGraphNew(
 
     const float *input_data = input_tensor->data<float>();
     uint8_t *input_data_u8 = input_info_[i].tensor_u8->mutable_data<uint8_t>();
-    QuantizeWithScaleAndZeropoint(input_data,
-                                  input_tensor->size(),
-                                  input_info_[i].scale,
-                                  input_info_[i].zero_point,
-                                  input_data_u8);
+    quantize_util_.QuantizeWithScaleAndZeropoint(input_data,
+                                                 input_tensor->size(),
+                                                 input_info_[i].scale,
+                                                 input_info_[i].zero_point,
+                                                 input_data_u8);
 
     inputs[i].data = const_cast<unsigned char *>(
         reinterpret_cast<const unsigned char *>(
@@ -315,11 +319,11 @@ bool HexagonHTAWrapper::ExecuteGraphNew(
 
     const uint8_t *output_data_u8 = output_info_[i].tensor_u8->data<uint8_t>();
     float *output_data = output_tensor->mutable_data<float>();
-    Dequantize(output_data_u8,
-               output_info_[i].tensor_u8->size(),
-               output_info_[i].scale,
-               output_info_[i].zero_point,
-               output_data);
+    quantize_util_.Dequantize(output_data_u8,
+                              output_info_[i].tensor_u8->size(),
+                              output_info_[i].scale,
+                              output_info_[i].zero_point,
+                              output_data);
   }
 
   return res == 0;

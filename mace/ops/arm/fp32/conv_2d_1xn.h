@@ -28,7 +28,7 @@ namespace fp32 {
 
 class Conv2dK1x7S1 : public Conv2dBase {
  public:
-  Conv2dK1x7S1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK1x7S1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK1x7S1() {}
 
@@ -36,12 +36,12 @@ class Conv2dK1x7S1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 class Conv2dK7x1S1 : public Conv2dBase {
  public:
-  Conv2dK7x1S1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK7x1S1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK7x1S1() {}
 
@@ -49,12 +49,12 @@ class Conv2dK7x1S1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 class Conv2dK1x15S1 : public Conv2dBase {
  public:
-  Conv2dK1x15S1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK1x15S1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK1x15S1() {}
 
@@ -62,12 +62,12 @@ class Conv2dK1x15S1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 class Conv2dK15x1S1 : public Conv2dBase {
  public:
-  Conv2dK15x1S1(const std::vector<int> paddings, const Padding padding_type)
+  Conv2dK15x1S1(const std::vector<int> &paddings, const Padding padding_type)
       : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
   virtual ~Conv2dK15x1S1() {}
 
@@ -75,7 +75,7 @@ class Conv2dK15x1S1 : public Conv2dBase {
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 }  // namespace fp32

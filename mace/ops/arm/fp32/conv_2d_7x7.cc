@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/ops/arm/fp32/conv_2d_7x7.h"
+
 #include <arm_neon.h>
 #include <memory>
-#include "mace/ops/arm/fp32/conv_2d_7x7.h"
 
 namespace mace {
 namespace ops {
@@ -168,11 +169,11 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
                        &padded_input,
                        &padded_output);
   const Tensor *in_tensor = input;
-  if (padded_input.get() != nullptr) {
+  if (padded_input != nullptr) {
     in_tensor = padded_input.get();
   }
   Tensor *out_tensor = output;
-  if (padded_output.get() != nullptr) {
+  if (padded_output != nullptr) {
     out_tensor = padded_output.get();
   }
   out_tensor->Clear();
@@ -184,111 +185,61 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
   auto input_data = in_tensor->data<float>();
   auto output_data = out_tensor->mutable_data<float>();
 
-  auto in_shape = in_tensor->shape();
-  auto out_shape = out_tensor->shape();
+  auto &in_shape = in_tensor->shape();
+  auto &out_shape = out_tensor->shape();
 
-  const index_t in_image_size = in_shape[2] * in_shape[3];
-  const index_t out_image_size = out_shape[2] * out_shape[3];
-  const index_t in_batch_size = in_shape[1] * in_image_size;
-  const index_t out_batch_size = out_shape[1] * out_image_size;
+  const index_t batch = in_shape[0];
+  const index_t in_channels = in_shape[1];
+  const index_t in_height = in_shape[2];
+  const index_t in_width = in_shape[3];
+  const index_t out_channels = out_shape[1];
+  const index_t out_height = out_shape[2];
+  const index_t out_width = out_shape[3];
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < out_shape[0]; ++b) {
-    for (index_t m = 0; m < out_shape[1]; m += 4) {
-      const index_t out_channels = out_shape[1];
-      const index_t out_height = out_shape[2];
-      const index_t out_width = out_shape[3];
-      const index_t in_channels = in_shape[1];
-      const index_t in_width = in_shape[3];
-      if (m + 3 < out_channels) {
-        float *out_ptr0_base =
-            output_data + b * out_batch_size + m * out_image_size;
-        float *out_ptr1_base =
-            output_data + b * out_batch_size + (m + 1) * out_image_size;
-        float *out_ptr2_base =
-            output_data + b * out_batch_size + (m + 2) * out_image_size;
-        float *out_ptr3_base =
-            output_data + b * out_batch_size + (m + 3) * out_image_size;
-        for (index_t c = 0; c < in_channels; ++c) {
-          const float *in_ptr_base =
-              input_data + b * in_batch_size + c * in_image_size;
-          const float
-              *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
-          const float *filter_ptr1 =
-              filter_data + (m + 1) * in_channels * 49 + c * 49;
-          const float *filter_ptr2 =
-              filter_data + (m + 2) * in_channels * 49 + c * 49;
-          const float *filter_ptr3 =
-              filter_data + (m + 3) * in_channels * 49 + c * 49;
-          for (index_t h = 0; h < out_height; ++h) {
-            for (index_t w = 0; w + 3 < out_width; w += 4) {
-              // input offset
-              index_t in_offset = h * in_width + w;
-              // output (4 outch x 1 height x 4 width): vo_outch_height
-              float32x4_t vo0, vo1, vo2, vo3;
-              // load output
-              index_t out_offset = h * out_width + w;
-              vo0 = vld1q_f32(out_ptr0_base + out_offset);
-              vo1 = vld1q_f32(out_ptr1_base + out_offset);
-              vo2 = vld1q_f32(out_ptr2_base + out_offset);
-              vo3 = vld1q_f32(out_ptr3_base + out_offset);
-              for (index_t r = 0; r < 7; ++r) {
-                // input (3 slide)
-                float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
-                float32x4_t vi8;  // for tmp use
-                // load input
-                vi0 = vld1q_f32(in_ptr_base + in_offset);
-                vi4 = vld1q_f32(in_ptr_base + in_offset + 4);
-                vi8 = vld1q_f32(in_ptr_base + in_offset + 8);
-                vi1 = vextq_f32(vi0, vi4, 1);
-                vi2 = vextq_f32(vi0, vi4, 2);
-                vi3 = vextq_f32(vi0, vi4, 3);
-                vi5 = vextq_f32(vi4, vi8, 1);
-                vi6 = vextq_f32(vi4, vi8, 2);
+  const index_t in_image_size = in_height * in_width;
+  const index_t out_image_size = out_height * out_width;
+  const index_t in_batch_size = in_channels * in_image_size;
+  const index_t out_batch_size = out_channels * out_image_size;
 
-#if defined(__aarch64__)
-                MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
-#else
-                MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
-#endif
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-                in_offset += in_width;
-                filter_ptr0 += 7;
-                filter_ptr1 += 7;
-                filter_ptr2 += 7;
-                filter_ptr3 += 7;
-              }  // r
-
-              vst1q_f32(out_ptr0_base + out_offset, vo0);
-              vst1q_f32(out_ptr1_base + out_offset, vo1);
-              vst1q_f32(out_ptr2_base + out_offset, vo2);
-              vst1q_f32(out_ptr3_base + out_offset, vo3);
-
-              filter_ptr0 -= 49;
-              filter_ptr1 -= 49;
-              filter_ptr2 -= 49;
-              filter_ptr3 -= 49;
-            }  // w
-          }    // h
-        }  // c
-      } else {
-        for (index_t mm = m; mm < out_channels; ++mm) {
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t m = start1; m < end1; m += step1) {
+        if (m + 3 < out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + mm * out_image_size;
+              output_data + b * out_batch_size + m * out_image_size;
+          float *out_ptr1_base =
+              output_data + b * out_batch_size + (m + 1) * out_image_size;
+          float *out_ptr2_base =
+              output_data + b * out_batch_size + (m + 2) * out_image_size;
+          float *out_ptr3_base =
+              output_data + b * out_batch_size + (m + 3) * out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
             const float *in_ptr_base =
                 input_data + b * in_batch_size + c * in_image_size;
             const float
-                *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
+                *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
+            const float *filter_ptr1 =
+                filter_data + (m + 1) * in_channels * 49 + c * 49;
+            const float *filter_ptr2 =
+                filter_data + (m + 2) * in_channels * 49 + c * 49;
+            const float *filter_ptr3 =
+                filter_data + (m + 3) * in_channels * 49 + c * 49;
             for (index_t h = 0; h < out_height; ++h) {
               for (index_t w = 0; w + 3 < out_width; w += 4) {
                 // input offset
                 index_t in_offset = h * in_width + w;
-                // output (1 outch x 1 height x 4 width): vo_outch_height
-                float32x4_t vo0;
+                // output (4 outch x 1 height x 4 width): vo_outch_height
+                float32x4_t vo0, vo1, vo2, vo3;
                 // load output
                 index_t out_offset = h * out_width + w;
                 vo0 = vld1q_f32(out_ptr0_base + out_offset);
+                vo1 = vld1q_f32(out_ptr1_base + out_offset);
+                vo2 = vld1q_f32(out_ptr2_base + out_offset);
+                vo3 = vld1q_f32(out_ptr3_base + out_offset);
                 for (index_t r = 0; r < 7; ++r) {
                   // input (3 slide)
                   float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
@@ -304,24 +255,82 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
                   vi6 = vextq_f32(vi4, vi8, 2);
 
 #if defined(__aarch64__)
-                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
 #else
-                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
                   in_offset += in_width;
                   filter_ptr0 += 7;
+                  filter_ptr1 += 7;
+                  filter_ptr2 += 7;
+                  filter_ptr3 += 7;
                 }  // r
 
                 vst1q_f32(out_ptr0_base + out_offset, vo0);
+                vst1q_f32(out_ptr1_base + out_offset, vo1);
+                vst1q_f32(out_ptr2_base + out_offset, vo2);
+                vst1q_f32(out_ptr3_base + out_offset, vo3);
+
                 filter_ptr0 -= 49;
+                filter_ptr1 -= 49;
+                filter_ptr2 -= 49;
+                filter_ptr3 -= 49;
               }  // w
             }    // h
           }  // c
-        }    // mm
-      }      // if
-    }        // m
-  }          // b
+        } else {
+          for (index_t mm = m; mm < out_channels; ++mm) {
+            float *out_ptr0_base =
+                output_data + b * out_batch_size + mm * out_image_size;
+            for (index_t c = 0; c < in_channels; ++c) {
+              const float *in_ptr_base =
+                  input_data + b * in_batch_size + c * in_image_size;
+              const float
+                  *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
+              for (index_t h = 0; h < out_height; ++h) {
+                for (index_t w = 0; w + 3 < out_width; w += 4) {
+                  // input offset
+                  index_t in_offset = h * in_width + w;
+                  // output (1 outch x 1 height x 4 width): vo_outch_height
+                  float32x4_t vo0;
+                  // load output
+                  index_t out_offset = h * out_width + w;
+                  vo0 = vld1q_f32(out_ptr0_base + out_offset);
+                  for (index_t r = 0; r < 7; ++r) {
+                    // input (3 slide)
+                    float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
+                    float32x4_t vi8;  // for tmp use
+                    // load input
+                    vi0 = vld1q_f32(in_ptr_base + in_offset);
+                    vi4 = vld1q_f32(in_ptr_base + in_offset + 4);
+                    vi8 = vld1q_f32(in_ptr_base + in_offset + 8);
+                    vi1 = vextq_f32(vi0, vi4, 1);
+                    vi2 = vextq_f32(vi0, vi4, 2);
+                    vi3 = vextq_f32(vi0, vi4, 3);
+                    vi5 = vextq_f32(vi4, vi8, 1);
+                    vi6 = vextq_f32(vi4, vi8, 2);
+
+#if defined(__aarch64__)
+                    MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
+#else
+                    MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
+#endif
+
+                    in_offset += in_width;
+                    filter_ptr0 += 7;
+                  }  // r
+
+                  vst1q_f32(out_ptr0_base + out_offset, vo0);
+                  filter_ptr0 -= 49;
+                }  // w
+              }    // h
+            }  // c
+          }    // mm
+        }      // if
+      }        // m
+    }          // b
+  }, 0, batch, 1, 0, out_channels, 4);
 
   UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
@@ -342,11 +351,11 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
                        &padded_input,
                        &padded_output);
   const Tensor *in_tensor = input;
-  if (padded_input.get() != nullptr) {
+  if (padded_input != nullptr) {
     in_tensor = padded_input.get();
   }
   Tensor *out_tensor = output;
-  if (padded_output.get() != nullptr) {
+  if (padded_output != nullptr) {
     out_tensor = padded_output.get();
   }
   out_tensor->Clear();
@@ -358,118 +367,63 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
   auto input_data = in_tensor->data<float>();
   auto output_data = out_tensor->mutable_data<float>();
 
-  auto in_shape = in_tensor->shape();
-  auto out_shape = out_tensor->shape();
+  auto &in_shape = in_tensor->shape();
+  auto &out_shape = out_tensor->shape();
 
-  const index_t in_image_size = in_shape[2] * in_shape[3];
-  const index_t out_image_size = out_shape[2] * out_shape[3];
-  const index_t in_batch_size = in_shape[1] * in_image_size;
-  const index_t out_batch_size = out_shape[1] * out_image_size;
+  const index_t batch = in_shape[0];
+  const index_t in_channels = in_shape[1];
+  const index_t in_height = in_shape[2];
+  const index_t in_width = in_shape[3];
+  const index_t out_channels = out_shape[1];
+  const index_t out_height = out_shape[2];
+  const index_t out_width = out_shape[3];
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < out_shape[0]; ++b) {
-    for (index_t m = 0; m < out_shape[1]; m += 4) {
-      const index_t out_channels = out_shape[1];
-      const index_t out_height = out_shape[2];
-      const index_t out_width = out_shape[3];
-      const index_t in_channels = in_shape[1];
-      const index_t in_width = in_shape[3];
-      if (m + 3 < out_channels) {
-        float *out_ptr0_base =
-            output_data + b * out_batch_size + m * out_image_size;
-        float *out_ptr1_base =
-            output_data + b * out_batch_size + (m + 1) * out_image_size;
-        float *out_ptr2_base =
-            output_data + b * out_batch_size + (m + 2) * out_image_size;
-        float *out_ptr3_base =
-            output_data + b * out_batch_size + (m + 3) * out_image_size;
-        for (index_t c = 0; c < in_channels; ++c) {
-          const float *in_ptr_base =
-              input_data + b * in_batch_size + c * in_image_size;
-          const float
-              *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
-          const float *filter_ptr1 =
-              filter_data + (m + 1) * in_channels * 49 + c * 49;
-          const float *filter_ptr2 =
-              filter_data + (m + 2) * in_channels * 49 + c * 49;
-          const float *filter_ptr3 =
-              filter_data + (m + 3) * in_channels * 49 + c * 49;
-          for (index_t h = 0; h < out_height; ++h) {
-            for (index_t w = 0; w + 3 < out_width; w += 4) {
-              // input offset
-              index_t in_h = h * 2;
-              index_t in_w = w * 2;
-              index_t in_offset = in_h * in_width + in_w;
-              // output (4 outch x 1 height x 4 width): vo_outch_height
-              float32x4_t vo0, vo1, vo2, vo3;
-              // load output
-              index_t out_offset = h * out_width + w;
-              vo0 = vld1q_f32(out_ptr0_base + out_offset);
-              vo1 = vld1q_f32(out_ptr1_base + out_offset);
-              vo2 = vld1q_f32(out_ptr2_base + out_offset);
-              vo3 = vld1q_f32(out_ptr3_base + out_offset);
-              for (index_t r = 0; r < 7; ++r) {
-                // input (3 slide)
-                float32x4x2_t vvi0, vvi1;  // to de-interleave
-                float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
-                // load input
-                // [0.2.4.6, 1.3.5.7]
-                vvi0 = vld2q_f32(in_ptr_base + in_offset);
-                // [8.10.12.14, 9.11.13.15]
-                vvi1 = vld2q_f32(in_ptr_base + in_offset + 8);
-                vi0 = vvi0.val[0];                     // [0.2.4.6]
-                vi1 = vvi0.val[1];                     // [1.3.5.7]
-                vi2 = vextq_f32(vi0, vvi1.val[0], 1);  // [2.4.6.8]
-                vi3 = vextq_f32(vi1, vvi1.val[1], 1);  // [3.5.7.9]
-                vi4 = vextq_f32(vi0, vvi1.val[0], 2);  // [4.6.8.10]
-                vi5 = vextq_f32(vi1, vvi1.val[1], 2);  // [5.7.9.11]
-                vi6 = vextq_f32(vi0, vvi1.val[0], 3);  // [6.8.10.12]
+  const index_t in_image_size = in_height * in_width;
+  const index_t out_image_size = out_height * out_width;
+  const index_t in_batch_size = in_channels * in_image_size;
+  const index_t out_batch_size = out_channels * out_image_size;
 
-#if defined(__aarch64__)
-                MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
-#else
-                MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
-#endif
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-                in_offset += in_width;
-                filter_ptr0 += 7;
-                filter_ptr1 += 7;
-                filter_ptr2 += 7;
-                filter_ptr3 += 7;
-              }  // r
-
-              vst1q_f32(out_ptr0_base + out_offset, vo0);
-              vst1q_f32(out_ptr1_base + out_offset, vo1);
-              vst1q_f32(out_ptr2_base + out_offset, vo2);
-              vst1q_f32(out_ptr3_base + out_offset, vo3);
-
-              filter_ptr0 -= 49;
-              filter_ptr1 -= 49;
-              filter_ptr2 -= 49;
-              filter_ptr3 -= 49;
-            }  // w
-          }    // h
-        }  // c
-      } else {
-        for (index_t mm = m; mm < out_channels; ++mm) {
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t m = start1; m < end1; m += step1) {
+        if (m + 3 < out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + mm * out_image_size;
+              output_data + b * out_batch_size + m * out_image_size;
+          float *out_ptr1_base =
+              output_data + b * out_batch_size + (m + 1) * out_image_size;
+          float *out_ptr2_base =
+              output_data + b * out_batch_size + (m + 2) * out_image_size;
+          float *out_ptr3_base =
+              output_data + b * out_batch_size + (m + 3) * out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
             const float *in_ptr_base =
                 input_data + b * in_batch_size + c * in_image_size;
             const float
-                *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
+                *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
+            const float *filter_ptr1 =
+                filter_data + (m + 1) * in_channels * 49 + c * 49;
+            const float *filter_ptr2 =
+                filter_data + (m + 2) * in_channels * 49 + c * 49;
+            const float *filter_ptr3 =
+                filter_data + (m + 3) * in_channels * 49 + c * 49;
             for (index_t h = 0; h < out_height; ++h) {
               for (index_t w = 0; w + 3 < out_width; w += 4) {
                 // input offset
                 index_t in_h = h * 2;
                 index_t in_w = w * 2;
                 index_t in_offset = in_h * in_width + in_w;
-                // output (1 outch x 1 height x 4 width): vo_outch_height
-                float32x4_t vo0;
-                // load ouput
+                // output (4 outch x 1 height x 4 width): vo_outch_height
+                float32x4_t vo0, vo1, vo2, vo3;
+                // load output
                 index_t out_offset = h * out_width + w;
                 vo0 = vld1q_f32(out_ptr0_base + out_offset);
+                vo1 = vld1q_f32(out_ptr1_base + out_offset);
+                vo2 = vld1q_f32(out_ptr2_base + out_offset);
+                vo3 = vld1q_f32(out_ptr3_base + out_offset);
                 for (index_t r = 0; r < 7; ++r) {
                   // input (3 slide)
                   float32x4x2_t vvi0, vvi1;  // to de-interleave
@@ -488,24 +442,87 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
                   vi6 = vextq_f32(vi0, vvi1.val[0], 3);  // [6.8.10.12]
 
 #if defined(__aarch64__)
-                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
 #else
-                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
                   in_offset += in_width;
                   filter_ptr0 += 7;
+                  filter_ptr1 += 7;
+                  filter_ptr2 += 7;
+                  filter_ptr3 += 7;
                 }  // r
 
                 vst1q_f32(out_ptr0_base + out_offset, vo0);
+                vst1q_f32(out_ptr1_base + out_offset, vo1);
+                vst1q_f32(out_ptr2_base + out_offset, vo2);
+                vst1q_f32(out_ptr3_base + out_offset, vo3);
+
                 filter_ptr0 -= 49;
+                filter_ptr1 -= 49;
+                filter_ptr2 -= 49;
+                filter_ptr3 -= 49;
               }  // w
             }    // h
           }  // c
-        }    // mm
-      }      // if
-    }        // m
-  }          // b
+        } else {
+          for (index_t mm = m; mm < out_channels; ++mm) {
+            float *out_ptr0_base =
+                output_data + b * out_batch_size + mm * out_image_size;
+            for (index_t c = 0; c < in_channels; ++c) {
+              const float *in_ptr_base =
+                  input_data + b * in_batch_size + c * in_image_size;
+              const float
+                  *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
+              for (index_t h = 0; h < out_height; ++h) {
+                for (index_t w = 0; w + 3 < out_width; w += 4) {
+                  // input offset
+                  index_t in_h = h * 2;
+                  index_t in_w = w * 2;
+                  index_t in_offset = in_h * in_width + in_w;
+                  // output (1 outch x 1 height x 4 width): vo_outch_height
+                  float32x4_t vo0;
+                  // load ouput
+                  index_t out_offset = h * out_width + w;
+                  vo0 = vld1q_f32(out_ptr0_base + out_offset);
+                  for (index_t r = 0; r < 7; ++r) {
+                    // input (3 slide)
+                    float32x4x2_t vvi0, vvi1;  // to de-interleave
+                    float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
+                    // load input
+                    // [0.2.4.6, 1.3.5.7]
+                    vvi0 = vld2q_f32(in_ptr_base + in_offset);
+                    // [8.10.12.14, 9.11.13.15]
+                    vvi1 = vld2q_f32(in_ptr_base + in_offset + 8);
+                    vi0 = vvi0.val[0];                     // [0.2.4.6]
+                    vi1 = vvi0.val[1];                     // [1.3.5.7]
+                    vi2 = vextq_f32(vi0, vvi1.val[0], 1);  // [2.4.6.8]
+                    vi3 = vextq_f32(vi1, vvi1.val[1], 1);  // [3.5.7.9]
+                    vi4 = vextq_f32(vi0, vvi1.val[0], 2);  // [4.6.8.10]
+                    vi5 = vextq_f32(vi1, vvi1.val[1], 2);  // [5.7.9.11]
+                    vi6 = vextq_f32(vi0, vvi1.val[0], 3);  // [6.8.10.12]
+
+#if defined(__aarch64__)
+                    MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
+#else
+                    MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
+#endif
+
+                    in_offset += in_width;
+                    filter_ptr0 += 7;
+                  }  // r
+
+                  vst1q_f32(out_ptr0_base + out_offset, vo0);
+                  filter_ptr0 -= 49;
+                }  // w
+              }    // h
+            }  // c
+          }    // mm
+        }      // if
+      }        // m
+    }          // b
+  }, 0, batch, 1, 0, out_channels, 4);
 
   UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
@@ -526,11 +543,11 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
                        &padded_input,
                        &padded_output);
   const Tensor *in_tensor = input;
-  if (padded_input.get() != nullptr) {
+  if (padded_input != nullptr) {
     in_tensor = padded_input.get();
   }
   Tensor *out_tensor = output;
-  if (padded_output.get() != nullptr) {
+  if (padded_output != nullptr) {
     out_tensor = padded_output.get();
   }
   out_tensor->Clear();
@@ -542,118 +559,63 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
   auto input_data = in_tensor->data<float>();
   auto output_data = out_tensor->mutable_data<float>();
 
-  auto in_shape = in_tensor->shape();
-  auto out_shape = out_tensor->shape();
+  auto &in_shape = in_tensor->shape();
+  auto &out_shape = out_tensor->shape();
 
-  const index_t in_image_size = in_shape[2] * in_shape[3];
-  const index_t out_image_size = out_shape[2] * out_shape[3];
-  const index_t in_batch_size = in_shape[1] * in_image_size;
-  const index_t out_batch_size = out_shape[1] * out_image_size;
+  const index_t batch = in_shape[0];
+  const index_t in_channels = in_shape[1];
+  const index_t in_height = in_shape[2];
+  const index_t in_width = in_shape[3];
+  const index_t out_channels = out_shape[1];
+  const index_t out_height = out_shape[2];
+  const index_t out_width = out_shape[3];
 
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < out_shape[0]; ++b) {
-    for (index_t m = 0; m < out_shape[1]; m += 4) {
-      const index_t out_channels = out_shape[1];
-      const index_t out_height = out_shape[2];
-      const index_t out_width = out_shape[3];
-      const index_t in_channels = in_shape[1];
-      const index_t in_width = in_shape[3];
-      if (m + 3 < out_channels) {
-        float *out_ptr0_base =
-            output_data + b * out_batch_size + m * out_image_size;
-        float *out_ptr1_base =
-            output_data + b * out_batch_size + (m + 1) * out_image_size;
-        float *out_ptr2_base =
-            output_data + b * out_batch_size + (m + 2) * out_image_size;
-        float *out_ptr3_base =
-            output_data + b * out_batch_size + (m + 3) * out_image_size;
-        for (index_t c = 0; c < in_channels; ++c) {
-          const float *in_ptr_base =
-              input_data + b * in_batch_size + c * in_image_size;
-          const float
-              *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
-          const float *filter_ptr1 =
-              filter_data + (m + 1) * in_channels * 49 + c * 49;
-          const float *filter_ptr2 =
-              filter_data + (m + 2) * in_channels * 49 + c * 49;
-          const float *filter_ptr3 =
-              filter_data + (m + 3) * in_channels * 49 + c * 49;
-          for (index_t h = 0; h < out_height; ++h) {
-            for (index_t w = 0; w + 3 < out_width; w += 4) {
-              // input offset
-              index_t in_h = h * 3;
-              index_t in_w = w * 3;
-              index_t in_offset = in_h * in_width + in_w;
-              // output (4 outch x 1 height x 4 width): vo_outch_height
-              float32x4_t vo0, vo1, vo2, vo3;
-              // load output
-              index_t out_offset = h * out_width + w;
-              vo0 = vld1q_f32(out_ptr0_base + out_offset);
-              vo1 = vld1q_f32(out_ptr1_base + out_offset);
-              vo2 = vld1q_f32(out_ptr2_base + out_offset);
-              vo3 = vld1q_f32(out_ptr3_base + out_offset);
-              for (index_t r = 0; r < 7; ++r) {
-                // input (3 slide)
-                float32x4x3_t vvi0, vvi1;  // to de-interleave
-                float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
-                // load input
-                // [0.3.6.9, 1.4.7.10, 2.5.8.11]
-                vvi0 = vld3q_f32(in_ptr_base + in_offset);
-                // [12.15.xx.xx, 13.xx.xx.xx, 14.xx.xx.xx]
-                vvi1 = vld3q_f32(in_ptr_base + in_offset + 12);
-                vi0 = vvi0.val[0];                     // [0.3.6.9]
-                vi1 = vvi0.val[1];                     // [1.4.7.10]
-                vi2 = vvi0.val[2];                     // [2.5.8.11]
-                vi3 = vextq_f32(vi0, vvi1.val[0], 1);  // [3.6.9.12]
-                vi4 = vextq_f32(vi1, vvi1.val[1], 1);  // [4.7.10.13]
-                vi5 = vextq_f32(vi2, vvi1.val[2], 1);  // [5.8.11.14]
-                vi6 = vextq_f32(vi0, vvi1.val[0], 2);  // [6.9.12.15]
+  const index_t in_image_size = in_height * in_width;
+  const index_t out_image_size = out_height * out_width;
+  const index_t in_batch_size = in_channels * in_image_size;
+  const index_t out_batch_size = out_channels * out_image_size;
 
-#if defined(__aarch64__)
-                MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
-#else
-                MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
-#endif
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-                in_offset += in_width;
-                filter_ptr0 += 7;
-                filter_ptr1 += 7;
-                filter_ptr2 += 7;
-                filter_ptr3 += 7;
-              }  // r
-
-              vst1q_f32(out_ptr0_base + out_offset, vo0);
-              vst1q_f32(out_ptr1_base + out_offset, vo1);
-              vst1q_f32(out_ptr2_base + out_offset, vo2);
-              vst1q_f32(out_ptr3_base + out_offset, vo3);
-
-              filter_ptr0 -= 49;
-              filter_ptr1 -= 49;
-              filter_ptr2 -= 49;
-              filter_ptr3 -= 49;
-            }  // w
-          }    // h
-        }  // c
-      } else {
-        for (index_t mm = m; mm < out_channels; ++mm) {
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t m = start1; m < end1; m += step1) {
+        if (m + 3 < out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + mm * out_image_size;
+              output_data + b * out_batch_size + m * out_image_size;
+          float *out_ptr1_base =
+              output_data + b * out_batch_size + (m + 1) * out_image_size;
+          float *out_ptr2_base =
+              output_data + b * out_batch_size + (m + 2) * out_image_size;
+          float *out_ptr3_base =
+              output_data + b * out_batch_size + (m + 3) * out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
             const float *in_ptr_base =
                 input_data + b * in_batch_size + c * in_image_size;
             const float
-                *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
+                *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
+            const float *filter_ptr1 =
+                filter_data + (m + 1) * in_channels * 49 + c * 49;
+            const float *filter_ptr2 =
+                filter_data + (m + 2) * in_channels * 49 + c * 49;
+            const float *filter_ptr3 =
+                filter_data + (m + 3) * in_channels * 49 + c * 49;
             for (index_t h = 0; h < out_height; ++h) {
               for (index_t w = 0; w + 3 < out_width; w += 4) {
                 // input offset
                 index_t in_h = h * 3;
                 index_t in_w = w * 3;
                 index_t in_offset = in_h * in_width + in_w;
-                // output (1 outch x 1 height x 4 width): vo_outch_height
-                float32x4_t vo0;
+                // output (4 outch x 1 height x 4 width): vo_outch_height
+                float32x4_t vo0, vo1, vo2, vo3;
                 // load output
                 index_t out_offset = h * out_width + w;
                 vo0 = vld1q_f32(out_ptr0_base + out_offset);
+                vo1 = vld1q_f32(out_ptr1_base + out_offset);
+                vo2 = vld1q_f32(out_ptr2_base + out_offset);
+                vo3 = vld1q_f32(out_ptr3_base + out_offset);
                 for (index_t r = 0; r < 7; ++r) {
                   // input (3 slide)
                   float32x4x3_t vvi0, vvi1;  // to de-interleave
@@ -672,24 +634,87 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
                   vi6 = vextq_f32(vi0, vvi1.val[0], 2);  // [6.9.12.15]
 
 #if defined(__aarch64__)
-                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
 #else
-                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
                   in_offset += in_width;
                   filter_ptr0 += 7;
+                  filter_ptr1 += 7;
+                  filter_ptr2 += 7;
+                  filter_ptr3 += 7;
                 }  // r
 
                 vst1q_f32(out_ptr0_base + out_offset, vo0);
+                vst1q_f32(out_ptr1_base + out_offset, vo1);
+                vst1q_f32(out_ptr2_base + out_offset, vo2);
+                vst1q_f32(out_ptr3_base + out_offset, vo3);
+
                 filter_ptr0 -= 49;
+                filter_ptr1 -= 49;
+                filter_ptr2 -= 49;
+                filter_ptr3 -= 49;
               }  // w
             }    // h
           }  // c
-        }    // mm
-      }      // if
-    }        // m
-  }          // b
+        } else {
+          for (index_t mm = m; mm < out_channels; ++mm) {
+            float *out_ptr0_base =
+                output_data + b * out_batch_size + mm * out_image_size;
+            for (index_t c = 0; c < in_channels; ++c) {
+              const float *in_ptr_base =
+                  input_data + b * in_batch_size + c * in_image_size;
+              const float
+                  *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
+              for (index_t h = 0; h < out_height; ++h) {
+                for (index_t w = 0; w + 3 < out_width; w += 4) {
+                  // input offset
+                  index_t in_h = h * 3;
+                  index_t in_w = w * 3;
+                  index_t in_offset = in_h * in_width + in_w;
+                  // output (1 outch x 1 height x 4 width): vo_outch_height
+                  float32x4_t vo0;
+                  // load output
+                  index_t out_offset = h * out_width + w;
+                  vo0 = vld1q_f32(out_ptr0_base + out_offset);
+                  for (index_t r = 0; r < 7; ++r) {
+                    // input (3 slide)
+                    float32x4x3_t vvi0, vvi1;  // to de-interleave
+                    float32x4_t vi0, vi1, vi2, vi3, vi4, vi5, vi6;
+                    // load input
+                    // [0.3.6.9, 1.4.7.10, 2.5.8.11]
+                    vvi0 = vld3q_f32(in_ptr_base + in_offset);
+                    // [12.15.xx.xx, 13.xx.xx.xx, 14.xx.xx.xx]
+                    vvi1 = vld3q_f32(in_ptr_base + in_offset + 12);
+                    vi0 = vvi0.val[0];                     // [0.3.6.9]
+                    vi1 = vvi0.val[1];                     // [1.4.7.10]
+                    vi2 = vvi0.val[2];                     // [2.5.8.11]
+                    vi3 = vextq_f32(vi0, vvi1.val[0], 1);  // [3.6.9.12]
+                    vi4 = vextq_f32(vi1, vvi1.val[1], 1);  // [4.7.10.13]
+                    vi5 = vextq_f32(vi2, vvi1.val[2], 1);  // [5.8.11.14]
+                    vi6 = vextq_f32(vi0, vvi1.val[0], 2);  // [6.9.12.15]
+
+#if defined(__aarch64__)
+                    MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
+#else
+                    MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
+#endif
+
+                    in_offset += in_width;
+                    filter_ptr0 += 7;
+                  }  // r
+
+                  vst1q_f32(out_ptr0_base + out_offset, vo0);
+                  filter_ptr0 -= 49;
+                }  // w
+              }    // h
+            }  // c
+          }    // mm
+        }      // if
+      }        // m
+    }          // b
+  }, 0, batch, 1, 0, out_channels, 4);
 
   UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;

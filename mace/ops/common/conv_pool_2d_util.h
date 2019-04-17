@@ -15,6 +15,7 @@
 #ifndef MACE_OPS_COMMON_CONV_POOL_2D_UTIL_H_
 #define MACE_OPS_COMMON_CONV_POOL_2D_UTIL_H_
 
+#include <vector>
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -77,41 +78,25 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
                     index_t *output_shape);
 
 void CalcNCHWOutputSize(const index_t *input_shape,
-                    const index_t *filter_shape,
-                    const int *padding_size,
-                    const int *dilations,
-                    const int *strides,
-                    const RoundType round_type,
-                    index_t *output_shape);
-
-void CalcNCHWInputShape(const index_t *output_shape,
                         const index_t *filter_shape,
-                        const int *strides,
+                        const int *padding_size,
                         const int *dilations,
-                        index_t *input_shape);
+                        const int *strides,
+                        const RoundType round_type,
+                        index_t *output_shape);
 
-void CalPaddingSize(const index_t *input_shape,   // NCHW
-                    const index_t *filter_shape,  // OIHW
-                    const int *dilations,
-                    const int *strides,
-                    Padding padding,
-                    int *padding_size);
-
-
-MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input,
-                               const int pad_top, const int pad_bottom,
-                               const int pad_left, const int pad_right,
-                               Tensor *output_tensor);
-
-MaceStatus ConstructNCHWInputWithPadding(const Tensor *input,
-                                   const int *paddings,
-                                   Tensor *output_tensor,
-                                   bool padding_same_value = false);
-
-MaceStatus ConstructNHWCInputWithPadding(const Tensor *input,
-                                   const int *paddings,
-                                   Tensor *output_tensor,
-                                   bool padding_same_value = false);
+void CalDeconvOutputShapeAndPadSize(const std::vector<index_t> &input_shape,
+                                    const std::vector<index_t> &filter_shape,
+                                    const std::vector<int> &strides,
+                                    Padding padding_type,
+                                    const std::vector<int> &paddings,
+                                    int group,
+                                    std::vector<index_t> *output_shape,
+                                    std::vector<int> *in_pad_size,
+                                    std::vector<int> *out_pad_size,
+                                    std::vector<index_t> *padded_out_shape,
+                                    FrameworkType framework_type,
+                                    DataFormat data_format);
 
 }  // namespace ops
 }  // namespace mace

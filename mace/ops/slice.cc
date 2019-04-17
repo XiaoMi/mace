@@ -66,7 +66,6 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-#pragma omp parallel for schedule(runtime)
     for (index_t i = 0; i < frames; ++i) {
       const T *input_base =
           input_data + i * input_dim + offset;

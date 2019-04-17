@@ -16,7 +16,7 @@
 #include "mace/ops/ref/gemv.h"
 
 #if defined(MACE_ENABLE_QUANTIZE)
-#include "mace/utils/quantize.h"
+#include "mace/core/quantize.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 namespace mace {

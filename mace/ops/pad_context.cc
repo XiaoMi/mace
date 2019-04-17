@@ -63,7 +63,6 @@ class PadContextOp<DeviceType::CPU, T> : public Operation {
     for (index_t i = 0; i < batch; ++i) {
       T *out_base = output_data + i * output_chunk * dim;
       const T *in_base = input_data + i * chunk * dim;
-#pragma omp parallel for schedule(runtime)
       for (index_t j = 0; j < left_context_; ++j) {
         memcpy(out_base + j * dim, in_base, dim * sizeof(T));
       }
@@ -71,7 +70,6 @@ class PadContextOp<DeviceType::CPU, T> : public Operation {
       memcpy(out_base, in_base, chunk * dim * sizeof(T));
       out_base = out_base + chunk * dim;
       in_base = in_base + (chunk -1) * dim;
-#pragma omp parallel for schedule(runtime)
       for (index_t j = 0; j < right_context_; ++j) {
         memcpy(out_base + j * dim, in_base, dim * sizeof(T));
       }

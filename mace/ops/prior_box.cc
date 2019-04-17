@@ -113,7 +113,6 @@ class PriorBoxOp : public Operation {
     }
 
     if (clip_) {
-#pragma omp parallel for schedule(runtime)
       for (int i = 0; i < dim; ++i) {
         T min = 0;
         T max = 1;
@@ -122,7 +121,6 @@ class PriorBoxOp : public Operation {
     }
 
     output_data += dim;
-#pragma omp parallel for schedule(runtime)
     for (int i = 0; i < dim / 4; ++i) {
       int index = i * 4;
       output_data[0 + index] = variance_[0];

@@ -252,8 +252,7 @@ int Main(int argc, char **argv) {
   MaceEngineConfig config(device_type);
   mace_status = config.SetCPUThreadPolicy(
       FLAGS_omp_num_threads,
-      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy),
-      true);
+      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
   if (mace_status != MaceStatus::MACE_SUCCESS) {
     LOG(INFO) << "Set openmp or cpu affinity failed.";
   }

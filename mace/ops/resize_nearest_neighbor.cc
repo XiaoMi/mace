@@ -26,8 +26,9 @@
 
 namespace mace {
 namespace ops {
-template <typename T>
-inline void ResizeImageNCHW(const T *images,
+template<typename T>
+inline void ResizeImageNCHW(const OpContext *context,
+                            const T *images,
                             const index_t batch_size,
                             const index_t in_height,
                             const index_t in_width,
@@ -38,36 +39,41 @@ inline void ResizeImageNCHW(const T *images,
                             const float width_scale,
                             bool align_corners,
                             T *output) {
-#pragma omp parallel for collapse(2) schedule(runtime)
-  for (index_t b = 0; b < batch_size; ++b) {
-    for (index_t c = 0; c < channels; ++c) {
-      const T
-          *channel_input_ptr =
-          images + (b * channels + c) * in_height * in_width;
-      T *channel_output_ptr =
-          output + (b * channels + c) * out_height * out_width;
-      for (index_t y = 0; y < out_height; ++y) {
-        const index_t in_y = std::min(
-            (align_corners) ? static_cast<index_t>(roundf(y * height_scale))
-                            : static_cast<index_t>(floorf(y * height_scale)),
-            in_height - 1);
-        for (int x = 0; x < out_width; ++x) {
-          const index_t in_x = std::min(
-              (align_corners) ? static_cast<index_t>(roundf(x * width_scale))
-                              : static_cast<index_t>(floorf(x * width_scale)),
-              in_width - 1);
-          channel_output_ptr[y * out_width + x] =
-              channel_input_ptr[in_y * in_width + in_x];
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                            index_t start1, index_t end1, index_t step1) {
+    for (index_t b = start0; b < end0; b += step0) {
+      for (index_t c = start1; c < end1; c += step1) {
+        const T
+            *channel_input_ptr =
+            images + (b * channels + c) * in_height * in_width;
+        T *channel_output_ptr =
+            output + (b * channels + c) * out_height * out_width;
+        for (index_t y = 0; y < out_height; ++y) {
+          const index_t in_y = std::min(
+              (align_corners) ? static_cast<index_t>(roundf(y * height_scale))
+                              : static_cast<index_t>(floorf(y * height_scale)),
+              in_height - 1);
+          for (int x = 0; x < out_width; ++x) {
+            const index_t in_x = std::min(
+                (align_corners) ? static_cast<index_t>(roundf(x * width_scale))
+                                : static_cast<index_t>(floorf(x * width_scale)),
+                in_width - 1);
+            channel_output_ptr[y * out_width + x] =
+                channel_input_ptr[in_y * in_width + in_x];
+          }
         }
       }
     }
-  }
+  }, 0, batch_size, 1, 0, channels, 1);
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class ResizeNearestNeighborOp;
 
-template <typename T>
+template<typename T>
 class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
@@ -116,7 +122,8 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
         resize_nearest_neighbor::CalculateResizeScale(in_width,
                                                       out_width,
                                                       align_corners_);
-    ResizeImageNCHW(input_data,
+    ResizeImageNCHW(context,
+                    input_data,
                     batch,
                     in_height,
                     in_width,

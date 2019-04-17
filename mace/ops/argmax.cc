@@ -71,7 +71,6 @@ class ArgMaxOp : public Operation {
     index_t inner_size = input->dim(axis_value);
 
     if (argmin_) {
-#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < outer_size; ++i) {
         int idx = 0;
         T min_value = std::numeric_limits<T>::max();
@@ -85,7 +84,6 @@ class ArgMaxOp : public Operation {
         output_data[i] = idx;
       }
     } else {
-#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < outer_size; ++i) {
         int idx = 0;
         T max_value = std::numeric_limits<T>::lowest();

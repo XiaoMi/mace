@@ -101,53 +101,48 @@ void OpDefBuilder::Finalize(OperatorDef *op_def) const {
 }
 
 namespace {
-#ifdef MACE_ENABLE_OPENCL
 std::string GetStoragePathFromEnv() {
   char *storage_path_str = getenv("MACE_INTERNAL_STORAGE_PATH");
   if (storage_path_str == nullptr) return "";
   return storage_path_str;
 }
-#endif
 }  // namespace
 
 OpTestContext *OpTestContext::Get(int num_threads,
-                                  CPUAffinityPolicy cpu_affinity_policy,
-                                  bool use_gemmlowp) {
+                                  CPUAffinityPolicy cpu_affinity_policy) {
   static OpTestContext instance(num_threads,
-                                cpu_affinity_policy,
-                                use_gemmlowp);
+                                cpu_affinity_policy);
   return &instance;
 }
 
 OpTestContext::OpTestContext(int num_threads,
-                             CPUAffinityPolicy cpu_affinity_policy,
-
-#ifdef MACE_ENABLE_OPENCL
-                             bool use_gemmlowp)
+                             CPUAffinityPolicy cpu_affinity_policy)
     : gpu_context_(std::make_shared<GPUContext>(GetStoragePathFromEnv())),
-      opencl_mem_types_({MemoryType::GPU_IMAGE}) {
-#else
-                             bool use_gemmlowp) {
-#endif
-  device_map_[DeviceType::CPU] = make_unique<CPUDevice>(
-      num_threads, cpu_affinity_policy, use_gemmlowp);
+      opencl_mem_types_({MemoryType::GPU_IMAGE}),
+      thread_pool_(make_unique<utils::ThreadPool>(num_threads,
+                                                  cpu_affinity_policy)) {
+  thread_pool_->Init();
 
-#ifdef MACE_ENABLE_OPENCL
+  device_map_[DeviceType::CPU] = make_unique<CPUDevice>(
+      num_threads, cpu_affinity_policy, thread_pool_.get());
+
   device_map_[DeviceType::GPU] = make_unique<GPUDevice>(
       gpu_context_->opencl_tuner(),
       gpu_context_->opencl_cache_storage(),
       GPUPriorityHint::PRIORITY_NORMAL,
-      GPUPerfHint::PERF_HIGH);
-#endif  // MACE_ENABLE_OPENCL
+      GPUPerfHint::PERF_HIGH,
+      nullptr,
+      num_threads,
+      cpu_affinity_policy,
+      thread_pool_.get());
+}
+
+std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
+  return gpu_context_;
 }
 
 Device *OpTestContext::GetDevice(DeviceType device_type) {
   return device_map_[device_type].get();
-}
-
-#ifdef MACE_ENABLE_OPENCL
-std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
-  return gpu_context_;
 }
 
 std::vector<MemoryType> OpTestContext::opencl_mem_types() {
@@ -165,7 +160,6 @@ void OpTestContext::SetOCLImageTestFlag() {
 void OpTestContext::SetOCLImageAndBufferTestFlag() {
   opencl_mem_types_ = {MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER};
 }
-#endif  // MACE_ENABLE_OPENCL
 
 bool OpsTestNet::Setup(mace::DeviceType device) {
   NetDef net_def;
@@ -237,7 +231,6 @@ MaceStatus OpsTestNet::Run() {
 
 MaceStatus OpsTestNet::RunOp(mace::DeviceType device) {
   if (device == DeviceType::GPU) {
-#ifdef MACE_ENABLE_OPENCL
     auto opencl_mem_types = OpTestContext::Get()->opencl_mem_types();
     for (auto type : opencl_mem_types) {
       OpTestContext::Get()->GetDevice(device)
@@ -246,9 +239,6 @@ MaceStatus OpsTestNet::RunOp(mace::DeviceType device) {
       MACE_RETURN_IF_ERROR(Run());
     }
     return MaceStatus::MACE_SUCCESS;
-#else
-    return MaceStatus::MACE_UNSUPPORTED;
-#endif
   } else {
     Setup(device);
     return Run();

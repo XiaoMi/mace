@@ -136,7 +136,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
           make_unique<CPUDevice>(
               target_device->cpu_runtime()->num_threads(),
               target_device->cpu_runtime()->policy(),
-              target_device->cpu_runtime()->use_gemmlowp())) {
+              &target_device->cpu_runtime()->thread_pool())) {
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet");
   // quantize model flag
   bool is_quantize_model = IsQuantizedModel(*net_def);
@@ -154,7 +154,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
   }
   for (auto &tensor : net_def->tensors()) {
     tensor_shape_map[tensor.name()] =
-      std::vector<index_t>(tensor.dims().begin(), tensor.dims().end());
+        std::vector<index_t>(tensor.dims().begin(), tensor.dims().end());
   }
 
   bool has_data_format = false;

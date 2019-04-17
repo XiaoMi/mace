@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+#include "mace/core/types.h"
+
 #define MACE_BENCHMARK(n) \
   static ::mace::testing::Benchmark *__benchmark_##n = \
       (new ::mace::testing::Benchmark(#n, (n)))

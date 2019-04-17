@@ -24,10 +24,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class LSTMNonlinearOp;
 
-template <typename T>
+template<typename T>
 class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit LSTMNonlinearOp(OpConstructContext *context)
@@ -45,12 +45,7 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
       << "The input dim size should >= 2";
     MACE_CHECK(params->dim_size() == 2)
       << "The params dim size should be 2";
-    return Compute(input, params, output);
-  }
 
-  MaceStatus Compute(const Tensor *input,
-                     const Tensor *params,
-                     Tensor *output) {
     const std::vector<index_t> &input_shape = input->shape();
     const std::vector<index_t> &params_shape = params->shape();
 
@@ -77,7 +72,7 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
     const float *input_data = input->data<T>();
     const float *params_data = params->data<T>();
     float *output_data = output->mutable_data<T>();
-#pragma omp parallel for schedule(runtime)
+
     for (int r = 0; r < num_rows; ++r) {
       const float *input_row = input_data + r * input_cols;
       const float *prev_row = input_row + 4 * cell_dim;
@@ -85,7 +80,8 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
           embed_scales ? prev_row + cell_dim : nullptr;
       float *output_cell = output_data + r * output_dim;
       float *output_row = output_cell + cell_dim;
-      LSTMNonlinearKernel(input_row,
+      LSTMNonlinearKernel(context,
+                          input_row,
                           prev_row,
                           scale_data,
                           params_data,
