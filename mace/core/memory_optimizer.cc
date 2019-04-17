@@ -33,7 +33,7 @@ namespace mace {
 
 bool MemoryOptimizer::IsMemoryReuseOp(const std::string &op_type) {
   static const std::unordered_set<std::string> kReuseOp = {
-      "Reshape", "Identity", "Squeeze"
+      "Reshape", "Identity", "Squeeze", "ExpandDims"
   };
   return kReuseOp.count(op_type) == 1;
 }
@@ -124,8 +124,9 @@ void MemoryOptimizer::Optimize(
       op_def->output_type_size());
   DataType dt;
 
-  bool has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-      *op_def, "has_data_format", 0) != 0;
+  DataFormat data_format = static_cast<DataFormat>(
+      ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          *op_def, "data_format", DataFormat::DF_NONE));
   int output_size = op_def->output_size();
   for (int i = 0; i < output_size; ++i) {
     if (i < op_def->output_type_size()) {
@@ -209,7 +210,7 @@ void MemoryOptimizer::Optimize(
         mem_ref_count_[best_mem_id] = 1;
       }
       tensor_mem_map_.emplace(op_def->output(i), TensorMemInfo(best_mem_id,
-          dt, has_data_format));
+          dt, data_format));
     }
   }
 

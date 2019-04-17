@@ -15,6 +15,8 @@
 #include "mace/ops/activation.h"
 
 #include <memory>
+#include <set>
+
 #include "mace/core/operator.h"
 
 #if defined(MACE_ENABLE_NEON)
@@ -132,6 +134,22 @@ void RegisterActivation(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
                    DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Activation")
+          .SetDevicePlacerFunc(
+              [](OpConditionContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                int has_data_format =
+                    ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                        *op, "has_data_format", 0);
+                if (!has_data_format ||
+                    (op->output_shape_size() != op->output_size()) ||
+                    op->output_shape(0).dims_size() != 4) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops

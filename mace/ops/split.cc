@@ -144,10 +144,10 @@ void RegisterSplit(OpRegistryBase *op_registry) {
       op_registry,
       OpConditionBuilder("Split")
           .SetDevicePlacerFunc(
-              [](OpConstructContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return { DeviceType::CPU };
                 }
                 int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "axis", 3);

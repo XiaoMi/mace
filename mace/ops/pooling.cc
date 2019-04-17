@@ -480,7 +480,6 @@ class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_ = make_unique<opencl::image::PoolingKernel<T>>();
     } else {
-      context->set_output_mem_type(MemoryType::GPU_BUFFER);
       kernel_ = make_unique<opencl::buffer::PoolingKernel<T>>();
     }
   }

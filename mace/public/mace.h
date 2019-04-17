@@ -36,7 +36,8 @@ enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, HTA = 4 };
 
 enum DataFormat {
   DF_NONE = 0, NHWC = 1, NCHW = 2,
-  HWOI = 100, OIHW = 101, HWIO = 102, OHWI = 103
+  HWOI = 100, OIHW = 101, HWIO = 102, OHWI = 103,
+  DF_AUTO = 1000,
 };
 
 enum GPUPerfHint {

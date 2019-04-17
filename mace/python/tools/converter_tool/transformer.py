@@ -27,6 +27,8 @@ from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
+from mace.python.tools.converter_tool.base_converter import MaceHasDataFormatOps
+from mace.python.tools.converter_tool.base_converter import MaceMayHasDataFormatOps  # noqa
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import TransformerRule
@@ -77,10 +79,9 @@ class Transformer(base_converter.ConverterInterface):
                 self.transpose_matmul_weight,
             TransformerRule.FOLD_FC_RESHAPE:
                 self.fold_fc_reshape,
-            TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
-            TransformerRule.ADD_WINOGRAD_ARG: self.add_winograd_arg,
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
                 self.add_in_out_tensor_info,
+            TransformerRule.ADD_WINOGRAD_ARG: self.add_winograd_arg,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC:
                 self.transform_global_conv_to_fc,
             TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
@@ -96,6 +97,7 @@ class Transformer(base_converter.ConverterInterface):
                 self.add_opencl_informations,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
             TransformerRule.UPDATE_DATA_FORMAT: self.update_data_format,
+            TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.CHECK_QUANTIZE_INFO:
                 self.check_quantize_info,
             TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN:
@@ -194,21 +196,19 @@ class Transformer(base_converter.ConverterInterface):
                     op.type = "Input"
                     data_type_arg = op.arg.add()
                     data_type_arg.name = MaceKeyword.mace_op_data_type_str
-                    data_type_arg.i = mace_pb2.DT_FLOAT
+                    data_type_arg.i = input_node.data_type
                     op.output.extend([input_node.name])
                     output_shape = op.output_shape.add()
                     output_shape.dims.extend(input_node.shape)
-                    if input_node.name in self._consumers:
-                        if ConverterUtil.data_format(
-                                self._consumers[input_node.name][0]) \
-                                == DataFormat.NCHW:
+                    if input_node.data_format != DataFormat.DF_NONE:
+                        if input_node.data_format == DataFormat.NCHW:
                             self.transpose_shape(output_shape.dims,
                                                  [0, 3, 1, 2])
-                            ConverterUtil.add_data_format_arg(op,
-                                                              DataFormat.NCHW)
-                        else:
-                            ConverterUtil.add_data_format_arg(op,
-                                                              DataFormat.NHWC)
+                        ConverterUtil.add_data_format_arg(op,
+                                                          DataFormat.DF_AUTO)
+                    else:
+                        ConverterUtil.add_data_format_arg(op,
+                                                          DataFormat.DF_NONE)
                     self._producer[op.output[0]] = op
 
     @staticmethod
@@ -255,6 +255,13 @@ class Transformer(base_converter.ConverterInterface):
                         return None
         else:
             return None
+
+    def get_tensor_data_format(self, tensor):
+        if tensor in self._producer:
+            producer = self._producer[tensor]
+            return ConverterUtil.data_format(producer)
+        else:
+            return DataFormat.DF_NONE
 
     def consumer_count(self, tensor_name):
         return len(self._consumers.get(tensor_name, []))
@@ -838,8 +845,6 @@ class Transformer(base_converter.ConverterInterface):
                   or op.type == MaceOp.DepthwiseConv2d.name
                   or op.type == MaceOp.FullyConnected.name)
                  and len(op.input) == 2)
-                or (op.type == MaceOp.WinogradInverseTransform.name
-                    and len(op.input) == 1)
                 or (op.type == MaceOp.Deconv2D.name
                     and ((ConverterUtil.get_arg(
                                 op,
@@ -930,8 +935,7 @@ class Transformer(base_converter.ConverterInterface):
                 or op.type == MaceOp.Deconv2D.name
                 or op.type == MaceOp.DepthwiseConv2d.name
                 or op.type == MaceOp.FullyConnected.name
-                or op.type == MaceOp.BatchNorm.name
-                or op.type == MaceOp.WinogradInverseTransform.name) \
+                or op.type == MaceOp.BatchNorm.name) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.Activation.name \
@@ -1017,96 +1021,6 @@ class Transformer(base_converter.ConverterInterface):
                                        filter_format.name)
         return False
 
-    def transpose_data_format(self):
-        net = self._model
-
-        for op in net.op:
-            # transpose args
-            if op.type == MaceOp.Pad.name:
-                for arg in op.arg:
-                    if arg.name == MaceKeyword.mace_paddings_str:
-                        mace_check(len(arg.ints) == 8,
-                                   "pad dim rank should be 8.")
-                        if ConverterUtil.data_format(op) == DataFormat.NCHW:
-                            print("Transpose pad args: %s(%s)"
-                                  % (op.name, op.type))
-                            self.transpose_shape(arg.ints,
-                                                 [0, 1, 4, 5, 6, 7, 2, 3])
-            elif op.type == MaceOp.Concat.name or op.type == MaceOp.Split.name:
-                for arg in op.arg:
-                    if arg.name == MaceKeyword.mace_axis_str:
-                        if (ConverterUtil.data_format(op) == DataFormat.NCHW
-                                and len(op.output_shape[0].dims) == 4):
-                            print("Transpose concat/split args: %s(%s)"
-                                  % (op.name, op.type))
-                            if arg.i == 1:
-                                arg.i = 3
-                            elif arg.i == 2:
-                                arg.i = 1
-                            elif arg.i == 3:
-                                arg.i = 2
-
-                        producer = self._producer[op.input[0]]
-                        input_shape = producer.output_shape[0].dims
-                        if producer.type == MaceOp.FullyConnected.name and \
-                                len(input_shape) == 2:
-                            axis_arg = ConverterUtil.get_arg(
-                                op, MaceKeyword.mace_axis_str)
-                            if axis_arg.i == 1:
-                                axis_arg.i = 3
-
-            elif op.type == MaceOp.Squeeze.name:
-                for arg in op.arg:
-                    if arg.name == MaceKeyword.mace_axis_str:
-                        if ConverterUtil.data_format(op) == DataFormat.NCHW:
-                            print("Transpose squeeze args: %s(%s)"
-                                  % (op.name, op.type))
-                            mace_check(list(arg.ints) == [2, 3],
-                                       'only support squeeze at at [2, 3]')
-                            arg.ints[:] = [1, 2]
-
-            elif op.type == MaceOp.Reduce.name:
-                for arg in op.arg:
-                    if arg.name == MaceKeyword.mace_axis_str:
-                        if ConverterUtil.data_format(
-                                op) == DataFormat.NCHW:
-                            print("Transpose reduce args: %s(%s)"
-                                  % (op.name, op.type))
-                            reduce_axises = list(arg.ints)
-                            new_axises = []
-                            for i in range(len(reduce_axises)):
-                                idx = reduce_axises[i]
-                                if idx == 2 or idx == 3:
-                                    new_axises.append(idx - 1)
-                                elif idx == 1:
-                                    new_axises.append(3)
-                                else:
-                                    new_axises.append(idx)
-                            new_axises.sort()
-                            arg.ints[:] = []
-                            arg.ints.extend(new_axises)
-            elif op.type == MaceOp.Crop.name:
-                offset_arg = ConverterUtil.get_arg(op,
-                                                   MaceKeyword.mace_offset_str)
-                mace_check(offset_arg and
-                           ConverterUtil.data_format(op) == DataFormat.NCHW and
-                           len(op.output_shape[0].dims) == 4,
-                           "MACE only support crop with NCHW format")
-                print("Transpose crop args: %s(%s)"
-                      % (op.name, op.type))
-                self.transpose_shape(offset_arg.ints, [0, 2, 3, 1])
-
-            # transpose op output shape
-            data_format = ConverterUtil.data_format(op)
-            if data_format is not None \
-                    and data_format != DataFormat.NHWC:
-                print("Transpose output shapes: %s(%s)" % (op.name, op.type))
-                for output_shape in op.output_shape:
-                    if len(output_shape.dims) == 4:
-                        self.transpose_shape(output_shape.dims,
-                                             [0, 2, 3, 1])
-
-        return False
 
     def add_winograd_arg(self):
         if self._wino_arg == 0:
@@ -1428,17 +1342,121 @@ class Transformer(base_converter.ConverterInterface):
 
     def update_data_format(self):
         print("update data format")
-        data_format_flag = 1
-        for input_node in self._option.input_nodes.values():
-            if input_node.data_format.value == DataFormat.DF_NONE.value:
-                data_format_flag = 0
         net = self._model
         for op in net.op:
-            ConverterUtil.del_arg(
+            df_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_data_format_str)
-            has_data_format_arg = op.arg.add()
-            has_data_format_arg.name = MaceKeyword.mace_has_data_format_str
-            has_data_format_arg.i = data_format_flag
+            if not df_arg:
+                df_arg = op.arg.add()
+                df_arg.name = MaceKeyword.mace_data_format_str
+            if op.type in MaceHasDataFormatOps:
+                df_arg.i = DataFormat.DF_AUTO.value
+            elif op.type in MaceMayHasDataFormatOps:
+                input_df = DataFormat.DF_AUTO.value
+                for input_tensor in op.input:
+                    if input_tensor in self._consts:
+                        continue
+                    mace_check(input_tensor in self._producer,
+                               "Input tensor %s not in producer" % input_tensor)
+                    father_op = self._producer[input_tensor]
+                    temp_input_df = ConverterUtil.get_arg(
+                        father_op, MaceKeyword.mace_data_format_str)
+                    if temp_input_df.i != DataFormat.DF_AUTO.value:
+                        input_df = temp_input_df.i
+                if input_df == DataFormat.DF_AUTO.value:
+                    df_arg.i = input_df
+                    # add flag to mark the ops may has data format
+                    has_data_format_arg = op.arg.add()
+                    has_data_format_arg.name = \
+                        MaceKeyword.mace_has_data_format_str
+                    has_data_format_arg.i = 1
+        return False
+
+    def transpose_data_format(self):
+        print("Transpose arguments based on data format")
+        net = self._model
+
+        src_data_format = ConverterUtil.data_format(net)
+        for op in net.op:
+            has_data_format = ConverterUtil.data_format(op) == \
+                              DataFormat.DF_AUTO
+            # transpose args
+            if op.type == MaceOp.Pad.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_paddings_str:
+                        mace_check(len(arg.ints) == 8,
+                                   "pad dim rank should be 8.")
+                        if src_data_format == DataFormat.NCHW and \
+                                has_data_format:
+                            print("Transpose pad args: %s(%s)"
+                                  % (op.name, op.type))
+                            self.transpose_shape(arg.ints,
+                                                 [0, 1, 4, 5, 6, 7, 2, 3])
+            elif op.type == MaceOp.Concat.name or op.type == MaceOp.Split.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_axis_str:
+                        if (src_data_format == DataFormat.NCHW
+                                and has_data_format
+                                and len(op.output_shape[0].dims) == 4):
+                            print("Transpose concat/split args: %s(%s)"
+                                  % (op.name, op.type))
+                            if arg.i == 1:
+                                arg.i = 3
+                            elif arg.i == 2:
+                                arg.i = 1
+                            elif arg.i == 3:
+                                arg.i = 2
+
+                        producer = self._producer[op.input[0]]
+                        input_shape = producer.output_shape[0].dims
+                        if producer.type == MaceOp.FullyConnected.name and \
+                                len(input_shape) == 2:
+                            axis_arg = ConverterUtil.get_arg(
+                                op, MaceKeyword.mace_axis_str)
+                            if axis_arg.i == 1:
+                                axis_arg.i = 3
+
+            elif op.type == MaceOp.Reduce.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_axis_str:
+                        if src_data_format == DataFormat.NCHW and \
+                                has_data_format:
+                            print("Transpose reduce args: %s(%s)"
+                                  % (op.name, op.type))
+                            reduce_axises = list(arg.ints)
+                            new_axises = []
+                            for i in range(len(reduce_axises)):
+                                idx = reduce_axises[i]
+                                if idx == 2 or idx == 3:
+                                    new_axises.append(idx - 1)
+                                elif idx == 1:
+                                    new_axises.append(3)
+                                else:
+                                    new_axises.append(idx)
+                            new_axises.sort()
+                            arg.ints[:] = []
+                            arg.ints.extend(new_axises)
+            elif op.type == MaceOp.Crop.name:
+                offset_arg = ConverterUtil.get_arg(op,
+                                                   MaceKeyword.mace_offset_str)
+                mace_check(offset_arg and
+                           src_data_format == DataFormat.NCHW
+                           and has_data_format
+                           and len(op.output_shape[0].dims) == 4,
+                           "MACE only support crop with NCHW format")
+                print("Transpose crop args: %s(%s)"
+                      % (op.name, op.type))
+                self.transpose_shape(offset_arg.ints, [0, 2, 3, 1])
+
+            # transpose op output shape
+            if src_data_format == DataFormat.NCHW and \
+                    has_data_format:
+                print("Transpose output shapes: %s(%s)" % (op.name, op.type))
+                for output_shape in op.output_shape:
+                    if len(output_shape.dims) == 4:
+                        self.transpose_shape(output_shape.dims,
+                                             [0, 2, 3, 1])
+
         return False
 
     def quantize_nodes(self):
@@ -1493,7 +1511,7 @@ class Transformer(base_converter.ConverterInterface):
             self._model.input_info[i].zero_point = quantize_info.zero_point
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
-            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+            ConverterUtil.add_data_format_arg(op_def, input_node.data_format)
             # use actual ranges for model input quantize
             find_range_every_time_arg = op_def.arg.add()
             find_range_every_time_arg.name = \
@@ -1516,6 +1534,7 @@ class Transformer(base_converter.ConverterInterface):
             self._model.output_info[i].zero_point = quantize_info.zero_point
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
+            ConverterUtil.add_data_format_arg(op_def, output_node.data_format)
 
         quantize_flag_arg = self._model.arg.add()
         quantize_flag_arg.name = MaceKeyword.mace_quantize_flag_arg_str
@@ -1886,9 +1905,6 @@ class Transformer(base_converter.ConverterInterface):
                     shape_tensor.data_type = mace_pb2.DT_INT32
                 else:
                     mace_check(False, "Only support reshape and flatten")
-                # NCHW -> NHWC
-                if len(dims) == 4:
-                    self.transpose_shape(dims, [0, 2, 3, 1])
                 shape_tensor.int32_data.extend(dims)
                 op.input.append(shape_tensor.name)
 
@@ -2030,6 +2046,9 @@ class Transformer(base_converter.ConverterInterface):
                     data_type_arg = quantize_op.arg.add()
                     data_type_arg.name = MaceKeyword.mace_op_data_type_str
                     data_type_arg.i = mace_pb2.DT_UINT8
+                    ConverterUtil.add_data_format_arg(
+                        quantize_op,
+                        self.get_tensor_data_format(input_tensor))
 
                     data_type_arg = quantize_op.arg.add()
                     data_type_arg.name = MaceKeyword.mace_non_zero
@@ -2050,8 +2069,8 @@ class Transformer(base_converter.ConverterInterface):
             del op.input[:]
             op.input.extend(quantized_inputs_names)
 
-            orginal_output_name = op.output[0]
-            op.output[0] = orginal_output_name + "_quant"
+            original_output_name = op.output[0]
+            op.output[0] = original_output_name + "_quant"
             op.output_type.extend([to_quantize_ops_output_type[op.type]])
             data_type_arg = ConverterUtil.get_arg(op,
                                                   MaceKeyword.mace_op_data_type_str)  # noqa
@@ -2064,13 +2083,15 @@ class Transformer(base_converter.ConverterInterface):
             dequantize_op.name = op.name + "_dequant"
             dequantize_op.type = MaceOp.Dequantize.name
             dequantize_op.input.extend([op.output[0]])
-            dequantize_op.output.extend([orginal_output_name])
+            dequantize_op.output.extend([original_output_name])
             dequantize_op.output_shape.extend(op.output_shape)
             dequantize_op.output_type.extend([mace_pb2.DT_FLOAT])
             data_type_arg = dequantize_op.arg.add()
             data_type_arg.name = MaceKeyword.mace_op_data_type_str
             data_type_arg.i = to_quantize_ops_output_type[op.type]
-
+            ConverterUtil.add_data_format_arg(
+                dequantize_op,
+                self.get_tensor_data_format(original_output_name))
             quantize_flag_arg = ConverterUtil.get_arg(self._model,
                                                       MaceKeyword.mace_quantize_flag_arg_str)  # noqa
             if quantize_flag_arg is None:

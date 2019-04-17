@@ -116,10 +116,10 @@ void RegisterChannelShuffle(OpRegistryBase *op_registry) {
       op_registry,
       OpConditionBuilder("ChannelShuffle")
           .SetDevicePlacerFunc(
-              [](OpConstructContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return { DeviceType::CPU };
                 }
                 int groups = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "group", 1);

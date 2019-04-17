@@ -27,6 +27,7 @@
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
+#include "mace/core/net_def_adapter.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/gpu_device.h"
@@ -512,26 +513,32 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-  MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
-                                            device_.get(),
-                                            model_data));
+    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
+                                              device_.get(),
+                                              model_data));
 
-  MemoryOptimizer mem_optimizer;
-  // Init model
-  net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
-                                                net_def,
-                                                ws_.get(),
-                                                device_.get(),
-                                                &mem_optimizer));
+    NetDef adapted_net_def;
+    NetDefAdapter net_def_adapter(op_registry_.get(), ws_.get());
+    net_def_adapter.AdaptNetDef(net_def, device_.get(), &adapted_net_def);
 
-  // Preallocate all output tensors of ops
-  MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(*net_def,
-                                                    &mem_optimizer,
-                                                    device_.get()));
-  if (device_type_ == DeviceType::GPU) {
-    ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
-  }
-  MACE_RETURN_IF_ERROR(net_->Init());
+    MemoryOptimizer mem_optimizer;
+    // Init model
+    net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
+                                                  &adapted_net_def,
+                                                  ws_.get(),
+                                                  device_.get(),
+                                                  &mem_optimizer));
+
+    // Preallocate all output tensors of ops
+    MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(adapted_net_def,
+                                                      &mem_optimizer,
+                                                      device_.get()));
+    if (device_type_ == DeviceType::GPU) {
+      ws_->RemoveAndReloadBuffer(adapted_net_def,
+                                 model_data,
+                                 device_->allocator());
+    }
+    MACE_RETURN_IF_ERROR(net_->Init());
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif

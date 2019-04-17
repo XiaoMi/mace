@@ -270,6 +270,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.HWIO)
+        ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NHWC)
 
         # import tensorflow graph
         tf_graph_def = tf.GraphDef()

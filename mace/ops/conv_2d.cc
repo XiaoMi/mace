@@ -466,7 +466,6 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_ = make_unique<opencl::buffer::Conv2dKernel<T>>();
     }
-    context->set_output_mem_type(mem_type);
     // Transform filter tensor to target format
     if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
         (kernel_->CheckUseWinograd(

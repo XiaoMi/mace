@@ -59,11 +59,6 @@ MaceStatus ReduceKernel<T>::Compute(
     const Tensor *input,
     Tensor *output) {
   MACE_CHECK_NOTNULL(input);
-  MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
-  MACE_CHECK(input->dim_size() == 4,
-             "reduce gpu only support 4-dim input");
-  MACE_CHECK(axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2,
-             "reduce gpu only support 1,2-axis reduce");
   index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
   const index_t in_width = input->dim(2);

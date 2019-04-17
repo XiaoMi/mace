@@ -20,34 +20,21 @@
 #include "mace/core/operator.h"
 
 namespace mace {
-
-OpConstructContext::OpConstructContext(Workspace *ws)
-    : operator_def_(nullptr),
-      ws_(ws),
-      device_(nullptr),
-      tensor_shape_info_(nullptr) {}
-
-OpConstructContext::OpConstructContext(
-    mace::Workspace *ws,
-    mace::OpConstructContext::TensorShapeMap *info)
+OpConditionContext::OpConditionContext(
+    const mace::Workspace *ws,
+    mace::OpConditionContext::TensorShapeMap *info)
     : operator_def_(nullptr),
       ws_(ws),
       device_(nullptr),
       tensor_shape_info_(info) {}
 
-void OpConstructContext::set_operator_def(
-    std::shared_ptr<mace::OperatorDef> operator_def) {
+void OpConditionContext::set_operator_def(
+    const mace::OperatorDef *operator_def) {
   operator_def_ = operator_def;
   input_data_types_.clear();
 }
 
-void OpConstructContext::set_output_mem_type(mace::MemoryType type) {
-  MACE_CHECK(operator_def_ != nullptr);
-  output_mem_type_ = type;
-  input_mem_types_.clear();
-}
-
-void OpConstructContext::SetInputInfo(size_t idx,
+void OpConditionContext::SetInputInfo(size_t idx,
                                       mace::MemoryType mem_type,
                                       mace::DataType dt) {
   if (input_mem_types_.empty()) {
@@ -66,7 +53,13 @@ void OpConstructContext::SetInputInfo(size_t idx,
   input_data_types_[idx] = dt;
 }
 
-MemoryType OpConstructContext::GetInputMemType(size_t idx) const {
+void OpConditionContext::set_output_mem_type(mace::MemoryType type) {
+  MACE_CHECK(operator_def_ != nullptr);
+  output_mem_type_ = type;
+  input_mem_types_.clear();
+}
+
+MemoryType OpConditionContext::GetInputMemType(size_t idx) const {
   if (input_mem_types_.empty()) {
     return output_mem_type_;
   }
@@ -75,7 +68,7 @@ MemoryType OpConstructContext::GetInputMemType(size_t idx) const {
   return input_mem_types_[idx];
 }
 
-DataType OpConstructContext::GetInputDataType(size_t idx) const {
+DataType OpConditionContext::GetInputDataType(size_t idx) const {
   if (input_data_types_.empty()) {
     // the default inputs' data types are same as operation's data type.
     return static_cast<DataType>(
@@ -87,17 +80,17 @@ DataType OpConstructContext::GetInputDataType(size_t idx) const {
 }
 
 #ifdef MACE_ENABLE_OPENCL
-void OpConstructContext::SetInputOpenCLBufferType(
+void OpConditionContext::SetInputOpenCLBufferType(
     size_t idx, OpenCLBufferType buffer_type) {
   if (input_opencl_buffer_types_.empty()) {
     // the default inputs' memory types are same as output memory type.
     input_opencl_buffer_types_.resize(operator_def_->input_size(),
-                               OpenCLBufferType::IN_OUT_CHANNEL);
+                                      OpenCLBufferType::IN_OUT_CHANNEL);
   }
   MACE_CHECK(idx < input_opencl_buffer_types_.size());
   input_opencl_buffer_types_[idx] = buffer_type;
 }
-OpenCLBufferType OpConstructContext::GetInputOpenCLBufferType(
+OpenCLBufferType OpConditionContext::GetInputOpenCLBufferType(
     size_t idx) const {
   if (input_opencl_buffer_types_.empty()) {
     return OpenCLBufferType::IN_OUT_CHANNEL;
@@ -106,6 +99,16 @@ OpenCLBufferType OpConstructContext::GetInputOpenCLBufferType(
   return input_opencl_buffer_types_[idx];
 }
 #endif  // MACE_ENABLE_OPENCL
+
+OpConstructContext::OpConstructContext(Workspace *ws)
+    : operator_def_(nullptr),
+      ws_(ws),
+      device_(nullptr) {}
+
+void OpConstructContext::set_operator_def(
+    std::shared_ptr<mace::OperatorDef> operator_def) {
+  operator_def_ = operator_def;
+}
 
 OpInitContext::OpInitContext(Workspace *ws, Device *device)
     : ws_(ws), device_(device) {}
@@ -202,15 +205,25 @@ const std::string OpKeyBuilder::Build() {
 }  // namespace
 
 OpRegistrationInfo::OpRegistrationInfo() {
-  device_placer = [this](OpConstructContext *context) -> std::set<DeviceType> {
-    auto op = context->operator_def();
-    // The GPU ops only support 4D In/Out tensor by default
-    if (this->devices.count(DeviceType::CPU) == 1 &&
-        op->output_shape_size() == op->output_size() &&
-        op->output_shape(0).dims_size() != 4) {
-      return { DeviceType::CPU };
-    }
+  // default device type placer
+  device_placer = [this](OpConditionContext *context) -> std::set<DeviceType> {
+    MACE_UNUSED(context);
     return this->devices;
+  };
+
+  // default input and output memory type setter
+  memory_type_setter = [](OpConditionContext *context) -> void {
+    if (context->device()->device_type() == DeviceType::GPU) {
+#ifdef MACE_ENABLE_OPENCL
+      if (context->device()->gpu_runtime()->UseImageMemory()) {
+        context->set_output_mem_type(MemoryType::GPU_IMAGE);
+      } else {
+        context->set_output_mem_type(MemoryType::GPU_BUFFER);
+      }
+#endif  // MACE_ENABLE_OPENCL
+    } else {
+      context->set_output_mem_type(MemoryType::CPU_BUFFER);
+    }
   };
 }
 
@@ -255,11 +268,19 @@ MaceStatus OpRegistryBase::Register(
 }
 
 const std::set<DeviceType> OpRegistryBase::AvailableDevices(
-    const std::string &op_type, OpConstructContext *context) const {
+    const std::string &op_type, OpConditionContext *context) const {
   MACE_CHECK(registry_.count(op_type) != 0,
              op_type, " operation is not registered.");
 
   return registry_.at(op_type)->device_placer(context);
+}
+
+void OpRegistryBase::GetInOutMemoryTypes(
+    const std::string &op_type,
+    mace::OpConditionContext *context) const {
+  MACE_CHECK(registry_.count(op_type) != 0,
+             op_type, " operation is not registered.");
+  return registry_.at(op_type)->memory_type_setter(context);
 }
 
 std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
@@ -269,15 +290,6 @@ std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
   DataType dtype = static_cast<DataType>(
       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
           *operator_def, "T", static_cast<int>(DT_FLOAT)));
-  if (device_type == DeviceType::CPU && dtype == DT_HALF) {
-    int arg_size = operator_def->arg_size();
-    for (int i = 0; i < arg_size; ++i) {
-      if (operator_def->arg(i).name() == "T") {
-        operator_def->mutable_arg(i)->set_i(DT_FLOAT);
-      }
-    }
-    dtype = DT_FLOAT;
-  }
   VLOG(1) << "Creating operator " << operator_def->name() << "("
           << operator_def->type() << "<" << dtype << ">" << ") on "
           << device_type;
@@ -308,9 +320,20 @@ OpConditionBuilder &OpConditionBuilder::SetDevicePlacerFunc(
   return *this;
 }
 
+OpConditionBuilder& OpConditionBuilder::SetInputMemoryTypeSetter(
+    mace::OpRegistrationInfo::MemoryTypeSetter setter) {
+  memory_type_setter_ = setter;
+  return *this;
+}
+
 void OpConditionBuilder::Finalize(OpRegistrationInfo *info) const {
-  if (info != nullptr && placer_) {
-    info->device_placer = placer_;
+  if (info != nullptr) {
+    if (placer_) {
+      info->device_placer = placer_;
+    }
+    if (memory_type_setter_) {
+      info->memory_type_setter = memory_type_setter_;
+    }
   }
 }
 

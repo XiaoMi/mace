@@ -417,7 +417,6 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
     if (context->device()->gpu_runtime()->UseImageMemory()) {
       kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>(use_log);
     } else {
-      context->set_output_mem_type(MemoryType::GPU_BUFFER);
       kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>(use_log);
     }
   }
@@ -456,7 +455,7 @@ void RegisterSoftmax(OpRegistryBase *op_registry) {
       op_registry,
       OpConditionBuilder("Softmax")
           .SetDevicePlacerFunc(
-              [](OpConstructContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
                   return { DeviceType::CPU, DeviceType::GPU };

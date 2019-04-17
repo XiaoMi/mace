@@ -55,6 +55,18 @@ class ProtoArgHelper {
   std::map<std::string, Argument> arg_map_;
 };
 
+template <typename T>
+void SetProtoArg(OperatorDef *op_def,
+                 const std::string &arg_name,
+                 const T&value);
+
+template <typename T>
+void SetProtoArg(NetDef *op_def,
+                 const std::string &arg_name,
+                 const T&value);
+
+std::string OutputMemoryTypeTagName();
+
 bool IsQuantizedModel(const NetDef &def);
 
 }  // namespace mace

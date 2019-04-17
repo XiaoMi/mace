@@ -382,7 +382,6 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_ = make_unique<opencl::buffer::DepthwiseConv2dKernel<T>>();
     }
-    context->set_output_mem_type(mem_type);
     Tensor *filter_tensor = context->workspace()->GetTensor(
         operator_def_->input(1));
     if (filter_tensor != nullptr && filter_tensor->is_weight()) {
@@ -393,8 +392,6 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
           1,
           OpenCLBufferType::DW_CONV2D_FILTER,
           mem_type) == MaceStatus::MACE_SUCCESS);
-    } else {
-      context->SetInputOpenCLBufferType(1, OpenCLBufferType::DW_CONV2D_FILTER);
     }
     if (operator_def_->input_size() > 2) {
       MACE_CHECK(TransformFilter<T>(
@@ -440,6 +437,27 @@ void RegisterDepthwiseConv2d(OpRegistryBase *op_registry) {
 
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
                    DepthwiseConv2dOp, DeviceType::GPU, half);
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("DepthwiseConv2d")
+          .SetInputMemoryTypeSetter(
+              [](OpConditionContext *context) -> void {
+                MemoryType mem_type = MemoryType::CPU_BUFFER;
+                if (context->device()->device_type() == DeviceType::GPU) {
+                  if (context->device()->gpu_runtime()->UseImageMemory()) {
+                    mem_type = MemoryType::GPU_IMAGE;
+                  } else {
+                    mem_type = MemoryType::GPU_BUFFER;
+                  }
+                  auto filter_tensor = context->workspace()->GetTensor(
+                      context->operator_def()->input(1));
+                  if (filter_tensor == nullptr || !filter_tensor->is_weight()) {
+                    context->SetInputOpenCLBufferType(
+                        1, OpenCLBufferType::DW_CONV2D_FILTER);
+                  }
+                }
+                context->set_output_mem_type(mem_type);
+              }));
 #endif  // MACE_ENABLE_OPENCL
 }
 

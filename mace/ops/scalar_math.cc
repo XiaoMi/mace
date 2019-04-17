@@ -100,11 +100,7 @@ class ScalarMathOp : public Operation {
         coeff_(Operation::GetRepeatedArgs<float>("coeff")),
         scalar_input_(Operation::GetOptionalArg<float>("scalar_input", 1.0)),
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
-            "scalar_input_index", 1)) {
-    if (D == DeviceType::GPU) {
-      context->set_output_mem_type(MemoryType::GPU_BUFFER);
-    }
-  }
+            "scalar_input_index", 1)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);

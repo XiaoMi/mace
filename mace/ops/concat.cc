@@ -241,13 +241,11 @@ void RegisterConcat(OpRegistryBase *op_registry) {
       op_registry,
       OpConditionBuilder("Concat")
           .SetDevicePlacerFunc(
-            [](OpConstructContext *context) -> std::set<DeviceType> {
+            [](OpConditionContext *context) -> std::set<DeviceType> {
               auto op = context->operator_def();
               auto tensor_shape_info = context->tensor_shape_info();
-              if (op->output_shape_size() != op->output_size()) {
-                return { DeviceType::CPU, DeviceType::GPU };
-              }
-              if (op->output_shape(0).dims_size() != 4) {
+              if (op->output_shape_size() != op->output_size() ||
+                  op->output_shape(0).dims_size() != 4) {
                 return { DeviceType::CPU };
               } else {
                 int has_data_format =
