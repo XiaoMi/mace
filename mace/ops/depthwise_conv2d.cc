@@ -250,6 +250,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
       std::vector<index_t> bias_shape{out_channels};
 
       tflite::optimized_ops::DepthwiseConv(
+          &context->device()->cpu_runtime()->thread_pool(),
           input_data, ShapeToTfliteDims(input->shape()), -input->zero_point(),
           filter_data, ShapeToTfliteDims(filter_shape), -filter->zero_point(),
           bias_data, ShapeToTfliteDims(bias_shape), stride_w, stride_h,

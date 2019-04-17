@@ -8,6 +8,8 @@ build --copt=-std=c++11
 build --copt=-fPIC
 build --copt=-D_GLIBCXX_USE_C99_MATH_TR1
 build --copt=-DMACE_OBFUSCATE_LITERALS
+build --copt=-DGEMMLOWP_USE_MACE_THREAD_POOL
+build --copt=-DMACE_DEPTHWISE_U8_USE_MULTI_THREAD
 
 # Usage example: bazel build --config android
 build:android --linkopt=-pie

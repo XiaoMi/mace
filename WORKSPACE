@@ -79,19 +79,19 @@ new_http_archive(
 
 http_archive(
     name = "gemmlowp",
-    sha256 = "afbea037aee2d21b625985238486b4219396f9c2550b0fde3157fab4d2580205",
-    strip_prefix = "gemmlowp-master-1f6d8d442805a400c74e63a4a017390733df2e28",
+    sha256 = "f340384e7728cea605e83597593699dfe8d13ff333b834d24c256935e3dc1758",
+    strip_prefix = "gemmlowp-master-48c0547a046d49b466aa01e3a82a18028f288924",
     urls = [
-        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/gemmlowp/gemmlowp-master-1f6d8d442805a400c74e63a4a017390733df2e28.zip",
+        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/gemmlowp/gemmlowp-master-48c0547a046d49b466aa01e3a82a18028f288924.zip",
     ],
 )
 
 http_archive(
     name = "tflite",
-    sha256 = "8b4c1b2ad2d31da9859e17b0ad551b12e1db7ff2faf7e83218901ab48d9fa91a",
-    strip_prefix = "tensorflow-mace-dfabaf85145e4d5ad39f34a0cea57b44c32dbe43",
+    sha256 = "6f2671a02fe635a82c289c8c40a6e5bc24670ff1d4c3c2ab4a7aa9b825256a18",
+    strip_prefix = "tensorflow-mace-d73e88fc830320d3818ac24e57cd441820a85cc9",
     urls = [
-        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/tflite/tensorflow-mace-dfabaf85145e4d5ad39f34a0cea57b44c32dbe43.zip",
+        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/tflite/tensorflow-mace-d73e88fc830320d3818ac24e57cd441820a85cc9.zip",
     ],
 )
 
