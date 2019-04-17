@@ -120,9 +120,8 @@ OnnxSupportedOps = [
     # 'OneHot',
     # 'Or',
     'PRelu',
-    # 'Pad',
+    'Pad',
     'PadContext',
-    'Padding',
     'PNorm',
     'Pow',
     # 'RNN',
@@ -346,8 +345,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Neg.name: self.convert_eltwise,
             OnnxOpType.Normalize: self.convert_normalize,
             OnnxOpType.Offset.name: self.convert_identity,
+            OnnxOpType.Pad.name: self.convert_pad,
             OnnxOpType.PadContext.name: self.convert_pad_context,
-            OnnxOpType.Padding.name: self.convert_identity,
             OnnxOpType.PNorm.name: self.convert_pnorm,
             OnnxOpType.Pow.name: self.convert_eltwise,
             OnnxOpType.PRelu.name: self.convert_activation,
@@ -981,6 +980,29 @@ class OnnxConverter(base_converter.ConverterInterface):
     def convert_normalize(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.BatchNorm.name
+
+    def convert_pad(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Pad.name
+        if 'mode' in node.attrs:
+            mode = node.attrs['mode']
+            padding_type_arg = op.arg.add()
+            padding_type_arg.name = MaceKeyword.mace_padding_type_str
+            if mode == 'reflect':
+                padding_type_arg.i = PadType.REFLECT
+            elif mode == 'edge':
+                padding_type_arg.i = PadType.SYMMETRIC
+            else:
+                padding_type_arg.i = PadType.CONSTANT
+        if 'pads' in node.attrs:
+            paddings_arg = op.arg.add()
+            paddings_arg.name = MaceKeyword.mace_paddings_str
+            paddings_value = node.attrs['pads']
+            paddings_arg.ints.extend(paddings_value)
+        if 'value' in node.attrs:
+            constant_value_arg = op.arg.add()
+            constant_value_arg.name = MaceKeyword.mace_constant_value_str
+            constant_value_arg.f = node.attrs['value']
 
     def convert_pad_context(self, node):
         op = self.convert_general_op(node)
