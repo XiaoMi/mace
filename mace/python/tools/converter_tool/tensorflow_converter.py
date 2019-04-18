@@ -100,6 +100,7 @@ TFSupportedOps = [
     'Pad',
     'ConcatV2',
     'Mean',
+    'Prod',
     'Const',
     'Gather',
     'GatherV2',
@@ -159,9 +160,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Sub.name: EltwiseType.SUB,
         TFOpType.Mul.name: EltwiseType.PROD,
         TFOpType.Div.name: EltwiseType.DIV,
-        TFOpType.Min.name: EltwiseType.MIN,
         TFOpType.Minimum.name: EltwiseType.MIN,
-        TFOpType.Max.name: EltwiseType.MAX,
         TFOpType.Maximum.name: EltwiseType.MAX,
         TFOpType.Neg.name: EltwiseType.NEG,
         TFOpType.Abs.name: EltwiseType.ABS,
@@ -183,6 +182,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.LeakyRelu.name: ActivationType.LEAKYRELU,
     }
 
+    reduce_math_type = {
+        TFOpType.Min.name: ReduceType.MIN,
+        TFOpType.Max.name: ReduceType.MAX,
+        TFOpType.Mean.name: ReduceType.MEAN,
+        TFOpType.Prod.name: ReduceType.PROD,
+    }
+
     pad_type = {
         'CONSTANT':  PadType.CONSTANT,
         'REFLECT':   PadType.REFLECT,
@@ -199,9 +205,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Sub.name: self.convert_elementwise,
             TFOpType.Mul.name: self.convert_elementwise,
             TFOpType.Div.name: self.convert_elementwise,
-            TFOpType.Min.name: self.convert_elementwise,
             TFOpType.Minimum.name: self.convert_elementwise,
-            TFOpType.Max.name: self.convert_elementwise,
             TFOpType.Maximum.name: self.convert_elementwise,
             TFOpType.Neg.name: self.convert_elementwise,
             TFOpType.Abs.name: self.convert_elementwise,
@@ -211,6 +215,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Square.name: self.convert_elementwise,
             TFOpType.Rsqrt.name: self.convert_elementwise,
             TFOpType.Equal.name: self.convert_elementwise,
+            TFOpType.Min.name: self.convert_reduce,
+            TFOpType.Max.name: self.convert_reduce,
+            TFOpType.Mean.name: self.convert_reduce,
+            TFOpType.Prod.name: self.convert_reduce,
             TFOpType.Relu.name: self.convert_activation,
             TFOpType.LeakyRelu.name: self.convert_activation,
             TFOpType.Relu6.name: self.convert_activation,
@@ -239,7 +247,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.SpaceToDepth.name: self.convert_space_depth,
             TFOpType.Pad.name: self.convert_pad,
             TFOpType.ConcatV2.name: self.convert_concat,
-            TFOpType.Mean.name: self.convert_mean,
             TFOpType.Const.name: self.convert_nop,
             TFOpType.Gather.name: self.convert_gather,
             TFOpType.GatherV2.name: self.convert_gather,
@@ -877,7 +884,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             dims_arg.name = MaceKeyword.mace_dims_str
             dims_arg.ints.extend(perm)
 
-    def convert_mean(self, tf_op):
+    def convert_reduce(self, tf_op):
         op = self.convert_general_op(tf_op)
         del op.input[1:]
 
@@ -885,7 +892,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         reduce_type_arg = op.arg.add()
         reduce_type_arg.name = MaceKeyword.mace_reduce_type_str
-        reduce_type_arg.i = ReduceType.MEAN.value
+        reduce_type_arg.i = self.reduce_math_type[tf_op.type].value
 
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
