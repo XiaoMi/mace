@@ -14,8 +14,6 @@
 
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
-#include <sys/stat.h>
-
 #include <cstdlib>
 #include <fstream>
 #include <memory>

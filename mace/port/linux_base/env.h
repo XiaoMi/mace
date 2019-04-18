@@ -26,6 +26,7 @@ namespace port {
 class LinuxBaseEnv : public Env {
  public:
   int64_t NowMicros() override;
+  MaceStatus AdviseFree(void *addr, size_t length) override;
   MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
   FileSystem *GetFileSystem() override;
   MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) override;

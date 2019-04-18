@@ -52,7 +52,7 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/common/gemmlowp_util.h"
-#include "mace/ops/quantization_util.h"
+#include "mace/ops/arm/q8/quantization_util.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL

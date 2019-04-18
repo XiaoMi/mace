@@ -147,8 +147,8 @@ void *OpenCLAllocator::MapImage(void *buffer,
   VLOG(3) << "Map OpenCL Image";
   MACE_CHECK(image_shape.size() == 2) << "Just support map 2d image";
   auto cl_image = static_cast<cl::Image2D *>(buffer);
-  std::array<size_t, 3> origin = {0, 0, 0};
-  std::array<size_t, 3> region = {image_shape[0], image_shape[1], 1};
+  std::array<size_t, 3> origin = {{0, 0, 0}};
+  std::array<size_t, 3> region = {{image_shape[0], image_shape[1], 1}};
 
   mapped_image_pitch->resize(2);
   cl_int error;

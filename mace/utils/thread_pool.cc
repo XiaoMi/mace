@@ -179,7 +179,7 @@ void ThreadPool::Init() {
   if (threads_.size() <= 1) {
     return;
   }
-  count_down_latch_.Reset(threads_.size() - 1);
+  count_down_latch_.Reset(static_cast<int>(threads_.size() - 1));
   event_ = kThreadPoolInit;
   for (size_t i = 1; i < threads_.size(); ++i) {
     threads_[i] = std::thread(&ThreadPool::ThreadLoop, this, i);
@@ -206,7 +206,7 @@ void ThreadPool::Run(const std::function<void(const int64_t)> &func,
     iters_offset = thread_infos_[i].range_end;
   }
 
-  count_down_latch_.Reset(thread_count - 1);
+  count_down_latch_.Reset(static_cast<int>(thread_count - 1));
   {
     std::unique_lock<std::mutex> m(event_mutex_);
     event_.store(kThreadPoolRun | ~(event_ | kThreadPoolEventMask),

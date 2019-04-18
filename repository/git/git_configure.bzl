@@ -20,7 +20,7 @@ def _git_version_conf_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
 
   repository_ctx.execute([
-      'bash', '%s/mace/tools/git/gen_version_source.sh' % mace_root_path
+      'bash', '%s/mace/codegen/tools/gen_version_source.sh' % mace_root_path
       , '%s/version' % generated_files_path
   ], quiet=False)
 

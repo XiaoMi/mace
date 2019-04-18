@@ -61,7 +61,6 @@ new_http_archive(
     strip_prefix = "half-code-356-trunk",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/half/half-code-356-trunk.zip",
-        "https://sourceforge.net/code-snapshots/svn/h/ha/half/code/half-code-356-trunk.zip",
     ],
 )
 

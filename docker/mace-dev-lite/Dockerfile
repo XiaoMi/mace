@@ -104,7 +104,7 @@ RUN cd /opt/ && \
     unzip -q android-ndk-r15c-linux-x86_64.zip && \
     rm -f android-ndk-r15c-linux-x86_64.zip
 
-ENV ANDROID_NDK_VERSION r15c
+ENV ANDROID_NDK_VERSION r19c
 ENV ANDROID_NDK_HOME /opt/android-ndk-${ANDROID_NDK_VERSION}
 
 # add to PATH

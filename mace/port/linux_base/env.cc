@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <cstddef>
@@ -120,6 +121,27 @@ MaceStatus LinuxBaseEnv::SchedSetAffinity(const std::vector<size_t> &cpu_ids) {
 
   return MaceStatus::MACE_SUCCESS;
 }
+
+MaceStatus LinuxBaseEnv::AdviseFree(void *addr, size_t length) {
+  int page_size = sysconf(_SC_PAGESIZE);
+  void *addr_aligned =
+      reinterpret_cast<void *>(
+          (reinterpret_cast<uintptr_t>(addr) + page_size - 1)
+              & (~(page_size - 1)));
+  uintptr_t delta =
+      reinterpret_cast<uintptr_t>(addr_aligned)
+          - reinterpret_cast<uintptr_t>(addr);
+  if (length >= delta + page_size) {
+    size_t len_aligned = (length - delta) & (~(page_size - 1));
+    int error = madvise(addr_aligned, len_aligned, MADV_DONTNEED);
+    if (error != 0) {
+      LOG(ERROR) << "Advise free failed: " << strerror(errno);
+      return MaceStatus::MACE_RUNTIME_ERROR;
+    }
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
+
 
 }  // namespace port
 }  // namespace mace

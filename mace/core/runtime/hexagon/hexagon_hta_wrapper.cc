@@ -32,7 +32,7 @@
 namespace mace {
 
 HexagonHTAWrapper::HexagonHTAWrapper(Device *device)
-    : device_(device), quantize_util_(&device->cpu_runtime()->thread_pool()) {
+    : quantize_util_(&device->cpu_runtime()->thread_pool()) {
 }
 
 int HexagonHTAWrapper::GetVersion() {
