@@ -57,7 +57,7 @@ class CPURuntime {
 
   gemmlowp::GemmContext *GetGemmlowpContext() {
     if (gemm_context_ == nullptr) {
-      gemm_context_ = new gemmlowp::GemmContext();
+      gemm_context_ = new gemmlowp::GemmContext(thread_pool_);
     }
     return static_cast<gemmlowp::GemmContext*>(gemm_context_);
   }
