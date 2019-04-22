@@ -214,7 +214,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     Tensor *output = this->Output(OUTPUT);
 
     std::vector<index_t> output_shape = input->shape();
-    output_shape[1] = output_dim;
+    output_shape[input_rank - 1] = output_dim;
 
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
@@ -235,8 +235,10 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
       affine_b_in.Clear();
       affine_b_out.Clear();
       for (int i = 0; i < chunk; ++i) {
+        const float *input_ptr = input_data + (b * chunk + i) * input_dim;
+        float *output_ptr = output_data + (b * chunk + i) * output_dim;
         // Append
-        memcpy(affine_a_in_data, input_data, input_dim * sizeof(float));
+        memcpy(affine_a_in_data, input_ptr, input_dim * sizeof(float));
         if (prev_out_idx >= 0) {
           memcpy(affine_a_in_data + input_dim,
                  prev_out_data + prev_out_idx % out_buf_chunk * prev_out_dim_,
@@ -283,7 +285,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                       false,
                       &affine_b_out);
         // Output
-        memcpy(output_data,
+        memcpy(output_ptr,
                affine_b_out_data,
                output_dim * sizeof(float));
         // Update
@@ -292,8 +294,6 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                           prev_out_dim_,
                           scale_,
                           curr_out_ptr);
-        input_data += input_dim;
-        output_data += output_dim;
         prev_out_idx++;
         prev_cell_idx++;
       }

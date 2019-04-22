@@ -1130,7 +1130,7 @@ class Transformer(base_converter.ConverterInterface):
                 rhs = op.input[1]
                 if rhs in self._consts and len(self._consts[rhs].dims) == 2:
                     arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
-                    six.print_("Transpose matmul weight %s" % rhs)
+                    # six.print_("Transpose matmul weight %s" % rhs)
                     if arg is None:
                         arg = op.arg.add()
                         arg.name = MaceKeyword.mace_transpose_b_str
@@ -1143,7 +1143,8 @@ class Transformer(base_converter.ConverterInterface):
                         filter.float_data[:] = filter_data.flat
                         filter.dims[:] = filter_data.shape
                         arg.i = 1
-                        six.print_('transpose matmul weight')
+                        six.print_('Transpose matmul weight to shape:',
+                                   filter.dims)
 
     def transpose_filters(self):
         net = self._model

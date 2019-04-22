@@ -41,6 +41,15 @@ from numbers import Number
 
 IS_PYTHON3 = sys.version_info > (3,)
 
+
+class AttributeType(Enum):
+    INT = 100
+    FLOAT = 101
+    INTS = 102
+    FLOATS = 103
+    BOOL = 104
+
+
 OnnxSupportedOps = [
     'Abs',
     # 'Acos',
@@ -57,6 +66,7 @@ OnnxSupportedOps = [
     # 'Atanh',
     'AveragePool',
     'BatchNormalization',
+    'BatchNorm',
     'Cast',
     # 'Ceil',
     # 'Clip',
@@ -72,11 +82,12 @@ OnnxSupportedOps = [
     'DimRange',
     'Div',
     'Dropout',
-    'DynamicLstmCell',
+    'DynamicLSTM',
     'Elu',
     'Equal',
     # 'Exp',
     # 'Expand',
+    'ExtractPooling',
     # 'EyeLike',
     # 'Flatten',
     # 'Floor',
@@ -91,7 +102,7 @@ OnnxSupportedOps = [
     # 'Hardmax',
     'Identity',
     # 'If',
-    # 'IfDefined',
+    'IfDefined',
     'ImageScaler',
     # 'InstanceNormalization',
     # 'LRN',
@@ -318,6 +329,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.ArgMin.name: self.convert_argmax,
             OnnxOpType.AveragePool.name: self.convert_pooling,
             OnnxOpType.BatchNormalization.name: self.convert_fused_batchnorm,
+            OnnxOpType.BatchNorm.name: self.convert_fused_batchnorm,
             OnnxOpType.Cast.name: self.convert_cast,
             OnnxOpType.Concat.name: self.convert_concat,
             OnnxOpType.Conv.name: self.convert_conv2d,
@@ -327,16 +339,18 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.DimRange.name: self.convert_dim_range,
             OnnxOpType.Div.name: self.convert_eltwise,
             OnnxOpType.Equal.name: self.convert_eltwise,
+            OnnxOpType.ExtractPooling.name: self.convert_extract_pooling,
             OnnxOpType.Gather.name: self.convert_gather,
             OnnxOpType.Gemm.name: self.convert_gemm,
             OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
             OnnxOpType.Identity.name: self.convert_identity,
+            OnnxOpType.IfDefined.name: self.convert_ifdefined,
             OnnxOpType.ImageScaler.name: self.convert_imagescaler,
             OnnxOpType.LeakyRelu.name: self.convert_activation,
             OnnxOpType.LogSoftmax.name: self.convert_softmax,
             OnnxOpType.LstmNonlinear.name: self.convert_lstm_nonlinear,
-            OnnxOpType.DynamicLstmCell.name: self.convert_dynamic_lstm,
+            OnnxOpType.DynamicLSTM.name: self.convert_dynamic_lstm,
             OnnxOpType.Max.name: self.convert_eltwise,
             OnnxOpType.MaxPool.name: self.convert_pooling,
             OnnxOpType.MatMul.name: self.convert_matmul,
@@ -378,6 +392,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         ir_version = onnx_model.ir_version
         opset_imp = onnx_model.opset_import
 
+        self._isKaldi = False
+
         polish_available = True
         print("onnx model IR version: ", ir_version)
         for imp in opset_imp:
@@ -387,6 +403,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             if 'kaldi2onnx' in domain:
                 polish_available = False
                 self._data_format = DataFormat.DF_NONE
+                self._isKaldi = True
         if polish_available:
             onnx_model = onnx.utils.polish_model(onnx_model)
 
@@ -643,10 +660,10 @@ class OnnxConverter(base_converter.ConverterInterface):
             mace_check(axis_value == 1 or axis_value == -3,
                        "only support concat at channel dimension")
         elif node.op_type == OnnxOpType.Append.name:
-            axis_value = 1
+            axis_value = -1
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
-        axis_arg.i = 4 + axis_value if axis_value < 0 else axis_value
+        axis_arg.i = axis_value
 
     def convert_conv2d(self, node):
         op = self.convert_general_op(node)
@@ -772,15 +789,15 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.DynamicLSTM.name
 
-        if 'delay_a' in node.attrs:
-            prev_out_delay = node.attrs['delay_a']
+        if 'prev_out_delay' in node.attrs:
+            prev_out_delay = node.attrs['prev_out_delay']
             mace_check(prev_out_delay < 0,
                        "dynamic's prev_out_delay should <= 0.")
             prev_out_delay_arg = op.arg.add()
             prev_out_delay_arg.name = 'prev_out_delay'
             prev_out_delay_arg.i = prev_out_delay
-        if 'delay_b' in node.attrs:
-            prev_cell_delay = node.attrs['delay_b']
+        if 'prev_cell_delay' in node.attrs:
+            prev_cell_delay = node.attrs['prev_cell_delay']
             mace_check(prev_cell_delay < 0,
                        "dynamic's prev_cell_delay should < 0.")
             prev_cell_delay_arg = op.arg.add()
@@ -788,20 +805,20 @@ class OnnxConverter(base_converter.ConverterInterface):
             prev_cell_delay_arg.i = prev_cell_delay
         if 'prev_out_offset' in node.attrs:
             prev_out_offset = node.attrs['prev_out_offset']
-            mace_check(pre_out_offset >= 0,
+            mace_check(prev_out_offset >= 0,
                        "dynamic's prev_out_offset should >= 0.")
             prev_out_offset_arg = op.arg.add()
             prev_out_offset_arg.name = 'prev_out_offset'
             prev_out_offset_arg.i = prev_out_offset
-        if 'prev_a_dim' in node.attrs:
-            prev_out_dim = node.attrs['prev_a_dim']
+        if 'prev_out_dim' in node.attrs:
+            prev_out_dim = node.attrs['prev_out_dim']
             mace_check(prev_out_dim > 0,
                        "dynamic's prev_out_dim should > 0.")
             prev_out_dim_arg = op.arg.add()
             prev_out_dim_arg.name = 'prev_out_dim'
             prev_out_dim_arg.i = prev_out_dim
-        if 'prev_b_dim' in node.attrs:
-            prev_cell_dim = node.attrs['prev_b_dim']
+        if 'prev_cell_dim' in node.attrs:
+            prev_cell_dim = node.attrs['prev_cell_dim']
             mace_check(prev_cell_dim > 0,
                        "dynamic's prev_cell_dim should > 0.")
             prev_cell_dim_arg = op.arg.add()
@@ -844,11 +861,154 @@ class OnnxConverter(base_converter.ConverterInterface):
             value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = value
 
+    @staticmethod
+    def copy_node_attr(op, node, attr_name, dtype=AttributeType.INT,
+                       default=None):
+        if attr_name in node.attrs or default is not None:
+            if attr_name in node.attrs:
+                value = node.attrs[attr_name]
+            else:
+                value = default
+            new_arg = op.arg.add()
+            new_arg.name = attr_name
+            if dtype == AttributeType.INT:
+                new_arg.i = int(value)
+            elif dtype == AttributeType.FLOAT:
+                new_arg.f = float(value)
+            elif dtype == AttributeType.INTS:
+                new_arg.ints.extend(value)
+            elif dtype == AttributeType.FLOATS:
+                new_arg.floats.extend(value)
+            return value
+        else:
+            return default
+
+    def convert_extract_pooling(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.ExtractPooling.name
+
+        self.copy_node_attr(op, node, 'include_variance', AttributeType.INT)
+        self.copy_node_attr(op, node, 'num_log_count', AttributeType.INT)
+        self.copy_node_attr(op, node, 'variance_floor', AttributeType.FLOAT)
+        self.copy_node_attr(op, node, 'input_time_range', AttributeType.INTS)
+        self.copy_node_attr(op, node, 'input_indexes', AttributeType.INTS)
+
+        if 'output_time_range' in node.attrs:
+            output_time_range = node.attrs['output_time_range']
+            mace_check(len(output_time_range) == 2,
+                       "output time range should have two values.")
+            out_start_index = output_time_range[0]
+            out_end_index = output_time_range[1]
+        else:
+            mace_check('start_index' in node.attrs and
+                       'end_index' in node.attrs,
+                       "'start_index' and 'end_index'"
+                       " are required in ExtractPooling.")
+            out_start_index = node.attrs['start_index']
+            out_end_index = node.attrs['end_index']
+            output_time_range = [out_start_index, out_end_index]
+
+        output_time_range_arg = op.arg.add()
+        output_time_range_arg.name = 'output_time_range'
+        output_time_range_arg.ints.extend(output_time_range)
+
+        mace_check('modulus' in node.attrs,
+                   "'modulus' is required in ExtractPooling.")
+        mace_check('output_indexes' in node.attrs,
+                   "'output_indexes' is required in ExtractPooling.")
+        mace_check('counts' in node.attrs,
+                   "'counts' is required in ExtractPooling.")
+        mace_check('forward_indexes' in node.attrs,
+                   "'forward_indexes' is required in ExtractPooling.")
+        modulus = node.attrs['modulus']
+        output_indexes = node.attrs['output_indexes']
+        counts = node.attrs['counts']
+        forward_indexes = node.attrs['forward_indexes']
+
+        mace_check(len(counts) == len(output_indexes) and
+                   len(forward_indexes) == 2 * len(output_indexes),
+                   "output_indexes length:%s "
+                   "counts length:%s "
+                   "forward_indexes length:%s"
+                   % (len(output_indexes), len(counts), len(forward_indexes)))
+
+        new_output_indexes = []
+        new_forward_indexes = []
+        new_counts = []
+        for i in range(len(output_indexes)):
+            if output_indexes[i] + modulus > out_start_index and\
+                    output_indexes[i] <= out_end_index:
+                new_output_indexes.append(output_indexes[i])
+                new_counts.append(counts[i])
+                new_forward_indexes.append(forward_indexes[2 * i])
+                new_forward_indexes.append(forward_indexes[2 * i + 1])
+        modulus_arg = op.arg.add()
+        modulus_arg.name = 'modulus'
+        modulus_arg.i = modulus
+
+        counts_arg = op.arg.add()
+        counts_arg.name = 'counts'
+        counts_arg.floats.extend(new_counts)
+
+        forward_indexes_arg = op.arg.add()
+        forward_indexes_arg.name = 'forward_indexes'
+        forward_indexes_arg.ints.extend(new_forward_indexes)
+
+        output_indexes_arg = op.arg.add()
+        output_indexes_arg.name = 'output_indexes'
+        output_indexes_arg.ints.extend(new_output_indexes)
+
     def convert_flatten(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Reshape.name
 
+    def convert_kaldi_batchnorm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.KaldiBatchNorm.name
+        dim = self.copy_node_attr(op, node,
+                                  'dim', AttributeType.INT, -1)
+        block_dim = self.copy_node_attr(op, node,
+                                        'block_dim',
+                                        AttributeType.INT, -1)
+        epsilon = self.copy_node_attr(op, node,
+                                      'epsilon',
+                                      AttributeType.FLOAT, 1e-3)
+        target_rms = self.copy_node_attr(op, node,
+                                         'target_rms',
+                                         AttributeType.FLOAT, 1.0)
+        test_mode = self.copy_node_attr(op, node,
+                                        'test_mode',
+                                        AttributeType.INT, 0)
+        mace_check(block_dim > 0 and
+                   dim % block_dim == 0 and
+                   epsilon > 0 and
+                   target_rms > 0, "attributes invalid.")
+
+        if test_mode > 0:
+            mace_check(len(node.inputs) == 3,
+                       "Kaldi's BatchNorm should have 3 inputs.")
+            stats_mean = np.array(self._consts[node.inputs[1]].float_data)
+            stats_var = np.array(self._consts[node.inputs[2]].float_data)
+            offset_value = -1.0 * stats_mean
+            scale_value = stats_var
+            scale_value[scale_value < 0] = 0
+            scale_value = np.power(scale_value + epsilon, -0.5) * target_rms
+            offset_value = offset_value * scale_value
+            scale_name = node.name + '_scale'
+            offset_name = node.name + '_offset'
+            self.add_tensor(scale_name, scale_value.shape,
+                            mace_pb2.DT_FLOAT, scale_value)
+            self.add_tensor(offset_name, offset_value.shape,
+                            mace_pb2.DT_FLOAT, offset_value)
+            del op.input[1:]
+            op.input.extend([scale_name, offset_name])
+            del op.output[1:]
+            del op.output_shape[1:]
+
     def convert_fused_batchnorm(self, node):
+        if self._isKaldi:
+            self.convert_kaldi_batchnorm(node)
+            return
         op = self.convert_general_op(node)
         op.type = MaceOp.BatchNorm.name
 
@@ -945,6 +1105,21 @@ class OnnxConverter(base_converter.ConverterInterface):
     def convert_identity(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Identity.name
+
+    def convert_ifdefined(self, node):
+        op = self.convert_general_op(node)
+        if 'offset' in node.attrs:
+            offset = node.attrs['offset']
+        else:
+            offset = 0
+        mace_check(offset <= 0, "IfDefined's offset should be <= 0.")
+        if offset == 0:
+            op.type = MaceOp.Identity.name
+        else:
+            op.type = MaceOp.Delay.name
+        offset_arg = op.arg.add()
+        offset_arg.name = 'offset'
+        offset_arg.i = node.attrs['offset']
 
     def convert_imagescaler(self, node):
         op = self.convert_general_op(node)
@@ -1100,7 +1275,6 @@ class OnnxConverter(base_converter.ConverterInterface):
     def convert_softmax(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Softmax.name
-        # TODO: add logsoftmax in softmax op
         if node.op_type == OnnxOpType.LogSoftmax.name:
             use_log_arg = op.arg.add()
             use_log_arg.name = 'use_log'
@@ -1164,11 +1338,11 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.TargetRMSNorm.name
 
-        if 'target_rms' in node.attrs:
-            value = node.attrs['target_rms']
-            target_rms_arg = op.arg.add()
-            target_rms_arg.name = 'target_rms'
-            target_rms_arg.f = value
+        self.copy_node_attr(op, node, 'target_rms', AttributeType.FLOAT)
+        self.copy_node_attr(op, node, 'add_log_stddev', AttributeType.INT,
+                            default=0)
+        self.copy_node_attr(op, node, 'block_dim', AttributeType.INT,
+                            default=0)
 
     def convert_transpose(self, node):
         op = self.convert_general_op(node)

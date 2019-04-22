@@ -86,7 +86,8 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
           continue;
         }
         MACE_CHECK(input->dim(j) == input0->dim(j),
-                   "Dimensions of inputs should equal except axis.");
+                   "Dimensions of inputs should equal except axis: ",
+                   input->dim(j), "!=", input0->dim(j));
       }
       outer_sizes[i] = input->size() / inner_size;
       output_shape[axis] += input->dim(axis);
