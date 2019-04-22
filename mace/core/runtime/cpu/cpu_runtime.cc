@@ -31,15 +31,11 @@
 #include "mace/public/mace.h"
 #include "mace/utils/macros.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/thread_pool.h"
 
 namespace mace {
 
 int MaceOpenMPThreadCount = 1;
-
-struct CPUFreq {
-  size_t core_id;
-  float freq;
-};
 
 enum SchedulePolicy {
   SCHED_STATIC,
@@ -105,28 +101,12 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     return MaceStatus::MACE_RUNTIME_ERROR;
   }
 
-  std::vector<CPUFreq> cpu_freq(cpu_max_freqs.size());
-  for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
-    cpu_freq[i].core_id = i;
-    cpu_freq[i].freq = cpu_max_freqs[i];
-  }
-  if (policy == CPUAffinityPolicy::AFFINITY_POWER_SAVE ||
-      policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
-    std::sort(cpu_freq.begin(),
-              cpu_freq.end(),
-              [=](const CPUFreq &lhs, const CPUFreq &rhs) {
-                return lhs.freq < rhs.freq;
-              });
-  } else if (policy == CPUAffinityPolicy::AFFINITY_HIGH_PERFORMANCE ||
-      policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
-    std::sort(cpu_freq.begin(),
-              cpu_freq.end(),
-              [](const CPUFreq &lhs, const CPUFreq &rhs) {
-                return lhs.freq > rhs.freq;
-              });
-  }
+  std::vector<size_t> cores_to_use;
+  MACE_RETURN_IF_ERROR(
+      mace::utils::GetCPUCoresToUse(
+          cpu_max_freqs, policy, num_threads_hint, &cores_to_use));
 
-  int cpu_count = static_cast<int>(cpu_freq.size());
+  int cpu_count = static_cast<int>(cores_to_use.size());
   if (num_threads_hint <= 0 || num_threads_hint > cpu_count) {
     num_threads_hint = cpu_count;
   }
@@ -148,32 +128,10 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     return MaceStatus::MACE_SUCCESS;
   }
 
-
-  // decide num of cores to use
-  int cores_to_use = 0;
-  if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY
-      || policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
-    for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
-      if (cpu_freq[i].freq != cpu_freq[0].freq) {
-        break;
-      }
-      ++cores_to_use;
-    }
-    num_threads_hint = std::min(num_threads_hint, cores_to_use);
-  } else {
-    cores_to_use = num_threads_hint;
-  }
-  MACE_CHECK(cores_to_use > 0, "number of cores to use should > 0");
-
-  VLOG(2) << "Use " << num_threads_hint << " threads";
-  std::vector<size_t> cpu_ids(cores_to_use);
-  for (int i = 0; i < cores_to_use; ++i) {
-    VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id << " with freq "
-            << cpu_freq[i].freq;
-    cpu_ids[i] = cpu_freq[i].core_id;
-  }
   SchedulePolicy sched_policy = SCHED_GUIDED;
-  if (std::abs(cpu_freq[0].freq - cpu_freq[cores_to_use - 1].freq) < 1e-6) {
+  float first_freq = cpu_max_freqs[cores_to_use[0]];
+  float last_freq = cpu_max_freqs[cores_to_use[cores_to_use.size() - 1]];
+  if (std::abs(first_freq - last_freq) < 1e-6) {
     sched_policy = SCHED_STATIC;
   }
 
@@ -185,7 +143,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
 #endif  // MACE_ENABLE_QUANTIZE
 
   return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint,
-                                         cpu_ids,
+                                         cores_to_use,
                                          sched_policy);
 }
 

@@ -14,7 +14,10 @@
 
 #include "mace/port/linux_base/env.h"
 
+#include <errno.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include <cstddef>
 #include <fstream>
@@ -27,7 +30,6 @@
 
 namespace mace {
 namespace port {
-
 
 namespace {
 
@@ -96,6 +98,25 @@ MaceStatus LinuxBaseEnv::GetCPUMaxFreq(std::vector<float> *max_freqs) {
   }
 
   VLOG(1) << "CPU freq: " << MakeString(*max_freqs);
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus LinuxBaseEnv::SchedSetAffinity(const std::vector<size_t> &cpu_ids) {
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  for (auto cpu_id : cpu_ids) {
+    CPU_SET(cpu_id, &mask);
+  }
+
+  pid_t pid = syscall(SYS_gettid);
+  int err = sched_setaffinity(pid, sizeof(mask), &mask);
+  if (err) {
+    LOG(WARNING) << "SchedSetAffinity failed: " << strerror(errno);
+    return MaceStatus(MaceStatus::MACE_INVALID_ARGS,
+                      "SchedSetAffinity failed: " +
+                          std::string(strerror(errno)));
+  }
 
   return MaceStatus::MACE_SUCCESS;
 }

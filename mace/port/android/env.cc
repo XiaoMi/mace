@@ -17,7 +17,6 @@
 #include <errno.h>
 #include <unwind.h>
 #include <dlfcn.h>
-#include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 
@@ -50,46 +49,60 @@ LogWriter *AndroidEnv::GetLogWriter() {
 namespace {
 
 struct BacktraceState {
-  void** current;
-  void** end;
+  void **current;
+  void **end;
 };
 
-_Unwind_Reason_Code UnwindCallback(struct _Unwind_Context* context, void* arg) {
-  BacktraceState* state = static_cast<BacktraceState*>(arg);
+_Unwind_Reason_Code UnwindCallback(struct _Unwind_Context *context, void *arg) {
+  BacktraceState *state = static_cast<BacktraceState *>(arg);
   uintptr_t pc = _Unwind_GetIP(context);
   if (pc) {
     if (state->current == state->end) {
       return _URC_END_OF_STACK;
     } else {
-      *state->current++ = reinterpret_cast<void*>(pc);
+      *state->current++ = reinterpret_cast<void *>(pc);
     }
   }
   return _URC_NO_REASON;
 }
 
-size_t BackTrace(void** buffer, size_t max) {
+size_t BackTrace(void **buffer, size_t max) {
   BacktraceState state = {buffer, buffer + max};
   _Unwind_Backtrace(UnwindCallback, &state);
 
   return state.current - buffer;
 }
 
+bool CpuIsolate(size_t cpu_id) {
+  std::string cpuinfo_isolate_conf = MakeString(
+      "/sys/devices/system/cpu/cpu",
+      cpu_id,
+      "/isolate");
+  std::ifstream isolate_file(cpuinfo_isolate_conf);
+  int isolate_switch = 0;
+  if (isolate_file.is_open()) {
+    std::string line;
+    if (std::getline(isolate_file, line)) {
+      isolate_switch = strtol(line.c_str(), nullptr, 0);
+    }
+    isolate_file.close();
+  }
+
+  return (isolate_switch != 0);
+}
+
 }  // namespace
 
-MaceStatus AndroidEnv::SchedSetAffinity(const std::vector<size_t> &cpu_ids) {
-  // compute mask
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
-  for (auto cpu_id : cpu_ids) {
-    CPU_SET(cpu_id, &mask);
-  }
-  pid_t pid = gettid();
-  int err = sched_setaffinity(pid, sizeof(mask), &mask);
-  if (err) {
-    LOG(WARNING) << "SchedSetAffinity failed: " << strerror(errno);
-    return MaceStatus(MaceStatus::MACE_INVALID_ARGS,
-                      "SchedSetAffinity failed: " +
-                      std::string(strerror(errno)));
+MaceStatus AndroidEnv::GetCPUMaxFreq(std::vector<float> *max_freqs) {
+  MACE_RETURN_IF_ERROR(LinuxBaseEnv::GetCPUMaxFreq(max_freqs));
+
+  size_t cpu_num = (max_freqs != nullptr) ? max_freqs->size() : 0;
+  if (cpu_num > 0) {
+    for (size_t i = 0; i < cpu_num; ++i) {
+      if (CpuIsolate(i)) {
+        (*max_freqs)[i] = 0;
+      }
+    }
   }
 
   return MaceStatus::MACE_SUCCESS;
@@ -103,8 +116,8 @@ std::vector<std::string> AndroidEnv::GetBackTraceUnsafe(int max_steps) {
   for (int i = 0; i < steps; ++i) {
     std::ostringstream os;
 
-    const void* addr = buffer[i];
-    const char* symbol = "";
+    const void *addr = buffer[i];
+    const char *symbol = "";
     Dl_info info;
     if (dladdr(addr, &info) && info.dli_sname) {
       symbol = info.dli_sname;

@@ -25,9 +25,20 @@
 #include "mace/port/posix/backtrace.h"
 #include "mace/port/posix/file_system.h"
 #include "mace/port/posix/time.h"
+#include "mace/utils/macros.h"
 
 namespace mace {
 namespace port {
+
+// In our embedded linux device, SchedSetAffinity has side effects
+// on performance, so we override this method to do nothing. You
+// can try to comment this function, perhaps you could get a better
+// performance as we do in Android devices.
+MaceStatus LinuxEnv::SchedSetAffinity(const std::vector<size_t> &cpu_ids) {
+  MACE_UNUSED(cpu_ids);
+
+  return MaceStatus::MACE_SUCCESS;
+}
 
 LogWriter *LinuxEnv::GetLogWriter() {
   return &log_writer_;

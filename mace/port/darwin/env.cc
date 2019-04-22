@@ -15,6 +15,8 @@
 #include "mace/port/darwin/env.h"
 
 #include <execinfo.h>
+#include <mach/thread_act.h>
+#include <mach/thread_policy.h>
 #include <stdint.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
@@ -33,27 +35,64 @@ namespace mace {
 namespace port {
 
 namespace {
-const char kCpuFrequencyMax[] = "hw.cpufrequency_max";
+
+constexpr const char kCpuFrequencyMax[] = "hw.cpufrequency_max";
+constexpr const char kCpuActiveNum[] = "hw.activecpu";
+
 }
 
 int64_t DarwinEnv::NowMicros() {
   return mace::port::posix::NowMicros();
 }
 
-// TODO(luxuhui): this func is not accurate, darwin does not support
-// acquiring CPU frequencies, we need to reconsider the CPU scheduling
-// strategy.
-MaceStatus DarwinEnv::GetCPUMaxFreq(std::vector<float> *max_freqs) {
-  MACE_CHECK_NOTNULL(max_freqs);
+// we can't get the frequancy of every cpu on darwin, so this method
+// return a fake frequancy data.
+MaceStatus DarwinEnv::GetCPUMaxFreq(std::vector<float> *cpu_infos) {
+  MACE_CHECK_NOTNULL(cpu_infos);
 
-  uint64_t freq = 0;
+  float freq = 0;
   size_t size = sizeof(freq);
   int ret = sysctlbyname(kCpuFrequencyMax, &freq, &size, NULL, 0);
   if (ret < 0) {
     LOG(ERROR) << "failed to get property: " << kCpuFrequencyMax;
     return MaceStatus::MACE_RUNTIME_ERROR;
   }
-  max_freqs->push_back(freq);
+
+  uint64_t cpu_num = 0;
+  size = sizeof(cpu_num);
+  ret = sysctlbyname(kCpuActiveNum, &cpu_num, &size, NULL, 0);
+  if (ret < 0) {
+    LOG(ERROR) << "failed to get property: " << kCpuActiveNum;
+    return MaceStatus::MACE_RUNTIME_ERROR;
+  }
+
+  for (int i = 0; i < cpu_num; ++i) {
+    cpu_infos->push_back(freq);
+  }
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus DarwinEnv::SchedSetAffinity(
+    const std::vector<size_t> &cpu_ids) {
+  unsigned int tag = 0;
+  for (size_t i = 0; i < cpu_ids.size(); ++i) {
+    tag += (cpu_ids[i] << i);
+  }
+
+#ifdef MACE_OS_MAC
+  pthread_t thread = pthread_self();
+  mach_port_t mach_port = pthread_mach_thread_np(thread);
+  thread_affinity_policy_data_t policy_data = {(integer_t) tag};
+  int ret = thread_policy_set(mach_port,
+                              THREAD_AFFINITY_POLICY,
+                              (thread_policy_t) & policy_data,
+                              1);
+  if (ret) {
+    LOG(INFO) << "thread_policy_set failed: " << strerror(errno);
+    return MaceStatus::MACE_RUNTIME_ERROR;
+  }
+#endif
 
   return MaceStatus::MACE_SUCCESS;
 }

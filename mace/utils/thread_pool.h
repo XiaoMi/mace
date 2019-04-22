@@ -29,6 +29,11 @@
 namespace mace {
 namespace utils {
 
+MaceStatus GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
+                            const CPUAffinityPolicy policy,
+                            const size_t thread_count_hint,
+                            std::vector<size_t> *cores);
+
 class ThreadPool {
  public:
   ThreadPool(const size_t thread_count,

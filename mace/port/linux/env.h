@@ -26,6 +26,7 @@ namespace port {
 
 class LinuxEnv : public LinuxBaseEnv {
  public:
+  MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) override;
   LogWriter *GetLogWriter() override;
   std::vector<std::string> GetBackTraceUnsafe(int max_steps) override;
 

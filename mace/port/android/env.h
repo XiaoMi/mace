@@ -29,8 +29,8 @@ namespace port {
 
 class AndroidEnv : public LinuxBaseEnv {
  public:
-  MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) override;
   LogWriter *GetLogWriter() override;
+  MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
   std::vector<std::string> GetBackTraceUnsafe(int max_steps) override;
   std::unique_ptr<MallocLogger> NewMallocLogger(
       std::ostringstream *oss,
