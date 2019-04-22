@@ -82,7 +82,7 @@ class ChannelShuffleOp<DeviceType::GPU, T> : public Operation {
   explicit ChannelShuffleOp(OpConstructContext *context)
       : Operation(context) {
     const int groups = Operation::GetOptionalArg<int>("group", 1);
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ChannelShuffleKernel<T>>(groups);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -119,7 +119,7 @@ void RegisterChannelShuffle(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU };
+                  return { DeviceType::CPU, DeviceType::GPU };
                 }
                 int groups = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "group", 1);

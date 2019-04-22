@@ -31,8 +31,8 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("InputNCHW")
@@ -42,8 +42,8 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
@@ -60,8 +60,8 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("InputNCHW")
@@ -72,8 +72,8 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
@@ -100,8 +100,8 @@ void TestRandomResizeBilinear() {
     // Add input data
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels});
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
         .Input("InputNCHW")
@@ -111,8 +111,8 @@ void TestRandomResizeBilinear() {
         .Finalize(net.NewOperatorDef());
     // Run on CPU
     net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     auto expected = net.CreateTensor<float>();
     expected->Copy(*net.GetOutput("Output"));
@@ -155,8 +155,8 @@ void TestQuantizedResizeBilinear() {
                                    true,
                                    -1.f,
                                    1.f);
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
         .Input("InputNCHW")
@@ -166,8 +166,8 @@ void TestQuantizedResizeBilinear() {
         .Finalize(net.NewOperatorDef());
     // Run on CPU
     net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // run quantize
     OpDefBuilder("Quantize", "QuantizeInput")

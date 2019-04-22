@@ -69,7 +69,8 @@ void SimpleTensorScalar(const ops::EltwiseType type,
   net.AddInputFromArray<D, T>("Input", shape, input);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<D, T>("Input", NHWC, "TInput", NCHW);
+    net.TransformDataFormat<D, T>(
+        "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("TInput")
         .AddIntArg("T", DataTypeToEnum<T>::v())
@@ -81,7 +82,8 @@ void SimpleTensorScalar(const ops::EltwiseType type,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, DstType>("TOutput", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, DstType>(
+        "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else {
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("Input")
@@ -124,13 +126,15 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
             .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
             .Output("TOutput");
     if (shape0.size() > 1) {
-      net.TransformDataFormat<D, T>("Input0", NHWC, "TInput0", NCHW);
+      net.TransformDataFormat<D, T>(
+          "Input0", DataFormat::NHWC, "TInput0", DataFormat::NCHW);
       op_builder.Input("TInput0");
     } else {
       op_builder.Input("Input0");
     }
     if (shape1.size() > 1) {
-      net.TransformDataFormat<D, T>("Input1", NHWC, "TInput1", NCHW);
+      net.TransformDataFormat<D, T>(
+          "Input1", DataFormat::NHWC, "TInput1", DataFormat::NCHW);
       op_builder.Input("TInput1");
     } else {
       op_builder.Input("Input1");
@@ -139,7 +143,8 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, DstType>("TOutput", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, DstType>(
+        "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else {
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("Input0")
@@ -560,7 +565,8 @@ void GPUOverflowTest(const ops::EltwiseType type,
   net.AddInputFromArray<DeviceType::GPU, T>(
       "Filter",
       {output_shape.back(), shape0.back(), 3, 3},
-      std::vector<float>(output_shape.back() * shape0.back() * 9, 1));
+      std::vector<float>(output_shape.back() * shape0.back() * 9, 1),
+      true);
   OpDefBuilder("Conv2D", "Conv2D")
       .AddIntArg("T", DataTypeToEnum<T>::v())
       .Input("EltOutput")
@@ -636,8 +642,8 @@ void RandomTensorScalar(const ops::EltwiseType type,
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input", shape, false, true, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput")
       .AddIntArg("type", static_cast<int>(type))
@@ -647,8 +653,8 @@ void RandomTensorScalar(const ops::EltwiseType type,
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(DeviceType::CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
@@ -690,10 +696,10 @@ void RandomTensorEltwise(const ops::EltwiseType type,
                                              true,
                                              true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input0", NHWC, "TInput0",
-                                                  NCHW);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input1", NHWC, "TInput1",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input0", DataFormat::NHWC, "TInput0", DataFormat::NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input1", DataFormat::NHWC, "TInput1", DataFormat::NCHW);
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput0")
       .Input("TInput1")
@@ -705,8 +711,8 @@ void RandomTensorEltwise(const ops::EltwiseType type,
 
   // Run
   net.RunOp(DeviceType::CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
@@ -746,10 +752,10 @@ void Quantized(const std::vector<index_t> &shape,
                                              true,
                                              true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input0", NHWC, "TInput0",
-                                                  NCHW);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input1", NHWC, "TInput1",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input0", DataFormat::NHWC, "TInput0", DataFormat::NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input1", DataFormat::NHWC, "TInput1", DataFormat::NCHW);
 
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput0")
@@ -761,8 +767,8 @@ void Quantized(const std::vector<index_t> &shape,
 
   // Run
   net.RunOp(DeviceType::CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeInput0")
       .Input("Input0")

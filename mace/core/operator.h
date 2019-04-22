@@ -117,6 +117,14 @@ class OpConstructContext {
   inline Device *device() const {
     return device_;
   }
+#ifdef MACE_ENABLE_OPENCL
+  inline MemoryType GetOpMemoryType() const {
+    return static_cast<MemoryType>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            *operator_def_, OutputMemoryTypeTagName(),
+            static_cast<int>(MemoryType::CPU_BUFFER)));
+  }
+#endif  // MACE_ENABLE_OPENCL
 
  private:
   std::shared_ptr<OperatorDef> operator_def_;
@@ -270,6 +278,9 @@ class OpConditionBuilder {
   OpConditionBuilder &SetInputMemoryTypeSetter(
       OpRegistrationInfo::MemoryTypeSetter setter);
 
+  OpConditionBuilder &SetInputsDataFormatSelector(
+      OpRegistrationInfo::DataFormatSelector selector);
+
   void Finalize(OpRegistrationInfo *info) const;
 
  private:
@@ -295,6 +306,9 @@ class OpRegistryBase {
       const std::string &op_type, OpConditionContext *context) const;
 
   void GetInOutMemoryTypes(
+      const std::string &op_type, OpConditionContext *context) const;
+
+  const std::vector<DataFormat> InputsDataFormat(
       const std::string &op_type, OpConditionContext *context) const;
 
   std::unique_ptr<Operation> CreateOperation(

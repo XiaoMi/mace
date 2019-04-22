@@ -39,8 +39,8 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
         .AddIntsArg("block_shape", block_shape_data)
         .Finalize(net.NewOperatorDef());
   } else if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
@@ -53,8 +53,8 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
   net.RunOp(D);
 
   if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
@@ -78,8 +78,8 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
         .AddIntsArg("block_shape", block_shape_data)
         .Finalize(net.NewOperatorDef());
   } else if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
@@ -92,8 +92,8 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   net.RunOp(D);
 
   if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
@@ -155,8 +155,8 @@ void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
   net.RunOp(GPU);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputNCHW")
       .Output("OutputNCHW")
@@ -164,8 +164,8 @@ void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "OutputCPU", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // Check
   ExpectTensorNear<float>(*net.GetOutput("OutputCPU"),
@@ -188,8 +188,8 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
   net.RunOp(GPU);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputNCHW")
       .Output("OutputNCHW")
@@ -197,8 +197,8 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "OutputCPU", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // Check
   ExpectTensorNear<float>(*net.GetOutput("OutputCPU"),
@@ -218,8 +218,8 @@ void TestSpaceToBatchQuantize(const std::vector<index_t> &input_shape,
                                  1.f);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputNCHW")
       .Output("OutputNCHW")
@@ -227,8 +227,8 @@ void TestSpaceToBatchQuantize(const std::vector<index_t> &input_shape,
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "OutputCPU", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // run quantize
   OpDefBuilder("Quantize", "QuantizeInput")
@@ -279,8 +279,8 @@ void TestoBatchToSpaceQuantize(const std::vector<index_t> &input_shape,
                                  1.f);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputNCHW")
       .Output("OutputNCHW")
@@ -288,8 +288,8 @@ void TestoBatchToSpaceQuantize(const std::vector<index_t> &input_shape,
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "OutputCPU", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // run quantize
   OpDefBuilder("Quantize", "QuantizeInput")

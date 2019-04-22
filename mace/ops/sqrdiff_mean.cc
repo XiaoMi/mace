@@ -83,7 +83,7 @@ class SqrDiffMeanOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit SqrDiffMeanOp(OpConstructContext *context)
       : Operation(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::SqrDiffMeanKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;

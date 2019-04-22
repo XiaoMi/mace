@@ -50,7 +50,8 @@ void Simple(bool use_log = false) {
 
   if (D == DeviceType::CPU) {
     // test 4d softmax
-    net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
+    net.TransformDataFormat<CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
@@ -59,7 +60,8 @@ void Simple(bool use_log = false) {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 
@@ -109,7 +111,8 @@ void Complex(const std::vector<index_t> &logits_shape,
   net.AddRandomInput<D, float>("Input", logits_shape);
 
   if (logits_shape.size() == 4) {
-    net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
+    net.TransformDataFormat<CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
@@ -127,7 +130,8 @@ void Complex(const std::vector<index_t> &logits_shape,
   net.RunOp();
 
   if (logits_shape.size() == 4) {
-    net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
   auto expected = net.CreateTensor<float>();

@@ -76,7 +76,7 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
 
 #ifdef MACE_ENABLE_OPENCL
     if (target_device_->device_type() == DeviceType::GPU) {
-      // update the map : output_tensor -> Operation
+      // update the map : output_tensor -> MemoryType
       MemoryType out_mem_type =
           static_cast<MemoryType>(
               ProtoArgHelper::GetOptionalArg<OperatorDef, int>(

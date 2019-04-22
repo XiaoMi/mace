@@ -346,7 +346,7 @@ class ResizeBilinearOp<DeviceType::GPU, T> : public Operation {
     std::vector<index_t> size = Operation::GetRepeatedArgs<index_t>(
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeBilinearKernel<T>>(
           align_corners, size[0], size[1]);
     } else {

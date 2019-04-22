@@ -207,7 +207,8 @@ void TestSimplePrelu() {
     // Run
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
+    net.TransformDataFormat<D, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Activation", "PreluTest")
         .Input("InputNCHW")
         .Input("Alpha")
@@ -217,7 +218,8 @@ void TestSimplePrelu() {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
   auto expected = net.CreateTensor<float>(

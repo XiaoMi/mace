@@ -45,8 +45,8 @@ void SimpleConstant() {
     // Run
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
     OpDefBuilder("Pad", "PadTest")
         .Input("TInput")
         .Output("TOutput")
@@ -58,8 +58,8 @@ void SimpleConstant() {
     // Run
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
-                                                    NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
   auto output = net.GetTensor("Output");
@@ -93,7 +93,8 @@ void Result(const std::vector<index_t> &input_shape,
   if (D == DeviceType::CPU) {
     t_input = "TInput";
     t_output = "TOutput";
-    net.TransformDataFormat<DeviceType::CPU, T>(input, NHWC, t_input, NCHW);
+    net.TransformDataFormat<DeviceType::CPU, T>(
+        input, DataFormat::NHWC, t_input, DataFormat::NCHW);
   }
 
   OpDefBuilder("Pad", "PadTest")
@@ -108,7 +109,8 @@ void Result(const std::vector<index_t> &input_shape,
   net.RunOp(D);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, T>(t_output, NCHW, output, NHWC);
+    net.TransformDataFormat<DeviceType::CPU, T>(
+        t_output, DataFormat::NCHW, output, DataFormat::NHWC);
   }
 
   auto actual = net.GetTensor(output.c_str());
@@ -172,8 +174,8 @@ TEST_F(PadTest, ComplexCPU) {
 
   // Add input data
   net.AddRepeatedInput<DeviceType::CPU, float>("Input", {1, 1, 1, 2}, 2);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
       .Output("TOutput")
@@ -184,8 +186,8 @@ TEST_F(PadTest, ComplexCPU) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto output = net.GetTensor("Output");
 
@@ -209,8 +211,8 @@ void Complex(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
       .Output("TOutput")
@@ -222,8 +224,8 @@ void Complex(const std::vector<index_t> &input_shape,
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));

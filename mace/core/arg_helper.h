@@ -65,7 +65,7 @@ void SetProtoArg(NetDef *op_def,
                  const std::string &arg_name,
                  const T&value);
 
-std::string OutputMemoryTypeTagName();
+const std::string OutputMemoryTypeTagName();
 
 bool IsQuantizedModel(const NetDef &def);
 

@@ -40,19 +40,19 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,
 
   index_t input_height = 0, input_width = 0;
   index_t kernel_height = 0, kernel_width = 0;
-  if (input_format == NCHW) {
+  if (input_format == DataFormat::NCHW) {
     input_height = input_shape[2];
     input_width = input_shape[3];
-  } else if (input_format == NHWC) {
+  } else if (input_format == DataFormat::NHWC) {
     input_height = input_shape[1];
     input_width = input_shape[2];
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  if (filter_format == OIHW) {
+  if (filter_format == DataFormat::OIHW) {
     kernel_height = filter_shape[2];
     kernel_width = filter_shape[3];
-  } else if (filter_format == OHWI) {
+  } else if (filter_format == DataFormat::OHWI) {
     kernel_height = filter_shape[1];
     kernel_width = filter_shape[2];
   } else {
@@ -97,11 +97,11 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,
       0, (output_width - 1) * strides[1] + k_extent_width - input_width);
 
   output_shape[0] = input_shape[0];
-  if (input_format == NCHW) {
+  if (input_format == DataFormat::NCHW) {
     output_shape[1] = output_channels;
     output_shape[2] = output_height;
     output_shape[3] = output_width;
-  } else if (input_format == NHWC) {
+  } else if (input_format == DataFormat::NHWC) {
     output_shape[1] = output_height;
     output_shape[2] = output_width;
     output_shape[3] = output_channels;
@@ -117,7 +117,8 @@ void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
                                   Padding padding,
                                   index_t *output_shape,
                                   int *padding_size) {
-  CalcPaddingAndOutputSize(input_shape, NCHW, filter_shape, OIHW, dilations,
+  CalcPaddingAndOutputSize(input_shape, DataFormat::NCHW, filter_shape,
+                           DataFormat::OIHW, dilations,
                            strides, padding, output_shape, padding_size);
 }
 
@@ -128,7 +129,8 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
                                   Padding padding,
                                   index_t *output_shape,
                                   int *padding_size) {
-  CalcPaddingAndOutputSize(input_shape, NHWC, filter_shape, OIHW, dilations,
+  CalcPaddingAndOutputSize(input_shape, DataFormat::NHWC, filter_shape,
+                           DataFormat::OIHW, dilations,
                            strides, padding, output_shape, padding_size);
 }
 
@@ -151,19 +153,19 @@ void CalcOutputSize(const index_t *input_shape,
 
   index_t input_height = 0, input_width = 0;
   index_t kernel_height = 0, kernel_width = 0;
-  if (input_format == NCHW) {
+  if (input_format == DataFormat::NCHW) {
     input_height = input_shape[2];
     input_width = input_shape[3];
-  } else if (input_format == NHWC) {
+  } else if (input_format == DataFormat::NHWC) {
     input_height = input_shape[1];
     input_width = input_shape[2];
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  if (filter_format == OIHW) {
+  if (filter_format == DataFormat::OIHW) {
     kernel_height = filter_shape[2];
     kernel_width = filter_shape[3];
-  } else if (filter_format == OHWI) {
+  } else if (filter_format == DataFormat::OHWI) {
     kernel_height = filter_shape[1];
     kernel_width = filter_shape[2];
   } else {
@@ -195,11 +197,11 @@ void CalcOutputSize(const index_t *input_shape,
   }
 
   output_shape[0] = input_shape[0];
-  if (input_format == NCHW) {
+  if (input_format == DataFormat::NCHW) {
     output_shape[1] = output_channels;
     output_shape[2] = output_height;
     output_shape[3] = output_width;
-  } else if (input_format == NHWC) {
+  } else if (input_format == DataFormat::NHWC) {
     output_shape[1] = output_height;
     output_shape[2] = output_width;
     output_shape[3] = output_channels;
@@ -215,7 +217,8 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
                     const int *strides,
                     const RoundType round_type,
                     index_t *output_shape) {
-  CalcOutputSize(input_shape, NHWC, filter_shape, OIHW, padding_size, dilations,
+  CalcOutputSize(input_shape, DataFormat::NHWC, filter_shape,
+                 DataFormat::OIHW, padding_size, dilations,
                  strides, round_type, output_shape);
 }
 
@@ -226,7 +229,8 @@ void CalcNCHWOutputSize(const index_t *input_shape,   // NCHW
                         const int *strides,
                         const RoundType round_type,
                         index_t *output_shape) {
-  CalcOutputSize(input_shape, NCHW, filter_shape, OIHW, padding_size, dilations,
+  CalcOutputSize(input_shape, DataFormat::NCHW, filter_shape,
+                 DataFormat::OIHW, padding_size, dilations,
                  strides, round_type, output_shape);
 }
 
@@ -241,14 +245,18 @@ void CalcDeconvShape_TF(const std::vector<index_t> &input_shape,
                         std::vector<index_t> *padded_out_shape,
                         DataFormat data_format) {
   const index_t
-      in_height = data_format == NCHW ? input_shape[2] : input_shape[1];
+      in_height =
+      data_format == DataFormat::NCHW ? input_shape[2] : input_shape[1];
   const index_t
-      in_width = data_format == NCHW ? input_shape[3] : input_shape[2];
+      in_width =
+          data_format == DataFormat::NCHW ? input_shape[3] : input_shape[2];
 
   const index_t
-      out_height = data_format == NCHW ? output_shape[2] : output_shape[1];
+      out_height =
+          data_format == DataFormat::NCHW ? output_shape[2] : output_shape[1];
   const index_t
-      out_width = data_format == NCHW ? output_shape[3] : output_shape[2];
+      out_width =
+          data_format == DataFormat::NCHW ? output_shape[3] : output_shape[2];
 
   const index_t extended_in_height = (in_height - 1) * strides[0] + 1;
   const index_t extended_in_width = (in_width - 1) * strides[1] + 1;
@@ -307,11 +315,11 @@ void CalcDeconvShape_TF(const std::vector<index_t> &input_shape,
     padded_out_shape->resize(4);
     (*padded_out_shape)[0] = output_shape[0];
     (*padded_out_shape)[1] =
-        data_format == NCHW ? output_channel : padded_out_height;
+        data_format == DataFormat::NCHW ? output_channel : padded_out_height;
     (*padded_out_shape)[2] =
-        data_format == NCHW ? padded_out_height : padded_out_width;
+        data_format == DataFormat::NCHW ? padded_out_height : padded_out_width;
     (*padded_out_shape)[3] =
-        data_format == NCHW ? padded_out_width : output_channel;
+        data_format == DataFormat::NCHW ? padded_out_width : output_channel;
   }
 }
 
@@ -325,9 +333,11 @@ void CalcDeconvShape_Caffe(const std::vector<index_t> &input_shape,
                            std::vector<index_t> *padded_out_shape,
                            DataFormat data_format) {
   const index_t
-      in_height = data_format == NCHW ? input_shape[2] : input_shape[1];
+      in_height =
+          data_format == DataFormat::NCHW ? input_shape[2] : input_shape[1];
   const index_t
-      in_width = data_format == NCHW ? input_shape[3] : input_shape[2];
+      in_width =
+          data_format == DataFormat::NCHW ? input_shape[3] : input_shape[2];
 
   const index_t output_channel = filter_shape[0] * group;
 
@@ -351,11 +361,11 @@ void CalcDeconvShape_Caffe(const std::vector<index_t> &input_shape,
     padded_out_shape->resize(4);
     (*padded_out_shape)[0] = input_shape[0];
     (*padded_out_shape)[1] =
-        data_format == NCHW ? output_channel : padded_out_height;
+        data_format == DataFormat::NCHW ? output_channel : padded_out_height;
     (*padded_out_shape)[2] =
-        data_format == NCHW ? padded_out_height : padded_out_width;
+        data_format == DataFormat::NCHW ? padded_out_height : padded_out_width;
     (*padded_out_shape)[3] =
-        data_format == NCHW ? padded_out_width : output_channel;
+        data_format == DataFormat::NCHW ? padded_out_width : output_channel;
   }
 
   if (out_shape != nullptr) {
@@ -363,9 +373,11 @@ void CalcDeconvShape_Caffe(const std::vector<index_t> &input_shape,
     index_t out_width = padded_out_width - out_pad_size[1];
     out_shape->resize(4);
     (*out_shape)[0] = input_shape[0];
-    (*out_shape)[1] = data_format == NCHW ? output_channel : out_height;
-    (*out_shape)[2] = data_format == NCHW ? out_height : out_width;
-    (*out_shape)[3] = data_format == NCHW ? out_width : output_channel;
+    (*out_shape)[1] =
+        data_format == DataFormat::NCHW ? output_channel : out_height;
+    (*out_shape)[2] = data_format == DataFormat::NCHW ? out_height : out_width;
+    (*out_shape)[3] =
+        data_format == DataFormat::NCHW ? out_width : output_channel;
   }
 }
 
@@ -385,7 +397,7 @@ void CalDeconvOutputShapeAndPadSize(const std::vector<index_t> &input_shape,
     MACE_CHECK(output_shape->size() == 4,
                "deconv output shape shoud be 4-dims");
     std::vector<index_t> &out_shape = *output_shape;
-    if (data_format == NCHW) {
+    if (data_format == DataFormat::NCHW) {
       const index_t t = out_shape[1];
       out_shape[1] = out_shape[3];
       out_shape[3] = out_shape[2];

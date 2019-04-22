@@ -37,7 +37,7 @@ DataFormat GetDefaultDataFormat(DeviceType device_type,
     return DataFormat::NHWC;
   } else {
     LOG(FATAL) << "MACE do not support the device " << device_type;
-    return DataFormat::DF_NONE;
+    return DataFormat::NONE;
   }
 }
 
@@ -50,19 +50,21 @@ std::string TransformedName(const std::string &input_name,
   return ss.str();
 }
 
+#ifdef MACE_ENABLE_OPENCL
 bool TransformRequiredOp(const std::string &op_type) {
   static const std::unordered_set<std::string> kNoTransformOp = {
       "Shape", "InferConv2dShape"
   };
   return kNoTransformOp.count(op_type) == 0;
 }
+#endif  // MACE_ENABLE_OPENCL
 
 void BuildTransposeOpDef(
     const std::string &input_name,
     const std::string &output_name,
-    const std::vector<mace::index_t> &output_shape,
+    const std::vector<index_t> &output_shape,
     const std::vector<int> dst_dims,
-    const mace::DataType dt,
+    const DataType dt,
     DeviceType device_type,
     OperatorDef *op_def) {
   std::string op_name = "mace_node_" + output_name;
@@ -89,21 +91,13 @@ void BuildTransposeOpDef(
 
 }  // namespace
 
-NetDefAdapter::NetDefAdapter(const mace::OpRegistryBase *op_registry,
-                             const mace::Workspace *ws)
+NetDefAdapter::NetDefAdapter(const OpRegistryBase *op_registry,
+                             const Workspace *ws)
     : op_registry_(op_registry), ws_(ws) {}
 
-// Adapt original net_def to a better net.
-// 1. Adapt device: choose best device for every op in the net.
-// 2. Adapt data type: Add data type related transform ops
-//                     for mixing precision.
-// 3. Adapt data format: confirm data format of every op
-//                       and add transpose if necessary.
-// 4. Adapt memory type: Add BufferTransform if necessary
-//                       for transforming memory type between ops.
 MaceStatus NetDefAdapter::AdaptNetDef(
-    const mace::NetDef *net_def,
-    mace::Device *target_device,
+    const NetDef *net_def,
+    Device *target_device,
     NetDef *target_net_def) {
   MACE_LATENCY_LOGGER(1, "Adapting original NetDef");
   // Copy from original op_def, leave ops alone.
@@ -115,7 +109,7 @@ MaceStatus NetDefAdapter::AdaptNetDef(
   std::unique_ptr<CPUDevice> cpu_device = make_unique<CPUDevice>(
       target_device->cpu_runtime()->num_threads(),
       target_device->cpu_runtime()->policy(),
-      target_device->cpu_runtime()->use_gemmlowp());
+      &(target_device->cpu_runtime()->thread_pool()));
 
   // quantize model flag
   bool is_quantized_model = IsQuantizedModel(*net_def);
@@ -131,40 +125,40 @@ MaceStatus NetDefAdapter::AdaptNetDef(
         std::vector<index_t>(tensor.dims().begin(), tensor.dims().end());
   }
 
+  MemoryType mem_type = MemoryType::CPU_BUFFER;
+  if (target_device->device_type() == DeviceType::CPU) {
+    mem_type = MemoryType::CPU_BUFFER;
+  } else if (target_device->device_type() == DeviceType::GPU) {
+    mem_type = MemoryType::GPU_BUFFER;
+  } else {
+    LOG(FATAL) << "MACE do not support the device type: "
+               << target_device->device_type();
+  }
+
   int input_size = target_net_def->input_info_size();
   for (int i = 0; i < input_size; ++i) {
     auto input_info = target_net_def->mutable_input_info(i);
-    MemoryType mem_type = MemoryType::CPU_BUFFER;
-    if (target_device->device_type() == DeviceType::CPU) {
-      mem_type = MemoryType::CPU_BUFFER;
-    } else if (target_device->device_type() == DeviceType::GPU) {
-      mem_type = MemoryType::GPU_BUFFER;
-    } else {
-      LOG(FATAL) << "MACE do not support the device type: "
-                 << target_device->device_type();
-    }
-    DataFormat input_data_format = static_cast<DataFormat>(
+    auto input_data_format = static_cast<DataFormat>(
         input_info->data_format());
     DataFormat expected_data_format = GetDefaultDataFormat(
         target_device->device_type(), is_quantized_model);
-    std::vector<index_t> input_shape =
-        std::vector<index_t>(input_info->dims().begin(),
-                             input_info->dims().end());
-    if (input_data_format != DataFormat::DF_NONE
+    std::vector<index_t> input_shape(input_info->dims().begin(),
+                                     input_info->dims().end());
+    if (input_data_format != DataFormat::NONE
         && input_data_format != expected_data_format
         && input_shape.size() == 4) {
       if (input_data_format == DataFormat::NHWC
           && expected_data_format == DataFormat::NCHW) {
-        std::vector<int> dst_dims = {0, 3, 1, 2};
+        std::vector<int> dst_dims{0, 3, 1, 2};
         input_data_format = DataFormat::NCHW;
         input_shape = TransposeShape<index_t, index_t>(input_shape, dst_dims);
       } else if (input_data_format == DataFormat::NCHW
           && expected_data_format == DataFormat::NHWC) {
-        std::vector<int> dst_dims = {0, 2, 3, 1};
+        std::vector<int> dst_dims{0, 2, 3, 1};
         input_data_format = DataFormat::NHWC;
         input_shape = TransposeShape<index_t, index_t>(input_shape, dst_dims);
       }
-      input_info->set_data_format(input_data_format);
+      input_info->set_data_format(static_cast<int>(input_data_format));
       int input_shape_size = input_shape.size();
       for (int j = 0; j < input_shape_size; ++j) {
         input_info->set_dims(j, input_shape[j]);
@@ -287,9 +281,10 @@ MaceStatus NetDefAdapter::AdaptNetDef(
             internal_output_info.data_format,
             transformed_op_def);
         // set data format arg
-        SetProtoArg<int>(transformed_op_def,
-                         "data_format",
-                         internal_output_info.data_format);
+        SetProtoArg<int>(
+            transformed_op_def,
+            "data_format",
+            static_cast<int>(internal_output_info.data_format));
         // set output memory type argument
         SetProtoArg<int>(transformed_op_def,
                          OutputMemoryTypeTagName(),
@@ -309,7 +304,7 @@ MaceStatus NetDefAdapter::AdaptDevice(OpConditionContext *context,
                                       const TensorInfoMap &output_map,
                                       const NetDef *net_def,
                                       OperatorDef *op_def) {
-  VLOG(1) << "Adapt device for op " << op_def->name();
+  VLOG(3) << "Adapt device for op " << op_def->name();
   DeviceType target_device_type = target_device->device_type();
   DeviceType device_type = DeviceType::CPU;
   context->set_device(cpu_device);
@@ -335,15 +330,18 @@ MaceStatus NetDefAdapter::AdaptDevice(OpConditionContext *context,
                                                   producer_devices);
     if (device_type == target_device_type) {
       context->set_device(target_device);
+    } else {
+      LOG(INFO) << "Op " << op_def->name() << " fall back to CPU";
     }
   }
   op_def->set_device_type(device_type);
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus NetDefAdapter::AdaptDataType(mace::OpConditionContext *context,
-                                        mace::OperatorDef *op_def) {
+MaceStatus NetDefAdapter::AdaptDataType(OpConditionContext *context,
+                                        OperatorDef *op_def) {
   MACE_UNUSED(context);
+  // Where to add logic to support mixing precision
   // Adjust data type of op ran on CPU
   DataType dtype = static_cast<DataType>(
       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
@@ -355,20 +353,20 @@ MaceStatus NetDefAdapter::AdaptDataType(mace::OpConditionContext *context,
 }
 
 MaceStatus NetDefAdapter::AdaptDataFormat(
-    mace::OpConditionContext *context,
-    mace::OperatorDef *op_def,
+    OpConditionContext *context,
+    OperatorDef *op_def,
     bool is_quantized_model,
     TensorInfoMap *output_map,
     std::unordered_set<std::string> *transformed_set,
     DataFormat *op_output_df,
-    mace::NetDef *target_net_def) {
-  VLOG(1) << "Adapt data format for op " << op_def->name();
-  MACE_UNUSED(context);
+    NetDef *target_net_def) {
+  VLOG(3) << "Adapt data format for op " << op_def->name();
   DataFormat op_data_format =
       static_cast<DataFormat>(ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-          *op_def, "data_format", 0));
+          *op_def, "data_format",
+          static_cast<int>(DataFormat::NONE)));
   // adjust the data format of operation
-  if (op_data_format == DataFormat::DF_AUTO) {
+  if (op_data_format == DataFormat::AUTO) {
     op_data_format = GetDefaultDataFormat(
         static_cast<DeviceType>(op_def->device_type()), is_quantized_model);
     SetProtoArg<int>(op_def, "data_format", static_cast<int>(op_data_format));
@@ -376,14 +374,15 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
       int output_shape_size = op_def->output_shape_size();
       for (int i = 0; i < output_shape_size; ++i) {
         auto output_shape = op_def->mutable_output_shape(i);
-        if (output_shape->dims_size() == 4) {
-          // transpose output shape format from NHWC to NCHW
-          int64_t height = output_shape->dims(1);
-          int64_t width = output_shape->dims(2);
-          output_shape->set_dims(1, output_shape->dims(3));
-          output_shape->set_dims(2, height);
-          output_shape->set_dims(3, width);
-        }
+        MACE_CHECK(output_shape->dims_size() == 4,
+                   "Output shape should be 4D if the of has data format. ",
+                   op_def->name());
+        // transpose output shape format from NHWC to NCHW
+        int64_t height = output_shape->dims(1);
+        int64_t width = output_shape->dims(2);
+        output_shape->set_dims(1, output_shape->dims(3));
+        output_shape->set_dims(2, height);
+        output_shape->set_dims(3, width);
       }
     }
   }
@@ -394,8 +393,8 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
   if (op_def->device_type() == DeviceType::GPU) {
     target_mem_type = MemoryType::GPU_BUFFER;
   }
-  // Use op's data format as inputs' data format for now.
-  // Could move the logic to OpRegistry if necessary.
+  auto inputs_data_format = op_registry_->InputsDataFormat(op_def->type(),
+      context);
   DataFormat src_df, dst_df;
   int input_size = op_def->input_size();
   for (int i = 0; i < input_size; ++i) {
@@ -408,20 +407,21 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
       continue;
     }
     src_df = output_map->at(op_def->input(i)).data_format;
-    dst_df = op_data_format;
-    if (src_df == DataFormat::DF_NONE
-        || dst_df == DataFormat::DF_NONE
+    dst_df = inputs_data_format[i];
+    if (src_df == DataFormat::NONE
+        || dst_df == DataFormat::NONE
         || output_map->at(op_def->input(i)).shape.size() != 4) {
       continue;
     }
     if (src_df != dst_df) {
       std::string transformed_name = TransformedName(op_def->input(i),
-          "data_format", dst_df);
+          "data_format", static_cast<int>(dst_df));
       if (transformed_set->count(transformed_name) == 0) {
         VLOG(1) << "Add Transpose operation " << op_def->name()
                 << " to transpose tensor "
                 << op_def->input(i) << "', from data format "
-                << src_df << " to " << dst_df;
+                << static_cast<int>(src_df) << " to "
+                << static_cast<int>(dst_df);
         // Only support transpose between NHWC and NCHW for now.
         std::vector<int> dst_dims;
         if (src_df == DataFormat::NCHW && dst_df == DataFormat::NHWC) {
@@ -430,7 +430,8 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
           dst_dims = {0, 3, 1, 2};
         } else {
           LOG(FATAL) << "Encounter unsupported data format transpose from "
-                     << src_df << " to " << dst_df;
+                     << static_cast<int>(src_df) << " to "
+                     << static_cast<int>(dst_df);
         }
         auto &input_info = output_map->at(op_def->input(i));
         auto output_shape = input_info.shape.empty() ?
@@ -449,7 +450,7 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
         // set data format arg
         SetProtoArg<int>(transpose_op_def,
                          "data_format",
-                         dst_df);
+                         static_cast<int>(dst_df));
         // set output memory type argument
         SetProtoArg<int>(transpose_op_def,
                          OutputMemoryTypeTagName(),
@@ -475,20 +476,20 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
 }
 
 MaceStatus NetDefAdapter::AdaptMemoryType(
-    mace::OpConditionContext *context,
-    mace::OperatorDef *op_def,
-    mace::NetDefAdapter::TensorInfoMap *output_map,
+    OpConditionContext *context,
+    OperatorDef *op_def,
+    NetDefAdapter::TensorInfoMap *output_map,
     std::unordered_set<std::string> *transformed_set,
     MemoryType *op_output_mem_types,
-    mace::NetDef *target_net_def) {
-  VLOG(1) << "Adapt memory type for op " << op_def->name();
+    NetDef *target_net_def) {
+  VLOG(3) << "Adapt memory type for op " << op_def->name();
   // Get expected output memory type
   // (only support one kind of memory type for multiple outputs)
   op_registry_->GetInOutMemoryTypes(op_def->type(), context);
 #ifdef MACE_ENABLE_OPENCL
-  int input_size = op_def->input_size();
   // if op is memory-unused op, no transformation
   if (TransformRequiredOp(op_def->type())) {
+    int input_size = op_def->input_size();
     for (int i = 0; i < input_size; ++i) {
       if (output_map->count(op_def->input(i)) == 0) {
         MACE_CHECK(ws_->GetTensor(op_def->input(i)) != nullptr
@@ -498,14 +499,14 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
         continue;
       }
       auto &input_info = output_map->at(op_def->input(i));
-      if (input_info.data_format == DataFormat::DF_NONE
-          || input_info.shape.size() != 4) {
-        continue;
-      }
       // check whether to do transform
       MemoryType src_mem_type = input_info.mem_type;
       MemoryType dst_mem_type = context->GetInputMemType(i);
-      if (src_mem_type != dst_mem_type) {
+      auto wanted_input_dtype = context->GetInputDataType(i);
+      if (src_mem_type != dst_mem_type ||
+          (input_info.dtype != wanted_input_dtype &&
+              (src_mem_type != MemoryType::CPU_BUFFER
+                  || dst_mem_type != MemoryType::CPU_BUFFER))) {
         auto transformed_name = TransformedName(op_def->input(i),
                                                 "mem_type",
                                                 dst_mem_type);
@@ -521,7 +522,7 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
               op_def->input(i),
               input_info.shape,
               transformed_name,
-              context->GetInputDataType(i),
+              wanted_input_dtype,
               context->GetInputOpenCLBufferType(i),
               dst_mem_type,
               input_info.data_format,
@@ -529,7 +530,7 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
           // set data format arg
           SetProtoArg<int>(transformed_op_def,
                            "data_format",
-                           input_info.data_format);
+                           static_cast<int>(input_info.data_format));
           // set output memory type argument
           SetProtoArg<int>(transformed_op_def,
                            OutputMemoryTypeTagName(),
@@ -564,7 +565,7 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
   return MaceStatus::MACE_SUCCESS;
 }
 
-std::string NetDefAdapter::DebugString(const mace::NetDef *net_def) {
+std::string NetDefAdapter::DebugString(const NetDef *net_def) {
   std::stringstream sstream;
   auto DeviceTypeToStrFunc = [](DeviceType device_type) -> std::string {
     if (device_type == DeviceType::CPU) {
@@ -591,10 +592,10 @@ std::string NetDefAdapter::DebugString(const mace::NetDef *net_def) {
       return "NHWC";
     } else if (type == DataFormat::NCHW) {
       return "NCHW";
-    } else if (type == DataFormat::DF_NONE) {
-      return "DF_NONE";
-    } else if (type == DataFormat::DF_AUTO) {
-      return "DT_AUTO";
+    } else if (type == DataFormat::NONE) {
+      return "NONE";
+    } else if (type == DataFormat::AUTO) {
+      return "AUTO";
     } else if (type == DataFormat::OIHW) {
       return "OIHW";
     } else {
@@ -615,7 +616,7 @@ std::string NetDefAdapter::DebugString(const mace::NetDef *net_def) {
     std::string data_format = DataFormatToStrFunc(
         static_cast<DataFormat>(
             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                op, "data_format", 0)));
+                op, "data_format", static_cast<int>(DataFormat::NONE))));
 
     sstream << std::endl;
     sstream << "{" << std::endl;

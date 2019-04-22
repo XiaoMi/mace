@@ -414,7 +414,7 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     bool use_log = (
         Operation::GetOptionalArg<bool>("use_log", false));
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>(use_log);
     } else {
       kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>(use_log);

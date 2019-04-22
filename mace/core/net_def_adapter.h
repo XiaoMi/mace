@@ -32,16 +32,22 @@ class OpRegistryBase;
 class Workspace;
 class Device;
 
-/**
- * Conventions:
- * 1. DataFormat::DT_AUTO stands for formatted (NHWC or NCHW)
- * 2. if Op with DataFormat::DT_AUTO, the arguments of this op
- *    is formatted to NHWC
- */
+/// Conventions:
+/// 1. DataFormat::AUTO stands for formatted (NHWC or NCHW)
+/// 2. if Op with DataFormat::AUTO, the arguments of this op
+///    is formatted to NHWC
 class NetDefAdapter {
  public:
   NetDefAdapter(const OpRegistryBase *op_registry,
                 const Workspace *ws);
+  // Adapt original net_def to a better net.
+  // 1. Adapt device: choose best device for every op in the net.
+  // 2. Adapt data type: Add data type related transform ops
+  //                     for mixing precision.
+  // 3. Adapt data format: confirm data format of every op
+  //                       and add transpose if necessary.
+  // 4. Adapt memory type: Add BufferTransform if necessary
+  //                       for transforming memory type between ops.
   MaceStatus AdaptNetDef(
       const NetDef *net_def,
       Device *target_device,
@@ -91,12 +97,12 @@ class NetDefAdapter {
       NetDef *target_net_def);
 
   MaceStatus AdaptMemoryType(
-      mace::OpConditionContext *context,
-      mace::OperatorDef *op_def,
+      OpConditionContext *context,
+      OperatorDef *op_def,
       TensorInfoMap *output_map,
       std::unordered_set<std::string> *transformed_set,
       MemoryType *op_output_mem_types,
-      mace::NetDef *target_net_def);
+      NetDef *target_net_def);
 
   std::string DebugString(const NetDef *net_def);
 

@@ -269,7 +269,7 @@ MaceStatus Workspace::PreallocateOutputTensor(
                     tensor_mem.second.data_type,
                     false, tensor_mem.first));
     tensor->set_data_format(tensor_mem.second.data_format);
-    if (tensor_mem.second.data_format != DataFormat::DF_NONE) {
+    if (tensor_mem.second.data_format != DataFormat::NONE) {
       if (mem_blocks[tensor_mem.second.mem_id].mem_type()
           == MemoryType::GPU_IMAGE) {
         VLOG(1) << "Tensor: " << tensor_mem.first

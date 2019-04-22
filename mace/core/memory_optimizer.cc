@@ -126,7 +126,8 @@ void MemoryOptimizer::Optimize(
 
   DataFormat data_format = static_cast<DataFormat>(
       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-          *op_def, "data_format", DataFormat::DF_NONE));
+          *op_def, "data_format",
+          static_cast<int>(DataFormat::NONE)));
   int output_size = op_def->output_size();
   for (int i = 0; i < output_size; ++i) {
     if (i < op_def->output_type_size()) {

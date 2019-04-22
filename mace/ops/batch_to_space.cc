@@ -264,7 +264,7 @@ class BatchToSpaceNDOp<DeviceType::GPU, T> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::BatchToSpaceKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;

@@ -29,7 +29,8 @@ void Simple() {
                                   {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
+    net.TransformDataFormat<D, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("LocalResponseNorm", "LocalResponseNormTest")
         .Input("InputNCHW")
@@ -41,7 +42,8 @@ void Simple() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
   // Check

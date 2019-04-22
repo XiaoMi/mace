@@ -190,7 +190,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::DepthwiseDeconv2dKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -230,7 +230,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
                                    &out_paddings,
                                    nullptr,
                                    CAFFE,
-                                   NHWC);
+                                   DataFormat::NHWC);
 
     return kernel_->Compute(context,
                             input,

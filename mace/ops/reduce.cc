@@ -873,7 +873,7 @@ class ReduceOp<DeviceType::GPU, T> : public ReduceOpBase {
  public:
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ReduceKernel<T>>(reduce_type_,
                                                             axis_,
                                                             keep_dims_);
@@ -914,6 +914,9 @@ void RegisterReduce(OpRegistryBase *op_registry) {
           .SetDevicePlacerFunc(
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
                 bool keep_dims =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, bool>(
                         *op, "keepdims", false);
@@ -923,7 +926,7 @@ void RegisterReduce(OpRegistryBase *op_registry) {
                 auto axis =
                     ProtoArgHelper::GetRepeatedArgs<OperatorDef, int>(
                         *op, "axis");
-                if (axis.size() != 2 || axis[0] != 1 || axis[1] == 2) {
+                if (axis.size() != 2 || axis[0] != 1 || axis[1] != 2) {
                   return { DeviceType::CPU };
                 }
                 auto tensor_shape_info = context->tensor_shape_info();

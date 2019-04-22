@@ -32,8 +32,8 @@ TEST_F(ResizeNearestNeighborTest, CPUResizeNearestNeighborWOAlignCorners) {
   std::iota(begin(input), end(input), 0);
   std::vector<int32_t> size = {1, 2};
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   net.AddInputFromArray<DeviceType::CPU, int32_t>("Size", {2}, size);
 
   OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
@@ -45,8 +45,8 @@ TEST_F(ResizeNearestNeighborTest, CPUResizeNearestNeighborWOAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
@@ -64,8 +64,8 @@ TEST_F(ResizeNearestNeighborTest, ResizeNearestNeighborWAlignCorners) {
   std::iota(begin(input), end(input), 0);
   std::vector<int32_t> size = {1, 2};
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   net.AddInputFromArray<DeviceType::CPU, int32_t>("Size", {2}, size);
 
   OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
@@ -78,8 +78,8 @@ TEST_F(ResizeNearestNeighborTest, ResizeNearestNeighborWAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
@@ -105,8 +105,8 @@ void TestRandomResizeNearestNeighbor() {
     std::vector<int32_t> size = {20, 40};
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels});
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     net.AddInputFromArray<D, int32_t>("Size", {2}, size);
     OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
         .Input("InputNCHW")
@@ -116,8 +116,8 @@ void TestRandomResizeNearestNeighbor() {
         .Finalize(net.NewOperatorDef());
     // Run on CPU
     net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     auto expected = net.CreateTensor<float>();
     expected->Copy(*net.GetOutput("Output"));

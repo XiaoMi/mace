@@ -173,7 +173,7 @@ void OpenCLUtil::BuildTransformOpDef(
   arg->set_i(static_cast<int32_t>(dt));
   arg = op_def->add_arg();
   arg->set_name("data_format");
-  arg->set_i(data_format);
+  arg->set_i(static_cast<int>(data_format));
   if (!input_shape.empty()) {
     OutputShape *shape = op_def->add_output_shape();
     for (auto value : input_shape) {

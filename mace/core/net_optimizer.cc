@@ -19,10 +19,10 @@
 namespace mace {
 
 DeviceType NetOptimizer::SelectBestDevice(
-    const mace::OperatorDef *op_def,
+    const OperatorDef *op_def,
     DeviceType target_device_type,
-    const std::set<mace::DeviceType> &available_devices,
-    const std::vector<mace::DeviceType> &inputs_op_devices) {
+    const std::set<DeviceType> &available_devices,
+    const std::vector<DeviceType> &inputs_op_devices) {
   static const std::set<std::string> kComputeIntensiveOps = {
       "Conv2D", "DepthwiseConv2d", "Deconv2D", "DepthwiseDeconv2d",
       "FullyConnected"

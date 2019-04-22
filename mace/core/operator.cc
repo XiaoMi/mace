@@ -21,22 +21,22 @@
 
 namespace mace {
 OpConditionContext::OpConditionContext(
-    const mace::Workspace *ws,
-    mace::OpConditionContext::TensorShapeMap *info)
+    const Workspace *ws,
+    OpConditionContext::TensorShapeMap *info)
     : operator_def_(nullptr),
       ws_(ws),
       device_(nullptr),
       tensor_shape_info_(info) {}
 
 void OpConditionContext::set_operator_def(
-    const mace::OperatorDef *operator_def) {
+    const OperatorDef *operator_def) {
   operator_def_ = operator_def;
   input_data_types_.clear();
 }
 
 void OpConditionContext::SetInputInfo(size_t idx,
-                                      mace::MemoryType mem_type,
-                                      mace::DataType dt) {
+                                      MemoryType mem_type,
+                                      DataType dt) {
   if (input_mem_types_.empty()) {
     // the default inputs' memory types are same as output memory type.
     input_mem_types_.resize(operator_def_->input_size(), output_mem_type_);
@@ -53,7 +53,7 @@ void OpConditionContext::SetInputInfo(size_t idx,
   input_data_types_[idx] = dt;
 }
 
-void OpConditionContext::set_output_mem_type(mace::MemoryType type) {
+void OpConditionContext::set_output_mem_type(MemoryType type) {
   MACE_CHECK(operator_def_ != nullptr);
   output_mem_type_ = type;
   input_mem_types_.clear();
@@ -106,7 +106,7 @@ OpConstructContext::OpConstructContext(Workspace *ws)
       device_(nullptr) {}
 
 void OpConstructContext::set_operator_def(
-    std::shared_ptr<mace::OperatorDef> operator_def) {
+    std::shared_ptr<OperatorDef> operator_def) {
   operator_def_ = operator_def;
 }
 
@@ -225,9 +225,20 @@ OpRegistrationInfo::OpRegistrationInfo() {
       context->set_output_mem_type(MemoryType::CPU_BUFFER);
     }
   };
+
+  data_format_selector = [](OpConditionContext *context)
+      -> std::vector<DataFormat> {
+    DataFormat op_data_format =
+        static_cast<DataFormat>(
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *context->operator_def(), "data_format",
+                static_cast<int>(DataFormat::NONE)));
+    return std::vector<DataFormat>(context->operator_def()->input_size(),
+                                   op_data_format);
+  };
 }
 
-void OpRegistrationInfo::AddDevice(mace::DeviceType device) {
+void OpRegistrationInfo::AddDevice(DeviceType device) {
   devices.insert(device);
 }
 
@@ -239,9 +250,9 @@ void OpRegistrationInfo::Register(const std::string &key, OpCreator creator) {
 
 MaceStatus OpRegistryBase::Register(
     const std::string &op_type,
-    const mace::DeviceType device_type,
-    const mace::DataType dt,
-    mace::OpRegistrationInfo::OpCreator creator) {
+    const DeviceType device_type,
+    const DataType dt,
+    OpRegistrationInfo::OpCreator creator) {
   if (registry_.count(op_type) == 0) {
     registry_[op_type] = std::unique_ptr<OpRegistrationInfo>(
         new OpRegistrationInfo);
@@ -277,10 +288,18 @@ const std::set<DeviceType> OpRegistryBase::AvailableDevices(
 
 void OpRegistryBase::GetInOutMemoryTypes(
     const std::string &op_type,
-    mace::OpConditionContext *context) const {
+    OpConditionContext *context) const {
   MACE_CHECK(registry_.count(op_type) != 0,
              op_type, " operation is not registered.");
   return registry_.at(op_type)->memory_type_setter(context);
+}
+
+const std::vector<DataFormat> OpRegistryBase::InputsDataFormat(
+    const std::string &op_type,
+    OpConditionContext *context) const {
+  MACE_CHECK(registry_.count(op_type) != 0,
+             op_type, " operation is not registered.");
+  return registry_.at(op_type)->data_format_selector(context);
 }
 
 std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
@@ -321,8 +340,14 @@ OpConditionBuilder &OpConditionBuilder::SetDevicePlacerFunc(
 }
 
 OpConditionBuilder& OpConditionBuilder::SetInputMemoryTypeSetter(
-    mace::OpRegistrationInfo::MemoryTypeSetter setter) {
+    OpRegistrationInfo::MemoryTypeSetter setter) {
   memory_type_setter_ = setter;
+  return *this;
+}
+
+OpConditionBuilder& OpConditionBuilder::SetInputsDataFormatSelector(
+    OpRegistrationInfo::DataFormatSelector selector) {
+  data_format_selector_ = selector;
   return *this;
 }
 
@@ -333,6 +358,10 @@ void OpConditionBuilder::Finalize(OpRegistrationInfo *info) const {
     }
     if (memory_type_setter_) {
       info->memory_type_setter = memory_type_setter_;
+    }
+
+    if (data_format_selector_) {
+      info->data_format_selector = data_format_selector_;
     }
   }
 }

@@ -36,13 +36,13 @@ void Simple(const std::vector<index_t> &input_shape0,
   net.AddInputFromArray<D, float>("Input1", input_shape1, input1);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input0",
-                                                  NHWC,
+                                                  DataFormat::NHWC,
                                                   "InputNCHW0",
-                                                  NCHW);
+                                                  DataFormat::NCHW);
   net.TransformDataFormat<DeviceType::CPU, float>("Input1",
-                                                  NHWC,
+                                                  DataFormat::NHWC,
                                                   "InputNCHW1",
-                                                  NCHW);
+                                                  DataFormat::NCHW);
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
@@ -54,9 +54,9 @@ void Simple(const std::vector<index_t> &input_shape0,
     net.RunOp(D);
 
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                    NCHW,
+                                                    DataFormat::NCHW,
                                                     "Output",
-                                                    NHWC);
+                                                    DataFormat::NHWC);
   } else {
     OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
         .Input("Input0")
@@ -107,10 +107,10 @@ void RandomTest(const std::vector<index_t> &input_shape0,
   net.AddRandomInput<D, float>("Input0", input_shape0);
   net.AddRandomInput<D, float>("Input1", input_shape1);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input0", NHWC, "InputNCHW0",
-                                                  NCHW);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input1", NHWC, "InputNCHW1",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input0", DataFormat::NHWC, "InputNCHW0", DataFormat::NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input1", DataFormat::NHWC, "InputNCHW1", DataFormat::NCHW);
   OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
       .Input("InputNCHW0")
       .Input("InputNCHW1")
@@ -118,8 +118,8 @@ void RandomTest(const std::vector<index_t> &input_shape0,
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "Output", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
       .Input("Input0")
       .Input("Input1")

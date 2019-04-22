@@ -51,7 +51,7 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
                                  &out_pad_size,
                                  &padded_out_shape,
                                  framework_type_,
-                                 NCHW);
+                                 DataFormat::NCHW);
 
   MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 

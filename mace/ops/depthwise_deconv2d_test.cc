@@ -39,7 +39,8 @@ void RunTestSimple(const int group,
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data, true);
-  net.TransformFilterDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
+  net.TransformFilterDataFormat<D, float>(
+      "Filter", DataFormat::HWOI, "FilterOIHW", DataFormat::OIHW);
   const index_t out_channels = expected_shape[3];
   net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data, true);
 
@@ -56,8 +57,8 @@ void RunTestSimple(const int group,
 
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC,
-                                                    "InputNCHW", NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
         .Input("InputNCHW")
         .Input("FilterOIHW")
@@ -69,8 +70,8 @@ void RunTestSimple(const int group,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
   auto expected = net.CreateTensor<float>(expected_shape, expected_data);
@@ -193,8 +194,8 @@ void RandomTest(index_t batch,
                                                 {channel * multiplier},
                                                 bias_data, true, false);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
       .Input("InputNCHW")
       .Input("Filter")
@@ -210,8 +211,8 @@ void RandomTest(index_t batch,
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(DeviceType::CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "Output", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
 
   // Check

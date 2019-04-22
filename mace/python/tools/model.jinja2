@@ -80,7 +80,7 @@ void CreateInputInfo(NetDef *net_def) {
   input_info = net_def->add_input_info();
   input_info->set_name({{ net.input_info[idx].name|tojson }});
   input_info->set_data_type(static_cast<DataType>({{ net.input_info[idx].data_type }}));
-  input_info->set_data_format(static_cast<DataFormat>({{ net.input_info[idx].data_format }}));
+  input_info->set_data_format({{ net.input_info[idx].data_format }});
   input_info->mutable_dims()->Reserve({{ net.input_info[idx].dims|length }});
   {% for dim in net.input_info[idx].dims %}
   input_info->add_dims({{ dim }});
@@ -97,7 +97,7 @@ void CreateOutputInfo(NetDef *net_def) {
   output_info = net_def->add_output_info();
   output_info->set_name({{ net.output_info[idx].name|tojson }});
   output_info->set_data_type(static_cast<DataType>({{ net.output_info[idx].data_type }}));
-  output_info->set_data_format(static_cast<DataFormat>({{ net.output_info[idx].data_format }}));
+  output_info->set_data_format({{ net.output_info[idx].data_format }});
   output_info->mutable_dims()->Reserve({{ net.output_info[idx].dims|length }});
   {% for dim in net.output_info[idx].dims %}
   output_info->add_dims({{dim}});

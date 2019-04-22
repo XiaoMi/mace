@@ -26,14 +26,14 @@ class DeviceType(Enum):
 
 
 class DataFormat(Enum):
-    DF_NONE = 0
+    NONE = 0
     NHWC = 1
     NCHW = 2
     HWIO = 100
     OIHW = 101
     HWOI = 102
     OHWI = 103
-    DF_AUTO = 1000
+    AUTO = 1000
 
 
 # SAME_LOWER: if the amount of paddings to be added is odd,
@@ -598,8 +598,8 @@ class ConverterUtil(object):
             return DataFormat.NHWC
         elif arg.i == DataFormat.NCHW.value:
             return DataFormat.NCHW
-        elif arg.i == DataFormat.DF_AUTO.value:
-            return DataFormat.DF_AUTO
+        elif arg.i == DataFormat.AUTO.value:
+            return DataFormat.AUTO
         else:
             return None
 

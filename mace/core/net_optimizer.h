@@ -23,8 +23,21 @@
 
 namespace mace {
 
+/// Any optimization for Net could be put in here in the future.
 class NetOptimizer {
  public:
+  /// Select best device for the op to support mixing usage of CPU and GPU.
+  /// Greedy strategy: one way to the end. If the op fallback to CPU, then
+  /// the follow-up ops will run on CPU too util meet
+  /// some compute-intensive ops(Convolution) to
+  /// reduce the memory copy between CPU and GPU.
+  /// Simple but effective.
+  ///
+  /// \param op_def the op
+  /// \param target_device target device to run on
+  /// \param available_devices available devices of the op
+  /// \param inputs_op_devices devices of father ops run on
+  /// \return Best device for the op_def
   DeviceType SelectBestDevice(const OperatorDef *op_def,
                               DeviceType target_device,
                               const std::set<DeviceType> &available_devices,

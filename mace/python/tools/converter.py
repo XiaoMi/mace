@@ -41,7 +41,7 @@ device_type_map = {'cpu': cvt.DeviceType.CPU.value,
                    'cpu+gpu': cvt.DeviceType.CPU.value}
 
 data_format_map = {
-    'NONE': cvt.DataFormat.DF_NONE,
+    'NONE': cvt.DataFormat.NONE,
     'NHWC': cvt.DataFormat.NHWC,
     'NCHW': cvt.DataFormat.NCHW,
     'OIHW': cvt.DataFormat.OIHW,

@@ -27,7 +27,7 @@ from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import MaceHasDataFormatOps
+from mace.python.tools.converter_tool.base_converter import MaceHasDataFormatOps  # noqa
 from mace.python.tools.converter_tool.base_converter import MaceMayHasDataFormatOps  # noqa
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import ReduceType
@@ -200,15 +200,15 @@ class Transformer(base_converter.ConverterInterface):
                     op.output.extend([input_node.name])
                     output_shape = op.output_shape.add()
                     output_shape.dims.extend(input_node.shape)
-                    if input_node.data_format != DataFormat.DF_NONE:
+                    if input_node.data_format != DataFormat.NONE:
                         if input_node.data_format == DataFormat.NCHW:
                             self.transpose_shape(output_shape.dims,
                                                  [0, 3, 1, 2])
                         ConverterUtil.add_data_format_arg(op,
-                                                          DataFormat.DF_AUTO)
+                                                          DataFormat.AUTO)
                     else:
                         ConverterUtil.add_data_format_arg(op,
-                                                          DataFormat.DF_NONE)
+                                                          DataFormat.NONE)
                     self._producer[op.output[0]] = op
 
     @staticmethod
@@ -261,7 +261,7 @@ class Transformer(base_converter.ConverterInterface):
             producer = self._producer[tensor]
             return ConverterUtil.data_format(producer)
         else:
-            return DataFormat.DF_NONE
+            return DataFormat.NONE
 
     def consumer_count(self, tensor_name):
         return len(self._consumers.get(tensor_name, []))
@@ -1021,7 +1021,6 @@ class Transformer(base_converter.ConverterInterface):
                                        filter_format.name)
         return False
 
-
     def add_winograd_arg(self):
         if self._wino_arg == 0:
             return False
@@ -1350,20 +1349,21 @@ class Transformer(base_converter.ConverterInterface):
                 df_arg = op.arg.add()
                 df_arg.name = MaceKeyword.mace_data_format_str
             if op.type in MaceHasDataFormatOps:
-                df_arg.i = DataFormat.DF_AUTO.value
+                df_arg.i = DataFormat.AUTO.value
             elif op.type in MaceMayHasDataFormatOps:
-                input_df = DataFormat.DF_AUTO.value
+                input_df = DataFormat.AUTO.value
                 for input_tensor in op.input:
                     if input_tensor in self._consts:
                         continue
-                    mace_check(input_tensor in self._producer,
-                               "Input tensor %s not in producer" % input_tensor)
+                    mace_check(
+                        input_tensor in self._producer,
+                        "Input tensor %s not in producer" % input_tensor)
                     father_op = self._producer[input_tensor]
                     temp_input_df = ConverterUtil.get_arg(
                         father_op, MaceKeyword.mace_data_format_str)
-                    if temp_input_df.i != DataFormat.DF_AUTO.value:
+                    if temp_input_df.i != DataFormat.AUTO.value:
                         input_df = temp_input_df.i
-                if input_df == DataFormat.DF_AUTO.value:
+                if input_df == DataFormat.AUTO.value:
                     df_arg.i = input_df
                     # add flag to mark the ops may has data format
                     has_data_format_arg = op.arg.add()
@@ -1379,7 +1379,7 @@ class Transformer(base_converter.ConverterInterface):
         src_data_format = ConverterUtil.data_format(net)
         for op in net.op:
             has_data_format = ConverterUtil.data_format(op) == \
-                              DataFormat.DF_AUTO
+                              DataFormat.AUTO
             # transpose args
             if op.type == MaceOp.Pad.name:
                 for arg in op.arg:

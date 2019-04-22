@@ -32,8 +32,8 @@ void SimpleTestWithDataFormat(const std::vector<index_t> &shape,
   OpsTestNet net;
 
   net.AddInputFromArray<CPU, T>("Input", shape, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Cumsum", "CumsumTest")
     .Input("InputNCHW")
@@ -48,8 +48,8 @@ void SimpleTestWithDataFormat(const std::vector<index_t> &shape,
   // Run
   net.RunOp(DeviceType::CPU);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   net.AddInputFromArray<CPU, T>("ExpectedOutput", shape, output);
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),

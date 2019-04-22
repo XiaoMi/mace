@@ -45,7 +45,7 @@ void MaceRun(const int in_out_size,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     InputOutputInfo *info = net_def->add_input_info();
-    info->set_data_format(DataFormat::NHWC);
+    info->set_data_format(static_cast<int>(DataFormat::NHWC));
     info->set_name(input_names[i]);
     for (auto d : max_shape) {
       info->add_dims(static_cast<int>(d));

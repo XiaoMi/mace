@@ -173,7 +173,7 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
   explicit Deconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::Deconv2dKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -240,7 +240,7 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
                                    &out_paddings,
                                    nullptr,
                                    model_type_,
-                                   NHWC);
+                                   DataFormat::NHWC);
 
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), in_paddings.data(), activation_,
@@ -276,7 +276,7 @@ void RegisterDeconv2D(OpRegistryBase *op_registry) {
                     MACE_NOT_IMPLEMENTED;
                   }
                   FrameworkType framework_type =
-                      static_cast<ops::FrameworkType>(
+                      static_cast<FrameworkType>(
                         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                             *(context->operator_def()), "framework_type",
                             FrameworkType::TENSORFLOW));

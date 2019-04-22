@@ -38,7 +38,8 @@ void Simple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Input", input_shape, input);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
+    net.TransformDataFormat<D, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("InputNCHW")
         .AddIntsArg("axis", axis)
@@ -49,7 +50,8 @@ void Simple(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else {
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("Input")
@@ -289,8 +291,8 @@ void RandomTest(const std::vector<index_t> &input_shape,
     // Add input data
     net.AddRandomInput<D, float>("Input", input_shape);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("InputNCHW")
         .AddIntsArg("axis", axis)
@@ -301,8 +303,8 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp();
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("Input")
         .AddIntsArg("axis", axis)
@@ -353,7 +355,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
     net.AddRandomInput<CPU, float>(
         "Input", input_shape, false, false);
     net.TransformDataFormat<DeviceType::CPU, float>(
-        "Input", NHWC, "InputNCHW", NCHW);
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     net.AddRandomInput<DeviceType::CPU, float>(
         "OutputNCHW", input_shape, false, true, true);
 
@@ -368,7 +370,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     net.RunOp(CPU);
     net.TransformDataFormat<DeviceType::CPU, float>(
-        "OutputNCHW", NCHW, "Output", NHWC);
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     OpDefBuilder("Quantize", "QuantizeInput")
         .Input("Input")

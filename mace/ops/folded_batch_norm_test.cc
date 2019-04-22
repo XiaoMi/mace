@@ -49,7 +49,8 @@ void Simple() {
   net.AddInputFromArray<D, float>("Offset", {1}, offset, true);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
+    net.TransformDataFormat<D, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
         .Input("InputNCHW")
         .Input("Scale")
@@ -58,7 +59,8 @@ void Simple() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
         .Input("Input")
@@ -100,8 +102,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
   net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
   net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
@@ -113,8 +115,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>();
@@ -151,8 +153,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
   net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
@@ -164,8 +166,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>();
@@ -205,8 +207,8 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
   net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
   net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
@@ -218,8 +220,8 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>();
@@ -254,11 +256,11 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
@@ -270,8 +272,8 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>();

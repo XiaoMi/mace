@@ -31,8 +31,8 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
       .Input("InputNCHW")
@@ -42,8 +42,8 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
@@ -60,8 +60,8 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCornersFloat) {
   std::vector<float> input(48);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 4, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
       .Input("InputNCHW")
@@ -71,8 +71,8 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCornersFloat) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 2, 3, 3},
@@ -92,8 +92,8 @@ TEST_F(ResizeBicubicTest, ResizeBicubicWAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
       .Input("InputNCHW")
@@ -104,8 +104,8 @@ TEST_F(ResizeBicubicTest, ResizeBicubicWAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
@@ -133,8 +133,8 @@ void TestRandomResizeBicubic() {
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels},
                                  false, true, true);
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
         .Input("InputNCHW")
@@ -144,8 +144,8 @@ void TestRandomResizeBicubic() {
         .Finalize(net.NewOperatorDef());
     // Run on CPU
     net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));

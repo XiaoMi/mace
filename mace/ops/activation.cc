@@ -96,7 +96,7 @@ class ActivationOp<DeviceType::GPU, T> : public Operation {
     auto leakyrelu_coefficient = static_cast<T>(
         Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f));
     MemoryType mem_type;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::ActivationKernel<T>>(
           type, relux_max_limit, leakyrelu_coefficient);
@@ -140,11 +140,13 @@ void RegisterActivation(OpRegistryBase *op_registry) {
           .SetDevicePlacerFunc(
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
-                    (op->output_shape_size() != op->output_size()) ||
                     op->output_shape(0).dims_size() != 4) {
                   return { DeviceType::CPU };
                 }

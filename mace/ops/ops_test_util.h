@@ -216,7 +216,7 @@ class OpsTestNet {
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 4, "input shape != 4");
 
-    if (src_format == NHWC && dst_format == NCHW) {
+    if (src_format == DataFormat::NHWC && dst_format == DataFormat::NCHW) {
       index_t batch = input_shape[0];
       index_t height = input_shape[1];
       index_t width = input_shape[2];
@@ -236,7 +236,8 @@ class OpsTestNet {
           }
         }
       }
-    } else if (src_format == NCHW && dst_format == NHWC) {
+    } else if (src_format == DataFormat::NCHW &&
+        dst_format == DataFormat::NHWC) {
       index_t batch = input_shape[0];
       index_t channels = input_shape[1];
       index_t height = input_shape[2];
@@ -274,7 +275,7 @@ class OpsTestNet {
         input->is_weight());
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 4, "input shape != 4");
-    if (src_format == HWOI && dst_format == OIHW) {
+    if (src_format == DataFormat::HWOI && dst_format == DataFormat::OIHW) {
       index_t height = input_shape[0];
       index_t width = input_shape[1];
       index_t out_channels = input_shape[2];
@@ -292,7 +293,8 @@ class OpsTestNet {
               input_data[j * out_channels * in_channels + i];
         }
       }
-    } else if (src_format == OIHW && dst_format == HWOI) {
+    } else if (src_format == DataFormat::OIHW &&
+        dst_format == DataFormat::HWOI) {
       index_t out_channels = input_shape[0];
       index_t in_channels = input_shape[1];
       index_t height = input_shape[2];
@@ -310,7 +312,8 @@ class OpsTestNet {
               input_data[j * height * width + i];
         }
       }
-    } else if (src_format == HWIO && dst_format == OIHW) {
+    } else if (src_format == DataFormat::HWIO &&
+        dst_format == DataFormat::OIHW) {
       index_t height = input_shape[0];
       index_t width = input_shape[1];
       index_t in_channels = input_shape[2];
@@ -330,7 +333,8 @@ class OpsTestNet {
           }
         }
       }
-    } else if (src_format == OHWI && dst_format == OIHW) {
+    } else if (src_format == DataFormat::OHWI &&
+        dst_format == DataFormat::OIHW) {
       index_t out_channels = input_shape[0];
       index_t height = input_shape[1];
       index_t width = input_shape[2];

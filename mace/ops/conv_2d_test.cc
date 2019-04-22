@@ -47,8 +47,8 @@ void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -60,8 +60,8 @@ void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
@@ -105,8 +105,8 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
   const std::vector<index_t> output_shape = {1, 3, 3, 1};
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -118,8 +118,8 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
@@ -189,8 +189,8 @@ void TestNHWCSimple3x3WithoutBias() {
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, true);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -203,8 +203,8 @@ void TestNHWCSimple3x3WithoutBias() {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
@@ -256,8 +256,8 @@ void TestNHWCCombined3x3() {
   net.AddInputFromArray<D, T>("Bias", {2}, {0.1f, 0.2f}, true);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -270,8 +270,8 @@ void TestNHWCCombined3x3() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
@@ -321,8 +321,8 @@ void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -336,8 +336,8 @@ void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
@@ -376,8 +376,8 @@ void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -391,8 +391,8 @@ void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
@@ -459,8 +459,8 @@ void TestConv1x1() {
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f}, true);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -472,8 +472,8 @@ void TestConv1x1() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
@@ -532,8 +532,8 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true,
         false);
     net.AddRandomInput<D, T>("Bias", {output_channels}, true, false);
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -552,8 +552,8 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
     auto expected = net.CreateTensor<float>();
@@ -651,8 +651,8 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
                                     float_bias_data,
                                     true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -667,8 +667,8 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
     auto expected = net.CreateTensor<float>();
@@ -811,8 +811,8 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
     net.AddRandomInput<D, T>("Bias", {output_channels}, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -828,8 +828,8 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
 
     // run on cpu
     net.RunOp();
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
     auto expected = net.CreateTensor<float>();
@@ -900,8 +900,8 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
     net.AddRandomInput<D, float>("Bias", {output_channels}, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -916,8 +916,8 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
     // Check
     auto expected = net.CreateTensor<float>();
     expected->Copy(*net.GetOutput("Output"));
@@ -979,8 +979,8 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
     net.AddRandomInput<D, float>("Bias", {output_channels}, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -994,8 +994,8 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
     auto expected = net.CreateTensor<float>();
@@ -1118,12 +1118,12 @@ void TestQuant(const index_t batch,
   net.AddRandomInput<CPU, float>("Filter", {out_channels, k_height, k_width,
                                             in_channels}, true);
   net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   net.TransformFilterDataFormat<DeviceType::CPU, float>("Filter",
-                                                        OHWI,
+                                                        DataFormat::OHWI,
                                                         "FilterOIHW",
-                                                        OIHW);
+                                                        DataFormat::OIHW);
 
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
@@ -1136,8 +1136,8 @@ void TestQuant(const index_t batch,
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                  "Output", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeFilter")
       .Input("Filter")

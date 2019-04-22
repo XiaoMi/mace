@@ -149,7 +149,7 @@ class ResizeNearestNeighborOp<DeviceType::GPU, T> : public Operation {
       : Operation(context) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel<T>>(
           align_corners);
     } else {

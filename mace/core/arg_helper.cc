@@ -123,14 +123,13 @@ MACE_GET_REPEATED_ARGUMENT_FUNC(int64_t, ints, true)
   MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, float, f)       \
   MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, bool, i)        \
   MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, int, i)         \
-  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, int64_t, i)     \
-  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, std::string, s)
+  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, int64_t, i)
 
 MACE_SET_OPTIONAL_ARGUMENT_FUNC_MACRO(OperatorDef)
 MACE_SET_OPTIONAL_ARGUMENT_FUNC_MACRO(NetDef)
 #undef MACE_SET_OPTIONAL_ARGUMENT_FUNC
 
-std::string OutputMemoryTypeTagName() {
+const std::string OutputMemoryTypeTagName() {
   static const char *kOutputMemTypeArgName = "output_mem_type";
   return kOutputMemTypeArgName;
 }
