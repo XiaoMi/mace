@@ -133,7 +133,7 @@ MaceStatus SplitKernel<T>::Compute(
     }
   }
   if (context->future() != nullptr) {
-    context->future()->wait_fn = [runtime, call_stats](CallStats *stats) {
+    context->future()->wait_fn = [call_stats](CallStats *stats) {
       if (stats != nullptr) {
         stats->start_micros = call_stats.start_micros;
         stats->end_micros = stats->start_micros + call_stats.end_micros;
