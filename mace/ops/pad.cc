@@ -179,7 +179,7 @@ class PadOp<DeviceType::GPU, T> : public Operation {
     std::vector<int> paddings = Operation::GetRepeatedArgs<int>("paddings");
     float constant_value = Operation::GetOptionalArg<float>(
         "constant_value", 0.0);
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::PadKernel<T>>(
           type, paddings, constant_value);
     } else {

@@ -23,7 +23,6 @@
 #include "mace/ops/opencl/image/buffer_to_image.h"
 #include "mace/ops/opencl/image/image_to_buffer.h"
 #include "mace/ops/opencl/buffer/buffer_transform.h"
-#include "mace/ops/common/transpose.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -48,7 +47,6 @@ class OpenCLBufferTransformer {
                        const OpenCLBufferType type,
                        const MemoryType out_mem_type,
                        const int wino_blk_size,
-                       bool has_data_format,
                        Tensor *output) {
     Workspace *ws = context->workspace();
     DataType dt = DataTypeToEnum<T>::value;
@@ -67,31 +65,11 @@ class OpenCLBufferTransformer {
         VLOG(2) << "Transform CPU Buffer " << input->name()
                 << " to GPU Buffer " << internal_tensor->name()
                 << " with data type " << dt;
-        if (has_data_format && input->shape().size() == 4) {
-          // 1. (NCHW -> NHWC)
-          std::vector<int> dst_dims = {0, 2, 3, 1};
-          std::vector<index_t> output_shape =
-              TransposeShape<index_t, index_t>(input->shape(),
-                                               dst_dims);
-          internal_tensor->Resize(output_shape);
-          internal_tensor->set_data_format(DataFormat::NHWC);
-          // TODO(liuqi): Only support float now
-          const float *input_ptr = input->data<float>();
-          Tensor::MappingGuard guard(internal_tensor);
-          float *internal_ptr = internal_tensor->mutable_data<float>();
-          MACE_RETURN_IF_ERROR(ops::Transpose(
-              &context->device()->cpu_runtime()->thread_pool(),
-              input_ptr,
-              input->shape(),
-              dst_dims,
-              internal_ptr));
-        } else {
-          internal_tensor->Resize(input->shape());
-          const uint8_t *input_ptr = input->data<uint8_t>();
-          Tensor::MappingGuard guard(internal_tensor);
-          uint8_t *internal_ptr = internal_tensor->mutable_data<uint8_t>();
-          memcpy(internal_ptr, input_ptr, input->raw_size());
-        }
+        internal_tensor->Resize(input->shape());
+        const uint8_t *input_ptr = input->data<uint8_t>();
+        Tensor::MappingGuard guard(internal_tensor);
+        uint8_t *internal_ptr = internal_tensor->mutable_data<uint8_t>();
+        memcpy(internal_ptr, input_ptr, input->raw_size());
         // 2. convert the internal GPU Buffer to output.
         return kernel_->Compute(
             context, internal_tensor, type, wino_blk_size, output);
@@ -108,30 +86,12 @@ class OpenCLBufferTransformer {
       VLOG(2) << "Transform GPU Buffer " << internal_tensor.name()
               << " to CPU Buffer " << output->name()
               << " with data type " << dt;
-      if (has_data_format && internal_tensor.shape().size() == 4) {
-        // NHWC -> NCHW
-        std::vector<int> dst_dims = {0, 3, 1, 2};
-        std::vector<index_t> output_shape =
-            TransposeShape<index_t, index_t>(internal_tensor.shape(),
-                                             dst_dims);
-        output->set_data_format(DataFormat::NCHW);
-        Tensor::MappingGuard guard(&internal_tensor);
-        const float *internal_ptr = internal_tensor.data<float>();
-        output->Resize(output_shape);
-        float *output_ptr = output->mutable_data<float>();
-        return ops::Transpose(&context->device()->cpu_runtime()->thread_pool(),
-                              internal_ptr,
-                              internal_tensor.shape(),
-                              dst_dims,
-                              output_ptr);
-      } else {
-        Tensor::MappingGuard guard(&internal_tensor);
-        const T *internal_ptr = internal_tensor.data<T>();
-        output->Resize(internal_tensor.shape());
-        T *output_ptr = output->mutable_data<T>();
-        memcpy(output_ptr, internal_ptr, internal_tensor.size() * sizeof(T));
-        return MaceStatus::MACE_SUCCESS;
-      }
+      Tensor::MappingGuard guard(&internal_tensor);
+      const T *internal_ptr = internal_tensor.data<T>();
+      output->Resize(internal_tensor.shape());
+      T *output_ptr = output->mutable_data<T>();
+      memcpy(output_ptr, internal_ptr, internal_tensor.size() * sizeof(T));
+      return MaceStatus::MACE_SUCCESS;
     } else {
       LOG(FATAL) << "Unexpected error: " << out_mem_type;
       return MaceStatus::MACE_SUCCESS;
@@ -172,7 +132,7 @@ MaceStatus TransformFilter(
   input->MarkUnused();
   return OpenCLBufferTransformer<T>(input->memory_type(), mem_type).
       Transform(&op_context, input, buffer_type, mem_type, wino_blk_size,
-                DataFormat::DF_NONE, output);
+                output);
 }
 
 }  // namespace ops

@@ -48,7 +48,8 @@ void Simple(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+    net.TransformDataFormat<D, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
         .Input("Input")
@@ -129,8 +130,8 @@ void Random(const index_t batch,
   net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel}, true,
       false);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("InputNCHW")
       .Input("Weight")
@@ -143,7 +144,8 @@ void Random(const index_t batch,
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+  net.TransformDataFormat<CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>();
@@ -215,8 +217,10 @@ void QuantRandom(const index_t batch,
   net.AddRandomInput<CPU, float>(
       "Weight", {out_channel, height, width, channels}, true);
   net.AddRandomInput<CPU, float>("Bias", {out_channel}, true);
-  net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
-  net.TransformFilterDataFormat<CPU, float>("Weight", OHWI, "WeightOIHW", OIHW);
+  net.TransformDataFormat<CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+  net.TransformFilterDataFormat<CPU, float>(
+      "Weight", DataFormat::OHWI, "WeightOIHW", DataFormat::OIHW);
 
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("InputNCHW")
@@ -226,7 +230,8 @@ void QuantRandom(const index_t batch,
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
   net.RunOp();
-  net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+  net.TransformDataFormat<CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeWeight")
       .Input("Weight")

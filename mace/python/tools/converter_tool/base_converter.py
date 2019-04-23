@@ -26,13 +26,14 @@ class DeviceType(Enum):
 
 
 class DataFormat(Enum):
-    DF_NONE = 0
+    NONE = 0
     NHWC = 1
     NCHW = 2
     HWIO = 100
     OIHW = 101
     HWOI = 102
     OHWI = 103
+    AUTO = 1000
 
 
 # SAME_LOWER: if the amount of paddings to be added is odd,
@@ -161,12 +162,38 @@ MaceSupportedOps = [
     'SumGroup',
     'TargetRMSNorm',
     'Transpose',
-    'WinogradInverseTransform',
-    'WinogradTransform',
     'Cumsum',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
+
+MaceHasDataFormatOps = [MaceOp.BatchNorm,
+                        MaceOp.BatchToSpaceND,
+                        MaceOp.Conv2D,
+                        MaceOp.Deconv2D,
+                        MaceOp.DepthToSpace,
+                        MaceOp.DepthwiseConv2d,
+                        MaceOp.DepthwiseDeconv2d,
+                        MaceOp.FullyConnected,
+                        MaceOp.Pooling,
+                        MaceOp.ResizeBicubic,
+                        MaceOp.ResizeBilinear,
+                        MaceOp.ResizeNearestNeighbor,
+                        MaceOp.SpaceToBatchND,
+                        MaceOp.SpaceToDepth]
+
+MaceMayHasDataFormatOps = [MaceOp.Activation,
+                           MaceOp.AddN,
+                           MaceOp.BiasAdd,
+                           MaceOp.ChannelShuffle,
+                           MaceOp.Concat,
+                           MaceOp.Crop,
+                           MaceOp.Eltwise,
+                           MaceOp.Pad,
+                           MaceOp.Reduce,
+                           MaceOp.Softmax,
+                           MaceOp.Split,
+                           MaceOp.SqrDiffMean]
 
 
 class MaceKeyword(object):
@@ -505,12 +532,11 @@ class ConverterOption(object):
                 TransformerRule.TRANSFORM_CHANNEL_SHUFFLE,
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
-                TransformerRule.TRANSPOSE_DATA_FORMAT,
+                # Mace model structure related transformation
+                TransformerRule.ADD_IN_OUT_TENSOR_INFO,
                 TransformerRule.TRANSPOSE_MATMUL_WEIGHT,
                 # Add winograd argument
                 TransformerRule.ADD_WINOGRAD_ARG,
-                # Mace model structure related transformation
-                TransformerRule.ADD_IN_OUT_TENSOR_INFO,
                 # Data type related transformation
                 TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
                 # Transform finalization
@@ -519,6 +545,7 @@ class ConverterOption(object):
                 TransformerRule.SORT_BY_EXECUTION,
                 # update the data format of ops
                 TransformerRule.UPDATE_DATA_FORMAT,
+                TransformerRule.TRANSPOSE_DATA_FORMAT,
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
             ]
@@ -571,6 +598,8 @@ class ConverterUtil(object):
             return DataFormat.NHWC
         elif arg.i == DataFormat.NCHW.value:
             return DataFormat.NCHW
+        elif arg.i == DataFormat.AUTO.value:
+            return DataFormat.AUTO
         else:
             return None
 

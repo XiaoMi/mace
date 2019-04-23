@@ -188,9 +188,9 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
         filter->dim(2) * filter->dim(3), filter->dim(0), filter->dim(1), 1};
     if (paddings_.empty()) {
       CalcPaddingAndOutputSize(input->shape().data(),
-                               NHWC,
+                               DataFormat::NHWC,
                                ohwi_shape.data(),
-                               OHWI,
+                               DataFormat::OHWI,
                                dilations_.data(),
                                strides_.data(),
                                padding_type_,
@@ -199,9 +199,9 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
     } else {
       paddings = paddings_;
       CalcOutputSize(input->shape().data(),
-                     NHWC,
+                     DataFormat::NHWC,
                      ohwi_shape.data(),
-                     OHWI,
+                     DataFormat::OHWI,
                      paddings_.data(),
                      dilations_.data(),
                      strides_.data(),
@@ -375,14 +375,13 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
   explicit DepthwiseConv2dOp(OpConstructContext *context)
       : DepthwiseConv2dOpBase(context) {
     MemoryType mem_type;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::DepthwiseConv2dKernel<T>>();
     } else {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_ = make_unique<opencl::buffer::DepthwiseConv2dKernel<T>>();
     }
-    context->set_output_mem_type(mem_type);
     Tensor *filter_tensor = context->workspace()->GetTensor(
         operator_def_->input(1));
     if (filter_tensor != nullptr && filter_tensor->is_weight()) {
@@ -393,8 +392,6 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
           1,
           OpenCLBufferType::DW_CONV2D_FILTER,
           mem_type) == MaceStatus::MACE_SUCCESS);
-    } else {
-      context->SetInputOpenCLBufferType(1, OpenCLBufferType::DW_CONV2D_FILTER);
     }
     if (operator_def_->input_size() > 2) {
       MACE_CHECK(TransformFilter<T>(
@@ -440,7 +437,40 @@ void RegisterDepthwiseConv2d(OpRegistryBase *op_registry) {
 
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
                    DepthwiseConv2dOp, DeviceType::GPU, half);
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("DepthwiseConv2d")
+          .SetInputMemoryTypeSetter(
+              [](OpConditionContext *context) -> void {
+                MemoryType mem_type = MemoryType::CPU_BUFFER;
+                if (context->device()->device_type() == DeviceType::GPU) {
+                  if (context->device()->gpu_runtime()->UseImageMemory()) {
+                    mem_type = MemoryType::GPU_IMAGE;
+                  } else {
+                    mem_type = MemoryType::GPU_BUFFER;
+                  }
+                  auto filter_tensor = context->workspace()->GetTensor(
+                      context->operator_def()->input(1));
+                  if (filter_tensor == nullptr || !filter_tensor->is_weight()) {
+                    context->SetInputOpenCLBufferType(
+                        1, OpenCLBufferType::DW_CONV2D_FILTER);
+                  }
+                }
+                context->set_output_mem_type(mem_type);
+              }));
 #endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("DepthwiseConv2d")
+          .SetInputsDataFormatSelector(
+              [](OpConditionContext *context) -> std::vector<DataFormat> {
+                DataFormat op_data_format =
+                    static_cast<DataFormat>(
+                        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                        *context->operator_def(), "data_format",
+                        static_cast<int>(DataFormat::NONE)));
+                return {op_data_format, DataFormat::OIHW, DataFormat::NONE};
+              }));
 }
 
 }  // namespace ops

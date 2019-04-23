@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "mace/proto/mace.pb.h"
+#include "mace/port/port.h"
 #include "mace/core/types.h"
 
 namespace mace {
@@ -81,10 +82,10 @@ class MemoryOptimizer {
   struct TensorMemInfo {
     int mem_id;
     DataType data_type;
-    bool has_data_format;
+    DataFormat data_format;
 
-    TensorMemInfo(int mem_id, DataType data_type, bool has_data_format) :
-        mem_id(mem_id), data_type(data_type), has_data_format(has_data_format)
+    TensorMemInfo(int mem_id, DataType data_type, DataFormat data_format) :
+        mem_id(mem_id), data_type(data_type), data_format(data_format)
     {}
   };
 

@@ -96,6 +96,43 @@ MACE_GET_REPEATED_ARGUMENT_FUNC(int, ints, true)
 MACE_GET_REPEATED_ARGUMENT_FUNC(int64_t, ints, true)
 #undef MACE_GET_REPEATED_ARGUMENT_FUNC
 
+#define MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, T, fieldname)                     \
+  template<>                                                                   \
+  void SetProtoArg<T>(Def *def,                                                \
+                      const std::string &arg_name,                             \
+                      const T &value) {                                        \
+    int size = def->arg_size();                                                \
+    for (int i = 0; i < size; ++i) {                                           \
+      auto arg = def->mutable_arg(i);                                          \
+      if (arg->name() == arg_name) {                                           \
+        VLOG(3) << "Update old argument value from "                           \
+                << arg->fieldname() << " to "                                  \
+                << value << " for " << arg_name;                               \
+        arg->set_##fieldname(value);                                           \
+        return;                                                                \
+      }                                                                        \
+    }                                                                          \
+    VLOG(3) << "Add new argument " << arg_name << "(name: "                    \
+            << arg_name << ", value: " << value << ")";                        \
+    auto arg = def->add_arg();                                                 \
+    arg->set_name(arg_name);                                                   \
+    arg->set_##fieldname(value);                                               \
+  }
+
+#define MACE_SET_OPTIONAL_ARGUMENT_FUNC_MACRO(Def)     \
+  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, float, f)       \
+  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, bool, i)        \
+  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, int, i)         \
+  MACE_SET_OPTIONAL_ARGUMENT_FUNC(Def, int64_t, i)
+
+MACE_SET_OPTIONAL_ARGUMENT_FUNC_MACRO(OperatorDef)
+MACE_SET_OPTIONAL_ARGUMENT_FUNC_MACRO(NetDef)
+#undef MACE_SET_OPTIONAL_ARGUMENT_FUNC
+
+const std::string OutputMemoryTypeTagName() {
+  static const char *kOutputMemTypeArgName = "output_mem_type";
+  return kOutputMemTypeArgName;
+}
 
 bool IsQuantizedModel(const NetDef &net_def) {
   return

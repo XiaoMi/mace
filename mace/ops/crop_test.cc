@@ -42,13 +42,13 @@ void RunCrop(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
   } else if (D == CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("Input0",
-                                                    NHWC,
+                                                    DataFormat::NHWC,
                                                     "InputNCHW0",
-                                                    NCHW);
+                                                    DataFormat::NCHW);
     net.TransformDataFormat<DeviceType::CPU, float>("Input1",
-                                                    NHWC,
+                                                    DataFormat::NHWC,
                                                     "InputNCHW1",
-                                                    NCHW);
+                                                    DataFormat::NCHW);
     OpDefBuilder("Crop", "CropTest")
         .Input("InputNCHW0")
         .Input("InputNCHW1")
@@ -62,8 +62,8 @@ void RunCrop(const std::vector<index_t> &input_shape,
   net.RunOp(D);
 
   if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
   // Check
   auto expected = net.CreateTensor<float>(expected_shape, expected_data);

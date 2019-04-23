@@ -32,8 +32,8 @@ void RunSpaceToDepth(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
   // Construct graph
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
@@ -41,8 +41,8 @@ void RunSpaceToDepth(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   } else {
     OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
@@ -107,8 +107,8 @@ void RandomTest(const int block_size,
 
   // Add input data
   net.AddRandomInput<D, float>("Input", shape);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
       .Input("InputNCHW")
       .AddIntArg("block_size", block_size)
@@ -118,8 +118,8 @@ void RandomTest(const int block_size,
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
       .Input("Input")

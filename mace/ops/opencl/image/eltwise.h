@@ -71,14 +71,17 @@ MaceStatus EltwiseKernel<T>::Compute(
   if (input1 == nullptr) {
     input1_type = "INPUT_SCALAR";
   } else {
-    MACE_CHECK(input0->dim_size() == input1->dim_size() ||
+    MACE_CHECK((input0->dim_size() == input1->dim_size()
+        && input0->dim_size() == 4) ||
         input0->dim_size() == 1 || input1->dim_size() == 1)
-      << "Inputs of Eltwise op must be same shape";
+      << "Inputs of Eltwise op must be same shape or fulfill broadcast logic";
     MACE_CHECK(type_ != EltwiseType::EQUAL)
       << "Eltwise op on GPU does not support EQUAL";
     // broadcast
-    if (input0->size() != input1->size()) {
-      if (input0->size() < input1->size()) {
+    if (input0->size() != input1->size() ||
+        input0->dim_size() != input1->dim_size()) {
+      if (input0->size() < input1->size()
+          || input0->dim_size() < input1->dim_size()) {
         std::swap(input0, input1);
         swapped = true;
       }

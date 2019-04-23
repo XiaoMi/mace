@@ -94,7 +94,7 @@ class SpaceToDepthOp<DeviceType::GPU, T> : public Operation {
   explicit SpaceToDepthOp(OpConstructContext *context)
       : Operation(context) {
     int block_size = Operation::GetOptionalArg<int>("block_size", 1);
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::SpaceToDepthKernel<T>>(block_size);
     } else {
       MACE_NOT_IMPLEMENTED;

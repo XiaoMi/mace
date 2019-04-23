@@ -27,9 +27,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   OpsTestNet net;
 
   // Add input data
-  DataFormat data_format = NHWC;
   if (D == DeviceType::CPU) {
-    data_format = NCHW;
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});

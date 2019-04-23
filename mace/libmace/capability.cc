@@ -143,7 +143,7 @@ void BMNet::SetUp() {
   // Add input and output information
   for (size_t i = 0; i < input_names_.size(); ++i) {
     InputOutputInfo *info = net_.add_input_info();
-    info->set_data_format(DataFormat::NHWC);
+    info->set_data_format(static_cast<int>(DataFormat::NHWC));
     info->set_name(input_names_[i]);
     for (auto d : input_shapes_[i]) {
       info->add_dims(static_cast<int>(d));
@@ -244,7 +244,7 @@ void BMNet::AddConv(const std::string &conv_type,
   op_def->add_output(output_name);
   AddIntsArg(op_def, "strides", strides);
   AddIntArg(op_def, "padding", padding_type);
-  AddIntArg(op_def, "has_data_format", 1);
+  AddIntArg(op_def, "data_format", static_cast<int>(DataFormat::AUTO));
   AddIntArg(op_def, "T", DT_HALF);
   if (has_relu6) {
     AddStringArg(op_def, "activation", "RELUX");
@@ -271,7 +271,7 @@ void BMNet::AddEltwise(const std::string &op_name,
   op_def->add_output(output);
   AddIntArg(op_def, "type", type);
   AddIntArg(op_def, "T", DT_HALF);
-  AddIntArg(op_def, "has_data_format", 1);
+  AddIntArg(op_def, "data_format", static_cast<int>(DataFormat::AUTO));
   OutputShape *shape = op_def->add_output_shape();
   for (auto dim : output_shape) {
     shape->add_dims(dim);

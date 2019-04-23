@@ -86,8 +86,8 @@ void TestStridedSliceWithDataFormat(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<CPU, int32_t>(
       "Strides", {static_cast<int32_t>(strides.size())}, strides);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
       .Input("InputNCHW")
@@ -105,8 +105,8 @@ void TestStridedSliceWithDataFormat(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
@@ -154,8 +154,8 @@ void TestSliceWithDataFormat(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<CPU, int32_t>(
       "IndicesSize", {static_cast<int32_t>(indices_size.size())}, indices_size);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
       .Input("InputNCHW")
@@ -168,8 +168,8 @@ void TestSliceWithDataFormat(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));

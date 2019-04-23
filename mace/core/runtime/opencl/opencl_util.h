@@ -43,14 +43,15 @@ class OpenCLUtil {
                               std::vector<size_t> *image_shape,
                               const int wino_blk_size = 2);
 
-  static std::shared_ptr<OperatorDef> CreateTransformOpDef(
+  static void BuildTransformOpDef(
       const std::string &input_name,
       const std::vector<mace::index_t> &input_shape,
       const std::string &output_name,
       const mace::DataType dt,
       const OpenCLBufferType buffer_type,
       const MemoryType mem_type,
-      bool has_data_format);
+      DataFormat data_format,
+      OperatorDef *op_def);
 };
 
 }  // namespace mace

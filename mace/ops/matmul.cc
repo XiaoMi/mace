@@ -518,14 +518,6 @@ void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

@@ -39,14 +39,11 @@ class BufferTransformOp<DeviceType::GPU, T> : public Operation {
     auto type =
         static_cast<OpenCLBufferType>(Operation::GetOptionalArg<int>(
             "buffer_type", static_cast<int>(CONV2D_FILTER)));
-    bool has_data_format = Operation::GetOptionalArg<int>("has_data_format", 0)
-        != 0;
 
     MemoryType in_mem_type = context->workspace()->GetTensor(
         operator_def_->input(0))->memory_type();
     return OpenCLBufferTransformer<T>(in_mem_type, out_mem_type_).Transform(
-        context, input, type, out_mem_type_, wino_blk_size_,
-        has_data_format, output);
+        context, input, type, out_mem_type_, wino_blk_size_, output);
   }
 
  private:

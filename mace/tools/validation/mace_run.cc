@@ -91,7 +91,7 @@ DataFormat ParseDataFormat(const std::string &data_format_str) {
   } else if (data_format_str == "OIHW") {
     return DataFormat::OIHW;
   } else {
-    return DataFormat::DF_NONE;
+    return DataFormat::NONE;
   }
 }
 

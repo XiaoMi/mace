@@ -387,6 +387,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         self._mace_net_def = mace_pb2.NetDef()
         self._data_format = DataFormat.NCHW
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
+        ConverterUtil.add_data_format_arg(self._mace_net_def,
+                                          self._data_format)
         onnx_model = onnx.load(src_model_file)
 
         ir_version = onnx_model.ir_version
@@ -402,7 +404,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             print("constains ops domain: ", domain, "version:", version)
             if 'kaldi2onnx' in domain:
                 polish_available = False
-                self._data_format = DataFormat.DF_NONE
+                self._data_format = DataFormat.NONE
                 self._isKaldi = True
         if polish_available:
             onnx_model = onnx.utils.polish_model(onnx_model)

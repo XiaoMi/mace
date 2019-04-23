@@ -199,7 +199,7 @@ class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ConcatKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -241,12 +241,12 @@ void RegisterConcat(OpRegistryBase *op_registry) {
       op_registry,
       OpConditionBuilder("Concat")
           .SetDevicePlacerFunc(
-            [](OpConstructContext *context) -> std::set<DeviceType> {
+            [](OpConditionContext *context) -> std::set<DeviceType> {
               auto op = context->operator_def();
-              auto tensor_shape_info = context->tensor_shape_info();
               if (op->output_shape_size() != op->output_size()) {
                 return { DeviceType::CPU, DeviceType::GPU };
               }
+              auto tensor_shape_info = context->tensor_shape_info();
               if (op->output_shape(0).dims_size() != 4) {
                 return { DeviceType::CPU };
               } else {

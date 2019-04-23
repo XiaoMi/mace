@@ -15,6 +15,7 @@
 #include "mace/ops/ops_test_util.h"
 #include "mace/core/memory_optimizer.h"
 #include "mace/utils/memory.h"
+#include "mace/core/net_def_adapter.h"
 
 namespace mace {
 namespace ops {
@@ -175,32 +176,37 @@ void OpTestContext::SetOCLImageAndBufferTestFlag() {
 bool OpsTestNet::Setup(mace::DeviceType device) {
   NetDef net_def;
   for (auto &op_def : op_defs_) {
-    net_def.add_op()->CopyFrom(op_def);
+    auto target_op = net_def.add_op();
+    target_op->CopyFrom(op_def);
 
+    auto has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+        op_def, "has_data_format", 0);
+    auto is_quantized_op = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+        op_def, "T", static_cast<int>(DT_FLOAT))
+        == static_cast<int>(DT_UINT8);
     for (auto input : op_def.input()) {
       if (ws_.GetTensor(input) != nullptr &&
           !ws_.GetTensor(input)->is_weight()) {
         auto input_info = net_def.add_input_info();
         input_info->set_name(input);
-        auto has_data_format = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            op_def, "has_data_format", 1);
-        auto is_quantized_op = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            op_def, "T", static_cast<int>(DT_FLOAT))
-            == static_cast<int>(DT_UINT8);
         if (has_data_format) {
           if (is_quantized_op || device == DeviceType::GPU) {
-            input_info->set_data_format(NHWC);
+            input_info->set_data_format(static_cast<int>(DataFormat::NHWC));
           } else {
-            input_info->set_data_format(NCHW);
+            input_info->set_data_format(static_cast<int>(DataFormat::NCHW));
           }
         } else {
-          input_info->set_data_format(DataFormat::DF_NONE);
+          input_info->set_data_format(static_cast<int>(DataFormat::NONE));
         }
         auto &shape = ws_.GetTensor(input)->shape();
         for (auto d : shape) {
           input_info->add_dims(static_cast<int>(d));
         }
       }
+    }
+    if (has_data_format) {
+      SetProtoArg<int>(target_op, "data_format",
+                       static_cast<int>(DataFormat::AUTO));
     }
   }
   if (!op_defs_.empty()) {
@@ -216,15 +222,21 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
       }
     }
   }
+  NetDef adapted_net_def;
+  NetDefAdapter net_def_adapter(op_registry_.get(), &ws_);
+  net_def_adapter.AdaptNetDef(&net_def,
+                              OpTestContext::Get()->GetDevice(device),
+                              &adapted_net_def);
+
   MemoryOptimizer mem_optimizer;
   net_ = make_unique<SerialNet>(
       op_registry_.get(),
-      &net_def,
+      &adapted_net_def,
       &ws_,
       OpTestContext::Get()->GetDevice(device),
       &mem_optimizer);
   MaceStatus status = (ws_.PreallocateOutputTensor(
-      net_def,
+      adapted_net_def,
       &mem_optimizer,
       OpTestContext::Get()->GetDevice(device)));
   if (status != MaceStatus::MACE_SUCCESS) return false;
@@ -267,15 +279,20 @@ MaceStatus OpsTestNet::RunOp() {
 MaceStatus OpsTestNet::RunNet(const mace::NetDef &net_def,
                               const mace::DeviceType device) {
   device_type_ = device;
+  NetDef adapted_net_def;
+  NetDefAdapter net_def_adapter(op_registry_.get(), &ws_);
+  net_def_adapter.AdaptNetDef(&net_def,
+                              OpTestContext::Get()->GetDevice(device),
+                              &adapted_net_def);
   MemoryOptimizer mem_optimizer;
   net_ = make_unique<SerialNet>(
       op_registry_.get(),
-      &net_def,
+      &adapted_net_def,
       &ws_,
       OpTestContext::Get()->GetDevice(device),
       &mem_optimizer);
   MACE_RETURN_IF_ERROR(ws_.PreallocateOutputTensor(
-      net_def,
+      adapted_net_def,
       &mem_optimizer,
       OpTestContext::Get()->GetDevice(device)));
   MACE_RETURN_IF_ERROR(net_->Init());

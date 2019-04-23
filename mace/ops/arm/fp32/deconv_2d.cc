@@ -54,7 +54,7 @@ MaceStatus Deconv2dBase::ResizeOutAndPadOut(
                                  out_pad_size,
                                  &padded_out_shape,
                                  framework_type_,
-                                 NCHW);
+                                 DataFormat::NCHW);
 
   MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 

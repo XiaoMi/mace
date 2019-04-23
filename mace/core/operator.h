@@ -32,22 +32,20 @@
 
 namespace mace {
 
-// memory_optimizer, device
-class OpConstructContext {
-  typedef std::unordered_map<std::string, std::vector<index_t>> TensorShapeMap;
-
+// OpConditionContext has all information used for choosing proper Op
+class OpConditionContext {
  public:
-  explicit OpConstructContext(Workspace *ws);
-  OpConstructContext(Workspace *ws, TensorShapeMap *info);
-  ~OpConstructContext() = default;
+  typedef std::unordered_map<std::string, std::vector<index_t>> TensorShapeMap;
+  OpConditionContext(const Workspace *ws, TensorShapeMap *info);
+  ~OpConditionContext() = default;
 
-  void set_operator_def(std::shared_ptr<OperatorDef> operator_def);
+  void set_operator_def(const OperatorDef* operator_def);
 
-  inline std::shared_ptr<OperatorDef> operator_def() const {
+  inline const OperatorDef *operator_def() const {
     return operator_def_;
   }
 
-  inline Workspace *workspace() const {
+  inline const Workspace *workspace() const {
     return ws_;
   }
 
@@ -81,8 +79,8 @@ class OpConstructContext {
 #endif  // MACE_ENABLE_OPENCL
 
  private:
-  std::shared_ptr<OperatorDef> operator_def_;
-  Workspace *ws_;
+  const OperatorDef *operator_def_;
+  const Workspace *ws_;
   Device *device_;
   TensorShapeMap *tensor_shape_info_;
   // used for memory transform
@@ -92,6 +90,46 @@ class OpConstructContext {
 #ifdef MACE_ENABLE_OPENCL
   std::vector<OpenCLBufferType> input_opencl_buffer_types_;
 #endif  // MACE_ENABLE_OPENCL
+};
+
+// memory_optimizer, device
+class OpConstructContext {
+  typedef std::unordered_map<std::string, std::vector<index_t>> TensorShapeMap;
+
+ public:
+  explicit OpConstructContext(Workspace *ws);
+  ~OpConstructContext() = default;
+
+  void set_operator_def(std::shared_ptr<OperatorDef> operator_def);
+
+  inline std::shared_ptr<OperatorDef> operator_def() const {
+    return operator_def_;
+  }
+
+  inline Workspace *workspace() const {
+    return ws_;
+  }
+
+  inline void set_device(Device* device) {
+    device_ = device;
+  }
+
+  inline Device *device() const {
+    return device_;
+  }
+#ifdef MACE_ENABLE_OPENCL
+  inline MemoryType GetOpMemoryType() const {
+    return static_cast<MemoryType>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            *operator_def_, OutputMemoryTypeTagName(),
+            static_cast<int>(MemoryType::CPU_BUFFER)));
+  }
+#endif  // MACE_ENABLE_OPENCL
+
+ private:
+  std::shared_ptr<OperatorDef> operator_def_;
+  Workspace *ws_;
+  Device *device_;
 };
 
 // memory_optimizer, device
@@ -207,8 +245,11 @@ struct OpRegistrationInfo {
  public:
   typedef std::function<std::unique_ptr<Operation>(OpConstructContext *)>
       OpCreator;
-  typedef std::function<std::set<DeviceType>(OpConstructContext *)>
+  typedef std::function<std::set<DeviceType>(OpConditionContext *)>
       DevicePlacer;
+  typedef std::function<void(OpConditionContext *)> MemoryTypeSetter;
+  typedef std::function<std::vector<DataFormat>(OpConditionContext *)>
+      DataFormatSelector;
 
   OpRegistrationInfo();
 
@@ -219,6 +260,8 @@ struct OpRegistrationInfo {
   std::set<DeviceType> devices;
   std::unordered_map<std::string, OpCreator> creators;
   DevicePlacer device_placer;
+  MemoryTypeSetter memory_type_setter;
+  DataFormatSelector data_format_selector;
 };
 
 class OpConditionBuilder {
@@ -230,11 +273,21 @@ class OpConditionBuilder {
   OpConditionBuilder &SetDevicePlacerFunc(
       OpRegistrationInfo::DevicePlacer placer);
 
+  // If you set input memory type for specified Op,
+  // you must call OpConditionContext::set_output_mem_type
+  OpConditionBuilder &SetInputMemoryTypeSetter(
+      OpRegistrationInfo::MemoryTypeSetter setter);
+
+  OpConditionBuilder &SetInputsDataFormatSelector(
+      OpRegistrationInfo::DataFormatSelector selector);
+
   void Finalize(OpRegistrationInfo *info) const;
 
  private:
   std::string type_;
   OpRegistrationInfo::DevicePlacer placer_;
+  OpRegistrationInfo::MemoryTypeSetter memory_type_setter_;
+  OpRegistrationInfo::DataFormatSelector data_format_selector_;
 };
 
 
@@ -250,7 +303,13 @@ class OpRegistryBase {
   MaceStatus Register(const OpConditionBuilder &builder);
 
   const std::set<DeviceType> AvailableDevices(
-      const std::string &op_type, OpConstructContext *context) const;
+      const std::string &op_type, OpConditionContext *context) const;
+
+  void GetInOutMemoryTypes(
+      const std::string &op_type, OpConditionContext *context) const;
+
+  const std::vector<DataFormat> InputsDataFormat(
+      const std::string &op_type, OpConditionContext *context) const;
 
   std::unique_ptr<Operation> CreateOperation(
       OpConstructContext *context,

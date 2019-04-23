@@ -67,7 +67,7 @@ class AddNOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit AddNOp(OpConstructContext *context)
       : Operation(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::AddNKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -101,6 +101,24 @@ void RegisterAddN(OpRegistryBase *op_registry) {
 
   MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("AddN")
+          .SetDevicePlacerFunc(
+              [](OpConditionContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
+                int has_data_format =
+                    ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                        *op, "has_data_format", 0);
+                if (!has_data_format ||
+                    op->output_shape(0).dims_size() != 4) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops

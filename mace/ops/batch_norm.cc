@@ -174,7 +174,7 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
     float leakyrelu_coefficient = Operation::GetOptionalArg<float>(
         "leakyrelu_coefficient", 0.0f);
     MemoryType mem_type;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::BatchNormKernel<T>>(
           epsilon, activation, relux_max_limit, leakyrelu_coefficient);

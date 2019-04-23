@@ -231,9 +231,9 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
     std::vector<int> paddings(2);
     if (paddings_.empty()) {
       CalcPaddingAndOutputSize(input->shape().data(),
-                               NHWC,
+                               DataFormat::NHWC,
                                filter->shape().data(),
-                               OHWI,
+                               DataFormat::OHWI,
                                dilations_.data(),
                                strides_.data(),
                                padding_type_,
@@ -242,9 +242,9 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
     } else {
       paddings = paddings_;
       CalcOutputSize(input->shape().data(),
-                     NHWC,
+                     DataFormat::NHWC,
                      filter->shape().data(),
-                     OHWI,
+                     DataFormat::OHWI,
                      paddings_.data(),
                      dilations_.data(),
                      strides_.data(),
@@ -459,14 +459,13 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
               "leakyrelu_coefficient", 0.0f)),
         wino_block_size_(Operation::GetOptionalArg<int>("wino_block_size", 0)) {
     MemoryType mem_type;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::Conv2dKernel<T>>();
     } else {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_ = make_unique<opencl::buffer::Conv2dKernel<T>>();
     }
-    context->set_output_mem_type(mem_type);
     // Transform filter tensor to target format
     if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
         (kernel_->CheckUseWinograd(

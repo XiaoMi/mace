@@ -39,8 +39,8 @@ void SimpleValidTest() {
       true);
   net.AddInputFromArray<D, float>("Bias", {2}, {.1f, .2f}, true);
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -52,8 +52,8 @@ void SimpleValidTest() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("Input")
@@ -127,8 +127,8 @@ void ComplexValidTest(index_t batch,
                                   true);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -141,8 +141,8 @@ void ComplexValidTest(index_t batch,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("Input")
@@ -249,8 +249,8 @@ void TestNxNS12(const index_t height, const index_t width) {
                                                {multiplier * channel},
                                                true, false);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputNCHW")
         .Input("Filter")
@@ -267,8 +267,8 @@ void TestNxNS12(const index_t height, const index_t width) {
     // Run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
     auto expected = net.CreateTensor<float>();
@@ -389,9 +389,9 @@ void TestQuant(const index_t batch,
       "Filter", {k_height, k_width, in_channels, multiplier}, true, false);
   net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
   net.TransformDataFormat<DeviceType::CPU, float>(
-      "Input", NHWC, "InputNCHW", NCHW);
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   net.TransformFilterDataFormat<DeviceType::CPU, float>(
-      "Filter", HWIO, "FilterOIHW", OIHW);
+      "Filter", DataFormat::HWIO, "FilterOIHW", DataFormat::OIHW);
 
   OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("InputNCHW")
@@ -405,7 +405,7 @@ void TestQuant(const index_t batch,
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
   net.TransformDataFormat<DeviceType::CPU, float>(
-      "OutputNCHW", NCHW, "Output", NHWC);
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeFilter")
       .Input("Filter")

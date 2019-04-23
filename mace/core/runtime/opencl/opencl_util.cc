@@ -147,38 +147,38 @@ void OpenCLUtil::CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
   }
 }
 
-std::shared_ptr<OperatorDef> OpenCLUtil::CreateTransformOpDef(
+void OpenCLUtil::BuildTransformOpDef(
     const std::string &input_name,
     const std::vector<mace::index_t> &input_shape,
     const std::string &output_name,
     const mace::DataType dt,
     const OpenCLBufferType buffer_type,
     const mace::MemoryType mem_type,
-    bool has_data_format) {
-  std::unique_ptr<OperatorDef> op(new OperatorDef);
+    DataFormat data_format,
+    OperatorDef *op_def) {
   std::string op_name = "mace_node_" + output_name;
-  op->set_name(op_name);
-  op->set_type("BufferTransform");
-  op->add_input(input_name);
-  op->add_output(output_name);
-  Argument *arg = op->add_arg();
+  op_def->set_name(op_name);
+  op_def->set_type("BufferTransform");
+  op_def->add_input(input_name);
+  op_def->add_output(output_name);
+  op_def->set_device_type(DeviceType::GPU);
+  Argument *arg = op_def->add_arg();
   arg->set_name("buffer_type");
   arg->set_i(static_cast<int32_t>(buffer_type));
-  arg = op->add_arg();
+  arg = op_def->add_arg();
   arg->set_name("mem_type");
   arg->set_i(static_cast<int32_t>(mem_type));
-  arg = op->add_arg();
+  arg = op_def->add_arg();
   arg->set_name("T");
   arg->set_i(static_cast<int32_t>(dt));
-  arg = op->add_arg();
-  arg->set_name("has_data_format");
-  arg->set_i(has_data_format);
+  arg = op_def->add_arg();
+  arg->set_name("data_format");
+  arg->set_i(static_cast<int>(data_format));
   if (!input_shape.empty()) {
-    OutputShape *shape = op->add_output_shape();
+    OutputShape *shape = op_def->add_output_shape();
     for (auto value : input_shape) {
       shape->add_dims(value);
     }
   }
-  return std::move(op);
 }
 }  // namespace mace

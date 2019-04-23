@@ -54,14 +54,6 @@ class SerialNet : public NetBase {
 
   MaceStatus Run(RunMetadata *run_metadata = nullptr) override;
 
- private:
-  std::unique_ptr<Operation> CreateOperation(
-      const OpRegistryBase *op_registry,
-      OpConstructContext *construct_context,
-      std::shared_ptr<OperatorDef> op_def,
-      bool has_data_format,
-      bool is_quantize_model = false);
-
  protected:
   Workspace *ws_;
   Device *target_device_;

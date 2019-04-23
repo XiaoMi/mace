@@ -106,7 +106,7 @@ class SplitOp<DeviceType::GPU, T> : public Operation {
   explicit SplitOp(OpConstructContext *context)
       : Operation(context) {
     int32_t axis = Operation::GetOptionalArg<int>("axis", 3);
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::SplitKernel<T>>(axis);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -144,7 +144,7 @@ void RegisterSplit(OpRegistryBase *op_registry) {
       op_registry,
       OpConditionBuilder("Split")
           .SetDevicePlacerFunc(
-              [](OpConstructContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
                   return {DeviceType::CPU, DeviceType::GPU};

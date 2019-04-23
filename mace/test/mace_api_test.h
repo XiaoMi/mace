@@ -76,7 +76,7 @@ void Conv3x3(const std::string &input_name,
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .AddIntArg("has_data_format", 1)
+      .AddIntArg("data_format", static_cast<int>(DataFormat::AUTO))
       .Finalize(&operator_def);
 
   OutputShape *shape = operator_def.add_output_shape();
@@ -99,7 +99,7 @@ void Relu(const std::string &input_name,
       .AddStringArg("activation", "RELU")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .AddIntArg("device", static_cast<int>(device_type))
-      .AddIntArg("has_data_format", 1)
+      .AddIntArg("data_format", static_cast<int>(DataFormat::AUTO))
       .Finalize(&operator_def);
 
   net_def->add_op()->CopyFrom(operator_def);
@@ -139,7 +139,8 @@ void CheckOutputs(const NetDef &net_def,
     if (D == DeviceType::CPU) {
       std::string input_name = input.first + "NHWC";
       net.AddInputFromArray<D, float>(input_name, input_shape, input_data);
-      net.TransformDataFormat<D, float>(input_name, NHWC, input.first, NCHW);
+      net.TransformDataFormat<D, float>(
+          input_name, DataFormat::NHWC, input.first, DataFormat::NCHW);
     } else {
       net.AddInputFromArray<D, float>(input.first, input_shape, input_data);
     }
@@ -154,7 +155,7 @@ void CheckOutputs(const NetDef &net_def,
     memcpy(data.data(),
            reinterpret_cast<const T *>(tensor_data.data()) + tensor.offset(),
            tensor.data_size() * sizeof(T));
-    net.AddInputFromArray<D, T>(tensor.name(), shape, data);
+    net.AddInputFromArray<D, T>(tensor.name(), shape, data, true);
   }
   net.RunNet(net_def, D);
 
@@ -175,9 +176,9 @@ void CheckOutputs(const NetDef &net_def,
     if (D == DeviceType::CPU) {
       output_name = output.first + "NHWC";
       net.TransformDataFormat<CPU, float>(output.first,
-                                          NCHW,
+                                          DataFormat::NCHW,
                                           output_name,
-                                          NHWC);
+                                          DataFormat::NHWC);
     }
     ops::test::ExpectTensorNear<float>(*tmp_tensor,
                                        *net.GetOutput(output_name.data()),

@@ -173,7 +173,7 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
   explicit Deconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::Deconv2dKernel<T>>();
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -197,7 +197,6 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
             OpenCLBufferType::ARGUMENT,
             mem_type) == MaceStatus::MACE_SUCCESS);
       }
-      context->SetInputInfo(2, MemoryType::CPU_BUFFER, DataType::DT_INT32);
     }
   }
   MaceStatus Run(OpContext *context) override {
@@ -241,7 +240,7 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
                                    &out_paddings,
                                    nullptr,
                                    model_type_,
-                                   NHWC);
+                                   DataFormat::NHWC);
 
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), in_paddings.data(), activation_,
@@ -264,6 +263,30 @@ void RegisterDeconv2D(OpRegistryBase *op_registry) {
 
   MACE_REGISTER_OP(op_registry, "Deconv2D", Deconv2dOp,
                    DeviceType::GPU, half);
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Deconv2D")
+          .SetInputMemoryTypeSetter(
+              [](OpConditionContext *context) -> void {
+                MemoryType mem_type = MemoryType::CPU_BUFFER;
+                if (context->device()->device_type() == DeviceType::GPU) {
+                  if (context->device()->gpu_runtime()->UseImageMemory()) {
+                    mem_type = MemoryType::GPU_IMAGE;
+                  } else {
+                    MACE_NOT_IMPLEMENTED;
+                  }
+                  FrameworkType framework_type =
+                      static_cast<FrameworkType>(
+                        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                            *(context->operator_def()), "framework_type",
+                            FrameworkType::TENSORFLOW));
+                  if (framework_type == FrameworkType::TENSORFLOW) {
+                    context->SetInputInfo(2, MemoryType::CPU_BUFFER,
+                                          DataType::DT_INT32);
+                  }
+                }
+                context->set_output_mem_type(mem_type);
+              }));
 #endif  // MACE_ENABLE_OPENCL
 }
 

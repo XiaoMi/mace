@@ -31,8 +31,8 @@ void BiasAddSimple() {
   net.AddInputFromArray<D, float>("Bias", {1}, {0.5f}, true);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("InputNCHW")
         .Input("Bias")
@@ -41,8 +41,8 @@ void BiasAddSimple() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else if (D == DeviceType::GPU) {
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("Input")
@@ -83,8 +83,8 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
                                              {batch, height, width, channels});
   net.AddRandomInput<DeviceType::GPU, float>("Bias", {channels}, true, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   // Construct graph
   OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -97,8 +97,8 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
   auto expected = net.CreateTensor<float>();
@@ -132,8 +132,8 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
                                              {batch, height, width, channels});
   net.AddRandomInput<DeviceType::GPU, float>("Bias", {channels}, true, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   // Construct graph
   OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -146,8 +146,8 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
-                                                  NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   // Check
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));

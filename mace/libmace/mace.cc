@@ -27,6 +27,7 @@
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
+#include "mace/core/net_def_adapter.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/gpu_device.h"
@@ -282,9 +283,9 @@ MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
                        std::shared_ptr<void> data,
                        const DataFormat format) {
   MACE_CHECK_NOTNULL(data.get());
-  MACE_CHECK(format == DataFormat::DF_NONE || format == DataFormat::NHWC
-                 || format == DataFormat::NCHW || format == OIHW,
-             "MACE only support DF_NONE, NHWC, NCHW and OIHW "
+  MACE_CHECK(format == DataFormat::NONE || format == DataFormat::NHWC
+                 || format == DataFormat::NCHW || format == DataFormat::OIHW,
+             "MACE only support NONE, NHWC, NCHW and OIHW "
              "formats of input now.");
   impl_ = make_unique<MaceTensor::Impl>();
   impl_->shape = shape;
@@ -495,7 +496,7 @@ MaceStatus MaceEngine::Impl::Init(
     DataType output_dt = output_info_map_[output_name].data_type();
     Tensor *output_tensor =
         ws_->CreateTensor(output_name, device_->allocator(), output_dt);
-    output_tensor->set_data_format(NHWC);
+    output_tensor->set_data_format(DataFormat::NHWC);
 #endif
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
@@ -512,26 +513,32 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-  MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
-                                            device_.get(),
-                                            model_data));
+    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
+                                              device_.get(),
+                                              model_data));
 
-  MemoryOptimizer mem_optimizer;
-  // Init model
-  net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
-                                                net_def,
-                                                ws_.get(),
-                                                device_.get(),
-                                                &mem_optimizer));
+    NetDef adapted_net_def;
+    NetDefAdapter net_def_adapter(op_registry_.get(), ws_.get());
+    net_def_adapter.AdaptNetDef(net_def, device_.get(), &adapted_net_def);
 
-  // Preallocate all output tensors of ops
-  MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(*net_def,
-                                                    &mem_optimizer,
-                                                    device_.get()));
-  if (device_type_ == DeviceType::GPU) {
-    ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
-  }
-  MACE_RETURN_IF_ERROR(net_->Init());
+    MemoryOptimizer mem_optimizer;
+    // Init model
+    net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
+                                                  &adapted_net_def,
+                                                  ws_.get(),
+                                                  device_.get(),
+                                                  &mem_optimizer));
+
+    // Preallocate all output tensors of ops
+    MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(adapted_net_def,
+                                                      &mem_optimizer,
+                                                      device_.get()));
+    if (device_type_ == DeviceType::GPU) {
+      ws_->RemoveAndReloadBuffer(adapted_net_def,
+                                 model_data,
+                                 device_->allocator());
+    }
+    MACE_RETURN_IF_ERROR(net_->Init());
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
@@ -578,14 +585,14 @@ MaceEngine::Impl::~Impl() {
 MaceStatus MaceEngine::Impl::TransposeInput(
     const std::pair<const std::string, MaceTensor> &input,
     Tensor *input_tensor) {
-  bool has_data_format = input_tensor->data_format() != DataFormat::DF_NONE;
-  DataFormat data_format = DataFormat::DF_NONE;
+  bool has_data_format = input_tensor->data_format() != DataFormat::NONE;
+  DataFormat data_format = DataFormat::NONE;
   DataType input_dt = input_tensor->dtype();
   if (has_data_format) {
     std::vector<int> dst_dims;
     if (device_->device_type() == DeviceType::CPU &&
         input.second.shape().size() == 4 &&
-        input.second.data_format() == NHWC &&
+        input.second.data_format() == DataFormat::NHWC &&
         !is_quantized_model_) {
       VLOG(1) << "Transform input " << input.first << " from NHWC to NCHW";
       input_tensor->set_data_format(DataFormat::NCHW);
@@ -647,28 +654,28 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
   DataType output_dt = output_tensor->dtype();
   // save output
   if (output_tensor != nullptr && output->second.data() != nullptr) {
-    if (output_tensor->data_format() != DataFormat::DF_NONE &&
-        output->second.data_format() != DataFormat::DF_NONE &&
+    if (output_tensor->data_format() != DataFormat::NONE &&
+        output->second.data_format() != DataFormat::NONE &&
         output->second.shape().size() == 4 &&
         output->second.data_format() != output_tensor->data_format()) {
       VLOG(1) << "Transform output " << output->first << " from "
-              << output_tensor->data_format() << " to "
-              << output->second.data_format();
+              << static_cast<int>(output_tensor->data_format()) << " to "
+              << static_cast<int>(output->second.data_format());
       std::vector<int> dst_dims;
-      if (output_tensor->data_format() == NCHW &&
-          output->second.data_format() == NHWC) {
+      if (output_tensor->data_format() == DataFormat::NCHW &&
+          output->second.data_format() == DataFormat::NHWC) {
         dst_dims = {0, 2, 3, 1};
-      } else if (output_tensor->data_format() == NHWC &&
-          output->second.data_format() == NCHW) {
+      } else if (output_tensor->data_format() == DataFormat::NHWC &&
+          output->second.data_format() == DataFormat::NCHW) {
         dst_dims = {0, 3, 1, 2};
       } else {
         LOG(FATAL) << "Not supported output data format: "
-                   << output->second.data_format() << " vs "
-                   << output_tensor->data_format();
+                   << static_cast<int>(output->second.data_format()) << " vs "
+                   << static_cast<int>(output_tensor->data_format());
       }
       VLOG(1) << "Transform output " << output->first << " from "
-              << output_tensor->data_format() << " to "
-              << output->second.data_format();
+              << static_cast<int>(output_tensor->data_format()) << " to "
+              << static_cast<int>(output->second.data_format());
       std::vector<index_t> shape =
           TransposeShape<index_t, index_t>(output_tensor->shape(),
                                            dst_dims);

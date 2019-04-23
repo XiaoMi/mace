@@ -270,9 +270,9 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
     std::vector<int> paddings(2);
     if (paddings_.empty()) {
       CalcPaddingAndOutputSize(input_tensor->shape().data(),
-                               NHWC,
+                               DataFormat::NHWC,
                                filter_shape.data(),
-                               OHWI,
+                               DataFormat::OHWI,
                                dilations_.data(),
                                strides_.data(),
                                padding_type_,
@@ -281,9 +281,9 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
     } else {
       paddings = paddings_;
       CalcOutputSize(input_tensor->shape().data(),
-                     NHWC,
+                     DataFormat::NHWC,
                      filter_shape.data(),
-                     OHWI,
+                     DataFormat::OHWI,
                      paddings_.data(),
                      dilations_.data(),
                      strides_.data(),
@@ -477,10 +477,9 @@ class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::PoolingKernel<T>>();
     } else {
-      context->set_output_mem_type(MemoryType::GPU_BUFFER);
       kernel_ = make_unique<opencl::buffer::PoolingKernel<T>>();
     }
   }

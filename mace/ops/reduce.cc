@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -872,7 +873,7 @@ class ReduceOp<DeviceType::GPU, T> : public ReduceOpBase {
  public:
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ReduceKernel<T>>(reduce_type_,
                                                             axis_,
                                                             keep_dims_);
@@ -907,6 +908,34 @@ void RegisterReduce(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::GPU, half);
 #endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Reduce")
+          .SetDevicePlacerFunc(
+              [](OpConditionContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return { DeviceType::CPU, DeviceType::GPU };
+                }
+                bool keep_dims =
+                    ProtoArgHelper::GetOptionalArg<OperatorDef, bool>(
+                        *op, "keepdims", false);
+                if (!keep_dims) {
+                  return { DeviceType::CPU };
+                }
+                auto axis =
+                    ProtoArgHelper::GetRepeatedArgs<OperatorDef, int>(
+                        *op, "axis");
+                if (axis.size() != 2 || axis[0] != 1 || axis[1] != 2) {
+                  return { DeviceType::CPU };
+                }
+                auto tensor_shape_info = context->tensor_shape_info();
+                if (tensor_shape_info->count(op->input(0)) == 0
+                    || tensor_shape_info->at(op->input(0)).size() != 4) {
+                  return { DeviceType::CPU };
+                }
+                return { DeviceType::CPU, DeviceType::GPU };
+              }));
 }
 
 }  // namespace ops

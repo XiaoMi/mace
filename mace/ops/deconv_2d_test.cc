@@ -47,7 +47,8 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data, true);
   net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data, true);
   // TODO(liutuo): remove the unused transform
-  net.TransformFilterDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
+  net.TransformFilterDataFormat<D, float>(
+      "Filter", DataFormat::HWOI, "FilterOIHW", DataFormat::OIHW);
   if (D == DeviceType::GPU) {
     if (model_type == FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
@@ -77,8 +78,8 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
     }
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     if (model_type == FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
@@ -109,8 +110,8 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
   auto expected = net.CreateTensor<float>(expected_shape, expected_data);
@@ -380,8 +381,8 @@ void TestComplexDeconvNxN(const int batch,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true,
         false);
     net.AddRandomInput<D, T>("Bias", {output_channels}, true, false);
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     int out_h = 0;
     int out_w = 0;
 
@@ -440,8 +441,8 @@ void TestComplexDeconvNxN(const int batch,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
-                                                    "Output", NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
     auto expected = net.CreateTensor<float>();
