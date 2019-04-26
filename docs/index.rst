@@ -41,6 +41,8 @@ The main documentation is organized into the following sections:
    development/how_to_run_tests
    development/how_to_debug
    development/memory_layout
+   development/data_format
+   development/dynamic_lstm
 
 .. toctree::
    :maxdepth: 1

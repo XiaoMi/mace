@@ -113,8 +113,8 @@ MaceStatus NetDefAdapter::AdaptNetDef(
 
   // quantize model flag
   bool is_quantized_model = IsQuantizedModel(*net_def);
-  // Const tensors(filter) -> shape
-  std::unordered_map<std::string, std::vector<index_t>> tensor_shape_map;
+  // tensor -> shape
+  TensorShapeMap tensor_shape_map;
   // Output tensors -> information
   TensorInfoMap output_map;
   // output tensor : related information
@@ -135,13 +135,13 @@ MaceStatus NetDefAdapter::AdaptNetDef(
                << target_device->device_type();
   }
 
+  DataFormat expected_data_format = GetDefaultDataFormat(
+      target_device->device_type(), is_quantized_model);
   int input_size = target_net_def->input_info_size();
   for (int i = 0; i < input_size; ++i) {
     auto input_info = target_net_def->mutable_input_info(i);
     auto input_data_format = static_cast<DataFormat>(
         input_info->data_format());
-    DataFormat expected_data_format = GetDefaultDataFormat(
-        target_device->device_type(), is_quantized_model);
     std::vector<index_t> input_shape(input_info->dims().begin(),
                                      input_info->dims().end());
     if (input_data_format != DataFormat::NONE
@@ -192,12 +192,14 @@ MaceStatus NetDefAdapter::AdaptNetDef(
                                                  &op_def,
                                                  is_quantized_model,
                                                  &output_map,
+                                                 &tensor_shape_map,
                                                  &transformed_set,
                                                  &op_output_data_format,
                                                  target_net_def));
       MACE_RETURN_IF_ERROR(this->AdaptMemoryType(&context,
                                                  &op_def,
                                                  &output_map,
+                                                 &tensor_shape_map,
                                                  &transformed_set,
                                                  &op_output_mem_type,
                                                  target_net_def));
@@ -205,6 +207,7 @@ MaceStatus NetDefAdapter::AdaptNetDef(
       MACE_RETURN_IF_ERROR(this->AdaptMemoryType(&context,
                                                  &op_def,
                                                  &output_map,
+                                                 &tensor_shape_map,
                                                  &transformed_set,
                                                  &op_output_mem_type,
                                                  target_net_def));
@@ -212,6 +215,7 @@ MaceStatus NetDefAdapter::AdaptNetDef(
                                                  &op_def,
                                                  is_quantized_model,
                                                  &output_map,
+                                                 &tensor_shape_map,
                                                  &transformed_set,
                                                  &op_output_data_format,
                                                  target_net_def));
@@ -227,18 +231,20 @@ MaceStatus NetDefAdapter::AdaptNetDef(
             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                 op_def, "T", static_cast<int>(DataType::DT_FLOAT)));
       }
+      auto output_shape = op_def.output_shape().empty() ?
+                          std::vector<index_t>() :
+                          std::vector<index_t>(
+                              op_def.output_shape(out_idx).dims().begin(),
+                              op_def.output_shape(out_idx).dims().end());
       output_map.emplace(
           op_def.output(out_idx),
           InternalOutputInfo(
               op_output_mem_type,
               dt,
               op_output_data_format,
-              op_def.output_shape().empty() ?
-              std::vector<index_t>() :
-              std::vector<index_t>(
-                  op_def.output_shape(out_idx).dims().begin(),
-                  op_def.output_shape(out_idx).dims().end()),
+              output_shape,
               target_net_def->op_size()));
+      tensor_shape_map.emplace(op_def.output(out_idx), output_shape);
     }
     // Add op to target net
     target_net_def->add_op()->CopyFrom(op_def);
@@ -357,6 +363,7 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
     OperatorDef *op_def,
     bool is_quantized_model,
     TensorInfoMap *output_map,
+    TensorShapeMap *tensor_shape_map,
     std::unordered_set<std::string> *transformed_set,
     DataFormat *op_output_df,
     NetDef *target_net_def) {
@@ -465,6 +472,8 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
                 dst_df,
                 output_shape,
                 target_net_def->op_size() - 1));
+        // update tensor shape map
+        tensor_shape_map->emplace(transformed_name, output_shape);
         // record transformed tensors
         transformed_set->insert(transformed_name);
       }
@@ -479,6 +488,7 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
     OpConditionContext *context,
     OperatorDef *op_def,
     NetDefAdapter::TensorInfoMap *output_map,
+    TensorShapeMap *tensor_shape_map,
     std::unordered_set<std::string> *transformed_set,
     MemoryType *op_output_mem_types,
     NetDef *target_net_def) {
@@ -545,6 +555,8 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
                   input_info.data_format,
                   input_info.shape,
                   target_net_def->op_size() - 1));
+          // update tensor shape map
+          tensor_shape_map->emplace(transformed_name, input_info.shape);
           // record transformed tensors
           transformed_set->insert(transformed_name);
         }
@@ -555,6 +567,7 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
   }
 #else
   MACE_UNUSED(output_map);
+  MACE_UNUSED(tensor_shape_map);
   MACE_UNUSED(transformed_set);
   MACE_UNUSED(target_net_def);
 #endif  // MACE_ENABLE_OPENCL
