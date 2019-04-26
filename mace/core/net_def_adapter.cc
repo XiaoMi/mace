@@ -294,7 +294,7 @@ MaceStatus NetDefAdapter::AdaptNetDef(
   }
 #endif  // MACE_ENABLE_OPENCL
 
-  VLOG(1) << DebugString(target_net_def);
+  VLOG(3) << DebugString(target_net_def);
   return MaceStatus::MACE_SUCCESS;
 }
 

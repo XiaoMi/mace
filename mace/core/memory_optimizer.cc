@@ -275,6 +275,17 @@ std::string MemoryOptimizer::DebugInfo() const {
     sstream << "\n";
   }
 
+  for (auto tuple : tensor_mem_map_) {
+    sstream << tuple.first << ": " << tuple.second.mem_id << ", ";
+    if (mem_blocks_[tuple.second.mem_id].mem_type() == MemoryType::GPU_IMAGE) {
+      sstream << "[" << mem_blocks_[tuple.second.mem_id].x() << ", "
+              << mem_blocks_[tuple.second.mem_id].y() << "]";
+    } else {
+      sstream << "[" << mem_blocks_[tuple.second.mem_id].x() << "]";
+    }
+    sstream << "\n";
+  }
+
   return sstream.str();
 }
 
