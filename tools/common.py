@@ -413,6 +413,7 @@ class YAMLKeyword(object):
     cl_mem_type = 'cl_mem_type'
     backend = 'backend'
     validation_outputs_data = 'validation_outputs_data'
+    accuracy_validation_script = 'accuracy_validation_script'
     docker_image_tag = 'docker_image_tag'
     dockerfile_path = 'dockerfile_path'
     dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'

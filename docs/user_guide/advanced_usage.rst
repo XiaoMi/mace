@@ -76,6 +76,8 @@ in one deployment file.
       - The numerical range of the input tensors' data, default [-1, 1]. It is only for test.
     * - validation_inputs_data
       - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used.
+    * - accuracy_validation_script
+      - [optional] Specify the accuracy validation script as a plugin to test accuracy, see `doc <#validate-accuracy-of-mace-model>`__.
     * - validation_threshold
       - [optional] Specify the similarity threshold for validation. A dict with key in 'CPU', 'GPU' and/or 'HEXAGON' and value <= 1.0.
     * - backend
@@ -356,6 +358,19 @@ Tuning for specific SoC's GPU
                 static_cast<GPUPriorityHint>(GPUPriorityHint::PRIORITY_LOW));
 
             // ... Same with the code in basic usage.
+
+
+Validate accuracy of MACE model
+-------------------------------
+
+MACE supports **python validation script** as a plugin to test the accuracy, the plugin script could be used for below two purpose.
+
+1. Test the **accuracy(like Top-1)** of MACE model(specifically quantization model) converted from other framework(like tensorflow)
+2. Show some real output if you want to see it.
+
+The script define some interfaces like `preprocess` and `postprocess` to deal with input/outut and calculate the accuracy,
+you could refer to the `sample code <https://github.com/XiaoMi/mace/tree/master/tools/accuracy_validator.py>`__ for detail.
+the sample code show how to calculate the Top-1 accuracy with imagenet validation dataset.
 
 
 Useful Commands
