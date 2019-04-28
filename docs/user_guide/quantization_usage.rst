@@ -42,14 +42,16 @@ MACE provides tools to do statistics with following steps:
 
 	.. code:: sh
 
-		# convert images to input tensors for MACE
+		# Convert images to input tensors for MACE, see image_to_tensor.py for more arguments.
 		python tools/image/image_to_tensor.py --input /path/to/directory/of/input/images
 			--output_dir /path/to/directory/of/input/tensors --image_shape=299,299,3
 
-		# rename input tensors to start with input tensor name
+		# Rename input tensors to start with input tensor name(to differentiate multiple
+		# inputs of a model), input tensor name is what you specified as "input_tensors"
+		# in yaml config. For example, "input" is the input tensor name of InceptionV3 as below.
 		rename 's/^/input/' *
 
-		# run with input tensors
+		# Run with input tensors
 		python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml --example
 			--quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
 
