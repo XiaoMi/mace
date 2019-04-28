@@ -167,33 +167,33 @@ MaceSupportedOps = [
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
 
-MaceHasDataFormatOps = [MaceOp.BatchNorm,
-                        MaceOp.BatchToSpaceND,
-                        MaceOp.Conv2D,
-                        MaceOp.Deconv2D,
-                        MaceOp.DepthToSpace,
-                        MaceOp.DepthwiseConv2d,
-                        MaceOp.DepthwiseDeconv2d,
-                        MaceOp.FullyConnected,
-                        MaceOp.Pooling,
-                        MaceOp.ResizeBicubic,
-                        MaceOp.ResizeBilinear,
-                        MaceOp.ResizeNearestNeighbor,
-                        MaceOp.SpaceToBatchND,
-                        MaceOp.SpaceToDepth]
+MaceFixedDataFormatOps = [MaceOp.BatchNorm,
+                          MaceOp.BatchToSpaceND,
+                          MaceOp.Conv2D,
+                          MaceOp.Deconv2D,
+                          MaceOp.DepthToSpace,
+                          MaceOp.DepthwiseConv2d,
+                          MaceOp.DepthwiseDeconv2d,
+                          MaceOp.FullyConnected,
+                          MaceOp.Pooling,
+                          MaceOp.ResizeBicubic,
+                          MaceOp.ResizeBilinear,
+                          MaceOp.ResizeNearestNeighbor,
+                          MaceOp.SpaceToBatchND,
+                          MaceOp.SpaceToDepth]
 
-MaceMayHasDataFormatOps = [MaceOp.Activation,
-                           MaceOp.AddN,
-                           MaceOp.BiasAdd,
-                           MaceOp.ChannelShuffle,
-                           MaceOp.Concat,
-                           MaceOp.Crop,
-                           MaceOp.Eltwise,
-                           MaceOp.Pad,
-                           MaceOp.Reduce,
-                           MaceOp.Softmax,
-                           MaceOp.Split,
-                           MaceOp.SqrDiffMean]
+MaceTransposableDataFormatOps = [MaceOp.Activation,
+                                 MaceOp.AddN,
+                                 MaceOp.BiasAdd,
+                                 MaceOp.ChannelShuffle,
+                                 MaceOp.Concat,
+                                 MaceOp.Crop,
+                                 MaceOp.Eltwise,
+                                 MaceOp.Pad,
+                                 MaceOp.Reduce,
+                                 MaceOp.Softmax,
+                                 MaceOp.Split,
+                                 MaceOp.SqrDiffMean]
 
 
 class MaceKeyword(object):

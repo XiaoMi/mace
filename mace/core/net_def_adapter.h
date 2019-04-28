@@ -32,10 +32,21 @@ class OpRegistryBase;
 class Workspace;
 class Device;
 
-/// Conventions:
-/// 1. DataFormat::AUTO stands for formatted (NHWC or NCHW)
-/// 2. if Op with DataFormat::AUTO, the arguments of this op
-///    is formatted to NHWC
+///////////////////////////////////////////////////////////////////////////////
+///                               Conventions
+///
+/// 1. For the Ops ran with data format(like Conv2D),
+///    The inputs and outputs are DataFormat::NCHW if ran on CPU
+///    with float data type.
+///    while the inputs and outputs are DataFormat::NHWC for
+///    other situation(ran on GPU, quantization, DSP)
+///
+/// 2. Op with DataFormat::AUTO stands for inputs must have
+///    fixed format (NHWC or NCHW), determined at runtime.
+///
+/// 3. if Op with DataFormat::AUTO, the arguments of this op
+///    is formatted to NHWC.
+///////////////////////////////////////////////////////////////////////////////
 class NetDefAdapter {
  public:
   NetDefAdapter(const OpRegistryBase *op_registry,
@@ -77,6 +88,7 @@ class NetDefAdapter {
   };
 
   typedef std::unordered_map<std::string, InternalOutputInfo> TensorInfoMap;
+  typedef std::unordered_map<std::string, std::vector<index_t>> TensorShapeMap;
 
  private:
   MaceStatus AdaptDevice(OpConditionContext *context,
@@ -92,6 +104,7 @@ class NetDefAdapter {
       OperatorDef *op,
       bool is_quantized_model,
       TensorInfoMap *output_map,
+      TensorShapeMap *tensor_shape_map,
       std::unordered_set<std::string> *transformed_set,
       DataFormat *op_output_df,
       NetDef *target_net_def);
@@ -100,6 +113,7 @@ class NetDefAdapter {
       OpConditionContext *context,
       OperatorDef *op_def,
       TensorInfoMap *output_map,
+      TensorShapeMap *tensor_shape_map,
       std::unordered_set<std::string> *transformed_set,
       MemoryType *op_output_mem_types,
       NetDef *target_net_def);

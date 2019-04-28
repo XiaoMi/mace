@@ -27,8 +27,8 @@ from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import MaceHasDataFormatOps  # noqa
-from mace.python.tools.converter_tool.base_converter import MaceMayHasDataFormatOps  # noqa
+from mace.python.tools.converter_tool.base_converter import MaceFixedDataFormatOps  # noqa
+from mace.python.tools.converter_tool.base_converter import MaceTransposableDataFormatOps  # noqa
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import ReduceType
 from mace.python.tools.converter_tool.base_converter import TransformerRule
@@ -1348,9 +1348,9 @@ class Transformer(base_converter.ConverterInterface):
             if not df_arg:
                 df_arg = op.arg.add()
                 df_arg.name = MaceKeyword.mace_data_format_str
-            if op.type in MaceHasDataFormatOps:
+            if op.type in MaceFixedDataFormatOps:
                 df_arg.i = DataFormat.AUTO.value
-            elif op.type in MaceMayHasDataFormatOps:
+            elif op.type in MaceTransposableDataFormatOps:
                 input_df = DataFormat.AUTO.value
                 for input_tensor in op.input:
                     if input_tensor in self._consts:
