@@ -20,6 +20,7 @@
 
 #include "mace/port/env.h"
 #include "mace/port/logger.h"
+#include "mace/port/port-arch.h"
 #include "mace/port/posix/file_system.h"
 
 namespace mace {
@@ -29,6 +30,7 @@ class DarwinEnv : public Env {
  public:
   int64_t NowMicros() override;
   MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
+  MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) override;
   FileSystem *GetFileSystem() override;
   LogWriter *GetLogWriter() override;
   std::vector<std::string> GetBackTraceUnsafe(int max_steps) override;

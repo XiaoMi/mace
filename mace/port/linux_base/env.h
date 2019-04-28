@@ -28,6 +28,7 @@ class LinuxBaseEnv : public Env {
   int64_t NowMicros() override;
   MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs) override;
   FileSystem *GetFileSystem() override;
+  MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids) override;
 
  protected:
   PosixFileSystem posix_file_system_;

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <numeric>
+
 #include "mace/port/port.h"
 #include "mace/port/env.h"
 #include "mace/utils/logging.h"
@@ -26,6 +28,8 @@ namespace utils {
 constexpr int kThreadPoolSpinWaitTime = 2000000;  // ns
 constexpr int kTileCountPerThread = 2;
 constexpr int kMaxCostUsingSingleThread = 100;
+constexpr int kMinCpuCoresForPerformance = 3;
+constexpr int kMaxCpuCoresForPerformance = 5;
 
 namespace {
 
@@ -42,67 +46,87 @@ struct CPUFreq {
   float freq;
 };
 
-void GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
-                      const CPUAffinityPolicy policy,
-                      const size_t thread_count_hint,
-                      std::vector<size_t> *cores) {
-  size_t thread_count = thread_count_hint;
-  if (!cpu_max_freqs.empty()) {
-    const size_t cpu_count = cpu_max_freqs.size();
-    if (thread_count == 0 || thread_count > cpu_count) {
-      thread_count = cpu_count;
-    }
+size_t GetCpuCoresForPerfomance(const std::vector<CPUFreq> &cpu_freqs) {
+  float total_freq = std::accumulate(cpu_freqs.begin(), cpu_freqs.end(), 0,
+                                     [](float accum, CPUFreq cpu_freq) {
+                                       return accum + cpu_freq.freq;
+                                     });
+  size_t valid_cpu_nums = std::count_if(cpu_freqs.begin(), cpu_freqs.end(),
+                                        [](CPUFreq cpu_freq) {
+                                          return cpu_freq.freq != 0;
+                                        });
+  float avg_freq = total_freq / valid_cpu_nums;
 
-    if (policy != CPUAffinityPolicy::AFFINITY_NONE) {
-      std::vector<CPUFreq> cpu_freq(cpu_max_freqs.size());
-      for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
-        cpu_freq[i].core_id = i;
-        cpu_freq[i].freq = cpu_max_freqs[i];
-      }
-      if (policy == CPUAffinityPolicy::AFFINITY_POWER_SAVE ||
-          policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
-        std::sort(cpu_freq.begin(),
-                  cpu_freq.end(),
-                  [=](const CPUFreq &lhs, const CPUFreq &rhs) {
-                    return lhs.freq < rhs.freq;
-                  });
-      } else if (policy == CPUAffinityPolicy::AFFINITY_HIGH_PERFORMANCE ||
-          policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
-        std::sort(cpu_freq.begin(),
-                  cpu_freq.end(),
-                  [](const CPUFreq &lhs, const CPUFreq &rhs) {
-                    return lhs.freq > rhs.freq;
-                  });
-      }
-
-      // decide num of cores to use
-      size_t cores_to_use = 0;
-      if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY
-          || policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
-        for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
-          if (cpu_freq[i].freq != cpu_freq[0].freq) {
-            break;
-          }
-          ++cores_to_use;
-        }
-      } else {
-        cores_to_use = thread_count;
-      }
-      MACE_CHECK(cores_to_use > 0, "number of cores to use should > 0");
-      cores->resize(cores_to_use);
-      for (size_t i = 0; i < cores_to_use; ++i) {
-        VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id
-                << " with freq "
-                << cpu_freq[i].freq;
-        (*cores)[i] = static_cast<int>(cpu_freq[i].core_id);
-      }
+  size_t cores_to_use = 0;
+  for (auto cpu_info : cpu_freqs) {
+    if ((cpu_info.freq > avg_freq
+        && cores_to_use < kMaxCpuCoresForPerformance)
+        || cores_to_use < kMinCpuCoresForPerformance) {
+      ++cores_to_use;
     }
-  } else {
-    LOG(ERROR) << "CPU core is empty";
   }
+
+  return cores_to_use;
 }
 
 }  // namespace
+
+MaceStatus GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
+                            const CPUAffinityPolicy policy,
+                            const size_t thread_count_hint,
+                            std::vector<size_t> *cores) {
+  if (cpu_max_freqs.empty()) {
+    LOG(ERROR) << "CPU core is empty";
+    return MaceStatus::MACE_RUNTIME_ERROR;
+  }
+  size_t thread_count = thread_count_hint;
+  const size_t cpu_count = cpu_max_freqs.size();
+  if (thread_count == 0 || thread_count > cpu_count) {
+    thread_count = cpu_count;
+  }
+
+  if (policy != CPUAffinityPolicy::AFFINITY_NONE) {
+    std::vector<CPUFreq> cpu_freq(cpu_max_freqs.size());
+    for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
+      cpu_freq[i].core_id = i;
+      cpu_freq[i].freq = cpu_max_freqs[i];
+    }
+    if (policy == CPUAffinityPolicy::AFFINITY_POWER_SAVE ||
+        policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
+      std::sort(cpu_freq.begin(),
+                cpu_freq.end(),
+                [=](const CPUFreq &lhs, const CPUFreq &rhs) {
+                  return lhs.freq < rhs.freq;
+                });
+    } else if (policy == CPUAffinityPolicy::AFFINITY_HIGH_PERFORMANCE ||
+        policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
+      std::sort(cpu_freq.begin(),
+                cpu_freq.end(),
+                [](const CPUFreq &lhs, const CPUFreq &rhs) {
+                  return lhs.freq > rhs.freq;
+                });
+    }
+
+    // decide num of cores to use
+    size_t cores_to_use = 0;
+    if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY
+        || policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
+      cores_to_use = GetCpuCoresForPerfomance(cpu_freq);
+    } else {
+      cores_to_use = thread_count;
+    }
+    MACE_CHECK(cores_to_use > 0, "number of cores to use should > 0");
+    cores->resize(cores_to_use);
+    for (size_t i = 0; i < cores_to_use; ++i) {
+      VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id
+              << " with freq "
+              << cpu_freq[i].freq;
+      (*cores)[i] = static_cast<int>(cpu_freq[i].core_id);
+    }
+  }
+
+  return MaceStatus::MACE_SUCCESS;
+}
 
 ThreadPool::ThreadPool(const size_t thread_count_hint,
                        const CPUAffinityPolicy policy)
@@ -173,13 +197,13 @@ void ThreadPool::Run(const std::function<void(const int64_t)> &func,
   std::unique_lock<std::mutex> run_lock(run_mutex_);
 
   for (size_t i = 0; i < thread_count; ++i) {
-    int64_t count = iters_per_thread + (static_cast<int64_t>(i) < remainder);
+    int64_t range_len =
+        iters_per_thread + (static_cast<int64_t>(i) < remainder);
     thread_infos_[i].range_start = iters_offset;
-    int64_t range_end = iters_offset + count;
-    thread_infos_[i].range_end = range_end;
-    thread_infos_[i].range_len = range_end - iters_offset;
+    thread_infos_[i].range_len = range_len;
+    thread_infos_[i].range_end = iters_offset + range_len;
     thread_infos_[i].func = reinterpret_cast<uintptr_t>(&func);
-    iters_offset += thread_infos_[i].range_len;
+    iters_offset = thread_infos_[i].range_end;
   }
 
   count_down_latch_.Reset(thread_count - 1);
