@@ -106,6 +106,10 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_channel_shuffle,
             TransformerRule.QUANTIZE_SPECIFIC_OPS_ONLY:
                 self.quantize_specific_ops_only,
+            TransformerRule.FP16_MATMUL_WEIGHT:
+                self.fp16_matmul_weight,
+            TransformerRule.FP16_GATHER_WEIGHT:
+                self.fp16_gather_weight,
         }
 
         self._option = option
@@ -1853,6 +1857,102 @@ class Transformer(base_converter.ConverterInterface):
                     op.quantize_info[i].minval,
                     op.quantize_info[i].maxval))
 
+    def fp16_gather_weight(self):
+        for op in self._model.op:
+            if op.type != MaceOp.Gather.name:
+                continue
+            if op.input[0] not in self._consts:
+                raise KeyError("Not in const tensor: " + str(op.input[0]))
+
+            const_tensor = self._consts[op.input[0]]
+            if const_tensor.data_type == mace_pb2.DT_FLOAT16:
+                print(str(const_tensor.name) + " is alreay float16")
+                continue
+
+            print("FP16 Embedding Lookup Weights: %s" % const_tensor.name)
+
+            op_outputs = [x for x in op.output]
+            new_gather_name = op.name + '_fp16'
+            new_gather_output_name = new_gather_name + ":0"
+            dehalve_name = op.name
+
+            # fp16 weights
+            const_tensor.data_type = mace_pb2.DT_FLOAT16
+
+            # change gather
+            op.name = new_gather_name
+            op.output[:] = [new_gather_output_name]
+            # op.output.extend([new_gather_output_name])
+            data_type_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_op_data_type_str)  # noqa
+            if data_type_arg is None:
+                data_type_arg = op.arg.add()
+                data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = mace_pb2.DT_FLOAT16
+
+            # add dehalve
+            dehalve_op = self._model.op.add()
+            dehalve_op.name = dehalve_name
+            dehalve_op.type = MaceOp.Cast.name
+            dehalve_op.input.extend([new_gather_output_name])
+            dehalve_op.output.extend(op_outputs)
+            dehalve_op.output_shape.extend(op.output_shape)
+            dehalve_op.output_type.extend([mace_pb2.DT_FLOAT])
+            data_type_arg = dehalve_op.arg.add()
+            data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = mace_pb2.DT_FLOAT16
+
+    def fp16_matmul_weight(self):
+        if self._option.device != DeviceType.CPU.value:
+            return
+
+        print('Convert matmul weights to fp16 for specific matmul: activation + weights')  # noqa
+
+        for op in self._model.op:
+            if op.type != MaceOp.MatMul.name:
+                continue
+            if op.input[0] not in self._consts and op.input[1] not in self._consts:  # noqa
+                continue
+            if op.input[0] in self._consts and op.input[1] in self._consts:
+                continue
+
+            # Matmul fp16 Op only support fp32[1,k] x fp16[w,k]T or fp16[w,k] x fp32[k,1] now!  # noqa
+
+            transpose_a_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_a_str)  # noqa
+            transpose_b_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
+            transpose_a = transpose_a_arg is not None and transpose_a_arg.i == 1  # noqa
+            transpose_b = transpose_b_arg is not None and transpose_b_arg.i == 1  # noqa
+
+            left_tensor = op.input[0]
+            right_tensor = op.input[1]
+            left_shape = self.get_tensor_shape(left_tensor)
+            right_shape = self.get_tensor_shape(right_tensor)
+
+            height = left_shape[-1] if transpose_a else left_shape[-2]
+            width = right_shape[-2] if transpose_b else right_shape[-1]
+            batch = reduce(lambda x, y: x * y, left_shape[: -2], 1)
+
+            if batch != 1:
+                continue
+
+            if left_tensor in self._consts:
+                if width != 1 or transpose_a:
+                    continue
+                const_tensor = self._consts[left_tensor]
+            else:
+                if height != 1 or not transpose_b:
+                    continue
+                const_tensor = self._consts[right_tensor]
+
+            print('Convert Matmul Weights to fp16: %s' % op.name)
+
+            const_tensor.data_type = mace_pb2.DT_FLOAT16
+            data_type_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_op_data_type_str)  # noqa
+            if data_type_arg is None:
+                data_type_arg = op.arg.add()
+                data_type_arg.name = MaceKeyword.mace_op_data_type_str
+            data_type_arg.i = mace_pb2.DT_FLOAT16
+            op.output_type.extend([mace_pb2.DT_FLOAT])
+
     def add_opencl_informations(self):
         print("Add OpenCL informations")
 
@@ -2052,10 +2152,7 @@ class Transformer(base_converter.ConverterInterface):
 
                     data_type_arg = quantize_op.arg.add()
                     data_type_arg.name = MaceKeyword.mace_non_zero
-                    if non_zero:
-                        data_type_arg.i = 1
-                    else:
-                        data_type_arg.i = 0
+                    data_type_arg.i = 0
 
                     find_range_arg = quantize_op.arg.add()
                     find_range_arg.name = \
@@ -2063,8 +2160,6 @@ class Transformer(base_converter.ConverterInterface):
                     find_range_arg.i = 1
 
                     quantized_inputs_names[-1] = quantize_output_name
-
-                non_zero = False
 
             del op.input[:]
             op.input.extend(quantized_inputs_names)

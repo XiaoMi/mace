@@ -117,6 +117,9 @@ class TensorInfo:
         elif tensor.data_type == mace_pb2.DT_UINT8:
             self.data = bytearray(
                 np.array(tensor.int32_data).astype(np.uint8).tolist())
+        elif tensor.data_type == mace_pb2.DT_FLOAT16:
+            self.data = bytearray(
+                np.array(tensor.float_data).astype(np.float16).tobytes())
         else:
             raise Exception('Tensor data type %s not supported' %
                             tensor.data_type)
@@ -139,7 +142,8 @@ def update_tensor_infos(net_def, data_type):
             offset += padding
 
         if tensor.data_type == mace_pb2.DT_FLOAT \
-                or tensor.data_type == mace_pb2.DT_HALF:
+                or tensor.data_type == mace_pb2.DT_HALF \
+                or tensor.data_type == mace_pb2.DT_FLOAT16:
             tensor.data_size = len(tensor.float_data)
         elif tensor.data_type == mace_pb2.DT_INT32:
             tensor.data_size = len(tensor.int32_data)
@@ -178,7 +182,8 @@ def save_model_data(net_def, model_tag, output_dir):
 def save_model_to_proto(net_def, model_tag, output_dir):
     for tensor in net_def.tensors:
         if tensor.data_type == mace_pb2.DT_FLOAT \
-                or tensor.data_type == mace_pb2.DT_HALF:
+                or tensor.data_type == mace_pb2.DT_HALF \
+                or tensor.data_type == mace_pb2.DT_FLOAT16:
             del tensor.float_data[:]
         elif tensor.data_type == mace_pb2.DT_INT32:
             del tensor.int32_data[:]

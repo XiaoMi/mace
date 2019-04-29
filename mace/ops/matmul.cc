@@ -44,6 +44,9 @@
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/matmul.h"
 #endif  // MACE_ENABLE_OPENCL
+#ifdef MACE_ENABLE_NEON
+#include "mace/ops/arm/fp16/gemv.h"
+#endif
 
 namespace mace {
 namespace ops {
@@ -510,6 +513,86 @@ class MatMulOp<DeviceType::GPU, T> : public MatMulOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+template <>
+class MatMulOp<CPU, float16_t> : public MatMulOpBase {
+ public:
+  explicit MatMulOp(OpConstructContext *context)
+      : MatMulOpBase(context) {}
+
+  MaceStatus Run(OpContext *context) override {
+    MACE_CHECK_NOTNULL(context);
+    Validate();
+    const Tensor *A = this->Input(INPUT_A);
+    const Tensor *B = this->Input(INPUT_B);
+    Tensor *C = this->Output(OUTPUT);
+
+    index_t batch;
+    index_t height;
+    index_t K;
+    index_t width;
+
+    index_t rank = A->dim_size();
+    height = A->dim(rank - 2);
+    K = A->dim(rank - 1);
+    if (transpose_a_) {
+      std::swap(height, K);
+    }
+    if (transpose_b_) {
+      width = B->dim(rank - 2);
+    } else {
+      width = B->dim(rank - 1);
+    }
+    batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
+                            std::multiplies<index_t>());
+
+    std::vector<index_t> c_shape = A->shape();
+    c_shape[rank - 2] = height;
+    c_shape[rank - 1] = width;
+
+    MACE_RETURN_IF_ERROR(C->Resize(c_shape));
+
+    Tensor::MappingGuard guarda(A);
+    Tensor::MappingGuard guardb(B);
+    Tensor::MappingGuard guardc(C);
+    auto *c_ptr_base = C->mutable_data<float>();
+
+    MACE_CHECK(batch == 1, "matmul fp16 only support batch = 1 now");
+
+    if (width == 1 && !transpose_a_ && A->dtype() == DT_FLOAT16 &&
+        B->dtype() == DT_FLOAT) {
+      auto *a_ptr_base = A->data<float16_t>();
+      auto *b_ptr_base = B->data<float>();
+      FP16Gemv(a_ptr_base,
+               b_ptr_base,
+               height,
+               K,
+               c_ptr_base);
+      return MaceStatus::MACE_SUCCESS;
+    } else if (height == 1 && transpose_b_ && A->dtype() == DT_FLOAT &&
+               B->dtype() == DT_FLOAT16) {
+      auto *b_ptr_base = B->data<float16_t>();
+      auto *a_ptr_base = A->data<float>();
+      FP16Gemv(b_ptr_base,
+               a_ptr_base,
+               width,
+               K,
+               c_ptr_base);
+      return MaceStatus::MACE_SUCCESS;
+    } else {
+      LOG(INFO) << "Matmul fp16 gemv args: " << height << " " << width << " "
+                << transpose_a_ << " " << transpose_b_;
+      LOG(FATAL) << "Matmul fp16 Op only support fp32[1,k]·fp16[w,k]T or"
+                    " fp16[w,k]·fp32[k,1] now!";
+      return MaceStatus::MACE_INVALID_ARGS;
+    }
+  }
+
+ private:
+};
+#endif  // MACE_ENABLE_NEON
+
+
 void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, float);
@@ -518,6 +601,19 @@ void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
+
+#ifdef MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
+                   DeviceType::GPU, float);
+
+  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
+                   DeviceType::GPU, half);
+#endif  // MACE_ENABLE_OPENCL
+
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
+                   DeviceType::CPU, float16_t);
+#endif  // MACE_ENABLE_NEON
 }
 
 }  // namespace ops

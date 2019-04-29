@@ -71,7 +71,7 @@ cc_library(
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
-        "-mfpu=neon",
+        "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
     ]),
     linkopts = ["-ldl"],

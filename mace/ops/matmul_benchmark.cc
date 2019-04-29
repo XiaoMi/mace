@@ -263,8 +263,17 @@ void MatMulBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("A", {batch, height, channels});
-  net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  if (DataTypeToEnum<T>::value == DT_FLOAT16) {
+    net.AddRandomInput<D, float16_t>("A", {batch, height, channels});
+    net.AddRandomInput<D, float>("B", {batch, channels, out_width});
+  } else {
+#endif
+    net.AddRandomInput<D, T>("A", {batch, height, channels});
+    net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  }
+#endif
   net.GetTensor("A")->SetIsWeight(true);
   net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -305,8 +314,17 @@ void MatMulTransposeBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("A", {batch, height, channels});
-  net.AddRandomInput<D, T>("B", {batch, out_width, channels});
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  if (DataTypeToEnum<T>::value == DT_FLOAT16) {
+    net.AddRandomInput<D, float>("A", {batch, height, channels});
+    net.AddRandomInput<D, float16_t>("B", {batch, out_width, channels});
+  } else {
+#endif
+    net.AddRandomInput<D, T>("A", {batch, height, channels});
+    net.AddRandomInput<D, float>("B", {batch, out_width, channels});
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  }
+#endif
   net.GetTensor("A")->SetIsWeight(true);
   net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -381,10 +399,10 @@ void MatMulTransposeBenchmark(
 #ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU)
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 #else
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU)
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);
 #endif
 
 MACE_BM_MATMUL_OP(1, 30000, 256, 1);
@@ -406,6 +424,21 @@ MACE_BM_MATMUL_TRANPOSE(16, 32, 128, 3969);
 MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 49);
 MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 961);
 MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 3969);
+
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#define MACE_BM_MATMUL_TRANPOSE_FP16(N, H, C, W)              \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float16_t, CPU);
+
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 256, 30000);
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 256, 256);
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 256, 2048);
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 2048, 256);
+
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 512, 30000);
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 512, 512);
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 512, 2048);
+MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 2048, 512);
+#endif  // MACE_ENABLE_NEON
 
 }  // namespace test
 }  // namespace ops

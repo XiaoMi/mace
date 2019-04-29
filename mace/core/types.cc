@@ -47,6 +47,10 @@ size_t GetEnumTypeSize(const DataType dt) {
       return sizeof(float);
     case DT_HALF:
       return sizeof(half);
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+    case DT_FLOAT16:
+      return sizeof(float16_t);
+#endif
     case DT_UINT8:
       return sizeof(uint8_t);
     case DT_INT32:
