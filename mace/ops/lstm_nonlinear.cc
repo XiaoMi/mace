@@ -101,7 +101,7 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
 };
 
 void RegisterLSTMNonlinear(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "LSTMNonlinearOp", LSTMNonlinearOp,
+  MACE_REGISTER_OP(op_registry, "LSTMNonlinear", LSTMNonlinearOp,
                    DeviceType::CPU, float);
 }
 
