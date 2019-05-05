@@ -71,18 +71,15 @@ MaceStatus CropKernel<T>::Compute(
       output_shape[i] = input1->dim(i);
       offsets[i] = offset_[i];
       MACE_CHECK(input0->dim(i) - offset_[i] >= input1->dim(i))
-        << "the crop for dimension " << i << " is out of bound with size "
-        << input1->dim(i) << " and offset " << offsets[i];
+        << "the crop for dimension " << i
+        << " is out of bound, first input size "
+        << input0->dim(i) << ", offset " << offsets[i]
+        << ", second input size " << input1->dim(i);
     }
   }
   MACE_CHECK(offsets[3] % 4 == 0,
              "MACE opencl only supports cropping channel"
                  " offset divisible by 4.");
-  for (index_t i = 0; i < 4; ++i) {
-    MACE_CHECK(input0->dim(i) - offsets[i] >= input1->dim(i))
-      << "the crop for dimension" << i << "is out of bound with size"
-      << input1->dim(i) << "and offset" << offsets[i];
-  }
   std::vector<size_t> image_shape;
   OpenCLUtil::CalImage2DShape(output_shape,
                               OpenCLBufferType::IN_OUT_CHANNEL,
