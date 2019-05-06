@@ -381,15 +381,14 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
       int output_shape_size = op_def->output_shape_size();
       for (int i = 0; i < output_shape_size; ++i) {
         auto output_shape = op_def->mutable_output_shape(i);
-        MACE_CHECK(output_shape->dims_size() == 4,
-                   "Output shape should be 4D if the of has data format. ",
-                   op_def->name());
-        // transpose output shape format from NHWC to NCHW
-        int64_t height = output_shape->dims(1);
-        int64_t width = output_shape->dims(2);
-        output_shape->set_dims(1, output_shape->dims(3));
-        output_shape->set_dims(2, height);
-        output_shape->set_dims(3, width);
+        if (output_shape->dims_size() == 4) {
+          // transpose output shape format from NHWC to NCHW
+          int64_t height = output_shape->dims(1);
+          int64_t width = output_shape->dims(2);
+          output_shape->set_dims(1, output_shape->dims(3));
+          output_shape->set_dims(2, height);
+          output_shape->set_dims(3, width);
+        }
       }
     }
   }
