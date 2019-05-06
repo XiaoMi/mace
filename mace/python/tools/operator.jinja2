@@ -96,9 +96,10 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
 
   {% if net.op[i].output_shape|length > 0 %}
   op->mutable_output_shape()->Reserve({{ net.op[i].output_shape|length }});
+  mace::OutputShape * output_shape = nullptr;
   {% for shape in net.op[i].output_shape %}
   {% if shape.dims|length > 0 %}
-  mace::OutputShape * output_shape = op->add_output_shape();
+  output_shape = op->add_output_shape();
 
   output_shape->mutable_dims()->Reserve({{ shape.dims|length }});
   {% for dim in shape.dims %}
