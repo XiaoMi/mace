@@ -83,30 +83,35 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   arg->set_s({{ arg.s.decode('utf-8')|tojson }});
   {%- endif %}
 
-  arg->mutable_floats()->Reserve({{ arg.floats|length }});
-  {% for float_value in arg.floats %}
-  arg->add_floats({{ float_value }});
-  {% endfor %}
-  arg->mutable_ints()->Reserve({{ arg.ints|length }});
-  {% for int_value in arg.ints %}
-  arg->add_ints({{ int_value }});
-  {% endfor %}
+  {% if arg.floats|length > 0 %}
+    arg->mutable_floats()->Reserve({{ arg.floats|length }});
+    {% for float_value in arg.floats %}
+    arg->add_floats({{ float_value }});
+    {% endfor %}
+  {% endif %}
+
+  {% if arg.ints|length > 0 %}
+    arg->mutable_ints()->Reserve({{ arg.ints|length }});
+    {% for int_value in arg.ints %}
+    arg->add_ints({{ int_value }});
+    {% endfor %}
+  {% endif %}
 
   {% endfor %}
 
   {% if net.op[i].output_shape|length > 0 %}
   op->mutable_output_shape()->Reserve({{ net.op[i].output_shape|length }});
-  mace::OutputShape * output_shape = nullptr;
   {% for shape in net.op[i].output_shape %}
   {% if shape.dims|length > 0 %}
-  output_shape = op->add_output_shape();
-
-  output_shape->mutable_dims()->Reserve({{ shape.dims|length }});
-  {% for dim in shape.dims %}
-  output_shape->add_dims({{ dim }});
-  {% endfor %}
-
+  {
+      mace::OutputShape *output_shape = op->add_output_shape();
+      output_shape->mutable_dims()->Reserve({{ shape.dims|length }});
+      {% for dim in shape.dims %}
+      output_shape->add_dims({{ dim }});
+      {% endfor %}
+  }
   {% endif %}
+
   {% endfor %}
   {% endif %}
 
