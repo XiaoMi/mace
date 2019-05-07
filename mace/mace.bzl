@@ -1,5 +1,11 @@
 # -*- Python -*-
 
+def if_linux_base(a, default_value = []):
+  return select({
+      "//mace:linux_base": a,
+      "//conditions:default": default_value,
+  })
+
 def if_android(a, default_value = []):
   return select({
       "//mace:android": a,

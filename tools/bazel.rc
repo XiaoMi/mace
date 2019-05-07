@@ -12,6 +12,7 @@ build --copt=-DGEMMLOWP_USE_MACE_THREAD_POOL
 build --copt=-DMACE_DEPTHWISE_U8_USE_MULTI_THREAD
 
 # Usage example: bazel build --config android
+build:android --define linux_base=true
 build:android --linkopt=-pie
 build:android --linkopt=-ldl
 build:android --linkopt=-llog
@@ -24,6 +25,7 @@ build:android --copt -Wno-mismatched-tags
 build:android --copt -Wno-missing-braces
 
 # Linux host build, --config linux
+build:linux --define linux_base=true
 build:linux --define linux=true
 
 # MacOS host build, --config darwin
@@ -44,6 +46,7 @@ build:ios --copt -Wno-missing-braces
 # Used to fix library not find linking issue, see also:
 # https://github.com/bazelbuild/bazel/issues/6653,
 # https://github.com/bazelbuild/bazel/issues/6189
+build:arm_linux_gnueabihf --define linux_base=true
 build:arm_linux_gnueabihf --define linux=true
 build:arm_linux_gnueabihf --spawn_strategy=standalone
 build:arm_linux_gnueabihf --distinct_host_configuration=true
@@ -58,6 +61,7 @@ build:arm_linux_gnueabihf --copt -Wno-sequence-point
 build:arm_linux_gnueabihf --copt -Wno-implicit-fallthrough
 
 # Usage example: bazel build --config aarch64_linux_gnu
+build:aarch64_linux_gnu --define linux_base=true
 build:aarch64_linux_gnu --define linux=true
 build:aarch64_linux_gnu --spawn_strategy=standalone
 build:aarch64_linux_gnu --distinct_host_configuration=true
