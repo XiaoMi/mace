@@ -50,3 +50,16 @@ Create container with the following command
                registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite
     # Execute an interactive bash shell on the container
     docker exec -it mace-dev /bin/bash
+
+
+Update images to repository
+---------------------------
+
+If you are mace inner developer and need update images in remote repository,
+it can be achieved by `docker/update_images.sh` script.
+
+.. code:: sh
+
+    cd docker/
+    ./update_images.sh
+
