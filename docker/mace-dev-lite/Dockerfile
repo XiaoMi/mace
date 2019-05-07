@@ -113,9 +113,10 @@ ENV PATH ${PATH}:${ANDROID_NDK_HOME}
 # Install tools
 RUN apt-get install -y --no-install-recommends \
     android-tools-adb
-RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
-RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
-    "numpy>=1.14.0" \
+RUN pip install --upgrade pip
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com setuptools
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    numpy>=1.14.0 \
     scipy \
     jinja2 \
     pyyaml \
@@ -125,7 +126,7 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     PTable
 
 # Install Tensorflow
-RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     tensorflow==1.8.0
 
 # Install pytorch (refer to: https://pytorch.org/get-started/locally/)
@@ -133,7 +134,7 @@ RUN pip install future==0.17.1 torchvision_nightly
 RUN pip install torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
 
 # Install ONNX
-RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     onnx==1.3.0 \
     onnx-tf==1.2.0
 

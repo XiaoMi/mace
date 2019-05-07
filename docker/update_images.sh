@@ -24,5 +24,3 @@ else
   echo "Login docker registry server is needed!"
   exit 1
 fi
-
-
