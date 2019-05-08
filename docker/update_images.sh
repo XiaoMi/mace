@@ -11,15 +11,15 @@ if [ $BUILD_DIR_NAME != $CURRENT_DIR_NAME ]; then
 fi
 
 # build images
-docker build -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite ./mace-dev-lite || exit 1
-docker build -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev ./mace-dev-lite || exit 1
-docker build -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/gitlab-runner ./gitlab-runner || exit 1
+docker build --network host -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite ./mace-dev-lite
+docker build --network host -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev ./mace-dev
+docker build --network host -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/gitlab-runner ./gitlab-runner
 
 if grep -lq registry.cn-hangzhou.aliyuncs.com ~/.docker/config.json; then
   # update images to repository
-  docker push registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite || exit 1
-  docker push registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev || exit 1
-  docker push registry.cn-hangzhou.aliyuncs.com/xiaomimace/gitlab-runner || exit 1
+  docker push registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite
+  docker push registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev
+  docker push registry.cn-hangzhou.aliyuncs.com/xiaomimace/gitlab-runner
 else
   echo "Login docker registry server is needed!"
   exit 1

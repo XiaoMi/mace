@@ -50,8 +50,8 @@ RUN curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/py
 ENV PATH /root/.pyenv/bin:/root/.pyenv/shims/:${PATH}
 RUN eval "$(pyenv init -)"
 RUN eval "$(pyenv virtualenv-init -)"
-RUN pyenv install 2.7.14 && pyenv install 3.6.3
-RUN pyenv global 2.7.14
+RUN pyenv install 3.6.3
+RUN pyenv global 3.6.3
 
 # Setup vim
 RUN apt-get install -y --no-install-recommends \
@@ -98,46 +98,44 @@ RUN mkdir -p /opt/sdk && \
     yes | android update sdk --no-ui -a --filter tools,platform-tools,${ANDROID_API_LEVELS},build-tools-${ANDROID_BUILD_TOOLS_VERSION}
 RUN ${ANDROID_HOME}/tools/bin/sdkmanager "cmake;3.6.4111459"
 
-# Download NDK
+# Download NDK 19c
 RUN cd /opt/ && \
-    wget -q https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip && \
-    unzip -q android-ndk-r15c-linux-x86_64.zip && \
-    rm -f android-ndk-r15c-linux-x86_64.zip
+    wget -q https://dl.google.com/android/repository/android-ndk-r19c-linux-x86_64.zip && \
+    unzip -q android-ndk-r19c-linux-x86_64.zip && \
+    rm -f android-ndk-r19c-linux-x86_64.zip
 
 ENV ANDROID_NDK_VERSION r19c
 ENV ANDROID_NDK_HOME /opt/android-ndk-${ANDROID_NDK_VERSION}
 
-# add to PATH
-ENV PATH ${PATH}:${ANDROID_NDK_HOME}
-
 # Install tools
 RUN apt-get install -y --no-install-recommends \
     android-tools-adb
+# fix docker in docker error: `error while loading shared libraries: libltdl.so.7`
+# refer to: https://github.com/jenkinsci/docker/issues/506
+RUN apt-get install -y libltdl7
+
 RUN pip install --upgrade pip
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com setuptools
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
-    numpy>=1.14.0 \
-    scipy \
-    jinja2 \
-    pyyaml \
+    numpy==1.15.4 \
+    scipy==1.2.0 \
+    Jinja2==2.10 \
+    PyYAML==3.13 \
     sh==1.12.14 \
     pycodestyle==2.4.0 \
-    filelock \
-    PTable
+    filelock==3.0.10 \
+    PTable==0.9.2
 
-# Install Tensorflow
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     tensorflow==1.8.0
 
 # Install pytorch (refer to: https://pytorch.org/get-started/locally/)
-RUN pip install future==0.17.1 torchvision_nightly
-RUN pip install torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    future==0.17.1 \
+    Pillow==5.4.1 \
+    torch==1.1.0 \
+    torchvision==0.2.2.post3
 
-# Install ONNX
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     onnx==1.3.0 \
     onnx-tf==1.2.0
-
-# fix docker in docker error: `error while loading shared libraries: libltdl.so.7`
-# refer to: https://github.com/jenkinsci/docker/issues/506
-RUN apt-get install -y libltdl7
