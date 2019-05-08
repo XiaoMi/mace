@@ -532,6 +532,16 @@ def format_model_config(flags):
             subgraph[YAMLKeyword.input_ranges] = \
                 [str(v) for v in subgraph[YAMLKeyword.input_ranges]]
 
+            accuracy_validation_script = subgraph.get(
+                YAMLKeyword.accuracy_validation_script, "")
+            if isinstance(accuracy_validation_script, list):
+                mace_check(len(accuracy_validation_script) == 1,
+                           ModuleName.YAML_CONFIG,
+                           "Only support one accuracy validation script")
+                accuracy_validation_script = accuracy_validation_script[0]
+            subgraph[YAMLKeyword.accuracy_validation_script] = \
+                accuracy_validation_script
+
         for key in [YAMLKeyword.limit_opencl_kernel_time,
                     YAMLKeyword.nnlib_graph_mode,
                     YAMLKeyword.obfuscate,

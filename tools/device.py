@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import os
 import sys
 import socket
@@ -387,7 +388,7 @@ class DeviceWrapper:
 
         subgraphs = model_config[YAMLKeyword.subgraphs]
         # generate input data
-        sh_commands.gen_random_input(
+        sh_commands.gen_input(
             model_output_dir,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
@@ -460,18 +461,14 @@ class DeviceWrapper:
 
         return output_configs
 
-    def run_specify_abi(self, flags, configs, target_abi):
-        if target_abi not in self.target_abis:
-            six.print_('The device %s with soc %s do not support the abi %s' %
-                       (self.device_name, self.target_socs, target_abi))
-            return
+    def run_model(self, flags, configs, target_abi,
+                  model_name, output_config, runtime, tuning):
         library_name = configs[YAMLKeyword.library_name]
-        mace_lib_type = flags.mace_lib_type
         embed_model_data = \
             configs[YAMLKeyword.model_data_format] == ModelFormat.code
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
-
         # get target name for run
+        mace_lib_type = flags.mace_lib_type
         if flags.example:
             if mace_lib_type == MACELibType.static:
                 target_name = EXAMPLE_STATIC_NAME
@@ -483,6 +480,114 @@ class DeviceWrapper:
             else:
                 target_name = MACE_RUN_DYNAMIC_NAME
         link_dynamic = mace_lib_type == MACELibType.dynamic
+
+        if target_abi != ABIType.host:
+            self.clear_data_dir()
+
+        model_config = configs[YAMLKeyword.models][model_name]
+        subgraphs = model_config[YAMLKeyword.subgraphs]
+
+        model_output_base_dir, model_output_dir, mace_model_dir = \
+            get_build_model_dirs(
+                library_name, model_name, target_abi, self,
+                model_config[YAMLKeyword.model_file_path])
+
+        model_opencl_output_bin_path = ''
+        model_opencl_parameter_path = ''
+        if tuning:
+            model_opencl_output_bin_path = \
+                '{}/{}/{}'.format(model_output_dir,
+                                  BUILD_TMP_OPENCL_BIN_DIR,
+                                  CL_COMPILED_BINARY_FILE_NAME)
+            model_opencl_parameter_path = \
+                '{}/{}/{}'.format(model_output_dir,
+                                  BUILD_TMP_OPENCL_BIN_DIR,
+                                  CL_TUNED_PARAMETER_FILE_NAME)
+        elif target_abi != ABIType.host and self.target_socs:
+            model_opencl_output_bin_path = get_opencl_binary_output_path(
+                library_name, target_abi, self
+            )
+            model_opencl_parameter_path = get_opencl_parameter_output_path(
+                library_name, target_abi, self
+            )
+        # run for specified soc
+        device_type = parse_device_type(runtime)
+        self.tuning_run(
+            abi=target_abi,
+            target_dir=build_tmp_binary_dir,
+            target_name=target_name,
+            vlog_level=flags.vlog_level,
+            embed_model_data=embed_model_data,
+            model_output_dir=model_output_dir,
+            input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
+            output_nodes=output_config[
+                YAMLKeyword.output_tensors],
+            input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
+            output_shapes=output_config[YAMLKeyword.output_shapes],
+            input_data_formats=subgraphs[0][
+                YAMLKeyword.input_data_formats],
+            output_data_formats=subgraphs[0][
+                YAMLKeyword.output_data_formats],
+            mace_model_dir=mace_model_dir,
+            model_tag=model_name,
+            device_type=device_type,
+            running_round=flags.round,
+            restart_round=flags.restart_round,
+            limit_opencl_kernel_time=model_config[
+                YAMLKeyword.limit_opencl_kernel_time],
+            tuning=False,
+            out_of_range_check=flags.gpu_out_of_range_check,
+            model_graph_format=configs[
+                YAMLKeyword.model_graph_format],
+            omp_num_threads=flags.omp_num_threads,
+            cpu_affinity_policy=flags.cpu_affinity_policy,
+            gpu_perf_hint=flags.gpu_perf_hint,
+            gpu_priority_hint=flags.gpu_priority_hint,
+            runtime_failure_ratio=flags.runtime_failure_ratio,
+            address_sanitizer=flags.address_sanitizer,
+            opencl_binary_file=model_opencl_output_bin_path,
+            opencl_parameter_file=model_opencl_parameter_path,
+            libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
+            link_dynamic=link_dynamic,
+            quantize_stat=flags.quantize_stat,
+            input_dir=flags.input_dir,
+            output_dir=flags.output_dir,
+            layers_validate_file=output_config[
+                YAMLKeyword.model_file_path]
+        )
+
+    def get_output_map(self,
+                       target_abi,
+                       output_nodes,
+                       output_shapes,
+                       model_output_dir):
+        output_map = {}
+        for i in range(len(output_nodes)):
+            output_name = output_nodes[i]
+            formatted_name = common.formatted_file_name(
+                "model_out", output_name)
+            if target_abi != "host":
+                if os.path.exists("%s/%s" % (model_output_dir,
+                                             formatted_name)):
+                    sh.rm("-rf", "%s/%s" % (model_output_dir,
+                                            formatted_name))
+                self.pull_from_data_dir(formatted_name,
+                                        model_output_dir)
+            output_file_path = os.path.join(model_output_dir,
+                                            formatted_name)
+            output_shape = [
+                int(x) for x in common.split_shape(output_shapes[i])]
+            output_map[output_name] = np.fromfile(
+                output_file_path, dtype=np.float32).reshape(output_shape)
+        return output_map
+
+    def run_specify_abi(self, flags, configs, target_abi):
+        if target_abi not in self.target_abis:
+            six.print_('The device %s with soc %s do not support the abi %s' %
+                       (self.device_name, self.target_socs, target_abi))
+            return
+        library_name = configs[YAMLKeyword.library_name]
+
         model_output_dirs = []
 
         for model_name in configs[YAMLKeyword.models]:
@@ -510,9 +615,7 @@ class DeviceWrapper:
                 sh.rm('-rf', model_output_dir)
             os.makedirs(model_output_dir)
 
-            is_tuned = False
-            model_opencl_output_bin_path = ''
-            model_opencl_parameter_path = ''
+            tuning = False
             if not flags.address_sanitizer \
                     and not flags.example \
                     and target_abi != ABIType.host \
@@ -525,33 +628,36 @@ class DeviceWrapper:
                 self.tuning(library_name, model_name, model_config,
                             configs[YAMLKeyword.model_graph_format],
                             configs[YAMLKeyword.model_data_format],
-                            target_abi, mace_lib_type)
+                            target_abi, flags.mace_lib_type)
                 model_output_dirs.append(model_output_dir)
-                model_opencl_output_bin_path = \
-                    '{}/{}/{}'.format(model_output_dir,
-                                      BUILD_TMP_OPENCL_BIN_DIR,
-                                      CL_COMPILED_BINARY_FILE_NAME)
-                model_opencl_parameter_path = \
-                    '{}/{}/{}'.format(model_output_dir,
-                                      BUILD_TMP_OPENCL_BIN_DIR,
-                                      CL_TUNED_PARAMETER_FILE_NAME)
                 self.clear_data_dir()
-                is_tuned = True
-            elif target_abi != ABIType.host and self.target_socs:
-                model_opencl_output_bin_path = get_opencl_binary_output_path(
-                    library_name, target_abi, self
-                )
-                model_opencl_parameter_path = get_opencl_parameter_output_path(
-                    library_name, target_abi, self
-                )
-            sh_commands.gen_random_input(
-                model_output_dir,
-                subgraphs[0][YAMLKeyword.input_tensors],
-                subgraphs[0][YAMLKeyword.input_shapes],
-                subgraphs[0][YAMLKeyword.validation_inputs_data],
-                input_ranges=subgraphs[0][YAMLKeyword.input_ranges],
-                input_data_types=subgraphs[0][YAMLKeyword.input_data_types]
-            )
+                tuning = True
+
+            accuracy_validation_script = \
+                subgraphs[0][YAMLKeyword.accuracy_validation_script]
+            output_configs = []
+            if not accuracy_validation_script and flags.layers != "-1":
+                mace_check(configs[YAMLKeyword.model_graph_format] ==
+                           ModelFormat.file and
+                           configs[YAMLKeyword.model_data_format] ==
+                           ModelFormat.file, "Device",
+                           "'--layers' only supports model format 'file'.")
+                output_configs = self.get_layers(mace_model_dir,
+                                                 model_name,
+                                                 flags.layers)
+            # run for specified soc
+            if not subgraphs[0][YAMLKeyword.check_tensors]:
+                output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
+                output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
+            else:
+                output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
+                output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
+            model_path = "%s/%s.pb" % (mace_model_dir, model_name)
+            output_config = {YAMLKeyword.model_file_path: model_path,
+                             YAMLKeyword.output_tensors: output_nodes,
+                             YAMLKeyword.output_shapes: output_shapes}
+            output_configs.append(output_config)
+
             runtime_list = []
             if target_abi == ABIType.host:
                 runtime_list.append(RuntimeType.cpu)
@@ -559,143 +665,128 @@ class DeviceWrapper:
                 runtime_list.extend([RuntimeType.cpu, RuntimeType.gpu])
             else:
                 runtime_list.append(model_runtime)
-            for runtime in runtime_list:
-                device_type = parse_device_type(runtime)
-                # run for specified soc
-                if not subgraphs[0][YAMLKeyword.check_tensors]:
-                    output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
-                    output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
-                else:
-                    output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
-                    output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
-                output_configs = []
-                log_file = ""
-                if flags.layers != "-1":
-                    mace_check(configs[YAMLKeyword.model_graph_format] ==
-                               ModelFormat.file and
-                               configs[YAMLKeyword.model_data_format] ==
-                               ModelFormat.file, "Device",
-                               "'--layers' only supports model format 'file'.")
-                    output_configs = self.get_layers(mace_model_dir,
-                                                     model_name,
-                                                     flags.layers)
-                    log_dir = mace_model_dir + "/" + runtime
-                    if os.path.exists(log_dir):
-                        sh.rm('-rf', log_dir)
-                    os.makedirs(log_dir)
-                    log_file = log_dir + "/log.csv"
-                model_path = "%s/%s.pb" % (mace_model_dir, model_name)
-                output_config = {YAMLKeyword.model_file_path: model_path,
-                                 YAMLKeyword.output_tensors: output_nodes,
-                                 YAMLKeyword.output_shapes: output_shapes}
-                output_configs.append(output_config)
-                for output_config in output_configs:
-                    run_output = self.tuning_run(
-                        abi=target_abi,
-                        target_dir=build_tmp_binary_dir,
-                        target_name=target_name,
-                        vlog_level=flags.vlog_level,
-                        embed_model_data=embed_model_data,
-                        model_output_dir=model_output_dir,
-                        input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                        output_nodes=output_config[
-                            YAMLKeyword.output_tensors],
-                        input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                        output_shapes=output_config[YAMLKeyword.output_shapes],
-                        input_data_formats=subgraphs[0][
-                            YAMLKeyword.input_data_formats],
-                        output_data_formats=subgraphs[0][
-                            YAMLKeyword.output_data_formats],
-                        mace_model_dir=mace_model_dir,
-                        model_tag=model_name,
-                        device_type=device_type,
-                        running_round=flags.round,
-                        restart_round=flags.restart_round,
-                        limit_opencl_kernel_time=model_config[
-                            YAMLKeyword.limit_opencl_kernel_time],
-                        tuning=False,
-                        out_of_range_check=flags.gpu_out_of_range_check,
-                        model_graph_format=configs[
-                            YAMLKeyword.model_graph_format],
-                        omp_num_threads=flags.omp_num_threads,
-                        cpu_affinity_policy=flags.cpu_affinity_policy,
-                        gpu_perf_hint=flags.gpu_perf_hint,
-                        gpu_priority_hint=flags.gpu_priority_hint,
-                        runtime_failure_ratio=flags.runtime_failure_ratio,
-                        address_sanitizer=flags.address_sanitizer,
-                        opencl_binary_file=model_opencl_output_bin_path,
-                        opencl_parameter_file=model_opencl_parameter_path,
-                        libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
-                        link_dynamic=link_dynamic,
-                        quantize_stat=flags.quantize_stat,
-                        input_dir=flags.input_dir,
-                        output_dir=flags.output_dir,
-                        layers_validate_file=output_config[
-                            YAMLKeyword.model_file_path]
-                    )
-                    if flags.validate:
-                        model_file_path, weight_file_path = get_model_files(
-                            model_config[YAMLKeyword.model_file_path],
-                            model_config[YAMLKeyword.model_sha256_checksum],
-                            BUILD_DOWNLOADS_DIR,
-                            model_config[YAMLKeyword.weight_file_path],
-                            model_config[YAMLKeyword.weight_sha256_checksum]
-                        )
-                        validate_type = device_type
-                        if model_config[YAMLKeyword.quantize] == 1:
-                            validate_type = device_type + '_QUANTIZE'
+            if accuracy_validation_script:
+                flags.validate = False
+                flags.report = False
 
-                        dockerfile_path, docker_image_tag = \
-                            get_dockerfile_info(
-                                model_config.get(YAMLKeyword.dockerfile_path),
-                                model_config.get(
-                                    YAMLKeyword.dockerfile_sha256_checksum),
-                                model_config.get(YAMLKeyword.docker_image_tag)
-                            ) if YAMLKeyword.dockerfile_path in model_config \
-                            else ("third_party/caffe", "lastest")
+                import imp
+                accuracy_val_module = imp.load_source(
+                    'accuracy_val_module',
+                    accuracy_validation_script)
+                for runtime in runtime_list:
+                    accuracy_validator = \
+                        accuracy_val_module.AccuracyValidator()
+                    sample_size = accuracy_validator.sample_size()
+                    val_batch_size = accuracy_validator.batch_size()
+                    for i in range(0, sample_size, val_batch_size):
+                        inputs = accuracy_validator.preprocess(
+                            i, i + val_batch_size)
+                        sh_commands.gen_input(
+                            model_output_dir,
+                            subgraphs[0][YAMLKeyword.input_tensors],
+                            subgraphs[0][YAMLKeyword.input_shapes],
+                            input_data_types=subgraphs[0][YAMLKeyword.input_data_types],  # noqa
+                            input_data_map=inputs)
 
-                        sh_commands.validate_model(
-                            abi=target_abi,
-                            device=self,
-                            model_file_path=model_file_path,
-                            weight_file_path=weight_file_path,
-                            docker_image_tag=docker_image_tag,
-                            dockerfile_path=dockerfile_path,
-                            platform=model_config[YAMLKeyword.platform],
-                            device_type=device_type,
-                            input_nodes=subgraphs[0][
-                                YAMLKeyword.input_tensors],
-                            output_nodes=output_config[
-                                YAMLKeyword.output_tensors],
-                            input_shapes=subgraphs[0][
-                                YAMLKeyword.input_shapes],
-                            output_shapes=output_config[
-                                YAMLKeyword.output_shapes],
-                            input_data_formats=subgraphs[0][
-                                YAMLKeyword.input_data_formats],
-                            output_data_formats=subgraphs[0][
-                                YAMLKeyword.output_data_formats],
-                            model_output_dir=model_output_dir,
-                            input_data_types=subgraphs[0][
-                                YAMLKeyword.input_data_types],
-                            caffe_env=flags.caffe_env,
-                            validation_threshold=subgraphs[0][
-                                YAMLKeyword.validation_threshold][
-                                validate_type],
-                            backend=subgraphs[0][YAMLKeyword.backend],
-                            validation_outputs_data=subgraphs[0][
-                                YAMLKeyword.validation_outputs_data],
-                            log_file=log_file,
-                        )
-                    if flags.report and flags.round > 0:
-                        tuned = is_tuned and device_type == DeviceType.GPU
-                        self.report_run_statistics(
-                            target_abi=target_abi,
-                            model_name=model_name,
-                            device_type=device_type,
-                            output_dir=flags.report_dir,
-                            tuned=tuned
-                        )
+                        self.run_model(flags, configs, target_abi, model_name,
+                                       output_configs[-1], runtime, tuning)
+                        accuracy_validator.postprocess(
+                            i, i + val_batch_size,
+                            self.get_output_map(
+                                target_abi,
+                                output_nodes,
+                                subgraphs[0][YAMLKeyword.output_shapes],
+                                model_output_dir))
+                    accuracy_validator.result()
+            else:
+                sh_commands.gen_input(
+                    model_output_dir,
+                    subgraphs[0][YAMLKeyword.input_tensors],
+                    subgraphs[0][YAMLKeyword.input_shapes],
+                    subgraphs[0][YAMLKeyword.validation_inputs_data],
+                    input_ranges=subgraphs[0][YAMLKeyword.input_ranges],
+                    input_data_types=subgraphs[0][YAMLKeyword.input_data_types]
+                )
+                for runtime in runtime_list:
+                    device_type = parse_device_type(runtime)
+                    for output_config in output_configs:
+                        self.run_model(flags, configs, target_abi, model_name,
+                                       output_config, runtime, tuning)
+                        if flags.validate:
+                            log_file = ""
+                            if flags.layers != "-1":
+                                log_dir = mace_model_dir + "/" + runtime
+                                if os.path.exists(log_dir):
+                                    sh.rm('-rf', log_dir)
+                                os.makedirs(log_dir)
+                                log_file = log_dir + "/log.csv"
+                            model_file_path, weight_file_path = \
+                                get_model_files(
+                                    model_config[YAMLKeyword.model_file_path],
+                                    model_config[
+                                        YAMLKeyword.model_sha256_checksum],
+                                    BUILD_DOWNLOADS_DIR,
+                                    model_config[YAMLKeyword.weight_file_path],
+                                    model_config[
+                                        YAMLKeyword.weight_sha256_checksum])
+                            validate_type = device_type
+                            if model_config[YAMLKeyword.quantize] == 1:
+                                validate_type = device_type + '_QUANTIZE'
+
+                            dockerfile_path, docker_image_tag = \
+                                get_dockerfile_info(
+                                    model_config.get(
+                                        YAMLKeyword.dockerfile_path),
+                                    model_config.get(
+                                        YAMLKeyword.dockerfile_sha256_checksum),  # noqa
+                                    model_config.get(
+                                        YAMLKeyword.docker_image_tag)
+                                ) if YAMLKeyword.dockerfile_path \
+                                     in model_config \
+                                    else ("third_party/caffe", "lastest")
+
+                            sh_commands.validate_model(
+                                abi=target_abi,
+                                device=self,
+                                model_file_path=model_file_path,
+                                weight_file_path=weight_file_path,
+                                docker_image_tag=docker_image_tag,
+                                dockerfile_path=dockerfile_path,
+                                platform=model_config[YAMLKeyword.platform],
+                                device_type=device_type,
+                                input_nodes=subgraphs[0][
+                                    YAMLKeyword.input_tensors],
+                                output_nodes=output_config[
+                                    YAMLKeyword.output_tensors],
+                                input_shapes=subgraphs[0][
+                                    YAMLKeyword.input_shapes],
+                                output_shapes=output_config[
+                                    YAMLKeyword.output_shapes],
+                                input_data_formats=subgraphs[0][
+                                    YAMLKeyword.input_data_formats],
+                                output_data_formats=subgraphs[0][
+                                    YAMLKeyword.output_data_formats],
+                                model_output_dir=model_output_dir,
+                                input_data_types=subgraphs[0][
+                                    YAMLKeyword.input_data_types],
+                                caffe_env=flags.caffe_env,
+                                validation_threshold=subgraphs[0][
+                                    YAMLKeyword.validation_threshold][
+                                    validate_type],
+                                backend=subgraphs[0][YAMLKeyword.backend],
+                                validation_outputs_data=subgraphs[0][
+                                    YAMLKeyword.validation_outputs_data],
+                                log_file=log_file,
+                            )
+                        if flags.report and flags.round > 0:
+                            tuned = tuning and device_type == DeviceType.GPU
+                            self.report_run_statistics(
+                                target_abi=target_abi,
+                                model_name=model_name,
+                                device_type=device_type,
+                                output_dir=flags.report_dir,
+                                tuned=tuned)
+
         if model_output_dirs:
             opencl_output_bin_path = get_opencl_binary_output_path(
                 library_name, target_abi, self
@@ -956,7 +1047,7 @@ class DeviceWrapper:
 
             if target_abi != ABIType.host:
                 self.clear_data_dir()
-            sh_commands.gen_random_input(
+            sh_commands.gen_input(
                 model_output_dir,
                 subgraphs[0][YAMLKeyword.input_tensors],
                 subgraphs[0][YAMLKeyword.input_shapes],

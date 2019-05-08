@@ -2,6 +2,8 @@
 library_name: mobile_squeeze
 # host, armeabi-v7a or arm64-v8a
 target_abis: [arm64-v8a]
+# soc's name or all
+target_socs: [all]
 # The build mode for model(s).
 # 'code' for transferring model(s) into cpp code, 'file' for keeping model(s) in protobuf file(s) (.pb).
 model_graph_format: code
@@ -43,6 +45,8 @@ models:
             - prob
           output_shapes:
             - 1,1,1,1000
+          accuracy_validation_script:
+            - path/to/your/script
       runtime: cpu+gpu
       limit_opencl_kernel_time: 0
       obfuscate: 0
