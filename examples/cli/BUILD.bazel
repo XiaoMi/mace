@@ -35,8 +35,8 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/codegen:generated_libmace",
-        "//mace/utils:utils_hdrs",
+        "//mace/codegen:generated_models",
+        "//mace/libmace",
     ] + if_opencl_enabled([
         "//mace/codegen:generated_opencl_binary",
         "//mace/codegen:generated_opencl_parameter",
@@ -70,9 +70,9 @@ cc_binary(
     linkstatic = 0,
     deps = [
         "//external:gflags_nothreads",
-        "//mace/codegen:generated_libmace",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/utils:utils_hdrs",
+        "//mace/codegen:generated_models",
+        "//mace/libmace:libmace_dynamic",
     ] + if_opencl_enabled([
         "//mace/codegen:generated_opencl_binary",
         "//mace/codegen:generated_opencl_parameter",

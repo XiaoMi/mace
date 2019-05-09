@@ -86,7 +86,6 @@ message OperatorDef {
   repeated int32 out_max_byte_size = 104;  // only support 32-bit len
 }
 
-// for hexagon mace-nnlib
 message InputOutputInfo {
   optional string name = 1;
   optional int32 node_id = 2;
@@ -103,7 +102,6 @@ message NetDef {
   repeated Argument arg = 2;
   repeated ConstTensor tensors = 3;
 
-  // for hexagon mace-nnlib
   repeated InputOutputInfo input_info = 100;
   repeated InputOutputInfo output_info = 101;
 }

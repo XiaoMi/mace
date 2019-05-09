@@ -10,17 +10,6 @@ load(
 
 licenses(["notice"])  # Apache 2.0
 
-cc_library(
-    name = "statistics",
-    srcs = ["statistics.cc"],
-    hdrs = ["statistics.h"],
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//mace/utils",
-    ],
-)
-
 cc_binary(
     name = "benchmark_model_static",
     srcs = [
@@ -34,12 +23,15 @@ cc_binary(
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
-        ":statistics",
         "//external:gflags_nothreads",
-        "//mace/codegen:libmodels",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/libmace:libmace",
-    ],
+        "//mace/codegen:generated_models",
+        "//mace/libmace",
+        "//mace/utils",
+    ] + if_opencl_enabled([
+        "//mace/codegen:generated_opencl_binary",
+        "//mace/codegen:generated_opencl_parameter",
+    ]),
 )
 
 cc_binary(
@@ -55,7 +47,7 @@ cc_binary(
     linkopts = [
         "-lm",
     ] + if_openmp_enabled([
-        "-fopenmp"
+        "-fopenmp",
     ]) + if_android([
         "-ldl",
         "-pie",
@@ -66,9 +58,12 @@ cc_binary(
         ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/codegen:libmodels",
+        "//mace/codegen:generated_models",
         "//mace/libmace:libmace_dynamic",
-    ],
+    ] + if_opencl_enabled([
+        "//mace/codegen:generated_opencl_binary",
+        "//mace/codegen:generated_opencl_parameter",
+    ]),
 )
 
 cc_library(
@@ -82,9 +77,13 @@ cc_library(
 cc_binary(
     name = "model_throughput_test",
     srcs = ["model_throughput_test.cc"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         ":libmace_merged",
         "//external:gflags_nothreads",

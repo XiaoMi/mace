@@ -445,8 +445,8 @@ BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
 MODEL_OUTPUT_DIR_NAME = 'model'
 EXAMPLE_STATIC_NAME = "example_static"
 EXAMPLE_DYNAMIC_NAME = "example_dynamic"
-EXAMPLE_STATIC_TARGET = "//mace/examples/cli:" + EXAMPLE_STATIC_NAME
-EXAMPLE_DYNAMIC_TARGET = "//mace/examples/cli:" + EXAMPLE_DYNAMIC_NAME
+EXAMPLE_STATIC_TARGET = "//examples/cli:" + EXAMPLE_STATIC_NAME
+EXAMPLE_DYNAMIC_TARGET = "//examples/cli:" + EXAMPLE_DYNAMIC_NAME
 MACE_RUN_STATIC_NAME = "mace_run_static"
 MACE_RUN_DYNAMIC_NAME = "mace_run_dynamic"
 MACE_RUN_STATIC_TARGET = "//mace/tools/validation:" + MACE_RUN_STATIC_NAME
@@ -473,8 +473,8 @@ MODEL_LIB_PATH = "bazel-bin/mace/codegen/libgenerated_models.a"
 QUANTIZE_STAT_TARGET = "//mace/tools/quantization:quantize_stat"
 BM_MODEL_STATIC_NAME = "benchmark_model_static"
 BM_MODEL_DYNAMIC_NAME = "benchmark_model_dynamic"
-BM_MODEL_STATIC_TARGET = "//mace/benchmark:" + BM_MODEL_STATIC_NAME
-BM_MODEL_DYNAMIC_TARGET = "//mace/benchmark:" + BM_MODEL_DYNAMIC_NAME
+BM_MODEL_STATIC_TARGET = "//mace/tools/benchmark:" + BM_MODEL_STATIC_NAME
+BM_MODEL_DYNAMIC_TARGET = "//mace/tools/benchmark:" + BM_MODEL_DYNAMIC_NAME
 
 
 ################################

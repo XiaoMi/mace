@@ -102,17 +102,20 @@ DEFINE_string(model_name,
               "",
               "model name in model deployment file");
 DEFINE_string(input_node,
-              "input_node0,input_node1",
-              "input nodes, separated by comma");
+              "",
+              "input nodes, separated by comma,"
+              "example: input_node0,input_node1");
 DEFINE_string(input_shape,
-              "1,224,224,3:1,1,1,10",
-              "input shapes, separated by colon and comma");
+              "",
+              "input shapes, separated by colon and comma, "
+              "example: 1,224,224,3:1,1,1,10");
 DEFINE_string(output_node,
               "output_node0,output_node1",
               "output nodes, separated by comma");
 DEFINE_string(output_shape,
-              "1,224,224,2:1,1,1,10",
-              "output shapes, separated by colon and comma");
+              "",
+              "output shapes, separated by colon and comma, "
+              "example: 1,224,224,2:1,1,1,10");
 DEFINE_string(input_data_format,
               "NHWC",
               "input data formats, NONE|NHWC|NCHW");

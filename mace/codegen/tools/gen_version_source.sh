@@ -21,9 +21,14 @@ fi
 
 mkdir -p $(dirname $OUTPUT_FILENAME)
 
-GIT_VERSION=$(git describe --tags --long)
+MACE_SOURCE_DIR=$(dirname $(dirname $(dirname $(dirname $0))))
+GIT_VERSION=$(git --git-dir=${MACE_SOURCE_DIR}/.git --work-tree=${MACE_SOURCE_DIR} describe --long --tags)
+
 if [[ $? != 0 ]]; then
-  GIT_VERSION=unknown
+  GIT_VERSION=$(git describe --long --tags)
+  if [[ $? != 0 ]]; then
+    GIT_VERSION=unknown
+  fi
 else
   GIT_VERSION=${GIT_VERSION}
 fi
