@@ -142,6 +142,7 @@ def main(unused_args):
         option.transformer_option = FLAGS.graph_optimize_options.split(',')
     option.winograd = FLAGS.winograd
     option.quantize = FLAGS.quantize
+    option.quantize_large_weights = FLAGS.quantize_large_weights
     option.quantize_range_file = FLAGS.quantize_range_file
     option.change_concat_ranges = FLAGS.change_concat_ranges
     option.cl_mem_type = FLAGS.cl_mem_type
@@ -389,6 +390,13 @@ def parse_args():
         const=False,
         default=False,
         help="quantize model")
+    parser.add_argument(
+        "--quantize_large_weights",
+        type=str2bool,
+        nargs='?',
+        const=False,
+        default=False,
+        help="quantize large weights for compression")
     parser.add_argument(
         "--quantize_range_file",
         type=str,

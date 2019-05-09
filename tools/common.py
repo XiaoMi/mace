@@ -132,6 +132,9 @@ class DeviceType(object):
     HTA = 'HTA'
     APU = 'APU'
 
+    # for validation threshold
+    QUANTIZE = 'QUANTIZE'
+
 
 class DataFormat(object):
     NONE = "NONE"
@@ -408,6 +411,7 @@ class YAMLKeyword(object):
     obfuscate = 'obfuscate'
     winograd = 'winograd'
     quantize = 'quantize'
+    quantize_large_weights = 'quantize_large_weights'
     quantize_range_file = 'quantize_range_file'
     change_concat_ranges = 'change_concat_ranges'
     validation_inputs_data = 'validation_inputs_data'

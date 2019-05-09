@@ -730,8 +730,11 @@ class DeviceWrapper:
                                     model_config[
                                         YAMLKeyword.weight_sha256_checksum])
                             validate_type = device_type
-                            if model_config[YAMLKeyword.quantize] == 1:
-                                validate_type = device_type + '_QUANTIZE'
+                            if device_type in [DeviceType.CPU,
+                                               DeviceType.GPU] and \
+                                    (model_config[YAMLKeyword.quantize] == 1 or
+                                     model_config[YAMLKeyword.quantize_large_weights] == 1):  # noqa
+                                validate_type = DeviceType.QUANTIZE
 
                             dockerfile_path, docker_image_tag = \
                                 get_dockerfile_info(
