@@ -8,24 +8,13 @@ package(
 load("//mace:mace.bzl", "mace_version_genrule", "encrypt_opencl_kernel_genrule")
 
 cc_library(
-    name = "libmodels",
+    name = "generated_models",
     srcs = glob(["models/*/*.cc"]),
     hdrs = glob(["models/*/*.h"]),
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/core",
     ],
-)
-
-genrule(
-    name = "generated_models",
-    srcs = [
-        ":libmodels",
-    ],
-    outs = ["libgenerated_models.a"],
-    cmd = "binary=`echo $(locations :libmodels) | xargs -n 1 | grep libmodels.a`;" +
-          "$(STRIP) -x $$binary -o $@",
-    visibility = ["//visibility:public"],
 )
 
 mace_version_genrule()
@@ -61,7 +50,7 @@ cc_library(
     hdrs = glob(["engine/*.h"]),
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
-        "//mace/public",
+        "//include:public_headers",
     ],
 )
 

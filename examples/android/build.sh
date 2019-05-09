@@ -20,12 +20,12 @@ fi
 
 MACE_LINK_TYPE=$1
 
-pushd ../../../
+pushd ../..
 
 TARGET_ABI=arm64-v8a
-ANDROID_DEMO_DIR=mace/examples/android/
+ANDROID_DEMO_DIR=examples/android/
 LIBRARY_DIR=$ANDROID_DEMO_DIR/macelibrary/src/main/cpp/
-INCLUDE_DIR=$LIBRARY_DIR/include/mace/public/
+INCLUDE_DIR=$LIBRARY_DIR/include
 LIBMACE_DIR=$LIBRARY_DIR/lib/$TARGET_ABI/
 LIBGNUSTL_SHARED_SO=libgnustl_shared.so
 LIBCPP_SHARED_SO=libc++_shared.so
@@ -44,20 +44,17 @@ else
   exit 1
 fi
 
-rm -rf $LIBRARY_DIR/include/
-mkdir -p $INCLUDE_DIR
+python tools/converter.py convert --config=examples/android/mobilenet.yml --target_abis=$TARGET_ABI
 
-rm -rf $LIBRARY_DIR/lib/
-mkdir -p $LIBMACE_DIR
-
+rm -rf $INCLUDE_DIR && mkdir -p $INCLUDE_DIR
+rm -rf $LIBMACE_DIR && mkdir -p $LIBMACE_DIR
 rm -rf $LIBRARY_DIR/model/
 
-python tools/converter.py convert --config=mace/examples/android/mobilenet.yml --target_abis=$TARGET_ABI
-cp -rf builds/mobilenet/include/mace/public/*.h $INCLUDE_DIR
-cp -rf builds/mobilenet/model $LIBRARY_DIR
+cp -rf include/mace $INCLUDE_DIR
+cp -rf build/mobilenet/include/mace/public/*.h $INCLUDE_DIR/mace/public/
+cp -rf build/mobilenet/model $LIBRARY_DIR
 
 bazel build --config android --config optimization $BAZEL_LIBMACE_TARGET --define neon=true --define openmp=true --define opencl=true --define quantize=true --cpu=$TARGET_ABI
-cp -rf mace/public/*.h $INCLUDE_DIR
 cp -rf $BAZEL_GEN_LIBMACE_PATH $LIBMACE_DIR
 
 if [ $MACE_LINK_TYPE == "dynamic" ]; then

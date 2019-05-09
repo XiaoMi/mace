@@ -20,7 +20,7 @@ Usage
 
     .. code:: bash
 
-        python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True  --args="--filter=.*BM_CONV.*"
+        python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=True  --args="--filter=.*BM_CONV.*"
 
 ======
 Output

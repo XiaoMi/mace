@@ -6,6 +6,6 @@ if(MACE_ENABLE_TESTS)
   add_subdirectory(ccunit)
 endif()
 
-if(MACE_ENABLE_BENCHMARK)
+if(MACE_ENABLE_BENCHMARKS)
   add_subdirectory(ccbenchmark)
 endif()

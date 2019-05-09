@@ -1,6 +1,3 @@
-# Description:
-# MACE public API.
-#
 package(
     default_visibility = ["//visibility:public"],
 )
@@ -8,12 +5,12 @@ package(
 licenses(["notice"])  # Apache 2.0
 
 cc_library(
-    name = "public",
-    hdrs = [
-        "mace.h",
-    ],
-    srcs = [
-        "status.cc",
-    ],
+    name = "public_headers",
+    hdrs = glob([
+            "mace/public/*.h",
+            "mace/port/*.h",
+            "mace/utils/*.h",
+            ]),
+    strip_include_prefix = "",
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
 )

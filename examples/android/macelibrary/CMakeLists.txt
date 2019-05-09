@@ -13,6 +13,7 @@ cmake_minimum_required(VERSION 3.4.1)
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../app/libs/${ANDROID_ABI})
 
 include_directories(${CMAKE_SOURCE_DIR}/)
+include_directories(${CMAKE_SOURCE_DIR}/src/main/cpp)
 include_directories(${CMAKE_SOURCE_DIR}/src/main/cpp/include)
 file(GLOB LIBMACE "${CMAKE_SOURCE_DIR}/src/main/cpp/lib/arm64-v8a/*")
 set(mace_lib ${LIBMACE})

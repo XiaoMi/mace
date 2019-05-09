@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/main/cpp/image_classify.h"
+#include "image_classify.h"
 
 #include <android/log.h>
 #include <jni.h>
@@ -25,9 +25,8 @@
 #include <vector>
 #include <numeric>
 
-#include "src/main/cpp/include/mace/public/mace.h"
-#include "src/main/cpp/include/mace/public/mace_engine_factory.h"
 #include "mace/public/mace.h"
+#include "mace/public/mace_engine_factory.h"
 
 namespace {
 

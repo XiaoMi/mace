@@ -44,17 +44,17 @@ Here we use the mobilenet-v2 model as an example.
 
         cd path/to/mace
         # Build library
-        # output lib path: builds/lib
-        bash tools/build-standalone-lib.sh
+        # output lib path: build/lib
+        bash tools/bazel-build-standalone-lib.sh
 
 
     .. note::
 
         - This step can be skipped if you just want to run a model using ``tools/converter.py``, such as commands in step 5.
 
-        - Libraries in ``builds/lib/armeabi-v7a/cpu_gpu/`` means it can run on ``cpu`` or ``gpu`` devices.
+        - Libraries in ``build/lib/armeabi-v7a/cpu_gpu/`` means it can run on ``cpu`` or ``gpu`` devices.
 
-        - The results in ``builds/lib/armeabi-v7a/cpu_gpu_dsp/`` need HVX supported.
+        - The results in ``build/lib/armeabi-v7a/cpu_gpu_dsp/`` need HVX supported.
 
 
     4. Convert the pre-trained mobilenet-v2 model to MACE format model.
@@ -170,7 +170,7 @@ When the deployment file is ready, you can use MACE converter tool to convert yo
     python tools/converter.py convert --config=/path/to/your/model_deployment_file.yml
 
 This command will download or load your pre-trained model and convert it to a MACE model proto file and weights data file.
-The generated model files will be stored in ``builds/${library_name}/model`` folder.
+The generated model files will be stored in ``build/${library_name}/model`` folder.
 
 .. warning::
 
@@ -188,10 +188,10 @@ Or use bazel to build MACE source code into a library.
 
         cd path/to/mace
         # Build library
-        # output lib path: builds/lib
-        bash tools/build-standalone-lib.sh
+        # output lib path: build/lib
+        bash tools/bazel-build-standalone-lib.sh
 
-The above command will generate dynamic library ``builds/lib/${ABI}/${DEVICES}/libmace.so`` and static library ``builds/lib/${ABI}/${DEVICES}/libmace.a``.
+The above command will generate dynamic library ``build/lib/${ABI}/${DEVICES}/libmace.so`` and static library ``build/lib/${ABI}/${DEVICES}/libmace.a``.
 
     .. warning::
 
@@ -278,7 +278,7 @@ header files.
 
 .. code::
 
-    builds
+    build
     ├── include
     │   └── mace
     │       └── public

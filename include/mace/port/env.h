@@ -121,13 +121,17 @@ inline MaceStatus GetEnv(const char *name, std::string *value) {
   if (error != 0) {
     return MaceStatus::MACE_RUNTIME_ERROR;
   } else {
-    *value = std::string(val);
-    free(val);
+    if (val != nullptr) {
+      *value = std::string(val);
+      free(val);
+    }
     return MaceStatus::MACE_SUCCESS;
   }
 #else
   char *val = getenv(name);
-  *value = std::string(val);
+  if (val != nullptr) {
+    *value = std::string(val);
+  }
   return MaceStatus::MACE_SUCCESS;
 #endif
 }

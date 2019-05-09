@@ -26,8 +26,7 @@ cc_library(
         "-Wno-missing-field-initializers",
     ],
     deps = [
-        "//mace/port:port_api",
-        "//mace/public",
+        "//include:public_headers",
     ],
 )
 
@@ -36,9 +35,6 @@ cc_library(
     srcs = glob(
         [
             "*.cc",
-        ],
-        exclude = [
-            "*_test.cc",
         ],
     ),
     copts = [
@@ -60,26 +56,4 @@ cc_library(
         ":utils_hdrs",
     ],
     alwayslink = 1,
-)
-
-cc_test(
-    name = "utils_test",
-    testonly = 1,
-    srcs = glob(
-        [
-            "*_test.cc",
-        ],
-    ),
-    copts = [
-        "-Werror",
-        "-Wextra",
-        "-Wno-missing-field-initializers",
-    ],
-    linkstatic = 1,
-    deps = [
-        ":utils",
-        "//mace/port",
-        "@gtest//:gtest",
-        "@gtest//:gtest_main",
-    ],
 )

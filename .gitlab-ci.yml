@@ -34,86 +34,70 @@ build_docs:
     paths:
       - docs/_build
 
-build_android-armeabi-v7a:
+cmake_build_android-armeabi-v7a:
   stage: basic-build
   script:
-    - sh tools/build-android-armeabi-v7a-full.sh
+    - sh tools/cmake-build-android-armeabi-v7a-full.sh
 
-build_android-arm64-v8:
+cmake_build_android-arm64-v8:
   stage: basic-build
   script:
-    - sh tools/build-android-arm64-v8a-full.sh
+    - sh tools/cmake-build-android-arm64-v8a-full.sh
+
+build_android_demo:
+  stage: basic-build
+  script:
+    - pushd examples/android/ && bash build.sh static && bash build.sh dynamic && popd
 
 code_footprint_check:
-  stage: basic-build
+  stage: smoke-test
   script:
     - echo check shared library size
+    - LIBMACE64_FULL_SIZE=`stat -c%s build/android-arm64-v8a-full/install/lib/libmace.so`
+    - if (( LIBMACE64_FULL_SIZE > 3100000 )) ; then echo "The libmace.so size too large"; exit 1; fi
+    - LIBMACE32_FULL_SIZE=`stat -c%s build/android-armeabi-v7a-full/install/lib/libmace.so`
+    - if (( LIBMACE32_FULL_SIZE > 2200000 )) ; then echo "The libmace.so size too large"; exit 1; fi
 
-cc_test_smoketest:
+mace_cc_test_smoketest:
   stage: smoke-test
   script:
     - echo tests
 
-cc_benchmark_smoketest:
+mace_cc_benchmark_smoketest:
   stage: smoke-test
   script:
     - echo benchmark
 
-build_arm-linux-gnueabihf:
+bazel_build:
   stage: build
   script:
-    - sh tools/build-arm-linux-gnueabihf-full.sh
+    - sh tools/bazel-build-standalone-lib.sh
   only:
     - triggers
 
-build_aarch64-linux-gnu:
+cmake_build:
   stage: build
   script:
-    - sh tools/build-aarch64-linux-gnu-full.sh
-  only:
-    - triggers
-
-build_host:
-  stage: build
-  script:
-    - sh tools/build-host.sh
-  only:
-    - triggers
-
-build_android_demo:
-  stage: build
-  script:
-    - echo build android demo
+    - sh tools/cmake-build-standalone-lib.sh
   only:
     - triggers
 
 cc_test:
   stage: test
   script:
-    - echo cc_test
-  only:
-    - triggers
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - >
+      if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
+        GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
+        DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
+      fi
+    - python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS
 
-cc_benchmark:
+mace_cc_benchmark:
   stage: test
   script:
-    - echo cc_benchmark
-  only:
-    - triggers
-
-quantization_test:
-  stage: test
-  script:
-    - echo quantization_test
-  only:
-    - triggers
-
-model_test:
-  stage: test
-  script:
-    - echo model_test
-  only:
-    - triggers
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS --args="--filter=.*SIGMOID.*"
 
 ndk_compatibility_check:
   stage: extra
@@ -122,20 +106,72 @@ ndk_compatibility_check:
   only:
     - triggers
 
-python_compatibility_check:
-  stage: extra
+model_tests:
+  stage: test
   script:
-    - echo python3 check
-  only:
-    - triggers
+    - pwd
+    - rm -rf mace-models
+    - rm -rf generic-mobile-devices
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - >
+      if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
+        GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
+        DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
+      fi
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - >
+      python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --target_abis=armeabi-v7a,arm64 --validate --model_graph_format=file --model_data_format=file
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,arm64 --round=1 --validate --model_graph_format=file --model_data_format=file
+    - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2-host.yml
+    - >
+      python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=file --model_data_format=file --address_sanitizer
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --example --round=1 --validate --model_graph_format=file --model_data_format=file
+      python tools/converter.py benchmark --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=file --model_data_format=file
+      python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=code --model_data_format=file
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=code --model_data_format=file
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --example --round=1 --validate --model_graph_format=code --model_data_format=file
+      python tools/converter.py benchmark --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=code --model_data_format=file
+    - rm -rf mace-models
 
-extra_tests:
+quantization_tests:
+  stage: test
+  script:
+    - pwd
+    - rm -rf mace-models
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - >
+      if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
+        GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
+        DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
+      fi
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - >
+      for CONF_FILE in mace-models/mobilenet-v1/mobilenet-v1-quantize-friendly.yml mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-for-check-only.yml mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-dsp.yml;
+      do
+      python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate --layers=0 --model_graph_format=file --model_data_format=file
+      done
+    - rm -rf mace-models
+
+dynamic_linking_test:
   stage: extra
   script:
-    - ops_test_disable_neon
-    - ops_test
-    - api_test
-    - extra_tests
-    - dynamic_link_test
-  only:
-    - triggers
+    - pwd
+    - rm -rf mace-models
+    - rm -rf generic-mobile-devices
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - >
+      if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
+        GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
+        DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
+      fi
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - >
+      python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --mace_lib_type=dynamic --target_abis=armeabi-v7a,arm64 --round=1 --validate --model_graph_format=file --model_data_format=file
+    - rm -rf mace-models

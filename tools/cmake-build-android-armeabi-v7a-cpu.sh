@@ -3,7 +3,7 @@
 set -e
 
 # build for android armeabi-v7a
-BUILD_DIR=build/android-armeabi-v7a-cpu
+BUILD_DIR=cmake-build/android-armeabi-v7a-cpu
 rm -rf ${BUILD_DIR} && mkdir -p ${BUILD_DIR} && cd ${BUILD_DIR}
 cmake -DANDROID_ABI="armeabi-v7a" \
       -DANDROID_ARM_NEON=ON \
@@ -20,5 +20,5 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DMACE_ENABLE_OBFUSCATE=ON          \
       -DCMAKE_INSTALL_PREFIX=install      \
       ../..
-make -j8 VERBOSE=1 && make install
+make -j6 VERBOSE=1 && make install
 cd ../..

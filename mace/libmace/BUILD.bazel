@@ -50,7 +50,7 @@ cc_library(
     ]),
     deps = [
         "//mace/ops",
-        "//mace/public",
+        "//include:public_headers",
     ],
     alwayslink = 1,
 )
@@ -91,6 +91,7 @@ cc_library(
 genrule(
     name = "libmace_static",
     srcs = [
+        "//include:public_headers",
         "//mace/codegen:generated_version",
         "//mace/core",
         "//mace/ops:common",
@@ -100,7 +101,6 @@ genrule(
         "//mace/libmace",
         "//mace/port:port_base",
         "//mace/port/posix:port_posix",
-        "//mace/public",
         "//mace/utils",
         "//mace/proto:mace_cc",
         "@com_google_protobuf//:protobuf_lite",
@@ -155,7 +155,6 @@ genrule(
               "$(locations //mace/port/darwin:port_darwin) ",
               default_value = "",
           ) +
-          "$(locations //mace/public:public) " +
           "$(locations //mace/utils:utils) " +
           "$(locations //mace/proto:mace_cc) " +
           "$(locations @com_google_protobuf//:protobuf_lite) " +

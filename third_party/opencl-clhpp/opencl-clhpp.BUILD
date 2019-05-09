@@ -15,5 +15,6 @@ genrule(
 cc_library(
     name = "opencl_clhpp",
     hdrs = ["include/CL/cl.hpp", "include/CL/cl2.hpp"],
+    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
 )

@@ -69,8 +69,15 @@ RUN cd /opt && \
     tar xf gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz && \
     rm -rf gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
 
+# install protoc
+RUN cd opt/ && \
+    wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip && \
+    unzip protoc-3.6.1-linux-x86_64.zip -d protoc-3.6.1 && \
+    rm -rf protoc-3.6.1-linux-x86_64.zip
+
 ENV CROSS_TOOLCHAIN_PARENT /opt
 ENV ANDROID_NDK_VERSION r19c
 ENV ANDROID_NDK_HOME /opt/android-ndk-${ANDROID_NDK_VERSION}
 ENV LINARO_ARM_LINUX_GNUEABIHF /opt/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf
 ENV LINARO_AARCH64_LINUX_GNU /opt/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu
+ENV PATH /opt/protoc-3.6.1/bin:${PATH}

@@ -114,8 +114,7 @@ RUN apt-get install -y --no-install-recommends \
 # refer to: https://github.com/jenkinsci/docker/issues/506
 RUN apt-get install -y libltdl7
 
-RUN pip install --upgrade pip
-RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com setuptools
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --upgrade pip setuptools
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     numpy==1.15.4 \
     scipy==1.2.0 \
