@@ -69,7 +69,7 @@ OnnxSupportedOps = [
     'BatchNorm',
     'Cast',
     # 'Ceil',
-    # 'Clip',
+    'Clip',
     # 'Compress',
     'Concat',
     # 'Constant',
@@ -300,6 +300,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         OnnxOpType.Sqrt.name: EltwiseType.POW,
         OnnxOpType.Reciprocal.name: EltwiseType.POW,
         OnnxOpType.Scale.name: EltwiseType.PROD,
+        OnnxOpType.Clip.name: EltwiseType.CLIP,
     }
 
     reduce_type = {
@@ -331,6 +332,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.BatchNormalization.name: self.convert_fused_batchnorm,
             OnnxOpType.BatchNorm.name: self.convert_fused_batchnorm,
             OnnxOpType.Cast.name: self.convert_cast,
+            OnnxOpType.Clip.name: self.convert_eltwise,
             OnnxOpType.Concat.name: self.convert_concat,
             OnnxOpType.Conv.name: self.convert_conv2d,
             OnnxOpType.ConvTranspose.name: self.convert_deconv,
@@ -862,6 +864,18 @@ class OnnxConverter(base_converter.ConverterInterface):
             value_arg = op.arg.add()
             value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = value
+        elif node.op_type == OnnxOpType.Clip.name:
+            if 'min' in node.attrs:
+                min_value = node.attrs['min']
+            else:
+                min_value = np.finfo(np.float32).min
+            if 'max' in node.attrs:
+                max_value = node.attrs['max']
+            else:
+                max_value = np.finfo(np.float32).max
+            coeff_arg = op.arg.add()
+            coeff_arg.name = MaceKeyword.mace_coeff_str
+            coeff_arg.floats.extend([min_value, max_value])
 
     @staticmethod
     def copy_node_attr(op, node, attr_name, dtype=AttributeType.INT,

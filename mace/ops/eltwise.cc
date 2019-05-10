@@ -376,6 +376,15 @@ inline void TensorBroadcastEltwise(const OpContext *context,
           }
         }
         break;
+      case CLIP:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
+            output[i + d * common_size] =
+                std::fmaxf(coeff[0],
+                           std::fminf(coeff[1], input0[i + d * common_size]));
+          }
+        }
+        break;
       default:LOG(FATAL) << "Eltwise op not support type " << type;
     }
   }, 0, diff_size, 1, 0, common_size, 1);
@@ -495,6 +504,11 @@ inline void TensorEltwise(const OpContext *context,
       case EQUAL:
         for (index_t i = start; i < end; i += step) {
           output[i] = input0[i] == input1[i];
+        }
+        break;
+      case CLIP:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::fmaxf(coeff[0], std::fminf(coeff[1], input0[i]));
         }
         break;
       default:LOG(FATAL) << "Eltwise op not support type " << type;
@@ -617,7 +631,11 @@ inline void TensorScalarEltwise(const OpContext *context,
         for (index_t i = start; i < end; i += step) {
           output[i] = input0[i] == input1;
         }
-
+        break;
+      case CLIP:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = std::fmaxf(coeff[0], std::fminf(coeff[1], input0[i]));
+        }
         break;
       default:LOG(FATAL) << "Eltwise op not support type " << type;
     }
@@ -886,6 +904,11 @@ class EltwiseOp : public Operation {
       input1 = &scalar_tensor_;
     }
 
+    if (type_ == CLIP) {
+      MACE_CHECK(coeff_.size() == 2 && coeff_[0] < coeff_[1],
+                 "Clip's min/max values are not correct.");
+    }
+
     if (IsLogicalType(type_)) {
       // as we do not have bool-type tensor, we use int type
       return DoEltwise<int32_t>(context, input0, input1, output);
@@ -1144,6 +1167,11 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
         Operation::GetOptionalArg<int>(
             "type", static_cast<int>(ops::EltwiseType::NONE)));
     std::vector<float> coeff = Operation::GetRepeatedArgs<float>("coeff");
+    if (type == ops::EltwiseType::CLIP) {
+      MACE_CHECK(coeff.size() == 2 && coeff[0] < coeff[1],
+                 "Clip's min/max values are not correct.");
+    }
+
     float scalar_input = Operation::GetOptionalArg<float>("scalar_input", 1.0);
     int32_t scalar_input_index = Operation::GetOptionalArg<int32_t>(
             "scalar_input_index", 1);
