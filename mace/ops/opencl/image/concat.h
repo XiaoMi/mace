@@ -32,7 +32,6 @@ MaceStatus Concat2(OpContext *context,
                    cl::Kernel *kernel,
                    const Tensor *input0,
                    const Tensor *input1,
-                   const DataType dt,
                    std::vector<index_t> *prev_input_shape,
                    Tensor *output,
                    uint32_t *kwg_size);
@@ -40,12 +39,10 @@ MaceStatus Concat2(OpContext *context,
 MaceStatus ConcatN(OpContext *context,
                    cl::Kernel *kernel,
                    const std::vector<const Tensor *> &input_list,
-                   const DataType dt,
                    Tensor *output,
                    uint32_t *kwg_size);
 }  // namespace concat
 
-template <typename T>
 class ConcatKernel : public OpenCLConcatKernel {
  public:
   ConcatKernel() {}
@@ -60,47 +57,6 @@ class ConcatKernel : public OpenCLConcatKernel {
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
 };
-
-template <typename T>
-MaceStatus ConcatKernel<T>::Compute(
-    OpContext *context,
-    const std::vector<const Tensor *> &input_list,
-    const int32_t axis,
-    Tensor *output) {
-  const int inputs_count = input_list.size();
-
-  const Tensor *input0 = input_list[0];
-
-  std::vector<index_t> output_shape(input0->shape());
-  for (int i = 1; i < inputs_count; ++i) {
-    const Tensor *input = input_list[i];
-    MACE_CHECK(input->dim_size() == input0->dim_size(),
-               "Ranks of all input tensors must be same.");
-    for (int j = 0; j < input->dim_size(); ++j) {
-      if (j == axis) {
-        continue;
-      }
-      MACE_CHECK(input->dim(j) == input0->dim(j),
-                 "Dimensions of inputs should equal except axis.");
-    }
-    output_shape[axis] += input->dim(axis);
-  }
-  std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape,
-                              OpenCLBufferType::IN_OUT_CHANNEL,
-                              &image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
-
-  switch (inputs_count) {
-    case 2:
-      return concat::Concat2(
-          context, &kernel_, input_list[0], input_list[1],
-          DataTypeToEnum<T>::value, &input_shape_, output, &kwg_size_);
-    default:
-      return concat::ConcatN(context, &kernel_, input_list,
-                             DataTypeToEnum<T>::value, output, &kwg_size_);
-  }
-}
 
 }  // namespace image
 }  // namespace opencl

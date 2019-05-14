@@ -27,7 +27,6 @@ MaceStatus BufferTypeTransform(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output) {
   MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
@@ -43,7 +42,7 @@ MaceStatus BufferTypeTransform(
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("transform_data_type");
     built_options.emplace("-Dtransform_data_type=" + kernel_name);
     built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(input->dtype()));
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(output->dtype()));
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("buffer_transform",
                                               kernel_name,
                                               built_options,

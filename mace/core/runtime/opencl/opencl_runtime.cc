@@ -18,19 +18,18 @@
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT(build/c++11)
+#include <sstream>
 #include <string>
 #include <vector>
 #include <utility>
 
-#include "mace/utils/macros.h"
+#include "mace/codegen/opencl/encrypt_opencl_kernel.h"
 #include "mace/core/kv_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
+#include "mace/utils/macros.h"
 #include "mace/utils/tuner.h"
 
 namespace mace {
-
-extern const std::map<std::string, std::vector<unsigned char>>
-    kEncryptedProgramMap;
 
 const std::string OpenCLErrorToString(cl_int error) {
   switch (error) {
@@ -265,7 +264,7 @@ OpenCLRuntime::OpenCLRuntime(
     const GPUPriorityHint priority_hint,
     const GPUPerfHint perf_hint,
     std::shared_ptr<KVStorage> precompiled_binary_storage,
-    std::shared_ptr<Tuner<uint32_t>> tuner):
+    std::shared_ptr<Tuner<uint32_t>> tuner) :
     cache_storage_(cache_storage),
     precompiled_binary_storage_(precompiled_binary_storage),
     tuner_(tuner),
@@ -332,7 +331,7 @@ OpenCLRuntime::OpenCLRuntime(
 
   cl_int err;
   if (gpu_type_ == GPUType::QUALCOMM_ADRENO
-          && opencl_version_ == OpenCLVersion::CL_VER_2_0) {
+      && opencl_version_ == OpenCLVersion::CL_VER_2_0) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties,
@@ -345,8 +344,8 @@ OpenCLRuntime::OpenCLRuntime(
 #if CL_HPP_TARGET_OPENCL_VERSION >= 200
     if (is_profiling_enabled_ && gpu_type_ == GPUType::MALI) {
       std::vector<cl_context_properties> context_properties = {
-          CL_CONTEXT_PLATFORM, (cl_context_properties)default_platform(),
-          CL_PRINTF_CALLBACK_ARM, (cl_context_properties)OpenCLPrintfCallback,
+          CL_CONTEXT_PLATFORM, (cl_context_properties) default_platform(),
+          CL_PRINTF_CALLBACK_ARM, (cl_context_properties) OpenCLPrintfCallback,
           CL_PRINTF_BUFFERSIZE_ARM, 0x1000, 0
       };
       context_ = std::shared_ptr<cl::Context>(
@@ -399,7 +398,7 @@ OpenCLRuntime::OpenCLRuntime(
   if (cached_binary_platform_info != platform_info_) {
     if (precompiled_binary_storage_ == nullptr) {
       VLOG(1) << "There is no precompiled OpenCL binary in"
-          " all OpenCL binary paths.";
+                 " all OpenCL binary paths.";
     } else {
       if (precompiled_binary_storage_->Load() != 0) {
         LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
@@ -530,17 +529,47 @@ bool OpenCLRuntime::BuildProgramFromPrecompiledBinary(
   return true;
 }
 
+MaceStatus GetProgramSourceByName(const std::string &program_name,
+                              std::string *source) {
+  MACE_CHECK_NOTNULL(source);
+  std::stringstream source_stream;
+  const auto &kEncryptedProgramMap = mace::codegen::kEncryptedProgramMap;
+  const auto &it_program = kEncryptedProgramMap.find(program_name);
+  if (it_program == kEncryptedProgramMap.end()) {
+    LOG(ERROR) << "Find program " << program_name << " failed.";
+    return MaceStatus::MACE_RUNTIME_ERROR;
+  }
+
+  const std::vector<std::string> &headers = it_program->second.headers_;
+  for (const std::string &header : headers) {
+    const auto &header_program = kEncryptedProgramMap.find(header);
+    if (header_program == kEncryptedProgramMap.end()) {
+      LOG(WARNING) << "Program header(" << header << ") is empty.";
+      continue;
+    }
+
+    const auto &header_source = header_program->second.encrypted_code_;
+    source_stream << ObfuscateString(
+        std::string(header_source.begin(), header_source.end()));
+  }
+
+  const auto &it_source = it_program->second.encrypted_code_;
+  source_stream << ObfuscateString(
+      std::string(it_source.begin(), it_source.end()));
+  *source = source_stream.str();
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
 bool OpenCLRuntime::BuildProgramFromSource(
     const std::string &program_name,
     const std::string &built_program_key,
     const std::string &build_options_str,
     cl::Program *program) {
-  // Find from source
-  auto it_source = kEncryptedProgramMap.find(program_name);
-  if (it_source != kEncryptedProgramMap.end()) {
+  std::string kernel_source;
+  MaceStatus status = GetProgramSourceByName(program_name, &kernel_source);
+  if (status == MaceStatus::MACE_SUCCESS && !kernel_source.empty()) {
     cl::Program::Sources sources;
-    std::string source(it_source->second.begin(), it_source->second.end());
-    std::string kernel_source = ObfuscateString(source);
     sources.push_back(kernel_source);
     *program = cl::Program(context(), sources);
     cl_int ret = program->build({device()}, build_options_str.c_str());

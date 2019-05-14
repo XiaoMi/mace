@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "mace/benchmark_utils/test_benchmark.h"
+#include "mace/ops/common/pad_type.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/pad.h"
 
 namespace mace {
 namespace ops {

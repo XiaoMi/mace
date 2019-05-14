@@ -28,17 +28,16 @@
 namespace mace {
 namespace ops {
 // Only used for GPU Operation(BufferTransform)
-template<typename T>
 class OpenCLBufferTransformer {
  public:
   OpenCLBufferTransformer(const MemoryType in_mem_type,
                           const MemoryType out_mem_type) {
     if (out_mem_type == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::BufferToImage<T>>();
+      kernel_ = make_unique<opencl::image::BufferToImage>();
     } else if (in_mem_type == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ImageToBuffer<T>>();
+      kernel_ = make_unique<opencl::image::ImageToBuffer>();
     } else {
-      kernel_ = make_unique<opencl::buffer::BufferTransform<T>>();
+      kernel_ = make_unique<opencl::buffer::BufferTransform>();
     }
   }
 
@@ -49,7 +48,7 @@ class OpenCLBufferTransformer {
                        const int wino_blk_size,
                        Tensor *output) {
     Workspace *ws = context->workspace();
-    DataType dt = DataTypeToEnum<T>::value;
+    DataType dt = output->dtype();
     MemoryType in_mem_type = input->memory_type();
     if (out_mem_type == MemoryType::GPU_IMAGE ||
         out_mem_type == MemoryType::GPU_BUFFER) {
@@ -87,10 +86,10 @@ class OpenCLBufferTransformer {
               << " to CPU Buffer " << output->name()
               << " with data type " << dt;
       Tensor::MappingGuard guard(&internal_tensor);
-      const T *internal_ptr = internal_tensor.data<T>();
+      const float *internal_ptr = internal_tensor.data<float>();
       output->Resize(internal_tensor.shape());
-      T *output_ptr = output->mutable_data<T>();
-      memcpy(output_ptr, internal_ptr, internal_tensor.size() * sizeof(T));
+      float *output_ptr = output->mutable_data<float>();
+      memcpy(output_ptr, internal_ptr, internal_tensor.size() * sizeof(float));
       return MaceStatus::MACE_SUCCESS;
     } else {
       LOG(FATAL) << "Unexpected error: " << out_mem_type;
@@ -110,30 +109,13 @@ class OpenCLBufferTransformer {
 
 std::string TransformedFilterName(const std::string &name);
 
-template<typename T>
 MaceStatus TransformFilter(
     mace::OpConstructContext *context,
     OperatorDef *op_def,
     const int input_idx,
     const OpenCLBufferType buffer_type,
     const MemoryType mem_type,
-    const int wino_blk_size = 0) {
-  const DataType dt = DataTypeToEnum<T>::value;
-  OpContext op_context(context->workspace(), context->device());
-  Workspace *ws = context->workspace();
-  std::string input_name = op_def->input(input_idx);
-  Tensor *input = ws->GetTensor(input_name);
-  std::string output_name = TransformedFilterName(input_name);
-  Tensor *output =
-      ws->CreateTensor(output_name, context->device()->allocator(), dt, true);
-
-  // update the information
-  op_def->set_input(input_idx, output_name);
-  input->MarkUnused();
-  return OpenCLBufferTransformer<T>(input->memory_type(), mem_type).
-      Transform(&op_context, input, buffer_type, mem_type, wino_blk_size,
-                output);
-}
+    const int wino_blk_size = 0);
 
 }  // namespace ops
 }  // namespace mace

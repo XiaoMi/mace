@@ -29,10 +29,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class AddNOp;
 
-template <>
+template<>
 class AddNOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit AddNOp(OpConstructContext *context)
@@ -62,13 +62,13 @@ class AddNOp<DeviceType::CPU, float> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class AddNOp<DeviceType::GPU, T> : public Operation {
+template<>
+class AddNOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit AddNOp(OpConstructContext *context)
       : Operation(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::AddNKernel<T>>();
+      kernel_ = make_unique<opencl::image::AddNKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -92,15 +92,9 @@ class AddNOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterAddN(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::CPU, float);
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "AddN", AddNOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("AddN")
@@ -108,16 +102,16 @@ void RegisterAddN(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

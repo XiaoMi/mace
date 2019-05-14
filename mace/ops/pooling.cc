@@ -16,8 +16,6 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/ops/pooling.h"
-
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -28,6 +26,7 @@
 #include "mace/core/tensor.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/common/pooling_type.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/pooling.h"
 #include "mace/ops/opencl/buffer/pooling.h"
@@ -486,15 +485,15 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
+template<>
+class PoolingOp<DeviceType::GPU, float> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::PoolingKernel<T>>();
+      kernel_ = make_unique<opencl::image::PoolingKernel>();
     } else {
-      kernel_ = make_unique<opencl::buffer::PoolingKernel<T>>();
+      kernel_ = make_unique<opencl::buffer::PoolingKernel>();
     }
   }
   MaceStatus Run(OpContext *context) override {
@@ -520,13 +519,7 @@ void RegisterPooling(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Pooling", PoolingOp);
 }
 
 }  // namespace ops

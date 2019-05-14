@@ -67,21 +67,20 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 }  // namespace
 
-extern MaceStatus Conv2d(OpContext *context,
-                         cl::Kernel *kernel,
-                         const Tensor *input,
-                         const Tensor *filter,
-                         const Tensor *bias,
-                         const int stride,
-                         const int *padding,
-                         const int *dilations,
-                         const ActivationType activation,
-                         const float relux_max_limit,
-                         const float leakyrelu_coefficient,
-                         const DataType dt,
-                         std::vector<index_t> *prev_input_shape,
-                         Tensor *output,
-                         uint32_t *kwg_size) {
+MaceStatus Conv2d(OpContext *context,
+                  cl::Kernel *kernel,
+                  const Tensor *input,
+                  const Tensor *filter,
+                  const Tensor *bias,
+                  const int stride,
+                  const int *padding,
+                  const int *dilations,
+                  const ActivationType activation,
+                  const float relux_max_limit,
+                  const float leakyrelu_coefficient,
+                  std::vector<index_t> *prev_input_shape,
+                  Tensor *output,
+                  uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -101,29 +100,36 @@ extern MaceStatus Conv2d(OpContext *context,
     MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d");
     built_options.emplace("-Dconv_2d=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
-      case NOOP:
+      case NOOP: {
         break;
-      case RELU:
+      }
+      case RELU: {
         built_options.emplace("-DUSE_RELU");
         break;
-      case RELUX:
+      }
+      case RELUX: {
         built_options.emplace("-DUSE_RELUX");
         break;
-      case TANH:
+      }
+      case TANH: {
         built_options.emplace("-DUSE_TANH");
         break;
-      case SIGMOID:
+      }
+      case SIGMOID: {
         built_options.emplace("-DUSE_SIGMOID");
         break;
-      case LEAKYRELU:
+      }
+      case LEAKYRELU: {
         built_options.emplace("-DUSE_LEAKYRELU");
         break;
-      default:
+      }
+      default: {
         LOG(FATAL) << "Unknown activation type: " << activation;
+      }
     }
 
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("conv_2d", kernel_name,

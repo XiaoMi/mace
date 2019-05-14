@@ -86,10 +86,10 @@ class SpaceToBatchOpBase : public Operation {
   }
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class SpaceToBatchNDOp;
 
-template <>
+template<>
 class SpaceToBatchNDOp<DeviceType::CPU, float> : public SpaceToBatchOpBase {
  public:
   explicit SpaceToBatchNDOp(OpConstructContext *context)
@@ -302,13 +302,13 @@ class SpaceToBatchNDOp<DeviceType::CPU, uint8_t> : public SpaceToBatchOpBase {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class SpaceToBatchNDOp<DeviceType::GPU, T> : public SpaceToBatchOpBase {
+template<>
+class SpaceToBatchNDOp<DeviceType::GPU, float> : public SpaceToBatchOpBase {
  public:
   explicit SpaceToBatchNDOp(OpConstructContext *context)
       : SpaceToBatchOpBase(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::SpaceToBatchKernel<T>>();
+      kernel_ = make_unique<opencl::image::SpaceToBatchKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -337,13 +337,7 @@ void RegisterSpaceToBatchND(OpRegistryBase *op_registry) {
                    SpaceToBatchNDOp, DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
-                   SpaceToBatchNDOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
-                   SpaceToBatchNDOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "SpaceToBatchND", SpaceToBatchNDOp);
 }
 
 }  // namespace ops

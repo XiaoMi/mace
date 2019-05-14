@@ -42,7 +42,7 @@ void FilterBufferToImage(int iters,
       "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
 
   auto transform_func = [&]() {
-    OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
+    OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
         .Transform(&context,
                    net.ws()->GetTensor("Input"),
                    OpenCLBufferType::IN_OUT_CHANNEL,

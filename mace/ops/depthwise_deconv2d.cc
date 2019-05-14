@@ -184,23 +184,23 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
+template<>
+class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::DepthwiseDeconv2dKernel<T>>();
+      kernel_ = make_unique<opencl::image::DepthwiseDeconv2dKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
-    MACE_CHECK(TransformFilter<T>(
+    MACE_CHECK(TransformFilter(
         context, operator_def_.get(), 1,
         OpenCLBufferType::DW_CONV2D_FILTER, mem_type)
                    == MaceStatus::MACE_SUCCESS);
     if (operator_def_->input_size() >= 3) {
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 2,
           OpenCLBufferType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
     }
@@ -255,13 +255,7 @@ void RegisterDepthwiseDeconv2d(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseDeconv2d",
                    DepthwiseDeconv2dOp, DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "DepthwiseDeconv2d",
-                   DepthwiseDeconv2dOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "DepthwiseDeconv2d",
-                   DepthwiseDeconv2dOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "DepthwiseDeconv2d", DepthwiseDeconv2dOp);
 }
 
 }  // namespace ops

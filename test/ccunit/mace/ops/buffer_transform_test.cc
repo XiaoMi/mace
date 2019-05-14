@@ -45,8 +45,8 @@ void TestBidirectionTransform(const OpenCLBufferType type,
       "BtOutput", context.device()->allocator(),
       DataTypeToEnum<DstType>::value);
 
-  OpenCLBufferTransformer<DstType>(MemoryType::GPU_BUFFER,
-                                   MemoryType::GPU_BUFFER)
+  OpenCLBufferTransformer(MemoryType::GPU_BUFFER,
+                          MemoryType::GPU_BUFFER)
       .Transform(&context, net.ws()->GetTensor("Input"),
                  type, MemoryType::GPU_BUFFER, 0, bt_output);
 
@@ -54,8 +54,8 @@ void TestBidirectionTransform(const OpenCLBufferType type,
   Tensor *output = net.ws()->CreateTensor(
       "Output", context.device()->allocator(),
       DataTypeToEnum<OrgType>::value);
-  OpenCLBufferTransformer<OrgType>(MemoryType::GPU_BUFFER,
-                                   MemoryType::GPU_BUFFER)
+  OpenCLBufferTransformer(MemoryType::GPU_BUFFER,
+                          MemoryType::GPU_BUFFER)
       .Transform(&context, bt_output,
                  type, MemoryType::GPU_BUFFER, 0, output);
 
@@ -90,8 +90,8 @@ void TestArgumentTransform(const index_t input_size) {
   Tensor *output = net.ws()->CreateTensor(
       "Output", context.device()->allocator(),
       DataTypeToEnum<T>::value);
-  OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER,
-                             MemoryType::GPU_BUFFER)
+  OpenCLBufferTransformer(MemoryType::GPU_BUFFER,
+                          MemoryType::GPU_BUFFER)
       .Transform(&context, net.ws()->GetTensor("Input"),
                  OpenCLBufferType::ARGUMENT, MemoryType::GPU_BUFFER,
                  0, output);

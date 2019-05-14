@@ -22,7 +22,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
         unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
 
     ret = repository_ctx.execute(
-        ["test", "-f", "%s/mace/ops/opencl/cl/common.h" % mace_root_path],
+        ["test", "-f", "%s/mace/ops/opencl/cl/common.cl" % mace_root_path],
     )
     if ret.return_code == 0:
         unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/activation.cl"))
@@ -71,7 +71,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
         python_bin_path,
         "%s/mace/python/tools/encrypt_opencl_codegen.py" % mace_root_path,
         "--cl_kernel_dir=%s/mace/ops/opencl/cl" % mace_root_path,
-        "--output_path=%s/encrypt_opencl_kernel" % generated_files_path,
+        "--output_path=%s/encrypt_opencl_kernel.cc" % generated_files_path,
     ], quiet = False)
 
 encrypt_opencl_kernel_repository = repository_rule(

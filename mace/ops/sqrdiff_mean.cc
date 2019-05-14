@@ -24,7 +24,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class SqrDiffMeanOp : public Operation {
  public:
   explicit SqrDiffMeanOp(OpConstructContext *context)
@@ -76,15 +76,14 @@ class SqrDiffMeanOp : public Operation {
   }
 };
 
-
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class SqrDiffMeanOp<DeviceType::GPU, T> : public Operation {
+template<>
+class SqrDiffMeanOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit SqrDiffMeanOp(OpConstructContext *context)
       : Operation(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::SqrDiffMeanKernel<T>>();
+      kernel_ = make_unique<opencl::image::SqrDiffMeanKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -101,18 +100,11 @@ class SqrDiffMeanOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterSqrDiffMean(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp,
                    DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp);
 }
 
 }  // namespace ops

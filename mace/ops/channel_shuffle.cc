@@ -23,10 +23,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class ChannelShuffleOp;
 
-template <typename T>
+template<typename T>
 class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ChannelShuffleOp(OpConstructContext *context)
@@ -74,16 +74,15 @@ class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
   const int groups_;
 };
 
-
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ChannelShuffleOp<DeviceType::GPU, T> : public Operation {
+template<>
+class ChannelShuffleOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ChannelShuffleOp(OpConstructContext *context)
       : Operation(context) {
     const int groups = Operation::GetOptionalArg<int>("group", 1);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ChannelShuffleKernel<T>>(groups);
+      kernel_ = make_unique<opencl::image::ChannelShuffleKernel>(groups);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -99,18 +98,11 @@ class ChannelShuffleOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterChannelShuffle(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "ChannelShuffle",
                    ChannelShuffleOp, DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "ChannelShuffle",
-                   ChannelShuffleOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "ChannelShuffle",
-                   ChannelShuffleOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "ChannelShuffle", ChannelShuffleOp);
 
   MACE_REGISTER_OP_CONDITION(
       op_registry,
@@ -119,19 +111,19 @@ void RegisterChannelShuffle(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 int groups = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "group", 1);
                 if (op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
                 index_t channels = op->output_shape(0).dims(3);
                 index_t channels_per_group = channels / groups;
                 if (groups % 4 != 0 || channels_per_group % 4 != 0) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

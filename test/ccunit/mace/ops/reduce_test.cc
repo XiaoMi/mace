@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#include "mace/ops/reduce.h"
+#include "mace/ops/common/reduce_type.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

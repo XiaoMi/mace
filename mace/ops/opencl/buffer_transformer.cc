@@ -23,5 +23,29 @@ std::string TransformedFilterName(const std::string &name) {
   return name + postfix;
 }
 
+MaceStatus TransformFilter(
+    mace::OpConstructContext *context,
+    OperatorDef *op_def,
+    const int input_idx,
+    const OpenCLBufferType buffer_type,
+    const MemoryType mem_type,
+    const int wino_blk_size) {
+  OpContext op_context(context->workspace(), context->device());
+  Workspace *ws = context->workspace();
+  std::string input_name = op_def->input(input_idx);
+  Tensor *input = ws->GetTensor(input_name);
+  const DataType dt = input->dtype();
+  std::string output_name = TransformedFilterName(input_name);
+  Tensor *output =
+      ws->CreateTensor(output_name, context->device()->allocator(), dt, true);
+
+  // update the information
+  op_def->set_input(input_idx, output_name);
+  input->MarkUnused();
+  return OpenCLBufferTransformer(input->memory_type(), mem_type).
+      Transform(&op_context, input, buffer_type, mem_type, wino_blk_size,
+                output);
+}
+
 }  // namespace ops
 }  // namespace mace

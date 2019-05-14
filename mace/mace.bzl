@@ -118,9 +118,21 @@ def mace_version_genrule():
   )
 
 def encrypt_opencl_kernel_genrule():
-  native.genrule(
-      name = "encrypt_opencl_kernel_gen",
-      srcs = [str(Label("@local_opencl_kernel_encrypt//:gen/encrypt_opencl_kernel"))],
-      outs = ["opencl/encrypt_opencl_kernel.cc"],
-      cmd = "cat $(SRCS) > $@;"
-  )
+    srcs = [
+        str(Label(
+            "@local_opencl_kernel_encrypt//:gen/encrypt_opencl_kernel.cc",
+        )),
+        str(Label(
+            "@local_opencl_kernel_encrypt//:gen/encrypt_opencl_kernel.h",
+        )),
+    ]
+    outs = ["opencl/encrypt_opencl_kernel.cc", "opencl/encrypt_opencl_kernel.h"]
+    native.genrule(
+        name = "encrypt_opencl_kernel_gen",
+        srcs = srcs,
+        outs = outs,
+        cmd = " && ".join([
+            "cat $(location %s) > $(location %s)" % (srcs[i], outs[i])
+            for i in range(0, len(outs))
+        ]),
+    )

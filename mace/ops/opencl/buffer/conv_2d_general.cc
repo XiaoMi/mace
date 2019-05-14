@@ -30,7 +30,6 @@ MaceStatus Conv2dGeneral(OpContext *context,
                          const Tensor *bias,
                          const int *strides,
                          const int *dilations,
-                         const DataType dt,
                          const ActivationType activation,
                          const float relux_max_limit,
                          const float leakyrelu_coefficient,
@@ -58,9 +57,11 @@ MaceStatus Conv2dGeneral(OpContext *context,
     MACE_NON_UNIFORM_WG_CONFIG
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv2d");
     built_options.emplace("-Dconv2d=" + kernel_name);
-    built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(padded_input->dtype()));
-    built_options.emplace("-DOUT_DATA_TYPE=" + DtToCLDt(dt));
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
+    std::string pad_data_dt = DtToCLDt(padded_input->dtype());
+    built_options.emplace("-DIN_DATA_TYPE=" + pad_data_dt);
+    std::string out_data_dt = DtToCLDt(output->dtype());
+    built_options.emplace("-DOUT_DATA_TYPE=" + out_data_dt);
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
       case NOOP:

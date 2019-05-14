@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/reduce.h"
-
 #include <algorithm>
 #include <memory>
 #include <set>
 #include <vector>
 
+#include "mace/ops/common/reduce_type.h"
 #include "mace/core/future.h"
 #include "mace/core/operator.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
@@ -868,15 +867,14 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ReduceOp<DeviceType::GPU, T> : public ReduceOpBase {
+template<>
+class ReduceOp<DeviceType::GPU, float> : public ReduceOpBase {
  public:
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ReduceKernel<T>>(reduce_type_,
-                                                            axis_,
-                                                            keep_dims_);
+      kernel_ = make_unique<opencl::image::ReduceKernel>(reduce_type_,
+                                                         axis_);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -901,13 +899,7 @@ void RegisterReduce(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Reduce", ReduceOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Reduce")
@@ -915,26 +907,26 @@ void RegisterReduce(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 bool keep_dims =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, bool>(
                         *op, "keepdims", false);
                 if (!keep_dims) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
                 auto axis =
                     ProtoArgHelper::GetRepeatedArgs<OperatorDef, int>(
                         *op, "axis");
                 if (axis.size() != 2 || axis[0] != 1 || axis[1] != 2) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
                 auto tensor_shape_info = context->tensor_shape_info();
                 if (tensor_shape_info->count(op->input(0)) == 0
                     || tensor_shape_info->at(op->input(0)).size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

@@ -17,7 +17,7 @@
 
 #include <vector>
 
-#include "mace/ops/pooling.h"
+#include "mace/ops/common/pooling_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 
 namespace mace {

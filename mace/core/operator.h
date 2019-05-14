@@ -39,7 +39,7 @@ class OpConditionContext {
   OpConditionContext(const Workspace *ws, TensorShapeMap *info);
   ~OpConditionContext() = default;
 
-  void set_operator_def(const OperatorDef* operator_def);
+  void set_operator_def(const OperatorDef *operator_def);
 
   inline const OperatorDef *operator_def() const {
     return operator_def_;
@@ -49,7 +49,7 @@ class OpConditionContext {
     return ws_;
   }
 
-  inline void set_device(Device* device) {
+  inline void set_device(Device *device) {
     device_ = device;
   }
 
@@ -110,7 +110,7 @@ class OpConstructContext {
     return ws_;
   }
 
-  inline void set_device(Device* device) {
+  inline void set_device(Device *device) {
     device_ = device;
   }
 
@@ -166,14 +166,14 @@ class Operation {
   explicit Operation(OpConstructContext *context);
   virtual ~Operation() = default;
 
-  template <typename T>
+  template<typename T>
   inline T GetOptionalArg(const std::string &name,
                           const T &default_value) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ProtoArgHelper::GetOptionalArg<OperatorDef, T>(
         *operator_def_, name, default_value);
   }
-  template <typename T>
+  template<typename T>
   inline std::vector<T> GetRepeatedArgs(
       const std::string &name, const std::vector<T> &default_value = {}) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
@@ -240,7 +240,6 @@ class Operation {
 #define MACE_OP_OUTPUT_TAGS(first_input, ...) \
   enum _OutputTags { first_input = 0, __VA_ARGS__ }
 
-
 struct OpRegistrationInfo {
  public:
   typedef std::function<std::unique_ptr<Operation>(OpConstructContext *)>
@@ -290,7 +289,6 @@ class OpConditionBuilder {
   OpRegistrationInfo::DataFormatSelector data_format_selector_;
 };
 
-
 class OpRegistryBase {
  public:
   OpRegistryBase() = default;
@@ -315,7 +313,7 @@ class OpRegistryBase {
       OpConstructContext *context,
       DeviceType device_type) const;
 
-  template <class DerivedType>
+  template<class DerivedType>
   static std::unique_ptr<Operation> DefaultCreator(
       OpConstructContext *context) {
     return std::unique_ptr<Operation>(new DerivedType(context));
@@ -333,6 +331,24 @@ class OpRegistryBase {
                         device,                                        \
                         DataTypeToEnum<dt>::value,                     \
                         OpRegistryBase::DefaultCreator<class_name<device, dt>>)
+
+#define MACE_REGISTER_OP_BY_CLASS(                 \
+    op_registry, op_type, class_name, device, dt)  \
+  op_registry->Register(op_type,                   \
+                        device,                    \
+                        DataTypeToEnum<dt>::value, \
+                        OpRegistryBase::DefaultCreator<class_name>)
+
+#ifdef MACE_ENABLE_OPENCL
+#define MACE_REGISTER_GPU_OP(op_registry, op_type, class_name) \
+  op_registry->Register(                                       \
+      op_type,                                                 \
+      DeviceType::GPU,                                         \
+      DT_FLOAT,                                                \
+      OpRegistryBase::DefaultCreator<class_name<DeviceType::GPU, float>>)
+#else
+#define MACE_REGISTER_GPU_OP(op_registry, op_type, class_name)
+#endif
 
 #define MACE_REGISTER_OP_CONDITION(op_registry, builder) \
   op_registry->Register(builder)

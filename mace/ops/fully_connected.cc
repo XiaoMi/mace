@@ -184,27 +184,27 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class FullyConnectedOp<DeviceType::GPU, T> : public FullyConnectedOpBase {
+template<>
+class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context) {
     MemoryType mem_type = MemoryType::CPU_BUFFER;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_ = make_unique<opencl::image::FullyConnectedKernel<T>>();
+      kernel_ = make_unique<opencl::image::FullyConnectedKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
     // Transform filter tensor to target format
-    MACE_CHECK(TransformFilter<T>(
+    MACE_CHECK(TransformFilter(
         context,
         operator_def_.get(),
         1,
         OpenCLBufferType::WEIGHT_WIDTH,
         mem_type) == MaceStatus::MACE_SUCCESS);
     if (operator_def_->input_size() > 2) {
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
@@ -240,13 +240,7 @@ void RegisterFullyConnected(OpRegistryBase *op_registry) {
                    FullyConnectedOp, DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "FullyConnected",
-                   FullyConnectedOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "FullyConnected",
-                   FullyConnectedOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "FullyConnected", FullyConnectedOp);
 }
 
 }  // namespace ops

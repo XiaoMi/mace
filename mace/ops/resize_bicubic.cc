@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/resize_bicubic.h"
-
 #include <algorithm>
 #include <cmath>
 #include <memory>
 #include <vector>
 
 #include "mace/core/operator.h"
+#include "mace/ops/common/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bicubic.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -33,12 +32,12 @@ inline const std::shared_ptr<float> InitCoeffsTable() {
   // convolution algorithm.
   // https://en.wikipedia.org/wiki/Bicubic_interpolation
   auto coeffs_tab = std::shared_ptr<float>(
-      new float[(resize_bicubic::kTableSize + 1) * 2],
+      new float[(common::utils::kTableSize + 1) * 2],
       std::default_delete<float[]>());
   float *coeffs_tab_ptr = coeffs_tab.get();
   static const float A = -0.75f;
-  for (int i = 0; i <= resize_bicubic::kTableSize; ++i) {
-    float x = i * 1.0f / resize_bicubic::kTableSize;
+  for (int i = 0; i <= common::utils::kTableSize; ++i) {
+    float x = i * 1.0f / common::utils::kTableSize;
     coeffs_tab_ptr[i * 2] = ((A + 2) * x - (A + 3)) * x * x + 1;
     x += 1.0;
     coeffs_tab_ptr[i * 2 + 1] = ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
@@ -61,12 +60,12 @@ inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
                                  std::vector<int64_t> *indices) {
   auto in_loc = static_cast<int64_t>(scale * out_loc);
   const float delta = scale * out_loc - in_loc;
-  const int64_t offset = lrintf(delta * resize_bicubic::kTableSize);
+  const int64_t offset = lrintf(delta * common::utils::kTableSize);
   const float *coeffs_tab = GetCoeffsTable();
   *weights = {coeffs_tab[offset * 2 + 1],
               coeffs_tab[offset * 2],
-              coeffs_tab[(resize_bicubic::kTableSize - offset) * 2],
-              coeffs_tab[(resize_bicubic::kTableSize - offset) * 2 + 1]};
+              coeffs_tab[(common::utils::kTableSize - offset) * 2],
+              coeffs_tab[(common::utils::kTableSize - offset) * 2 + 1]};
   *indices = {Bound(in_loc - 1, limit), Bound(in_loc, limit),
               Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
 }
@@ -173,13 +172,13 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
     }
 
     float height_scale =
-        resize_bicubic::CalculateResizeScale(in_height,
-                                             out_height,
-                                             align_corners_);
+        common::utils::CalculateResizeScale(in_height,
+                                            out_height,
+                                            align_corners_);
     float width_scale =
-        resize_bicubic::CalculateResizeScale(in_width,
-                                             out_width,
-                                             align_corners_);
+        common::utils::CalculateResizeScale(in_width,
+                                            out_width,
+                                            align_corners_);
 
     ResizeImage(context,
                 input_data,
@@ -202,8 +201,8 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ResizeBicubicOp<DeviceType::GPU, T> : public Operation {
+template<>
+class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeBicubicOp(OpConstructContext *context)
       : Operation(context) {
@@ -213,7 +212,7 @@ class ResizeBicubicOp<DeviceType::GPU, T> : public Operation {
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ResizeBicubicKernel<T>>(
+      kernel_ = make_unique<opencl::image::ResizeBicubicKernel>(
           align_corners, size[0], size[1]);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -237,13 +236,7 @@ void RegisterResizeBicubic(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBicubic", ResizeBicubicOp,
                    DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "ResizeBicubic", ResizeBicubicOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "ResizeBicubic", ResizeBicubicOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "ResizeBicubic", ResizeBicubicOp);
 }
 
 }  // namespace ops

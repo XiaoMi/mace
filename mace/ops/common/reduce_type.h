@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_REDUCE_H_
-#define MACE_OPS_REDUCE_H_
+#ifndef MACE_OPS_COMMON_REDUCE_TYPE_H_
+#define MACE_OPS_COMMON_REDUCE_TYPE_H_
 
 
 namespace mace {
@@ -28,4 +28,4 @@ enum ReduceType {
 };
 }  // namespace mace
 
-#endif  // MACE_OPS_REDUCE_H_
+#endif  // MACE_OPS_COMMON_REDUCE_TYPE_H_

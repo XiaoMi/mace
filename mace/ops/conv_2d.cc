@@ -446,8 +446,8 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
+template<>
+class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
@@ -461,10 +461,10 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_ = make_unique<opencl::image::Conv2dKernel<T>>();
+      kernel_ = make_unique<opencl::image::Conv2dKernel>();
     } else {
       mem_type = MemoryType::GPU_BUFFER;
-      kernel_ = make_unique<opencl::buffer::Conv2dKernel<T>>();
+      kernel_ = make_unique<opencl::buffer::Conv2dKernel>();
     }
     // Transform filter tensor to target format
     if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
@@ -477,19 +477,19 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
           strides_.data(),
           dilations_.data(),
           &wino_block_size_))) {
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 1,
           OpenCLBufferType::WINOGRAD_FILTER, mem_type, wino_block_size_)
                      == MaceStatus::MACE_SUCCESS);
     } else {
       wino_block_size_ = 0;
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 1,
           OpenCLBufferType::CONV2D_FILTER, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
     if (operator_def_->input_size() > 2) {
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
@@ -527,13 +527,7 @@ void RegisterConv2D(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Conv2D", Conv2dOp);
 }
 
 }  // namespace ops

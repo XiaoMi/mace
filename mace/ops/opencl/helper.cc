@@ -77,28 +77,6 @@ std::string DtToCLCMDDt(const DataType dt) {
   }
 }
 
-std::string DtToUpCompatibleCLDt(const DataType dt) {
-  switch (dt) {
-    case DT_FLOAT:
-    case DT_HALF:
-      return "float";
-    default:
-      LOG(FATAL) << "Unsupported data type";
-      return "";
-  }
-}
-
-std::string DtToUpCompatibleCLCMDDt(const DataType dt) {
-  switch (dt) {
-    case DT_FLOAT:
-    case DT_HALF:
-      return "f";
-    default:
-      LOG(FATAL) << "Not supported data type for opencl cmd data type";
-      return "";
-  }
-}
-
 std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
                                        const uint32_t *gws,
                                        const uint32_t kwg_size) {

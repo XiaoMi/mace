@@ -77,7 +77,7 @@ class MatMulOpBase : public Operation {
     } else {
       MACE_CHECK(lhs_rank == 2 || rhs_rank == 2,
                  "Either lhs or rhs matrix should has rank 2 "
-                     "for non-batched matrix multiplication");
+                 "for non-batched matrix multiplication");
     }
 
     index_t
@@ -492,8 +492,8 @@ class MatMulOp<DeviceType::CPU, uint8_t> : public MatMulOpBase {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class MatMulOp<DeviceType::GPU, T> : public MatMulOpBase {
+template<>
+class MatMulOp<DeviceType::GPU, float> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context) {
@@ -592,7 +592,6 @@ class MatMulOp<CPU, float16_t> : public MatMulOpBase {
 };
 #endif  // MACE_ENABLE_NEON
 
-
 void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, float);
@@ -602,13 +601,7 @@ void RegisterMatMul(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "MatMul", MatMulOp);
 
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,

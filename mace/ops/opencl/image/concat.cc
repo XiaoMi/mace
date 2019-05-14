@@ -50,7 +50,6 @@ MaceStatus Concat2(OpContext *context,
                    cl::Kernel *kernel,
                    const Tensor *input0,
                    const Tensor *input1,
-                   const DataType dt,
                    std::vector<index_t> *prev_input_shape,
                    Tensor *output,
                    uint32_t *kwg_size) {
@@ -75,12 +74,14 @@ MaceStatus Concat2(OpContext *context,
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
     built_options.emplace("-Dconcat_channel=" + kernel_name);
     if (input0->dtype() == output->dtype()) {
-      built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
-      built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+      auto data_dt = input0->dtype();
+      built_options.emplace("-DDATA_TYPE=" + DtToCLDt(data_dt));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(data_dt));
     } else {
-      built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-      built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+      built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     }
+
     if (input0->dim(3) % 4 == 0) {
       built_options.emplace("-DDIVISIBLE_FOUR");
     }
@@ -119,7 +120,6 @@ MaceStatus Concat2(OpContext *context,
 MaceStatus ConcatN(OpContext *context,
                    cl::Kernel *kernel,
                    const std::vector<const Tensor *> &input_list,
-                   const DataType dt,
                    Tensor *output,
                    uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
@@ -135,8 +135,8 @@ MaceStatus ConcatN(OpContext *context,
     MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel_multi");
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("concat", kernel_name,
                                               built_options, kernel));
     *kwg_size =
@@ -205,6 +205,51 @@ MaceStatus ConcatN(OpContext *context,
 }
 
 }  // namespace concat
+
+
+MaceStatus ConcatKernel::Compute(
+    OpContext *context,
+    const std::vector<const Tensor *> &input_list,
+    const int32_t axis,
+    Tensor *output) {
+  const int inputs_count = input_list.size();
+
+  const Tensor *input0 = input_list[0];
+
+  std::vector<index_t> output_shape(input0->shape());
+  for (int i = 1; i < inputs_count; ++i) {
+    const Tensor *input = input_list[i];
+    MACE_CHECK(input->dim_size() == input0->dim_size(),
+               "Ranks of all input tensors must be same.");
+    for (int j = 0; j < input->dim_size(); ++j) {
+      if (j == axis) {
+        continue;
+      }
+      MACE_CHECK(input->dim(j) == input0->dim(j),
+                 "Dimensions of inputs should equal except axis.");
+    }
+    output_shape[axis] += input->dim(axis);
+  }
+  std::vector<size_t> image_shape;
+  OpenCLUtil::CalImage2DShape(output_shape,
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
+
+  switch (inputs_count) {
+    case 2:
+      return concat::Concat2(
+          context, &kernel_, input_list[0], input_list[1],
+          &input_shape_, output, &kwg_size_);
+    default:
+      return concat::ConcatN(context,
+                             &kernel_,
+                             input_list,
+                             output,
+                             &kwg_size_);
+  }
+}
+
 }  // namespace image
 }  // namespace opencl
 }  // namespace ops

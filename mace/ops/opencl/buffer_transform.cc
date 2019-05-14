@@ -20,11 +20,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class BufferTransformOp;
 
-template <typename T>
-class BufferTransformOp<DeviceType::GPU, T> : public Operation {
+template<>
+class BufferTransformOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit BufferTransformOp(OpConstructContext *context)
       : Operation(context),
@@ -42,7 +42,7 @@ class BufferTransformOp<DeviceType::GPU, T> : public Operation {
 
     MemoryType in_mem_type = context->workspace()->GetTensor(
         operator_def_->input(0))->memory_type();
-    return OpenCLBufferTransformer<T>(in_mem_type, out_mem_type_).Transform(
+    return OpenCLBufferTransformer(in_mem_type, out_mem_type_).Transform(
         context, input, type, out_mem_type_, wino_blk_size_, output);
   }
 
@@ -51,13 +51,8 @@ class BufferTransformOp<DeviceType::GPU, T> : public Operation {
   MemoryType out_mem_type_;
 };
 
-
 void RegisterBufferTransform(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "BufferTransform",
-                   BufferTransformOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "BufferTransform",
-                   BufferTransformOp, DeviceType::GPU, half);
+  MACE_REGISTER_GPU_OP(op_registry, "BufferTransform", BufferTransformOp);
 }
 
 }  // namespace ops

@@ -161,8 +161,8 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class BatchNormOp<DeviceType::GPU, T> : public Operation {
+template<>
+class BatchNormOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit BatchNormOp(OpConstructContext *context)
       : Operation(context) {
@@ -176,7 +176,7 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_ = make_unique<opencl::image::BatchNormKernel<T>>(
+      kernel_ = make_unique<opencl::image::BatchNormKernel>(
           epsilon, activation, relux_max_limit, leakyrelu_coefficient);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -187,7 +187,7 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
       const Tensor *input_tensor = context->workspace()->GetTensor(
           operator_def_->input(i));
       MACE_CHECK(input_tensor != nullptr);
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context,
           operator_def_.get(),
           i,
@@ -235,14 +235,7 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
 void RegisterBatchNorm(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,
                    DeviceType::CPU, float);
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "BatchNorm", BatchNormOp);
 }
 
 }  // namespace ops
