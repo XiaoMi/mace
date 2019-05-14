@@ -15,6 +15,7 @@ load(
     "if_hexagon_enabled",
     "if_hta_enabled",
     "if_linux",
+    "if_linux_base",
     "if_neon_enabled",
     "if_opencl_enabled",
     "if_openmp_enabled",
@@ -99,9 +100,10 @@ genrule(
         "//mace/public",
         "//mace/utils",
         "//mace/proto:mace_cc",
-        "//mace/port/linux_base:port_linux_base",
         "@com_google_protobuf//:protobuf_lite",
-    ] + if_android([
+    ] + if_linux_base([
+        "//mace/port/linux_base:port_linux_base",
+    ]) + if_android([
         "//mace/port/android:port_android",
     ]) + if_linux([
         "//mace/port/linux:port_linux",
@@ -134,13 +136,15 @@ genrule(
           "$(locations //mace/libmace:libmace) " +
           "$(locations //mace/port:port_base) " +
           "$(locations //mace/port/posix:port_posix) " +
+          if_linux_base(
+              "$(locations //mace/port/linux_base:port_linux_base) ",
+              default_value = "",
+          ) +
           if_android(
-              "$(locations //mace/port/linux_base:port_linux_base) " +
               "$(locations //mace/port/android:port_android) ",
               default_value = "",
           ) +
           if_linux(
-              "$(locations //mace/port/linux_base:port_linux_base) " +
               "$(locations //mace/port/linux:port_linux) ",
               default_value = "",
           ) +
