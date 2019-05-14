@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
+#define MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
 
 #include <string>
 #include <vector>
@@ -58,3 +59,5 @@ struct tensor_info {
 };
 
 }  // namespace mace
+
+#endif  // MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
