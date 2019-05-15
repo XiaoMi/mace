@@ -189,6 +189,19 @@ def get_hta_mode(configs):
     return False
 
 
+def get_apu_mode(configs):
+    runtime_list = []
+    for model_name in configs[YAMLKeyword.models]:
+        model_runtime = \
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.runtime, "")
+        runtime_list.append(model_runtime.lower())
+
+    if RuntimeType.apu in runtime_list:
+        return True
+    return False
+
+
 def get_opencl_mode(configs):
     runtime_list = []
     for model_name in configs[YAMLKeyword.models]:
@@ -575,6 +588,7 @@ def format_model_config(flags):
                 DeviceType.GPU: ValidationThreshold.gpu_threshold,
                 DeviceType.HEXAGON: ValidationThreshold.quantize_threshold,
                 DeviceType.HTA: ValidationThreshold.quantize_threshold,
+                DeviceType.APU: ValidationThreshold.quantize_threshold,
                 DeviceType.QUANTIZE: ValidationThreshold.quantize_threshold,
             }
             for k, v in six.iteritems(validation_threshold):
@@ -816,6 +830,7 @@ def build_model_lib(configs, address_sanitizer, debug_mode):
             toolchain=toolchain,
             enable_hexagon=get_hexagon_mode(configs),
             enable_hta=get_hta_mode(configs),
+            enable_apu=get_apu_mode(configs),
             enable_opencl=get_opencl_mode(configs),
             enable_quantize=get_quantize_mode(configs),
             address_sanitizer=address_sanitizer,
@@ -884,6 +899,7 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         toolchain=toolchain,
         enable_hexagon=get_hexagon_mode(configs),
         enable_hta=get_hta_mode(configs),
+        enable_apu=get_apu_mode(configs),
         enable_openmp=enable_openmp,
         enable_opencl=get_opencl_mode(configs),
         enable_quantize=get_quantize_mode(configs),
@@ -931,6 +947,7 @@ def build_example(configs, target_abi, toolchain, enable_openmp, mace_lib_type,
                             enable_quantize=get_quantize_mode(configs),
                             enable_hexagon=get_hexagon_mode(configs),
                             enable_hta=get_hta_mode(configs),
+                            enable_apu=get_apu_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
                             symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),  # noqa
                             debug_mode=debug_mode)
@@ -964,6 +981,7 @@ def build_example(configs, target_abi, toolchain, enable_openmp, mace_lib_type,
                             enable_quantize=get_quantize_mode(configs),
                             enable_hexagon=get_hexagon_mode(configs),
                             enable_hta=get_hta_mode(configs),
+                            enable_apu=get_apu_mode(configs),
                             address_sanitizer=flags.address_sanitizer,
                             debug_mode=debug_mode,
                             extra_args=build_arg)
@@ -1072,6 +1090,7 @@ def build_benchmark_model(configs,
                             enable_quantize=get_quantize_mode(configs),
                             enable_hexagon=get_hexagon_mode(configs),
                             enable_hta=get_hta_mode(configs),
+                            enable_apu=get_apu_mode(configs),
                             symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),  # noqa
                             debug_mode=debug_mode,
                             extra_args=build_arg)

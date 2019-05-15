@@ -397,12 +397,13 @@ class ApuConverter(base_converter.ConverterInterface):
             _op.input.extend([tensor.name])
 
     def use_uint8_in_out(self):
+        replace_dict = {}
         for input_info in self._model.input_info:
             if input_info.data_type == mace_pb2.DT_FLOAT:
                 for op in self._model.op:
                     if op.input[0] == input_info.name \
                            and op.type == MaceOp.Quantize.name:
-                        input_info.name = op.output[0]
+                        replace_dict[op.output[0]] = input_info.name
                         input_info.scale = op.quantize_info[0].scale
                         input_info.zero_point = op.quantize_info[0].zero_point
                         break
@@ -412,6 +413,13 @@ class ApuConverter(base_converter.ConverterInterface):
                 for op in self._model.op:
                     if op.output[0] == output_info.name \
                            and op.type == MaceOp.Dequantize.name:
-                        output_info.name = op.input[0]
+                        replace_dict[op.input[0]] = output_info.name
                         break
                 self._model.op.remove(op)
+        for op in self._model.op:
+            for i, op_input in enumerate(op.input):
+                if op_input in replace_dict.keys():
+                    op.input[i] = replace_dict[op_input]
+            for i, op_output in enumerate(op.output):
+                if op_output in replace_dict.keys():
+                    op.output[i] = replace_dict[op_output]

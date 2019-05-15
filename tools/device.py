@@ -280,6 +280,10 @@ class DeviceWrapper:
                     "third_party/nnlib/%s/libhexagon_controller.so" % abi,
                     self.data_dir)
 
+            if device_type == common.DeviceType.APU:
+                self.push("third_party/apu/libapu-frontend.so",
+                          self.data_dir)
+
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:
                 mace_model_phone_path = "%s/%s.pb" % (self.data_dir,

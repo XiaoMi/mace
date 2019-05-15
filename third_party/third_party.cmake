@@ -58,3 +58,7 @@ endif(MACE_ENABLE_HEXAGON_DSP)
 if(MACE_ENABLE_HEXAGON_HTA)
   include(${PROJECT_SOURCE_DIR}/third_party/hta/hta.cmake)
 endif(MACE_ENABLE_HEXAGON_HTA)
+
+if(MACE_ENABLE_MTK_APU)
+  include(${PROJECT_SOURCE_DIR}/third_party/apu/apu.cmake)
+endif(MACE_ENABLE_MTK_APU)
