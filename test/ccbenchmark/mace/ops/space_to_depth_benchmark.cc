@@ -29,7 +29,7 @@ void SpaceToDepth(
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, height, channels, width});
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
@@ -78,6 +78,10 @@ void SpaceToDepth(
   MACE_BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, float, CPU)
 #endif
 
+MACE_BM_SPACE_TO_DEPTH(1, 1, 513, 513, 3);
+MACE_BM_SPACE_TO_DEPTH(1, 2, 256, 256, 2);
+MACE_BM_SPACE_TO_DEPTH(1, 3, 512, 512, 2);
+MACE_BM_SPACE_TO_DEPTH(1, 3, 513, 513, 3);
 MACE_BM_SPACE_TO_DEPTH(1, 64, 64, 64, 4);
 MACE_BM_SPACE_TO_DEPTH(1, 64, 128, 128, 4);
 MACE_BM_SPACE_TO_DEPTH(1, 64, 256, 256, 4);

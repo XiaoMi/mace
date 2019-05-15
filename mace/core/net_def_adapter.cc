@@ -164,6 +164,7 @@ MaceStatus NetDefAdapter::AdaptNetDef(
         input_info->set_dims(j, input_shape[j]);
       }
     }
+    tensor_shape_map.emplace(input_info->name(), input_shape);
     output_map.emplace(input_info->name(), InternalOutputInfo(
         mem_type, input_info->data_type(),
         input_data_format, input_shape, -1));
