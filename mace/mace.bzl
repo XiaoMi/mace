@@ -79,6 +79,18 @@ def if_hexagon_or_hta_enabled(a):
       "//conditions:default": [],
   })
 
+def if_apu_enabled(a):
+  return select({
+      "//mace:apu_enabled": a,
+      "//conditions:default": [],
+  })
+
+def if_not_apu_enabled(a):
+  return select({
+      "//mace:apu_enabled": [],
+      "//conditions:default": a,
+  })
+
 def if_openmp_enabled(a):
   return select({
       "//mace:openmp_enabled": a,

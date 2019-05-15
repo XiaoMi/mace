@@ -38,7 +38,13 @@
 #include "mace/core/runtime/hexagon/hexagon_device.h"
 #endif
 
+#ifdef MACE_ENABLE_APU
+#include "mace/core/runtime/apu/apu_wrapper.h"
+#include "mace/core/runtime/apu/apu_device.h"
+#endif  // MACE_ENABLE_APU
+
 namespace mace {
+
 namespace {
 
 #ifdef MACE_ENABLE_OPENCL
@@ -398,6 +404,9 @@ class MaceEngine::Impl {
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
+#ifdef MACE_ENABLE_APU
+  std::unique_ptr<ApuWrapper> apu_controller_;
+#endif
 
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };
@@ -414,6 +423,9 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
                                          config.impl_->cpu_affinity_policy()))
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
 , hexagon_controller_(nullptr)
+#endif
+#ifdef MACE_ENABLE_APU
+      , apu_controller_(nullptr)
 #endif
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
@@ -440,6 +452,11 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
   if (device_type_ == DeviceType::HEXAGON
       || device_type_ == DeviceType::HTA) {
     device_.reset(new HexagonDevice(device_type_, thread_pool_.get()));
+  }
+#endif
+#ifdef MACE_ENABLE_APU
+  if (device_type_ == DeviceType::APU) {
+    device_.reset(new ApuDevice(thread_pool_.get()));
   }
 #endif
   MACE_CHECK_NOTNULL(device_);
@@ -498,6 +515,11 @@ MaceStatus MaceEngine::Impl::Init(
         ws_->CreateTensor(output_name, device_->allocator(), output_dt);
     output_tensor->set_data_format(DataFormat::NHWC);
 #endif
+#if defined(MACE_ENABLE_APU)
+    Tensor *output_tensor =
+        ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
+    output_tensor->set_data_format(DataFormat::NHWC);
+#endif
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
@@ -511,6 +533,12 @@ MaceStatus MaceEngine::Impl::Init(
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->PrintGraph();
     }
+  } else {
+#endif
+#ifdef MACE_ENABLE_APU
+  if (device_type_ == APU) {
+    apu_controller_.reset(new ApuWrapper(device_.get()));
+    MACE_CHECK(apu_controller_->Init(*net_def, model_data), "apu init error");
   } else {
 #endif
     MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
@@ -540,6 +568,9 @@ MaceStatus MaceEngine::Impl::Init(
     }
     MACE_RETURN_IF_ERROR(net_->Init());
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  }
+#endif
+#ifdef MACE_ENABLE_APU
   }
 #endif
 
@@ -578,6 +609,11 @@ MaceEngine::Impl::~Impl() {
     }
     MACE_CHECK(hexagon_controller_->TeardownGraph(), "hexagon teardown error");
     MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");
+  }
+#endif
+#ifdef MACE_ENABLE_APU
+  if (device_type_ == APU) {
+    MACE_CHECK(apu_controller_->Uninit(), "apu uninit error");
   }
 #endif
 }
@@ -768,8 +804,17 @@ MaceStatus MaceEngine::Impl::Run(
     hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif
+#ifdef MACE_ENABLE_APU
+  if (device_type_ == APU) {
+    MACE_CHECK(apu_controller_->Run(input_tensors, &output_tensors),
+               "apu run error");
+  } else {
+#endif
   MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+  }
+#endif
+#ifdef MACE_ENABLE_APU
   }
 #endif
 

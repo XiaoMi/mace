@@ -654,6 +654,7 @@ class Transformer(base_converter.ConverterInterface):
                     # remove bn
                     del consumer_op.input[:]
                     net.tensors.remove(scale)
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
 
                     return True
@@ -722,6 +723,7 @@ class Transformer(base_converter.ConverterInterface):
 
                     del consumer_op.input[:]
                     net.tensors.remove(scale)
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
 
                     return True
@@ -778,6 +780,7 @@ class Transformer(base_converter.ConverterInterface):
                     # remove bn
                     del consumer_op.input[:]
                     net.tensors.remove(scale)
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
 
                     return True
@@ -874,7 +877,8 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def flatten_atrous_conv(self):
-        if self._option.device != DeviceType.GPU.value:
+        if self._option.device != DeviceType.GPU.value \
+               and self._option.device != DeviceType.APU.value:
             return
 
         net = self._model
@@ -1070,7 +1074,8 @@ class Transformer(base_converter.ConverterInterface):
         transposed_deconv_filter = set()
 
         if self._option.quantize and \
-                self._option.device == DeviceType.CPU.value:
+                (self._option.device == DeviceType.CPU.value or
+                 self._option.device == DeviceType.APU.value):
             print("Transpose filters to OHWI")
             if filter_format == DataFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
@@ -1082,7 +1087,9 @@ class Transformer(base_converter.ConverterInterface):
 
             for op in net.op:
                 if (op.type == MaceOp.Conv2D.name or
-                    op.type == MaceOp.Deconv2D.name) and\
+                    op.type == MaceOp.Deconv2D.name or
+                    (op.type == MaceOp.DepthwiseConv2d.name and
+                     self._option.device == DeviceType.APU.value)) and\
                         op.input[1] not in transposed_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
@@ -1572,7 +1579,8 @@ class Transformer(base_converter.ConverterInterface):
                         if len(ops[0].input) >= 4:
                             check_deconv = ops[0].input[3] == tensor.name
             if check_conv or check_deconv:
-                if self._option.device == DeviceType.CPU.value:
+                if self._option.device == DeviceType.CPU.value \
+                       or self._option.device == DeviceType.APU.value:
                     conv_op = ops[0]
                     scale_input = self._quantize_activation_info[
                         conv_op.input[0]].scale
@@ -1648,13 +1656,16 @@ class Transformer(base_converter.ConverterInterface):
 
         net = self._model
         for op in net.op:
-            if op.type == 'FakeQuantWithMinMaxVars':
+            if op.type == 'FakeQuantWithMinMaxVars' or \
+                   op.type == 'FakeQuantWithMinMaxArgs':
                 producer_op = self._producer[op.input[0]]
                 minval = ConverterUtil.get_arg(op, 'min').f
                 maxval = ConverterUtil.get_arg(op, 'max').f
                 quantize_info = \
                     self.add_quantize_info(producer_op, minval, maxval)
                 self._quantize_activation_info[op.input[0]] = quantize_info
+                # for add -> fakequant pattern
+                self._quantize_activation_info[op.output[0]] = quantize_info
                 op.type = MaceOp.Identity.name
 
         return False

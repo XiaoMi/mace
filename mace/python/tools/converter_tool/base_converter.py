@@ -23,6 +23,7 @@ class DeviceType(Enum):
     GPU = 2
     HEXAGON = 3
     HTA = 4
+    APU = 5
 
 
 class DataFormat(Enum):
@@ -271,6 +272,7 @@ class MaceKeyword(object):
     mace_pad_type_str = 'pad_type'
     mace_exclusive_str = 'exclusive'
     mace_reverse_str = 'reverse'
+    mace_const_data_num_arg_str = 'const_data_num'
 
 
 class TransformerRule(Enum):
@@ -518,6 +520,9 @@ class ConverterOption(object):
                 TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
+                # For StoB -> conv -> BtoS -> BN pattern
+                # Insert flatten_atrous_conv before fold_xxx_and_bn
+                TransformerRule.FLATTEN_ATROUS_CONV,
                 TransformerRule.FOLD_BATCHNORM,
                 TransformerRule.FOLD_CONV_AND_BN,
                 TransformerRule.FOLD_DECONV_AND_BN,

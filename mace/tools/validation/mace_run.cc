@@ -78,6 +78,8 @@ DeviceType ParseDeviceType(const std::string &device_str) {
     return DeviceType::HEXAGON;
   } else if (device_str.compare("HTA") == 0) {
     return DeviceType::HTA;
+  } else if (device_str.compare("APU") == 0) {
+    return DeviceType::APU;
   } else {
     return DeviceType::CPU;
   }
@@ -141,7 +143,7 @@ DEFINE_string(model_data_file,
 DEFINE_string(model_file,
               "",
               "model file name, used when load mace model in pb");
-DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON");
+DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON/APU");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");

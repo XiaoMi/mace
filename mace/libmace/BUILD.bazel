@@ -11,6 +11,7 @@ load(
     "//mace:mace.bzl",
     "if_android",
     "if_android_armv7",
+    "if_apu_enabled",
     "if_darwin",
     "if_hexagon_enabled",
     "if_hta_enabled",
@@ -44,6 +45,8 @@ cc_library(
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
+    ]) + if_apu_enabled([
+        "-DMACE_ENABLE_APU",
     ]),
     deps = [
         "//mace/ops",
