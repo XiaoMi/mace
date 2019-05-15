@@ -87,13 +87,15 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   #else
     out = floor(in0 / in1);
   #endif
+#elif ELTWISE_TYPE == 12
+  out = fmax(coeff0, fmin(coeff1, in0));
 #endif
 
 #if defined(NOT_DIVISIBLE_FOUR) &&                                       \
     ((ELTWISE_TYPE == 3 || ELTWISE_TYPE == 9 || ELTWISE_TYPE == 11)      \
      || ((defined(INPUT_SCALAR) || defined(INPUT_TENSOR_BC_CHAN)) &&     \
          (ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 || \
-          ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8)))
+          ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 12)))
   const int remain_channel = channel - 4 * chan_idx;
   if (remain_channel < 4) {
     switch (remain_channel) {

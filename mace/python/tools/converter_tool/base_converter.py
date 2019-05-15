@@ -80,6 +80,7 @@ class EltwiseType(Enum):
     POW = 9
     EQUAL = 10
     FLOOR_DIV = 11
+    CLIP = 12
 
 
 class ReduceType(Enum):
@@ -273,6 +274,7 @@ class MaceKeyword(object):
     mace_exclusive_str = 'exclusive'
     mace_reverse_str = 'reverse'
     mace_const_data_num_arg_str = 'const_data_num'
+    mace_coeff_str = 'coeff'
 
 
 class TransformerRule(Enum):

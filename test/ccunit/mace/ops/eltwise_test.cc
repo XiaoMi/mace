@@ -114,7 +114,8 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
 
   // Add input data
   net.AddInputFromArray<D, T>("Input0", shape0, input0);
-  net.AddInputFromArray<D, T>("Input1", shape1, input1);
+  if (shape1.size() > 0 && input1.size() > 0)
+    net.AddInputFromArray<D, T>("Input1", shape1, input1);
 
   if (D == DeviceType::CPU) {
     auto op_builder =
@@ -136,7 +137,7 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
       net.TransformDataFormat<D, T>(
           "Input1", DataFormat::NHWC, "TInput1", DataFormat::NCHW);
       op_builder.Input("TInput1");
-    } else {
+    } else if (shape1.size() > 0) {
       op_builder.Input("Input1");
     }
     op_builder.Finalize(net.NewOperatorDef());
@@ -146,14 +147,15 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
     net.TransformDataFormat<D, DstType>(
         "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   } else {
-    OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("Input0")
-        .Input("Input1")
-        .AddIntArg("type", static_cast<int>(type))
-        .AddFloatsArg("coeff", coeff)
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
-
+    auto op_builder =
+        OpDefBuilder("Eltwise", "EltwiseTest")
+            .Input("Input0")
+            .AddIntArg("type", static_cast<int>(type))
+            .AddFloatsArg("coeff", coeff)
+            .Output("Output");
+    if (input1.size() > 0 && shape1.size() > 0)
+      op_builder.Input("Input1");
+    op_builder.Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
   }
@@ -500,6 +502,10 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorTensor) {
   SimpleTensorEltwise<DeviceType::CPU, int32_t, int32_t>(
       ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 1, 1, 1, 1});
+  SimpleTensorEltwise<DeviceType::CPU, float, float>(
+      ops::EltwiseType::CLIP, {1, 2, 1, 5},
+      {1, 2, 3, 4, 5, 1, 2, 3, 4, 5}, {},
+      {}, {2, 2, 3, 3, 3, 2, 2, 3, 3, 3}, {2.0f, 3.0f});
 }
 TEST_F(EltwiseOpTest, GPUSimpleTensorTensor) {
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
@@ -535,6 +541,10 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorTensor) {
       ops::EltwiseType::SQR_DIFF, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
+  SimpleTensorEltwise<DeviceType::GPU, float, float>(
+      ops::EltwiseType::CLIP, {1, 2, 1, 5},
+      {1, 2, 3, 4, 5, 1, 2, 3, 4, 5}, {},
+      {}, {2, 2, 3, 3, 3, 2, 2, 3, 3, 3}, {2.0f, 3.0f});
 }
 
 namespace {
@@ -912,6 +922,8 @@ TEST_F(EltwiseOpTest, RandomTensorTensorFloat) {
                              {3, 31, 37, 17});
   RandomTensorEltwise<float>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
                              {3, 31, 37, 17});
+  RandomTensorEltwise<float>(ops::EltwiseType::CLIP, {3, 31, 37, 17},
+                             {3, 31, 37, 17}, {-0.2, 0.85});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorTensorHalf) {
@@ -929,6 +941,8 @@ TEST_F(EltwiseOpTest, RandomTensorTensorHalf) {
                             {3, 31, 37, 17});
   RandomTensorEltwise<half>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
                             {3, 31, 37, 17});
+  RandomTensorEltwise<half>(ops::EltwiseType::CLIP, {3, 31, 37, 17},
+                            {3, 31, 37, 17}, {-0.2, 0.85});
 }
 
 TEST_F(EltwiseOpTest, TensorGeneralBroadcastCPU) {

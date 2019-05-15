@@ -31,7 +31,8 @@ enum EltwiseType {
   POW = 9,
   EQUAL = 10,
   FLOOR_DIV = 11,
-  NONE = 12,
+  CLIP = 12,
+  NONE = 13,
 };
 
 }  // namespace ops
