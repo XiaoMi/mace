@@ -28,10 +28,7 @@ cc_binary(
         "//mace/codegen:generated_models",
         "//mace/libmace",
         "//mace/utils",
-    ] + if_opencl_enabled([
-        "//mace/codegen:generated_opencl_binary",
-        "//mace/codegen:generated_opencl_parameter",
-    ]),
+    ],
 )
 
 cc_binary(
@@ -60,10 +57,7 @@ cc_binary(
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_models",
         "//mace/libmace:libmace_dynamic",
-    ] + if_opencl_enabled([
-        "//mace/codegen:generated_opencl_binary",
-        "//mace/codegen:generated_opencl_parameter",
-    ]),
+    ],
 )
 
 cc_library(

@@ -57,7 +57,7 @@ MaceStatus SpaceToDepthKernel<T>::Compute(
   const index_t input_width = input->dim(2);
   const index_t input_depth = input->dim(3);
 
-  MACE_CHECK((input_depth % 4) == 0,
+  MACE_CHECK(input_depth < 4 || (input_depth % 4) == 0,
              "input channel should be dividable by 4");
   MACE_CHECK(
       (input_width % block_size_ == 0) && (input_height % block_size_ == 0),
@@ -67,7 +67,6 @@ MaceStatus SpaceToDepthKernel<T>::Compute(
   const index_t output_width = input_width / block_size_;
   const index_t output_depth = input_depth * block_size_ * block_size_;
 
-  const index_t input_depth_blocks = RoundUpDiv4(input_depth);
   const index_t output_depth_blocks = RoundUpDiv4(output_depth);
 
   std::vector<index_t> output_shape = {batch, output_height, output_width,
@@ -90,6 +89,9 @@ MaceStatus SpaceToDepthKernel<T>::Compute(
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
+    if (input_depth < 4) {
+      built_options.emplace(MakeString("-DDEPTH", input_depth));
+    }
     built_options.emplace(kernel_name_ss.str());
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
@@ -102,28 +104,28 @@ MaceStatus SpaceToDepthKernel<T>::Compute(
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(input_depth_blocks),
-                           static_cast<uint32_t>(input_width),
-                           static_cast<uint32_t>(input_height * batch)};
+  const uint32_t gws[3] = {static_cast<uint32_t>(output_depth_blocks),
+                           static_cast<uint32_t>(output_width),
+                           static_cast<uint32_t>(output_height * batch)};
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
     kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, static_cast<int32_t>(block_size_));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_height));
     kernel_.setArg(idx++, static_cast<int32_t>(input_width));
-    kernel_.setArg(idx++, static_cast<int32_t>(input_depth_blocks));
-    kernel_.setArg(idx++, static_cast<int32_t>(output_height * batch));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_depth));
+    kernel_.setArg(idx++, static_cast<int32_t>(block_size_));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_height));
     kernel_.setArg(idx++, static_cast<int32_t>(output_width));
-    kernel_.setArg(idx++, static_cast<int32_t>(output_depth_blocks));
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();
   }
 
   const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
-  std::string tuning_key = Concat("space_to_depth_opencl_kernel", input->dim(0),
+  std::string tuning_key = Concat("space_to_depth", input->dim(0),
                                   input->dim(1), input->dim(2), input->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, context->future()));
