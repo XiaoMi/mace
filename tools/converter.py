@@ -118,8 +118,7 @@ class DefaultValues(object):
 class ValidationThreshold(object):
     cpu_threshold = 0.999,
     gpu_threshold = 0.995,
-    hexagon_threshold = 0.930,
-    cpu_quantize_threshold = 0.980,
+    quantize_threshold = 0.980,
 
 
 CPP_KEYWORDS = [
@@ -501,12 +500,9 @@ def format_model_config(flags):
             threshold_dict = {
                 DeviceType.CPU: ValidationThreshold.cpu_threshold,
                 DeviceType.GPU: ValidationThreshold.gpu_threshold,
-                DeviceType.HEXAGON + "_QUANTIZE":
-                    ValidationThreshold.hexagon_threshold,
-                DeviceType.HTA + "_QUANTIZE":
-                    ValidationThreshold.hexagon_threshold,
-                DeviceType.CPU + "_QUANTIZE":
-                    ValidationThreshold.cpu_quantize_threshold,
+                DeviceType.HEXAGON: ValidationThreshold.quantize_threshold,
+                DeviceType.HTA: ValidationThreshold.quantize_threshold,
+                DeviceType.QUANTIZE: ValidationThreshold.quantize_threshold,
             }
             for k, v in six.iteritems(validation_threshold):
                 if k.upper() == 'DSP':
@@ -515,7 +511,7 @@ def format_model_config(flags):
                                      DeviceType.GPU,
                                      DeviceType.HEXAGON,
                                      DeviceType.HTA,
-                                     DeviceType.CPU + "_QUANTIZE"):
+                                     DeviceType.QUANTIZE):
                     raise argparse.ArgumentTypeError(
                         'Unsupported validation threshold runtime: %s' % k)
                 threshold_dict[k.upper()] = v
@@ -566,10 +562,17 @@ def format_model_config(flags):
                     YAMLKeyword.obfuscate,
                     YAMLKeyword.winograd,
                     YAMLKeyword.quantize,
+                    YAMLKeyword.quantize_large_weights,
                     YAMLKeyword.change_concat_ranges]:
             value = model_config.get(key, "")
             if value == "":
                 model_config[key] = 0
+
+        mace_check(model_config[YAMLKeyword.quantize] == 0 or
+                   model_config[YAMLKeyword.quantize_large_weights] == 0,
+                   ModuleName.YAML_CONFIG,
+                   "quantize and quantize_large_weights should not be set to 1"
+                   " at the same time.")
 
         mace_check(model_config[YAMLKeyword.winograd] in WinogradParameters,
                    ModuleName.YAML_CONFIG,
@@ -773,6 +776,7 @@ def convert_model(configs, cl_mem_type):
             embed_model_data,
             model_config[YAMLKeyword.winograd],
             model_config[YAMLKeyword.quantize],
+            model_config[YAMLKeyword.quantize_large_weights],
             quantize_range_file_path,
             model_config[YAMLKeyword.change_concat_ranges],
             model_config[YAMLKeyword.obfuscate],

@@ -504,3 +504,25 @@ which will reduce the library size significantly. the final binary just link the
     }
 
     }  // namespace mace
+
+Reduce Model Size
+-------------------
+Model file size can be a bottleneck for the deployment of neural networks on mobile devices,
+so MACE provides several ways to reduce the model size with no or little performance or accuracy degradation.
+
+**1. Save model weights in half-precision floating point format**
+
+The default data type of a regular model is float (32bit). To reduce the model weights size,
+half (16bit) can be used to reduce it by half with negligible accuracy degradation.
+
+For CPU, ``data_type`` can be specified as ``fp16_fp32`` in the deployment file to save the weights in half and actual inference in float.
+
+For GPU, ``fp16_fp32`` is default. The ops in GPU take half as inputs and outputs while kernel execution in float.
+
+**2. Save model weights in quantized fixed point format**
+
+Weights of convolutional (excluding depthwise) and fully connected layers take up a major part of model size.
+These weights can be quantized to 8bit to reduce the size to a quarter, whereas the accuracy usually decreases only by 1%-3%.
+For example, the top-1 accuracy of MobileNetV1 after quantization of weights is 68.2% on the ImageNet validation set.
+``quantize_large_weights`` can be specified as 1 in the deployment file to save these weights in 8bit and actual inference in float.
+It can be used for both CPU and GPU.

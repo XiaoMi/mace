@@ -320,6 +320,7 @@ class TransformerRule(Enum):
     QUANTIZE_SPECIFIC_OPS_ONLY = 40
     FP16_MATMUL_WEIGHT = 41
     FP16_GATHER_WEIGHT = 42
+    QUANTIZE_LARGE_WEIGHTS = 43
 
 
 class ConverterInterface(object):
@@ -394,6 +395,7 @@ class ConverterOption(object):
         self._device = DeviceType.CPU.value
         self._winograd = 0
         self._quantize = False
+        self._quantize_large_weights = False
         self._quantize_range_file = ""
         self._change_concat_ranges = False
         self._transformer_option = None
@@ -426,6 +428,10 @@ class ConverterOption(object):
     @property
     def quantize(self):
         return self._quantize
+
+    @property
+    def quantize_large_weights(self):
+        return self._quantize_large_weights
 
     @property
     def change_concat_ranges(self):
@@ -482,6 +488,10 @@ class ConverterOption(object):
     @quantize.setter
     def quantize(self, quantize):
         self._quantize = quantize
+
+    @quantize_large_weights.setter
+    def quantize_large_weights(self, quantize_large_weights):
+        self._quantize_large_weights = quantize_large_weights
 
     @quantize_range_file.setter
     def quantize_range_file(self, quantize_range_file):
@@ -558,6 +568,10 @@ class ConverterOption(object):
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
             ]
+            if self.quantize_large_weights:
+                self._transformer_option = self._transformer_option + [
+                    TransformerRule.QUANTIZE_LARGE_WEIGHTS
+                ]
             if self._quantize:
                 self._transformer_option = self._transformer_option + [
                     # need to be put after ADD_QUANTIZE_TENSOR_RANGE

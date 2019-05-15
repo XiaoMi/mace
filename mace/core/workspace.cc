@@ -104,9 +104,9 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 
   if (model_data_size > 0) {
     bool is_quantize_model = IsQuantizedModel(net_def);
-    diffused_buffer_ = (device_type == DeviceType::CPU &&
-        (HasHalfTensor(net_def) ||
-            (!is_quantize_model && HasQuantizedTensor(net_def))));
+    diffused_buffer_ =
+        (device_type == DeviceType::CPU && HasHalfTensor(net_def)) ||
+            (!is_quantize_model && HasQuantizedTensor(net_def));
 #ifdef MACE_ENABLE_OPENCL
     diffused_buffer_ = diffused_buffer_ || (device_type == DeviceType::GPU &&
         device->gpu_runtime()->opencl_runtime()->GetDeviceMaxMemAllocSize() <=
@@ -125,8 +125,9 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         }
 
         DataType dst_data_type = const_tensor.data_type();
-        if (device_type == DeviceType::CPU &&
-            const_tensor.data_type() == DataType::DT_HALF) {
+        if ((device_type == DeviceType::CPU &&
+             const_tensor.data_type() == DataType::DT_HALF) ||
+            (!is_quantize_model && const_tensor.quantized())) {
           dst_data_type = DataType::DT_FLOAT;
         }
 
@@ -147,8 +148,8 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
                    ") should <= ",
                    model_data_size);
 
-        if (device_type == DeviceType::CPU) {
-          if (const_tensor.data_type() == DataType::DT_HALF) {
+        if (device_type == DeviceType::CPU &&
+            const_tensor.data_type() == DataType::DT_HALF) {
             // uncompress the weights of fp16
             auto org_data = reinterpret_cast<const half *>(
                 model_data + const_tensor.offset());
@@ -156,25 +157,19 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
             for (int i = 0; i < const_tensor.data_size(); ++i) {
               dst_data[i] = half_float::half_cast<float>(org_data[i]);
             }
-          } else if (!is_quantize_model && const_tensor.quantized()) {
-            // uncompress the weights of uint8
-            std::unique_ptr<Tensor> dequantized_tensor(new Tensor(true));
-            dequantized_tensor->Resize(dims);
-            auto quantized_data = reinterpret_cast<const uint8_t *>(
-                model_data + const_tensor.offset());
-            auto dequantized_data = tensor->mutable_data<float>();
-            QuantizeUtil<uint8_t>
-                quantize_util(&device->cpu_runtime()->thread_pool());
-            quantize_util.Dequantize(quantized_data,
-                                     tensor->size(),
-                                     const_tensor.scale(),
-                                     const_tensor.zero_point(),
-                                     dequantized_data);
-          } else {
-            tensor->CopyBytes(model_data + const_tensor.offset(),
-                              const_tensor.data_size() *
-                                  GetEnumTypeSize(const_tensor.data_type()));
-          }
+        } else if (!is_quantize_model && const_tensor.quantized()) {
+          // uncompress the weights of uint8
+          Tensor::MappingGuard guard(tensor.get());
+          auto quantized_data = reinterpret_cast<const uint8_t *>(
+              model_data + const_tensor.offset());
+          auto dequantized_data = tensor->mutable_data<float>();
+          QuantizeUtil<uint8_t>
+              quantize_util(&device->cpu_runtime()->thread_pool());
+          quantize_util.Dequantize(quantized_data,
+                                   tensor->size(),
+                                   const_tensor.scale(),
+                                   const_tensor.zero_point(),
+                                   dequantized_data);
         } else {
           tensor->CopyBytes(model_data + const_tensor.offset(),
                             const_tensor.data_size() *

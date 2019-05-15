@@ -110,6 +110,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.fp16_matmul_weight,
             TransformerRule.FP16_GATHER_WEIGHT:
                 self.fp16_gather_weight,
+            TransformerRule.QUANTIZE_LARGE_WEIGHTS:
+                self.quantize_large_weights,
         }
 
         self._option = option
@@ -1622,6 +1624,35 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         for tensor in net.tensors:
             self.quantize_tensor(tensor)
+
+        return False
+
+    def quantize_large_tensor(self, tensor):
+        if tensor.data_type == mace_pb2.DT_FLOAT:
+            ops = self._consumers.get(tensor.name, None)
+            if ops is not None and len(ops) == 1:
+                if ops[0].type in [MaceOp.Conv2D.name,
+                                   MaceOp.FullyConnected.name]:
+                    quantized_tensor = \
+                        quantize_util.quantize(tensor.float_data,
+                                               self._option.device,
+                                               False)
+                    tensor.data_type = mace_pb2.DT_UINT8
+
+                    del tensor.float_data[:]
+                    tensor.int32_data.extend(quantized_tensor.data)
+                    tensor.scale = quantized_tensor.scale
+                    tensor.zero_point = quantized_tensor.zero
+                    tensor.minval = quantized_tensor.minval
+                    tensor.maxval = quantized_tensor.maxval
+                    tensor.quantized = True
+                    self._quantized_tensor.update([tensor.name])
+
+    def quantize_large_weights(self):
+        print("Quantize large weights")
+        net = self._model
+        for tensor in net.tensors:
+            self.quantize_large_tensor(tensor)
 
         return False
 
