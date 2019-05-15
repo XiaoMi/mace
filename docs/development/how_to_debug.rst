@@ -72,7 +72,7 @@ If model's output is suspected to be incorrect, it might be useful to debug your
 or use binary search method until suspicious layer is found.
 
 You can also specify `--layers` after `--validate` to validate all or some of the layers of the model(excluding some layers changed by MACE, e.g., BatchToSpaceND),
-it only supports TensorFlow now. You can find validation results in `builds/your_model/model/runtime_in_yaml/log.csv`.
+it only supports TensorFlow now. You can find validation results in `build/your_model/model/runtime_in_yaml/log.csv`.
 
 For quantized model, if you want to check one layer, you can add `check_tensors` and `check_shapes` like in the yaml above. You can only specify
 MACE op's output.
@@ -113,7 +113,7 @@ Debug model conversion
 After model is converted to MACE model, a literal model graph is generated in directory `mace/codegen/models/your_model`.
 You can refer to it when debugging model conversion.
 
-MACE also provides model visualization HTML generated in `builds` directory, generated after converting model.
+MACE also provides model visualization HTML generated in `build` directory, generated after converting model.
 
 
 Debug engine using log

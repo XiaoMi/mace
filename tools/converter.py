@@ -949,7 +949,7 @@ def build_example(configs, target_abi, toolchain, enable_openmp, mace_lib_type,
         model_lib_path = get_model_lib_output_path(library_name,
                                                    target_abi)
         sh.cp("-f", model_lib_path, LIB_CODEGEN_DIR)
-        build_arg = "--per_file_copt=mace/examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+        build_arg = "--per_file_copt=examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
     if mace_lib_type == MACELibType.dynamic:
         example_target = EXAMPLE_DYNAMIC_TARGET
@@ -1064,7 +1064,7 @@ def build_benchmark_model(configs,
         mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
                    ModuleName.BENCHMARK,
                    "You should convert model first.")
-        build_arg = "--per_file_copt=mace/benchmark/benchmark_model.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+        build_arg = "--per_file_copt=mace/tools/benchmark/benchmark_model.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
     sh_commands.bazel_build(benchmark_target,
                             abi=target_abi,

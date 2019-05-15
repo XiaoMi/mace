@@ -15,31 +15,30 @@
 #ifndef MACE_UTILS_TUNER_H_
 #define MACE_UTILS_TUNER_H_
 
-// TODO(heliangliang) Fix portability
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <functional>
 #include <limits>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "mace/port/env.h"
+#include "mace/port/file_system.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
 
 namespace mace {
 
 inline bool IsTuning() {
-  const char *tuning = getenv("MACE_TUNING");
-  return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '1';
+  std::string tuning;
+  GetEnv("MACE_TUNING", &tuning);
+  return tuning.size() == 1 && tuning[0] == '1';
 }
 
 template <typename param_type>
@@ -49,7 +48,7 @@ class Tuner {
       const unsigned char *param_byte_stream = nullptr,
       const size_t param_byte_stream_size = 0):
       tuned_param_file_path_(tuned_param_file_path) {
-    path_ = getenv("MACE_RUN_PARAMETER_PATH");
+    GetEnv("MACE_RUN_PARAMETER_PATH", &path_);
     if (param_byte_stream != nullptr && param_byte_stream_size != 0) {
       ParseData(param_byte_stream, param_byte_stream_size);
     } else {
@@ -94,10 +93,10 @@ class Tuner {
   }
 
  private:
-  inline void WriteRunParameters() {
-    if (path_ != nullptr) {
+  void WriteRunParameters() {
+    if (!path_.empty()) {
       VLOG(3) << "Write tuning result to " << path_;
-      std::ofstream ofs(path_, std::ios::binary | std::ios::out);
+      std::ofstream ofs(path_.c_str(), std::ios::binary | std::ios::out);
       if (ofs.is_open()) {
         int64_t num_pramas = param_table_.size();
         ofs.write(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
@@ -124,7 +123,7 @@ class Tuner {
     }
   }
 
-  inline void ParseData(const unsigned char *data, size_t data_size) {
+  void ParseData(const unsigned char *data, size_t data_size) {
     const size_t int_size = sizeof(int32_t);
     const size_t param_type_size = sizeof(param_type);
 
@@ -160,68 +159,20 @@ class Tuner {
     }
   }
 
-  inline void ReadRunParamters() {
+  void ReadRunParamters() {
     if (!tuned_param_file_path_.empty()) {
-      struct stat st;
-      if (stat(tuned_param_file_path_.c_str(), &st) == -1) {
-        if (errno == ENOENT) {
-          VLOG(1) << "File " << tuned_param_file_path_
-                  << " does not exist";
-        } else {
-          LOG(WARNING) << "Stat file " << tuned_param_file_path_
-                       << " failed, error code: " << strerror(errno);
-        }
+      std::unique_ptr<mace::port::ReadOnlyMemoryRegion> param_data =
+        make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
+      auto fs = GetFileSystem();
+      auto status = fs->NewReadOnlyMemoryRegionFromFile(
+          tuned_param_file_path_.c_str(), &param_data);
+      if (status != MaceStatus::MACE_SUCCESS)  {
+        LOG(ERROR) << "Failed to read tuned param file: "
+                   << tuned_param_file_path_;
         return;
-      } else if (!S_ISREG(st.st_mode)) {
-        VLOG(1) << "The path " << tuned_param_file_path_
-                << " is not a file";
-        return;
-      }
-      int fd = open(tuned_param_file_path_.c_str(), O_RDONLY);
-      if (fd < 0) {
-        if (errno == ENOENT) {
-          LOG(INFO) << "File " << tuned_param_file_path_
-                    << " does not exist";
-        } else {
-          LOG(WARNING) << "open file " << tuned_param_file_path_
-                       << " failed, error code: " << strerror(errno);
-        }
-        return;
-      }
-      size_t file_size = st.st_size;
-      unsigned char *file_data =
-          static_cast<unsigned char *>(mmap(nullptr, file_size, PROT_READ,
-                                            MAP_PRIVATE, fd, 0));
-      int res = 0;
-      if (file_data == MAP_FAILED) {
-        LOG(WARNING) << "mmap file " << tuned_param_file_path_
-                     << " failed, error code: " << strerror(errno);
-
-        res = close(fd);
-        if (res != 0) {
-          LOG(WARNING) << "close file " << tuned_param_file_path_
-                       << " failed, error code: " << strerror(errno);
-        }
-        return;
-      }
-
-      ParseData(file_data, file_size);
-      res = munmap(file_data, file_size);
-      if (res != 0) {
-        LOG(WARNING) << "munmap file " << tuned_param_file_path_
-                     << " failed, error code: " << strerror(errno);
-        res = close(fd);
-        if (res != 0) {
-          LOG(WARNING) << "close file " << tuned_param_file_path_
-                       << " failed, error code: " << strerror(errno);
-        }
-        return;
-      }
-      res = close(fd);
-      if (res != 0) {
-        LOG(WARNING) << "close file " << tuned_param_file_path_
-                     << " failed, error code: " << strerror(errno);
-        return;
+      } else {
+        ParseData(static_cast<const unsigned char *>(param_data->data()),
+                  param_data->length());
       }
     } else {
       VLOG(1) << "There is no tuned parameters.";
@@ -229,15 +180,14 @@ class Tuner {
   }
 
   template <typename RetType>
-  inline RetType Run(
-      const std::function<RetType(const std::vector<param_type> &,
-                                  Timer *,
-                                  std::vector<param_type> *)> &func,
-      const std::vector<param_type> &params,
-      Timer *timer,
-      int num_runs,
-      double *time_us,
-      std::vector<param_type> *tuning_result) {
+  RetType Run(const std::function<RetType(const std::vector<param_type> &,
+                                          Timer *,
+                                          std::vector<param_type> *)> &func,
+              const std::vector<param_type> &params,
+              Timer *timer,
+              int num_runs,
+              double *time_us,
+              std::vector<param_type> *tuning_result) {
     RetType res = 0;
     int iter = 0;
     int64_t total_time_us = 0;
@@ -255,14 +205,13 @@ class Tuner {
   }
 
   template <typename RetType>
-  inline RetType Tune(
-      const std::function<std::vector<std::vector<param_type>>()>
-          &param_generator,
-      const std::function<RetType(const std::vector<param_type> &,
-                                  Timer *,
-                                  std::vector<param_type> *)> &func,
-      Timer *timer,
-      std::vector<param_type> *opt_params) {
+  RetType Tune(const std::function<std::vector<std::vector<param_type>>()>
+               &param_generator,
+               const std::function<RetType(const std::vector<param_type> &,
+                                           Timer *,
+                                           std::vector<param_type> *)> &func,
+               Timer *timer,
+               std::vector<param_type> *opt_params) {
     RetType res = 0;
     double opt_time = std::numeric_limits<double>::max();
     auto params = param_generator();
@@ -288,7 +237,7 @@ class Tuner {
 
  private:
   std::string tuned_param_file_path_;
-  const char *path_;
+  std::string path_;
   std::unordered_map<std::string, std::vector<param_type>> param_table_;
 };
 

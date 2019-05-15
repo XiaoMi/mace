@@ -1,0 +1,75 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_android_armv7",
+    "if_hexagon_enabled",
+    "if_neon_enabled",
+    "if_opencl_enabled",
+    "if_openmp_enabled",
+    "if_quantize_enabled",
+)
+
+cc_library(
+    name = "benchmark_utils",
+    testonly = 1,
+    hdrs = glob([
+        "mace/benchmark_utils/*.h",
+    ]),
+    srcs = glob([
+        "mace/benchmark_utils/*.cc",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    strip_include_prefix = "",
+    deps = [
+        "//mace/core",
+        "//test/ccutils",
+        "//external:gflags_nothreads",
+    ],
+)
+
+cc_test(
+    name = "mace_cc_benchmark",
+    testonly = 1,
+    srcs = glob(
+        [
+            "mace/ops/*.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+        "-fopenmp",
+    ] + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon-fp16",
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    linkopts = [
+        "-fopenmp",
+    ],
+    linkstatic = 1,
+    deps = [
+        "benchmark_utils",
+        "//mace/ops",
+        "//third_party/eigen3",
+        "@gemmlowp",
+    ],
+)

@@ -17,14 +17,12 @@
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
-#endif
 
 namespace mace {
 namespace ops {
 namespace arm {
 namespace fp32 {
 
-#ifdef MACE_ENABLE_NEON
 inline float32x4_t neon_vfma_lane_0(float32x4_t a,
                           float32x4_t b,
                           float32x4_t c) {
@@ -64,11 +62,11 @@ inline float32x4_t neon_vfma_lane_3(float32x4_t a,
   return vmlaq_lane_f32(a, b, vget_high_f32(c), 1);
 #endif
 }
-#endif
 
 }  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace
+#endif  // MACE_ENABLE_NEON
 
 #endif  // MACE_OPS_ARM_FP32_COMMON_NEON_H_

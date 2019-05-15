@@ -14,41 +14,14 @@ cc_library(
 )
 
 cc_library(
-    name = "port_api",
-    hdrs = [
-        "env.h",
-        "file_system.h",
-        "logger.h",
-        "port.h",
-        "port-arch.h",
-    ],
-    deps = [
-        "//mace/public",
-    ],
-)
-
-cc_library(
     name = "port_base",
     srcs = [
         "env.cc",
         "logger.cc",
+        "file_system.cc",
     ],
     deps = [
-        ":port_api",
         "//mace/utils",
-    ],
-)
-
-cc_test(
-    name = "port_test",
-    testonly = 1,
-    srcs = glob([
-        "*_test.cc",
-    ]),
-    linkstatic = 1,
-    deps = [
-        ":port",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "//include:public_headers",
     ],
 )

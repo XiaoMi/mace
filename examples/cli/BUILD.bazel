@@ -1,0 +1,80 @@
+# Examples
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_darwin",
+    "if_hexagon_enabled",
+    "if_hta_enabled",
+    "if_linux",
+    "if_opencl_enabled",
+    "if_openmp_enabled",
+)
+
+cc_binary(
+    name = "example_static",
+    srcs = ["example.cc"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+    ] + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]),
+    linkopts = [
+        "-lm",
+        "-ldl",
+    ] + if_linux(["-lpthread"]) + if_darwin(
+        ["-lpthread"],
+        default_value = ["-fuse-ld=gold"],
+    ) + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_android([
+        "-pie",
+        "-llog",
+    ]),
+    linkstatic = 1,
+    deps = [
+        "//external:gflags_nothreads",
+        "//mace/codegen:generated_mace_engine_factory",
+        "//mace/codegen:generated_models",
+        "//mace/libmace",
+    ] + if_opencl_enabled([
+        "//mace/codegen:generated_opencl_binary",
+        "//mace/codegen:generated_opencl_parameter",
+    ]) + if_hexagon_enabled([
+        "//third_party/nnlib:libhexagon",
+    ]) + if_hta_enabled([
+        "//third_party/hta",
+    ]),
+)
+
+cc_binary(
+    name = "example_dynamic",
+    srcs = ["example.cc"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]),
+    linkopts = [
+        "-lm",
+        "-ldl",
+    ] + if_linux(["-lpthread"]) + if_darwin(
+        ["-lpthread"],
+        default_value = ["-fuse-ld=gold"],
+    ) + if_android([
+        "-pie",
+        "-llog",
+    ]),
+    linkstatic = 0,
+    deps = [
+        "//external:gflags_nothreads",
+        "//mace/codegen:generated_mace_engine_factory",
+        "//mace/codegen:generated_models",
+        "//mace/libmace:libmace_dynamic",
+    ] + if_opencl_enabled([
+        "//mace/codegen:generated_opencl_binary",
+        "//mace/codegen:generated_opencl_parameter",
+    ]),
+)

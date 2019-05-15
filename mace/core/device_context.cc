@@ -16,6 +16,8 @@
 
 #include <sys/stat.h>
 
+#include "mace/port/env.h"
+
 namespace mace {
 
 namespace {

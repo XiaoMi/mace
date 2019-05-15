@@ -204,15 +204,15 @@ Convert model(s) to C++ code
 
             python tools/converter.py convert --config=/path/to/model_deployment_file.yml
 
-        The command will generate **${library_name}.a** in **builds/${library_name}/model** directory and
-        ** *.h ** in **builds/${library_name}/include** like the following dir-tree.
+        The command will generate **${library_name}.a** in **build/${library_name}/model** directory and
+        ** *.h ** in **build/${library_name}/include** like the following dir-tree.
 
         .. code::
 
              # model_graph_format: code
              # model_data_format: file
 
-             builds
+             build
                ├── include
                │   └── mace
                │       └── public
@@ -225,7 +225,7 @@ Convert model(s) to C++ code
              # model_graph_format: code
              # model_data_format: code
 
-             builds
+             build
                ├── include
                │   └── mace
                │       └── public
@@ -305,11 +305,11 @@ Tuning for specific SoC's GPU
 
             python tools/converter.py run --config=/path/to/model_deployment_file.yml --validate
 
-        The command will generate two files in `builds/${library_name}/opencl`, like the following dir-tree.
+        The command will generate two files in `build/${library_name}/opencl`, like the following dir-tree.
 
         .. code::
 
-              builds
+              build
               └── mobilenet-v2
                   ├── model
                   │   ├── mobilenet_v2.data

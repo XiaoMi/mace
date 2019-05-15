@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <utility>
 
+#include "mace/port/env.h"
+
 namespace mace {
 namespace ops {
 namespace arm {

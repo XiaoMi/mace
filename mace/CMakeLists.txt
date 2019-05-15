@@ -1,0 +1,8 @@
+add_subdirectory(codegen)
+add_subdirectory(core)
+add_subdirectory(libmace)
+add_subdirectory(ops)
+add_subdirectory(port)
+add_subdirectory(proto)
+add_subdirectory(tools)
+add_subdirectory(utils)

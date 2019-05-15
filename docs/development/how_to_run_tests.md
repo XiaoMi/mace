@@ -12,10 +12,10 @@ Run unit tests
 
 MACE use [gtest](https://github.com/google/googletest) for unit tests.
 
-* Run all unit tests defined in a Bazel target, for example, run `ops_test`:
+* Run all unit tests defined in a Bazel target, for example, run `mace_cc_test`:
 
   ```sh
-  python tools/bazel_adb_run.py --target="//mace/ops:ops_test" \
+  python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" \
                                 --run_target=True
   ```
 
@@ -23,7 +23,7 @@ MACE use [gtest](https://github.com/google/googletest) for unit tests.
 for example, run `Conv2dOpTest` unit tests:
 
   ```sh
-  python tools/bazel_adb_run.py --target="//mace/ops:ops_test" \
+  python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" \
                                 --run_target=True \
                                 --args="--gtest_filter=Conv2dOpTest*"
   ```
@@ -34,10 +34,10 @@ Run micro benchmarks
 MACE provides a micro benchmark framework for performance tuning.
 
 * Run all micro benchmarks defined in a Bazel target, for example, run all
-`ops_benchmark` micro benchmarks:
+`mace_cc_benchmark` micro benchmarks:
 
   ```sh
-  python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" \
+  python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" \
                                 --run_target=True
   ```
 
@@ -45,7 +45,7 @@ MACE provides a micro benchmark framework for performance tuning.
 micro benchmarks:
 
   ```sh
-  python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" \
+  python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" \
                                 --run_target=True \
                                 --args="--filter=MACE_BM_CONV_2D_.*_GPU"
   ```

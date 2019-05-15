@@ -1,0 +1,16 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_library(
+    name = "public_headers",
+    hdrs = glob([
+            "mace/public/*.h",
+            "mace/port/*.h",
+            "mace/utils/*.h",
+            ]),
+    strip_include_prefix = "",
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+)

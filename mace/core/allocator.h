@@ -74,32 +74,9 @@ class CPUAllocator : public Allocator {
       return MaceStatus::MACE_OUT_OF_RESOURCES;
     }
 
-    void *data = nullptr;
-#if defined(__ANDROID__) || defined(__hexagon__)
-    data = memalign(kMaceAlignment, nbytes);
-    if (data == NULL) {
-      LOG(WARNING) << "Allocate CPU Buffer with "
-                   << nbytes << " bytes failed because of"
-                   << strerror(errno);
-      *result = nullptr;
-      return MaceStatus::MACE_OUT_OF_RESOURCES;
-    }
-#else
-    int ret = posix_memalign(&data, kMaceAlignment, nbytes);
-    if (ret != 0) {
-      LOG(WARNING) << "Allocate CPU Buffer with "
-                   << nbytes << " bytes failed because of"
-                   << strerror(errno);
-      if (data != NULL) {
-        free(data);
-      }
-      *result = nullptr;
-      return MaceStatus::MACE_OUT_OF_RESOURCES;
-    }
-#endif
+    MACE_RETURN_IF_ERROR(Memalign(result, kMaceAlignment, nbytes));
     // TODO(heliangliang) This should be avoided sometimes
-    memset(data, 0, nbytes);
-    *result = data;
+    memset(*result, 0, nbytes);
     return MaceStatus::MACE_SUCCESS;
   }
 
@@ -142,8 +119,6 @@ class CPUAllocator : public Allocator {
 
 // Global CPU allocator used for CPU/GPU/DSP
 Allocator *GetCPUAllocator();
-
-void AdviseFree(void *addr, size_t length);
 
 }  // namespace mace
 

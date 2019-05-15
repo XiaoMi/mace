@@ -3,6 +3,7 @@
 # By default, we don't distinct target and host platfroms.
 build --distinct_host_configuration=false
 
+build -s
 build --verbose_failures
 build --copt=-std=c++11
 build --copt=-fPIC

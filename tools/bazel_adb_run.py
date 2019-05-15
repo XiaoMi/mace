@@ -16,7 +16,7 @@
 # python tools/bazel_adb_run.py \
 #     --target_abis=armeabi-v7a \
 #     --target_socs=sdm845
-#     --target=//mace/ops:ops_test
+#     --target=//test/ccunit:mace_cc_test
 #     --stdout_processor=stdout_processor
 
 import argparse
@@ -43,22 +43,6 @@ def ops_benchmark_stdout_processor(stdout, dev, abi):
     for line in stdout_lines:
         if "Aborted" in line or "Segmentation fault" in line:
             raise Exception("Command failed")
-        line = line.strip()
-        parts = line.split()
-        if len(parts) == 5 and parts[0].startswith("BM_"):
-            metrics["%s.time_ms" % parts[0]] = str(float(parts[1]) / 1e6)
-            metrics["%s.input_mb_per_sec" % parts[0]] = parts[3]
-            metrics["%s.gmac_per_sec" % parts[0]] = parts[4]
-
-    # platform = dev[YAMLKeyword.target_socs]
-    # model = dev[YAMLKeyword.device_name]
-    # tags = {
-    #     "ro.board.platform": platform,
-    #     "ro.product.model": model,
-    #     "abi": abi
-    # }
-    # sh_commands.falcon_push_metrics(server,
-    #    metrics, tags=tags, endpoint="mace_ops_benchmark")
 
 
 # TODO: after merge mace/python/tools and tools are merged,

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import falcon_cli
 import glob
 import logging
 import numpy as np
@@ -972,31 +971,3 @@ def build_run_throughput_test(abi,
         _fg=True)
 
     six.print_("throughput_test done!\n")
-
-
-################################
-# falcon
-################################
-def falcon_tags(tags_dict):
-    tags = ""
-    for k, v in tags_dict.iteritems():
-        if tags == "":
-            tags = "%s=%s" % (k, v)
-        else:
-            tags = tags + ",%s=%s" % (k, v)
-    return tags
-
-
-def falcon_push_metrics(server, metrics, endpoint="mace_dev", tags={}):
-    cli = falcon_cli.FalconCli.connect(server=server, port=8433, debug=False)
-    ts = int(time.time())
-    falcon_metrics = [{
-        "endpoint": endpoint,
-        "metric": key,
-        "tags": falcon_tags(tags),
-        "timestamp": ts,
-        "value": value,
-        "step": 600,
-        "counterType": "GAUGE"
-    } for key, value in metrics.iteritems()]
-    cli.update(falcon_metrics)

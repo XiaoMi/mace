@@ -37,9 +37,9 @@ class PosixReadOnlyMemoryRegion : public ReadOnlyMemoryRegion {
     if (length_ > 0) {
       munmap(const_cast<void *>(addr_), length_);
     }
-  };
-  const void *data() const override { return addr_; };
-  uint64_t length() const override { return length_; };
+  }
+  const void *data() const override { return addr_; }
+  uint64_t length() const override { return length_; }
 
  private:
   const void *addr_;
@@ -50,11 +50,11 @@ class PosixReadOnlyMemoryRegion : public ReadOnlyMemoryRegion {
 MaceStatus PosixFileSystem::NewReadOnlyMemoryRegionFromFile(
     const char *fname,
     std::unique_ptr<ReadOnlyMemoryRegion>* result) {
-  MaceStatus s = MaceStatus(MaceStatus::MACE_SUCCESS);
+  MaceStatus s = MaceStatus::MACE_SUCCESS;
   int fd = open(fname, O_RDONLY);
   if (fd < 0) {
     // TODO(heliangliang) check errno
-    s = MaceStatus(MaceStatus::MACE_RUNTIME_ERROR);
+    s = MaceStatus::MACE_RUNTIME_ERROR;
   } else {
     struct stat st;
     fstat(fd, &st);
@@ -63,7 +63,7 @@ MaceStatus PosixFileSystem::NewReadOnlyMemoryRegionFromFile(
         mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
       if (address == MAP_FAILED) {
         // TODO(heliangliang) check errno
-        s = MaceStatus(MaceStatus::MACE_RUNTIME_ERROR);
+        s = MaceStatus::MACE_RUNTIME_ERROR;
       } else {
         *result = make_unique<PosixReadOnlyMemoryRegion>(address, st.st_size);
       }

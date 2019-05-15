@@ -15,7 +15,7 @@
 [加入我们](JOBS.md) |
 [English](README.md)
 
-**Mobile AI Compute Engine (MACE)** 是一个专为移动端异构计算平台(支持Android, iOS, Linux)优化的神经网络计算框架。
+**Mobile AI Compute Engine (MACE)** 是一个专为移动端异构计算平台(支持Android, iOS, Linux, Windows)优化的神经网络计算框架。
 主要从以下的角度做了专门的优化：
 * 性能
   * 代码经过NEON指令，OpenCL以及Hexagon HVX专门优化，并且采用

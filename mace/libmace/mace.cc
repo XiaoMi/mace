@@ -19,7 +19,7 @@
 #include "mace/core/device_context.h"
 #include "mace/core/memory_optimizer.h"
 #include "mace/core/net.h"
-#include "mace/ops/ops_registry.h"
+#include "mace/ops/registry/ops_registry.h"
 #include "mace/ops/common/transpose.h"
 #include "mace/utils/math.h"
 #include "mace/utils/memory.h"

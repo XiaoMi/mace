@@ -1,0 +1,5 @@
+BasedOnStyle: google
+MaxEmptyLinesToKeep: 3
+DerivePointerAlignment: false
+PointerAlignment: Right
+BinPackParameters: false
