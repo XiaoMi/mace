@@ -81,3 +81,33 @@ ENV ANDROID_NDK_HOME /opt/android-ndk-${ANDROID_NDK_VERSION}
 ENV LINARO_ARM_LINUX_GNUEABIHF /opt/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf
 ENV LINARO_AARCH64_LINUX_GNU /opt/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu
 ENV PATH /opt/protoc-3.6.1/bin:${PATH}
+
+RUN pyenv install 2.7.12
+RUN pyenv global 2.7.12
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --upgrade pip setuptools
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    numpy==1.15.4 \
+    scipy==1.2.0 \
+    Jinja2==2.10 \
+    PyYAML==3.13 \
+    sh==1.12.14 \
+    pycodestyle==2.4.0 \
+    filelock==3.0.10 \
+    PTable==0.9.2
+
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    tensorflow==1.8.0
+
+# Install pytorch (refer to: https://pytorch.org/get-started/locally/)
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    future==0.17.1 \
+    Pillow==5.4.1 \
+    torch==1.1.0 \
+    torchvision==0.2.2.post3
+
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    onnx==1.3.0 \
+    onnx-tf==1.2.0
+
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    cpplint==1.4.4
