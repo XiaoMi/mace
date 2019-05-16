@@ -82,7 +82,6 @@ ENV LINARO_ARM_LINUX_GNUEABIHF /opt/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gn
 ENV LINARO_AARCH64_LINUX_GNU /opt/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu
 ENV PATH /opt/protoc-3.6.1/bin:${PATH}
 
-
 RUN pyenv install 2.7.12
 RUN pyenv global 2.7.12
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --upgrade pip setuptools
@@ -112,6 +111,3 @@ RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors
 
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     cpplint==1.4.4
-
-# Restore to python3
-RUN pyenv global 3.6.3
