@@ -244,8 +244,10 @@ class DeviceWrapper:
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE)
             out, err = p.communicate()
+            out = str(out, encoding = 'utf-8')
+            err = str(err, encoding = 'utf-8')
             self.stdout = err + out
-            six.print_(self.stdout.decode('UTF-8'))
+            six.print_(self.stdout)
             six.print_("Running finished!\n")
         elif self.system in [SystemType.android, SystemType.arm_linux]:
             self.rm(self.data_dir)
