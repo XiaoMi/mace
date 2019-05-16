@@ -18,7 +18,7 @@ build_docs:
   stage: build
   script:
     - cd docs
-    - make html
+    - pyenv local 3.6.3 && make html
     - CI_LATEST_OUTPUT_PATH=/mace-build-output/$CI_PROJECT_NAME/latest
     - CI_JOB_OUTPUT_PATH=/mace-build-output/$CI_PROJECT_NAME/$CI_PIPELINE_ID
     - rm -rf $CI_JOB_OUTPUT_PATH
