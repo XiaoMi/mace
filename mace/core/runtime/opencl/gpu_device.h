@@ -34,7 +34,7 @@ class GPUDevice : public CPUDevice {
             const int num_threads = -1,
             CPUAffinityPolicy cpu_affinity_policy = AFFINITY_NONE,
             utils::ThreadPool *thread_pool = nullptr);
-  ~GPUDevice();
+  virtual ~GPUDevice();
   GPURuntime *gpu_runtime() override;
   Allocator *allocator() override;
   DeviceType device_type() const override;
