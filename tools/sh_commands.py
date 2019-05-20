@@ -264,6 +264,7 @@ def bazel_build(target,
                 toolchain='android',
                 enable_hexagon=False,
                 enable_hta=False,
+                enable_apu=False,
                 enable_openmp=False,
                 enable_neon=True,
                 enable_opencl=True,
@@ -303,8 +304,9 @@ def bazel_build(target,
             "--define",
             "hexagon=%s" % str(enable_hexagon).lower(),
             "--define",
-            "hta=%s" % str(enable_hta).lower())
-
+            "hta=%s" % str(enable_hta).lower(),
+            "--define",
+            "apu=%s" % str(enable_apu).lower())
     if address_sanitizer:
         bazel_args += ("--config", "asan")
     if debug_mode:
@@ -322,6 +324,7 @@ def bazel_build(target,
     sh.bazel(
         _fg=True,
         *bazel_args)
+    six.print_(bazel_args)
     six.print_("Build done!\n")
 
 
@@ -881,6 +884,7 @@ def build_run_throughput_test(abi,
                               cpu_model_tag,
                               gpu_model_tag,
                               dsp_model_tag,
+                              apu_model_tag,
                               phone_data_dir,
                               strip="always",
                               input_file_name="model_input"):
@@ -896,7 +900,9 @@ def build_run_throughput_test(abi,
     if dsp_model_tag:
         model_tag_build_flag += "--copt=-DMACE_DSP_MODEL_TAG=%s " % \
                                 dsp_model_tag
-
+    if apu_model_tag:
+        model_tag_build_flag += "--copt=-DMACE_APU_MODEL_TAG=%s " % \
+                                apu_model_tag
     sh.cp("-f", merged_lib_file, "mace/benchmark/libmace_merged.a")
     sh.bazel(
         "build",
@@ -948,7 +954,10 @@ def build_run_throughput_test(abi,
     adb_push("third_party/nnlib/%s/libhexagon_controller.so" % abi,
              phone_data_dir,
              serialno)
-
+    if apu_model_tag:
+        adb_push("third_party/apu/libapu-frontend.so",
+                 phone_data_dir,
+                 serialno)
     sh.adb(
         "-s",
         serialno,

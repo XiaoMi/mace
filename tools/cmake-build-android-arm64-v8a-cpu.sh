@@ -15,6 +15,7 @@ cmake -DANDROID_ABI="arm64-v8a" \
       -DMACE_ENABLE_OPENCL=OFF            \
       -DMACE_ENABLE_HEXAGON_DSP=OFF       \
       -DMACE_ENABLE_HEXAGON_HTA=OFF       \
+      -DMACE_ENABLE_MTK_APU=OFF           \
       -DMACE_ENABLE_OPT_SIZE=ON           \
       -DMACE_ENABLE_OBFUSCATE=ON          \
       -DCMAKE_INSTALL_PREFIX=install      \

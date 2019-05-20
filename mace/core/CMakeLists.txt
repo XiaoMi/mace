@@ -40,6 +40,11 @@ if(MACE_ENABLE_HEXAGON_HTA)
   set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} hta_controller hta_hexagon_runtime npu)
 endif(MACE_ENABLE_HEXAGON_HTA)
 
+if(MACE_ENABLE_MTK_APU)
+  set(CORE_SRCS ${CORE_SRCS} runtime/apu/apu_wrapper.cc)
+  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} apu-frontend)
+endif(MACE_ENABLE_MTK_APU)
+
 add_library(core STATIC ${CORE_SRCS})
 target_link_libraries(core PRIVATE
   proto
