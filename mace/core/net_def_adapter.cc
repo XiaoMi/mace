@@ -221,6 +221,13 @@ MaceStatus NetDefAdapter::AdaptNetDef(
                                                  &op_output_data_format,
                                                  target_net_def));
     }
+    input_size = op_def.input_size();
+    for (int i = 0; i < input_size; ++i) {
+      if (output_map.count(op_def.input(i)) == 1) {
+        output_map.at(op_def.input(i)).consumer_op_indices.push_back(
+            target_net_def->op_size());
+      }
+    }
 
     int output_size = op_def.output_size();
     for (int out_idx = 0; out_idx < output_size; ++out_idx) {
@@ -275,6 +282,15 @@ MaceStatus NetDefAdapter::AdaptNetDef(
         for (int i = 0; i < output_size; ++i) {
           if (output_op_def->output(i) == output_info.name()) {
             output_op_def->set_output(i, t_output_name);
+          }
+        }
+        for (int idx : internal_output_info.consumer_op_indices) {
+          auto consumer_op_def = target_net_def->mutable_op(idx);
+          int input_size = consumer_op_def->input_size();
+          for (int i = 0; i < input_size; ++i) {
+            if (consumer_op_def->input(i) == output_info.name()) {
+              consumer_op_def->set_input(i, t_output_name);
+            }
           }
         }
         auto transformed_op_def = target_net_def->add_op();
@@ -415,12 +431,10 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
     }
     src_df = output_map->at(op_def->input(i)).data_format;
     dst_df = inputs_data_format[i];
-    if (src_df == DataFormat::NONE
-        || dst_df == DataFormat::NONE
-        || output_map->at(op_def->input(i)).shape.size() != 4) {
-      continue;
-    }
-    if (src_df != dst_df) {
+    if (src_df != DataFormat::NONE
+        && dst_df != DataFormat::NONE
+        && output_map->at(op_def->input(i)).shape.size() == 4
+        && src_df != dst_df) {
       std::string transformed_name = TransformedName(op_def->input(i),
           "data_format", static_cast<int>(dst_df));
       if (transformed_set->count(transformed_name) == 0) {
@@ -462,6 +476,9 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
         SetProtoArg<int>(transpose_op_def,
                          OutputMemoryTypeTagName(),
                          target_mem_type);
+        // update tensor consumer information
+        output_map->at(op_def->input(i)).consumer_op_indices.push_back(
+            target_net_def->op_size() - 1);
 
         // update output information map
         output_map->emplace(
@@ -545,6 +562,10 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
           SetProtoArg<int>(transformed_op_def,
                            OutputMemoryTypeTagName(),
                            dst_mem_type);
+
+          // update tensor consumer information
+          output_map->at(op_def->input(i)).consumer_op_indices.push_back(
+              target_net_def->op_size() - 1);
 
           // update output information map
           output_map->emplace(

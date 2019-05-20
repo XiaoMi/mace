@@ -1489,6 +1489,11 @@ class Transformer(base_converter.ConverterInterface):
                     new_output_name = self.output_name_map[op.output[i]]
                     self._quantize_activation_info[new_output_name] = \
                         self._quantize_activation_info[op.output[i]]
+                    if op.output[i] in self._consumers:
+                        for consumer_op in self._consumers[op.output[i]]:
+                            self.replace(consumer_op.input,
+                                         op.output[i],
+                                         new_output_name)
                     op.output[i] = new_output_name
 
             data_type_arg = ConverterUtil.get_arg(

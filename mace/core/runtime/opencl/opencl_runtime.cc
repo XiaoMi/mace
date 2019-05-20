@@ -434,7 +434,9 @@ OpenCLRuntime::OpenCLRuntime(
 }
 
 OpenCLRuntime::~OpenCLRuntime() {
-  command_queue_->finish();
+  if (command_queue_ != nullptr) {
+    command_queue_->finish();
+  }
   built_program_map_.clear();
   // We need to control the destruction order, which has dependencies
   command_queue_.reset();

@@ -426,8 +426,8 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                 (in_h_end - in_h_begin) * (in_w_end - in_w_begin);
             MACE_CHECK(block_size > 0);
 
-            std::vector<uint16_t> average_buffer(channels);
-            uint16_t *avg_buffer = average_buffer.data();
+            std::vector<uint32_t> average_buffer(channels);
+            uint32_t *avg_buffer = average_buffer.data();
             std::fill_n(avg_buffer, channels, 0);
             for (index_t ih = in_h_begin; ih < in_h_end; ++ih) {
               for (index_t iw = in_w_begin; iw < in_w_end; ++iw) {
@@ -436,20 +436,34 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                 index_t c = 0;
 #if defined(MACE_ENABLE_NEON)
                 for (; c <= channels - 16; c += 16) {
-                  uint16x8_t avg_vec[2];
-                  avg_vec[0] = vld1q_u16(avg_buffer + c);
-                  avg_vec[1] = vld1q_u16(avg_buffer + c + 8);
+                  uint16x8_t tmp_avg[2];
                   uint8x16_t in_vec = vld1q_u8(in_ptr + c);
-                  avg_vec[0] = vaddw_u8(avg_vec[0], vget_low_u8(in_vec));
-                  avg_vec[1] = vaddw_u8(avg_vec[1], vget_high_u8(in_vec));
-                  vst1q_u16(avg_buffer + c, avg_vec[0]);
-                  vst1q_u16(avg_buffer + c + 8, avg_vec[1]);
+                  tmp_avg[0] = vmovl_u8(vget_low_u8(in_vec));
+                  tmp_avg[1] = vmovl_u8(vget_high_u8(in_vec));
+                  uint32x4_t avg_vec[4];
+                  avg_vec[0] = vld1q_u32(avg_buffer + c);
+                  avg_vec[1] = vld1q_u32(avg_buffer + c + 4);
+                  avg_vec[2] = vld1q_u32(avg_buffer + c + 8);
+                  avg_vec[3] = vld1q_u32(avg_buffer + c + 12);
+                  avg_vec[0] = vaddw_u16(avg_vec[0], vget_low_u16(tmp_avg[0]));
+                  avg_vec[1] = vaddw_u16(avg_vec[1], vget_high_u16(tmp_avg[0]));
+                  avg_vec[2] = vaddw_u16(avg_vec[2], vget_low_u16(tmp_avg[1]));
+                  avg_vec[3] = vaddw_u16(avg_vec[3], vget_high_u16(tmp_avg[1]));
+                  vst1q_u32(avg_buffer + c, avg_vec[0]);
+                  vst1q_u32(avg_buffer + c + 4, avg_vec[1]);
+                  vst1q_u32(avg_buffer + c + 8, avg_vec[2]);
+                  vst1q_u32(avg_buffer + c + 12, avg_vec[3]);
                 }
                 for (; c <= channels - 8; c += 8) {
-                  uint16x8_t avg_vec = vld1q_u16(avg_buffer + c);
                   uint8x8_t in_vec = vld1_u8(in_ptr + c);
-                  avg_vec = vaddw_u8(avg_vec, in_vec);
-                  vst1q_u16(avg_buffer + c, avg_vec);
+                  uint16x8_t tmp_avg = vmovl_u8(in_vec);
+                  uint32x4_t avg_vec[2];
+                  avg_vec[0] = vld1q_u32(avg_buffer + c);
+                  avg_vec[1] = vld1q_u32(avg_buffer + c + 4);
+                  avg_vec[0] = vaddw_u16(avg_vec[0], vget_low_u16(tmp_avg));
+                  avg_vec[1] = vaddw_u16(avg_vec[1], vget_high_u16(tmp_avg));
+                  vst1q_u32(avg_buffer + c, avg_vec[0]);
+                  vst1q_u32(avg_buffer + c + 4, avg_vec[1]);
                 }
 #endif
                 for (; c < channels; ++c) {

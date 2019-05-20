@@ -60,7 +60,7 @@ cc_test(
     deps = [
         ":mace_api_test_header",
         "//mace/libmace",
-        "//mace/ops:test",
+        "//test/ccutils",
         "@gtest//:gtest_main",
     ],
 )
@@ -97,7 +97,7 @@ cc_test(
     deps = [
         ":mace_api_test_header",
         "//mace/libmace",
-        "//mace/ops:test",
+        "//test/ccutils",
         "@gtest//:gtest_main",
     ],
 )
@@ -133,7 +133,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//mace/libmace",
-        "//mace/ops:test",
+        "//test/ccutils",
         "@gtest//:gtest_main",
     ],
 )
@@ -169,7 +169,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//mace/libmace",
-        "//mace/ops:test",
+        "//test/ccutils",
         "@gtest//:gtest_main",
     ],
 )
