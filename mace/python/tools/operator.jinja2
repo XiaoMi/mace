@@ -160,6 +160,20 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
     }
     {% endif %}
   {% endif %}
+
+  {% if device == 5 %}
+    {% if net.op[i].node_input | length > 0 %}
+    std::vector<int> input_node_ids({ {{ net.op[i].node_input | map(attribute='node_id') | join(', ') }} });
+
+    mace::NodeInput *node_input = nullptr;
+    op->mutable_node_input()->Reserve({{ net.op[i].node_input|length }});
+    for (size_t i = 0; i < {{ net.op[i].node_input|length }}; ++i) {
+      node_input = op->add_node_input();
+      node_input->set_node_id(input_node_ids[i]);
+    }
+    {% endif %}
+
+  {% endif %}
 }
 
 {% endfor %}
