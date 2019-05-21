@@ -78,13 +78,14 @@ class NetDefAdapter {
                        const std::vector<index_t> &shape,
                        int op_idx)
         : mem_type(mem_type), dtype(dtype), data_format(data_format),
-          shape(shape), op_idx(op_idx) {}
+          shape(shape), op_idx(op_idx), consumer_op_indices() {}
 
     MemoryType mem_type;
     DataType dtype;
     DataFormat data_format;
     std::vector<index_t> shape;  // tensor shape
     int op_idx;  // operation which generate the tensor
+    std::vector<int> consumer_op_indices;
   };
 
   typedef std::unordered_map<std::string, InternalOutputInfo> TensorInfoMap;
