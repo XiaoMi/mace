@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This Op is for LstmNonlinearComponent in Kaldi.
-// http://kaldi-asr.org/doc/nnet-simple-component_8h_source.html#l02164
+// This Op is for LstmNonlinearityComponent in Kaldi.
+// http://kaldi-asr.org/doc/nnet-combined-component_8h_source.html#l00255
 
 #include <functional>
 #include <memory>

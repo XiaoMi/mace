@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This Op is for Fused-LstmNonlinearComponent
+// This Op is for Fused-LstmNonlinearityComponent
 // with prev cell states as inputs in Kaldi.
-// http://kaldi-asr.org/doc/nnet-simple-component_8h_source.html#l02164
+// http://kaldi-asr.org/doc/nnet-combined-component_8h_source.html#l00255
 // More details are in docs/development/dynamic_lstm.md
 
 #include <functional>
