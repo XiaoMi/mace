@@ -55,7 +55,7 @@ struct tensor_info {
     ApuFrontend* frontend;
     std::vector<tensor_info> input_infos;
     std::vector<tensor_info> output_infos;
-    QuantizeUtil<uint8_t> quantize_util_;
+    QuantizeUtil<float, uint8_t> quantize_util_;
 };
 
 }  // namespace mace

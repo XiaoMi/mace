@@ -50,7 +50,7 @@ class HexagonHTAWrapper : public HexagonControlWrapper {
   void SetDebugLevel(int level) override;
 
  private:
-  QuantizeUtil<uint8_t> quantize_util_;
+  QuantizeUtil<float, uint8_t> quantize_util_;
   MACE_DISABLE_COPY_AND_ASSIGN(HexagonHTAWrapper);
 };
 }  // namespace mace

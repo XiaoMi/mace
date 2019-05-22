@@ -281,6 +281,7 @@ def save_model(option, net_def, model_checksum, weight_checksum, template_dir,
         obfuscate_name(option, net_def)
 
     output_dir = output_dir + '/'
+    net_def.data_type = option.data_type
     # update tensor type
     update_tensor_infos(net_def, option.data_type)
 

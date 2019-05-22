@@ -66,6 +66,16 @@ enum FrameworkType {
   CAFFE = 1,
 };
 
+template <typename T>
+inline T FloatCast(float data) {
+  return data;
+}
+
+template <>
+inline half FloatCast(float data) {
+  return half_float::half_cast<half>(data);
+}
+
 }  // namespace mace
 
 #endif  // MACE_CORE_TYPES_H_

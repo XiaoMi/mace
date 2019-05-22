@@ -23,7 +23,7 @@ namespace mace {
 #ifdef MACE_ENABLE_NEON
 
 template<>
-void QuantizeUtil<uint8_t>::QuantizeWithScaleAndZeropoint(
+void QuantizeUtil<float, uint8_t>::QuantizeWithScaleAndZeropoint(
     const float *input,
     const index_t size,
     float scale,
@@ -65,11 +65,11 @@ void QuantizeUtil<uint8_t>::QuantizeWithScaleAndZeropoint(
 }
 
 template<>
-void QuantizeUtil<uint8_t>::Dequantize(const uint8_t *input,
-                                       const index_t size,
-                                       const float scale,
-                                       const int32_t zero_point,
-                                       float *output) {
+void QuantizeUtil<float, uint8_t>::Dequantize(const uint8_t *input,
+                                              const index_t size,
+                                              const float scale,
+                                              const int32_t zero_point,
+                                              float *output) {
   const index_t block_count = size / 16;
   const int32x4_t vzero = vdupq_n_s32(zero_point);
   const float32x4_t vscale = vdupq_n_f32(scale);
@@ -104,11 +104,11 @@ void QuantizeUtil<uint8_t>::Dequantize(const uint8_t *input,
 }
 
 template<>
-void QuantizeUtil<int32_t>::Dequantize(const int *input,
-                                       const index_t size,
-                                       const float scale,
-                                       const int32_t zero_point,
-                                       float *output) {
+void QuantizeUtil<float, int32_t>::Dequantize(const int *input,
+                                              const index_t size,
+                                              const float scale,
+                                              const int32_t zero_point,
+                                              float *output) {
   const index_t block_count = size / 4;
   const int32x4_t vzero = vdupq_n_s32(zero_point);
   const float32x4_t vscale = vdupq_n_f32(scale);

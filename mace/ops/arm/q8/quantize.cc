@@ -72,7 +72,7 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
  private:
   bool non_zero_;
   bool find_range_every_time_;
-  QuantizeUtil<uint8_t> quantize_util_;
+  QuantizeUtil<float, uint8_t> quantize_util_;
 };
 
 template<DeviceType D, class T>
@@ -103,7 +103,7 @@ class DequantizeOp<DeviceType::CPU, T> : public Operation {
   }
 
  private:
-  QuantizeUtil<T> quantize_util_;
+  QuantizeUtil<float, T> quantize_util_;
 };
 
 void RegisterQuantize(OpRegistryBase *op_registry) {
