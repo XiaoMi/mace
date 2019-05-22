@@ -337,7 +337,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Conv.name: self.convert_conv2d,
             OnnxOpType.ConvTranspose.name: self.convert_deconv,
             OnnxOpType.DepthToSpace.name: self.convert_depth_space,
-            OnnxOpType.Dropout.name: self.convert_identity,
+            OnnxOpType.Dropout.name: self.convert_dropout,
             OnnxOpType.DimRange.name: self.convert_dim_range,
             OnnxOpType.Div.name: self.convert_eltwise,
             OnnxOpType.Equal.name: self.convert_eltwise,
@@ -369,6 +369,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Relu.name: self.convert_activation,
             OnnxOpType.Reshape.name: self.convert_reshape,
             OnnxOpType.Reciprocal.name: self.convert_eltwise,
+            OnnxOpType.ReduceMean.name: self.convert_reduce,
             OnnxOpType.Scale.name: self.convert_eltwise,
             OnnxOpType.Sigmoid.name: self.convert_activation,
             OnnxOpType.Slice.name: self.convert_slice,
@@ -396,6 +397,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         ir_version = onnx_model.ir_version
         opset_imp = onnx_model.opset_import
 
+        onnx.checker.check_model(onnx_model)
+
         self._isKaldi = False
 
         polish_available = True
@@ -404,7 +407,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             domain = imp.domain
             version = imp.version
             print("constains ops domain: ", domain, "version:", version)
-            if 'kaldi2onnx' in domain:
+            if 'kaldi' in domain:
                 polish_available = False
                 self._data_format = DataFormat.NONE
                 self._isKaldi = True
@@ -656,14 +659,13 @@ class OnnxConverter(base_converter.ConverterInterface):
     def convert_concat(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Concat.name
-        axis_value = 1
-        if node.op_type == OnnxOpType.Concat.name:
+        if self._isKaldi is False:
             mace_check('axis' in node.attrs,
                        'Concat op should have axis attribute.')
             axis_value = node.attrs['axis']
             mace_check(axis_value == 1 or axis_value == -3,
                        "only support concat at channel dimension")
-        elif node.op_type == OnnxOpType.Append.name:
+        else:
             axis_value = -1
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
@@ -788,6 +790,12 @@ class OnnxConverter(base_converter.ConverterInterface):
         axes_arg = op.arg.add()
         axes_arg.name = 'axes'
         axes_arg.ints.extend([-1])
+
+    def convert_dropout(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Identity.name
+        del op.output[1:]
+        del op.output_shape[1:]
 
     def convert_dynamic_lstm(self, node):
         op = self.convert_general_op(node)
@@ -1068,6 +1076,9 @@ class OnnxConverter(base_converter.ConverterInterface):
         axis_arg.i = value
 
     def convert_gemm(self, node):
+        if self._isKaldi:
+            self.convert_affine(node)
+            return
         # only supports FullyConnected Style Gemm for now.
         trans_a = node.attrs['transA'] if 'transA' in node.attrs else 0
         trans_b = node.attrs['transB'] if 'transB' in node.attrs else 0

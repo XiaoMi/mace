@@ -136,7 +136,7 @@ RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors
     torchvision==0.2.2.post3
 
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
-    onnx==1.3.0 \
+    onnx==1.5.0 \
     onnx-tf==1.2.0
 
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
