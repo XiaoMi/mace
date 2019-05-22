@@ -20,4 +20,4 @@ After fusing:
    :align: center
 
 For more details about LSTMNonlinear in Kaldi,
-please refer to [LstmNonlinearComponent](http://kaldi-asr.org/doc/nnet-simple-component_8h_source.html#l02164)
+please refer to [LstmNonlinearityComponent](http://kaldi-asr.org/doc/nnet-combined-component_8h_source.html#l00255)
