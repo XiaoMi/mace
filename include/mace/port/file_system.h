@@ -15,6 +15,7 @@
 #ifndef MACE_PORT_FILE_SYSTEM_H_
 #define MACE_PORT_FILE_SYSTEM_H_
 
+#include <cerrno>
 #include <string>
 #include <memory>
 

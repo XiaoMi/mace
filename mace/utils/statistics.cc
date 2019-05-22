@@ -131,9 +131,6 @@ int64_t StatMACs(const std::string &op_type,
                                output_shape.end(),
                                1,
                                std::multiplies<int64_t>());
-  } else if (op_type == "DynamicLSTM") {
-    macs = output_shape[0] * (filter_shape[0] * filter_shape[1]
-        + output_shape[1] * filter_shape[0] / 4);
   }
   return macs;
 }
