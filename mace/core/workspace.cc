@@ -46,6 +46,24 @@ bool HasHalfTensor(const NetDef &net_def) {
   return false;
 }
 
+template <typename T>
+void DequantizeTensor(Device *device,
+                      const unsigned char *model_data,
+                      const ConstTensor &const_tensor,
+                      Tensor *output_tensor) {
+  Tensor::MappingGuard guard(output_tensor);
+  auto quantized_data = reinterpret_cast<const uint8_t *>(
+      model_data + const_tensor.offset());
+  auto dequantized_data = output_tensor->mutable_data<T>();
+  QuantizeUtil<T, uint8_t>
+      quantize_util(&device->cpu_runtime()->thread_pool());
+  quantize_util.Dequantize(quantized_data,
+                           output_tensor->size(),
+                           const_tensor.scale(),
+                           const_tensor.zero_point(),
+                           dequantized_data);
+}
+
 }  // namespace
 
 Workspace::Workspace() = default;
@@ -125,10 +143,15 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         }
 
         DataType dst_data_type = const_tensor.data_type();
-        if ((device_type == DeviceType::CPU &&
-             const_tensor.data_type() == DataType::DT_HALF) ||
-            (!is_quantize_model && const_tensor.quantized())) {
+        if (device_type == DeviceType::CPU &&
+             const_tensor.data_type() == DataType::DT_HALF) {
           dst_data_type = DataType::DT_FLOAT;
+        } else if (!is_quantize_model && const_tensor.quantized()) {
+          if (device_type == GPU && net_def.data_type() != DataType::DT_FLOAT) {
+            dst_data_type = DataType::DT_HALF;
+          } else {
+            dst_data_type = DataType::DT_FLOAT;
+          }
         }
 
         std::unique_ptr<Tensor> tensor(
@@ -159,17 +182,17 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
             }
         } else if (!is_quantize_model && const_tensor.quantized()) {
           // uncompress the weights of uint8
-          Tensor::MappingGuard guard(tensor.get());
-          auto quantized_data = reinterpret_cast<const uint8_t *>(
-              model_data + const_tensor.offset());
-          auto dequantized_data = tensor->mutable_data<float>();
-          QuantizeUtil<uint8_t>
-              quantize_util(&device->cpu_runtime()->thread_pool());
-          quantize_util.Dequantize(quantized_data,
-                                   tensor->size(),
-                                   const_tensor.scale(),
-                                   const_tensor.zero_point(),
-                                   dequantized_data);
+          if (dst_data_type != DT_FLOAT) {
+            DequantizeTensor<half>(device,
+                                   model_data,
+                                   const_tensor,
+                                   tensor.get());
+          } else {
+            DequantizeTensor<float>(device,
+                                    model_data,
+                                    const_tensor,
+                                    tensor.get());
+          }
         } else {
           tensor->CopyBytes(model_data + const_tensor.offset(),
                             const_tensor.data_size() *

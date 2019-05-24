@@ -25,7 +25,7 @@
 
 namespace mace {
 
-template<typename T>
+template<typename Q>
 inline void AdjustRange(const float in_min_data,
                         const float in_max_data,
                         const bool non_zero,
@@ -33,8 +33,8 @@ inline void AdjustRange(const float in_min_data,
                         int32_t *zero_point) {
   // re-range to make range include zero float and
   // make zero float as integer u8
-  const T quantized_min = std::numeric_limits<T>::lowest();
-  const T quantized_max = std::numeric_limits<T>::max();
+  const Q quantized_min = std::numeric_limits<Q>::lowest();
+  const Q quantized_max = std::numeric_limits<Q>::max();
   if (quantized_min < 0) {
     MACE_ASSERT(!non_zero, "Cannot nudge to non_zero quantize value.");
   }
@@ -65,15 +65,15 @@ inline void AdjustRange(const float in_min_data,
   }
 }
 
-template<typename T>
-inline T Saturate(float value) {
+template<typename Q>
+inline Q Saturate(float value) {
   int rounded_value = static_cast<int>(value);
-  if (rounded_value <= std::numeric_limits<T>::lowest()) {
-    return std::numeric_limits<T>::lowest();
-  } else if (rounded_value >= std::numeric_limits<T>::max()) {
-    return std::numeric_limits<T>::max();
+  if (rounded_value <= std::numeric_limits<Q>::lowest()) {
+    return std::numeric_limits<Q>::lowest();
+  } else if (rounded_value >= std::numeric_limits<Q>::max()) {
+    return std::numeric_limits<Q>::max();
   } else {
-    return static_cast<T>(rounded_value);
+    return static_cast<Q>(rounded_value);
   }
 }
 
@@ -115,7 +115,7 @@ inline void GetOutputMultiplierAndShift(
   MACE_CHECK(*right_shift >= 0);
 }
 
-template<typename T>
+template<typename F, typename Q>
 class QuantizeUtil {
  public:
   explicit QuantizeUtil(utils::ThreadPool *thread_pool)
@@ -125,11 +125,11 @@ class QuantizeUtil {
                                      const index_t size,
                                      float scale,
                                      int32_t zero_point,
-                                     T *output) {
+                                     Q *output) {
     float recip_scale = 1 / scale;
     thread_pool_->Compute1D([=](index_t start, index_t end, index_t step) {
       for (index_t i = start; i < end; i += step) {
-        output[i] = Saturate<T>(roundf(zero_point + recip_scale * input[i]));
+        output[i] = Saturate<Q>(roundf(zero_point + recip_scale * input[i]));
       }
     }, 0, size, 1);
   }
@@ -137,14 +137,14 @@ class QuantizeUtil {
   void Quantize(const float *input,
                 const index_t size,
                 bool non_zero,
-                T *output,
+                Q *output,
                 float *scale,
                 int32_t *zero_point) {
     float in_min_data;
     float in_max_data;
     FindMinMax(input, size, &in_min_data, &in_max_data);
 
-    AdjustRange<T>(in_min_data, in_max_data, non_zero,
+    AdjustRange<Q>(in_min_data, in_max_data, non_zero,
                    scale, zero_point);
 
     QuantizeWithScaleAndZeropoint(input, size, *scale, *zero_point, output);
@@ -158,24 +158,24 @@ class QuantizeUtil {
     Tensor::MappingGuard input_guard(&input);
     Tensor::MappingGuard output_guard(output);
     auto *input_data = input.data<float>();
-    auto *output_data = output->mutable_data<T>();
+    auto *output_data = output->mutable_data<Q>();
     float scale;
     int32_t zero_point;
 
     Quantize(input_data, input.size(), false, output_data, &scale, &zero_point);
 
-    *min_out = scale * (std::numeric_limits<T>::lowest() - zero_point);
-    *max_out = scale * (std::numeric_limits<T>::max() - zero_point);
+    *min_out = scale * (std::numeric_limits<Q>::lowest() - zero_point);
+    *max_out = scale * (std::numeric_limits<Q>::max() - zero_point);
   }
 
-  void Dequantize(const T *input,
+  void Dequantize(const Q *input,
                   const index_t size,
                   const float scale,
                   const int32_t zero_point,
-                  float *output) {
+                  F *output) {
     thread_pool_->Compute1D([=](index_t start, index_t end, index_t step) {
       for (index_t i = start; i < end; i += step) {
-        output[i] = scale * (input[i] - zero_point);
+        output[i] = FloatCast<F>(scale * (input[i] - zero_point));
       }
     }, 0, size, 1);
   }
@@ -187,12 +187,12 @@ class QuantizeUtil {
     MACE_CHECK(input.size() != 0);
     Tensor::MappingGuard input_guard(&input);
     Tensor::MappingGuard output_guard(output);
-    auto *input_data = input.data<T>();
-    auto *output_data = output->mutable_data<float>();
+    auto *input_data = input.data<Q>();
+    auto *output_data = output->mutable_data<F>();
     float scale;
     int32_t zero_point;
 
-    AdjustRange<T>(min_in, max_in, false, &scale, &zero_point);
+    AdjustRange<Q>(min_in, max_in, false, &scale, &zero_point);
 
     Dequantize(input_data, input.size(), scale, zero_point, output_data);
   }
@@ -204,7 +204,7 @@ class QuantizeUtil {
 #ifdef MACE_ENABLE_NEON
 
 template<>
-void QuantizeUtil<uint8_t>::QuantizeWithScaleAndZeropoint(
+void QuantizeUtil<float, uint8_t>::QuantizeWithScaleAndZeropoint(
     const float *input,
     const index_t size,
     float scale,
@@ -212,18 +212,18 @@ void QuantizeUtil<uint8_t>::QuantizeWithScaleAndZeropoint(
     uint8_t *output);
 
 template<>
-void QuantizeUtil<uint8_t>::Dequantize(const uint8_t *input,
-                                       const index_t size,
-                                       const float scale,
-                                       const int32_t zero_point,
-                                       float *output);
+void QuantizeUtil<float, uint8_t>::Dequantize(const uint8_t *input,
+                                              const index_t size,
+                                              const float scale,
+                                              const int32_t zero_point,
+                                              float *output);
 
 template<>
-void QuantizeUtil<int32_t>::Dequantize(const int *input,
-                                       const index_t size,
-                                       const float scale,
-                                       const int32_t zero_point,
-                                       float *output);
+void QuantizeUtil<float, int32_t>::Dequantize(const int *input,
+                                              const index_t size,
+                                              const float scale,
+                                              const int32_t zero_point,
+                                              float *output);
 
 #endif
 

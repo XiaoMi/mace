@@ -101,6 +101,7 @@ message NetDef {
   repeated OperatorDef op = 1;
   repeated Argument arg = 2;
   repeated ConstTensor tensors = 3;
+  optional DataType data_type = 4 [default = DT_FLOAT];
 
   repeated InputOutputInfo input_info = 100;
   repeated InputOutputInfo output_info = 101;
