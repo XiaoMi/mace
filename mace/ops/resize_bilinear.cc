@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/resize_bilinear.h"
-
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -21,6 +19,7 @@
 #include "mace/core/operator.h"
 #include "mace/utils/memory.h"
 #include "mace/core/quantize.h"
+#include "mace/ops/common/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bilinear.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -223,13 +222,13 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
     }
 
     float height_scale =
-        resize_bilinear::CalculateResizeScale(in_height,
-                                              out_height,
-                                              align_corners_);
+        common::utils::CalculateResizeScale(in_height,
+                                            out_height,
+                                            align_corners_);
     float width_scale =
-        resize_bilinear::CalculateResizeScale(in_width,
-                                              out_width,
-                                              align_corners_);
+        common::utils::CalculateResizeScale(in_width,
+                                            out_width,
+                                            align_corners_);
 
     std::vector<CachedInterpolation> ys(out_height + 1);
     std::vector<CachedInterpolation> xs(out_width + 1);
@@ -299,13 +298,13 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
     }
 
     float height_scale =
-        resize_bilinear::CalculateResizeScale(in_height,
-                                              out_height,
-                                              align_corners_);
+        common::utils::CalculateResizeScale(in_height,
+                                            out_height,
+                                            align_corners_);
     float width_scale =
-        resize_bilinear::CalculateResizeScale(in_width,
-                                              out_width,
-                                              align_corners_);
+        common::utils::CalculateResizeScale(in_width,
+                                            out_width,
+                                            align_corners_);
 
     std::vector<CachedInterpolation> ys(out_height + 1);
     std::vector<CachedInterpolation> xs(out_width + 1);
@@ -336,8 +335,8 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ResizeBilinearOp<DeviceType::GPU, T> : public Operation {
+template<>
+class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeBilinearOp(OpConstructContext *context)
       : Operation(context) {
@@ -347,7 +346,7 @@ class ResizeBilinearOp<DeviceType::GPU, T> : public Operation {
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ResizeBilinearKernel<T>>(
+      kernel_ = make_unique<opencl::image::ResizeBilinearKernel>(
           align_corners, size[0], size[1]);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -376,13 +375,7 @@ void RegisterResizeBilinear(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "ResizeBilinear", ResizeBilinearOp);
 }
 
 }  // namespace ops

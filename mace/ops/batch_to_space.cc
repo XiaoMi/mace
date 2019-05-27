@@ -80,10 +80,10 @@ class BatchToSpaceOpBase : public Operation {
   }
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class BatchToSpaceNDOp;
 
-template <>
+template<>
 class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
@@ -175,7 +175,7 @@ class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
   }
 };
 
-template <>
+template<>
 class BatchToSpaceNDOp<DeviceType::CPU, uint8_t> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
@@ -259,13 +259,13 @@ class BatchToSpaceNDOp<DeviceType::CPU, uint8_t> : public BatchToSpaceOpBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class BatchToSpaceNDOp<DeviceType::GPU, T> : public BatchToSpaceOpBase {
+template<>
+class BatchToSpaceNDOp<DeviceType::GPU, float> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::BatchToSpaceKernel<T>>();
+      kernel_ = make_unique<opencl::image::BatchToSpaceKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -285,7 +285,6 @@ class BatchToSpaceNDOp<DeviceType::GPU, T> : public BatchToSpaceOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterBatchToSpaceND(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
                    BatchToSpaceNDOp, DeviceType::CPU, float);
@@ -293,13 +292,7 @@ void RegisterBatchToSpaceND(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
                    BatchToSpaceNDOp, DeviceType::CPU, uint8_t);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
-                   BatchToSpaceNDOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
-                   BatchToSpaceNDOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "BatchToSpaceND", BatchToSpaceNDOp);
 }
 
 }  // namespace ops

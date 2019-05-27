@@ -27,7 +27,6 @@ MaceStatus TransformConv2DFilter(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output) {
   const index_t out_chan = input->dim(0);
   const index_t in_chan = input->dim(1);
@@ -55,8 +54,9 @@ MaceStatus TransformConv2DFilter(
     MACE_OUT_OF_RANGE_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("transform_conv_filter");
     built_options.emplace("-Dtransform_conv_filter=" + kernel_name);
-    built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(input->dtype()));
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    std::string data_dt = DtToCLDt(input->dtype());
+    built_options.emplace("-DIN_DATA_TYPE=" + data_dt);
+    built_options.emplace("-DDATA_TYPE=" + data_dt);
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("buffer_transform",
                                               kernel_name,
                                               built_options,
@@ -98,7 +98,6 @@ MaceStatus TransformDWConv2DFilter(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output) {
   const index_t multiplier = input->dim(0);
   const index_t in_chan = input->dim(1);
@@ -124,8 +123,9 @@ MaceStatus TransformDWConv2DFilter(
     MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("transform_dw_conv_filter");
     built_options.emplace("-Dtransform_dw_conv_filter=" + kernel_name);
-    built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(input->dtype()));
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    std::string data_dt = DtToCLDt(input->dtype());
+    built_options.emplace("-DIN_DATA_TYPE=" + data_dt);
+    built_options.emplace("-DDATA_TYPE=" + data_dt);
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("buffer_transform",
                                               kernel_name,
                                               built_options,
@@ -164,7 +164,6 @@ MaceStatus TransformArgument(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output) {
   const index_t size = input->dim(0);
 
@@ -181,8 +180,9 @@ MaceStatus TransformArgument(
     MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("transform_arg");
     built_options.emplace("-Dtransform_arg=" + kernel_name);
-    built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(input->dtype()));
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    std::string data_dt = DtToCLDt(input->dtype());
+    built_options.emplace("-DIN_DATA_TYPE=" + data_dt);
+    built_options.emplace("-DDATA_TYPE=" + data_dt);
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("buffer_transform",
                                               kernel_name,
                                               built_options,
@@ -227,6 +227,30 @@ MaceStatus TransformArgument(
     };
   }
   return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus BufferTransform::Compute(OpContext *context,
+                                    const Tensor *input,
+                                    const OpenCLBufferType type,
+                                    const int wino_blk_size,
+                                    Tensor *output) {
+  MACE_UNUSED(wino_blk_size);
+  switch (type) {
+    case CONV2D_FILTER:
+      return TransformConv2DFilter(context, &kernel_, input, output);
+    case DW_CONV2D_FILTER:
+      return TransformDWConv2DFilter(context, &kernel_, input, output);
+    case ARGUMENT:
+      return TransformArgument(context, &kernel_, input, output);
+    default:
+      if (input->dtype() != output->dtype()) {
+        return BufferTypeTransform(context, &kernel_, input, output);
+      } else {
+        SetFutureDefaultWaitFn(context->future());
+        output->ReuseTensorBuffer(*input);
+        return MaceStatus::MACE_SUCCESS;
+      }
+  }
 }
 
 }  // namespace buffer

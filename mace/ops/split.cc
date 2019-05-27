@@ -100,14 +100,14 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class SplitOp<DeviceType::GPU, T> : public Operation {
+template<>
+class SplitOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit SplitOp(OpConstructContext *context)
       : Operation(context) {
     int32_t axis = Operation::GetOptionalArg<int>("axis", 3);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::SplitKernel<T>>(axis);
+      kernel_ = make_unique<opencl::image::SplitKernel>(axis);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -132,13 +132,7 @@ void RegisterSplit(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Split", SplitOp,
                    DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Split", SplitOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Split", SplitOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Split", SplitOp);
 
   MACE_REGISTER_OP_CONDITION(
       op_registry,

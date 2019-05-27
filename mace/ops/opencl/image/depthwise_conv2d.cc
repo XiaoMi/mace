@@ -74,7 +74,6 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            const ActivationType activation,
                            const float relux_max_limit,
                            const float leakyrelu_coefficient,
-                           const DataType dt,
                            std::vector<index_t> *prev_input_shape,
                            Tensor *output,
                            uint32_t *kwg_size) {
@@ -108,8 +107,8 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     } else {
       built_options.emplace("-Ddepthwise_conv2d=" + kernel_name);
     }
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     built_options.emplace(MakeString("-DSTRIDE=", stride));
     switch (activation) {
@@ -192,6 +191,62 @@ MaceStatus DepthwiseConv2d(OpContext *context,
 }
 
 }  // namespace depthwise
+
+
+MaceStatus DepthwiseConv2dKernel::Compute(
+    OpContext *context,
+    const Tensor *input,
+    const Tensor *filter,
+    const Tensor *bias,
+    const int *strides,
+    const Padding &padding_type,
+    const std::vector<int> &padding_data,
+    const int *dilations,
+    const ActivationType activation,
+    const float relux_max_limit,
+    const float leakyrelu_coefficient,
+    Tensor *output) {
+  index_t kernel_h = filter->dim(2);
+  index_t kernel_w = filter->dim(3);
+  if (strides[0] != strides[1]) {
+    LOG(WARNING) << "OpenCL depthwise conv2d kernel with "
+                 << "filter" << kernel_h << "x" << kernel_w << ","
+                 << " stride " << strides[0] << "x" << strides[1]
+                 << " is not implemented yet, using slow version";
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  // Create a fake conv_2d filter to calculate the paddings and output size
+  std::vector<index_t> fake_filter_shape(4);
+  fake_filter_shape[0] = filter->dim(0) * filter->dim(1);
+  fake_filter_shape[1] = filter->dim(1);
+  fake_filter_shape[2] = filter->dim(2);
+  fake_filter_shape[3] = filter->dim(3);
+
+  std::vector<index_t> output_shape(4);
+  std::vector<int> paddings(2);
+  if (padding_data.empty()) {
+    ops::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), fake_filter_shape.data(), dilations, strides,
+        padding_type, output_shape.data(), paddings.data());
+  } else {
+    paddings = padding_data;
+    CalcOutputSize(input->shape().data(), fake_filter_shape.data(),
+                   padding_data.data(), dilations, strides, RoundType::FLOOR,
+                   output_shape.data());
+  }
+
+  std::vector<size_t> output_image_shape;
+  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &output_image_shape);
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+
+  return depthwise::DepthwiseConv2d(
+      context, &kernel_, input, filter, bias, strides[0], paddings.data(),
+      dilations, activation, relux_max_limit, leakyrelu_coefficient,
+      &input_shape_, output, &kwg_size_);
+}
+
 }  // namespace image
 }  // namespace opencl
 }  // namespace ops

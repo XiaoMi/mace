@@ -25,21 +25,20 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class LSTMCellOp;
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class LSTMCellOp<DeviceType::GPU, T> : public Operation {
+template<>
+class LSTMCellOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit LSTMCellOp(OpConstructContext *context)
       : Operation(context) {
-    T forget_bias = static_cast<T>(
-        Operation::GetOptionalArg<float>("scalar_input",
-                                         0.0));
+    float forget_bias = Operation::GetOptionalArg<float>("scalar_input",
+                                                         0.0);
     MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::LSTMCellKernel<T>>(forget_bias);
+      kernel_ = make_unique<opencl::image::LSTMCellKernel>(forget_bias);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -47,30 +46,26 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
     const Tensor *pre_output = context->workspace()->GetTensor(
         operator_def_->input(1));
     if (pre_output->is_weight()) {
-      MACE_CHECK(TransformFilter<T>(context,
-                                    operator_def_.get(),
-                                    1,
-                                    OpenCLBufferType::IN_OUT_CHANNEL,
-                                    mem_type) == MaceStatus::MACE_SUCCESS);
+      auto status = TransformFilter(context, operator_def_.get(),
+                                    1, OpenCLBufferType::IN_OUT_CHANNEL,
+                                    mem_type);
+      MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     }
-    MACE_CHECK(TransformFilter<T>(context,
-                                  operator_def_.get(),
-                                  2,
-                                  OpenCLBufferType::IN_OUT_CHANNEL,
-                                  mem_type) == MaceStatus::MACE_SUCCESS);
-    MACE_CHECK(TransformFilter<T>(context,
-                                  operator_def_.get(),
-                                  3,
-                                  OpenCLBufferType::ARGUMENT,
-                                  mem_type) == MaceStatus::MACE_SUCCESS);
-    const Tensor *pre_cell = context->workspace()->GetTensor(
-        operator_def_->input(4));
+    auto status = TransformFilter(context, operator_def_.get(),
+                                  2, OpenCLBufferType::IN_OUT_CHANNEL,
+                                  mem_type);
+    MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
+    status = TransformFilter(context, operator_def_.get(),
+                             3, OpenCLBufferType::ARGUMENT,
+                             mem_type);
+    MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
+    const Tensor *pre_cell =
+        context->workspace()->GetTensor(operator_def_->input(4));
     if (pre_cell->is_weight()) {
-      MACE_CHECK(TransformFilter<T>(context,
-                                    operator_def_.get(),
-                                    4,
-                                    OpenCLBufferType::IN_OUT_CHANNEL,
-                                    mem_type) == MaceStatus::MACE_SUCCESS);
+      status = TransformFilter(context, operator_def_.get(),
+                               4, OpenCLBufferType::IN_OUT_CHANNEL,
+                               mem_type);
+      MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     }
   }
 
@@ -92,14 +87,10 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
   MACE_OP_INPUT_TAGS(INPUT, PRE_OUTPUT, WEIGHT, BIAS, PRE_CELL);
   MACE_OP_OUTPUT_TAGS(CELL, OUTPUT);
 };
-#endif
+#endif  // MACE_ENABLE_OPENCL
 
 void RegisterLSTMCell(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "LSTMCell", LSTMCellOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "LSTMCell", LSTMCellOp,
-                   DeviceType::GPU, half);
+  MACE_REGISTER_GPU_OP(op_registry, "LSTMCell", LSTMCellOp);
 }
 
 }  // namespace ops

@@ -66,7 +66,6 @@ MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
           *net_def, "opencl_mem_type",
           static_cast<MemoryType>(MemoryType::GPU_IMAGE));
   const MemoryType mem_type = static_cast<MemoryType>(mem_type_i);
-
   runtime->set_mem_type(mem_type);
 
   return MaceStatus::MACE_SUCCESS;

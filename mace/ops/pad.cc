@@ -16,7 +16,7 @@
 #include <memory>
 
 #include "mace/core/operator.h"
-#include "mace/ops/pad.h"
+#include "mace/ops/common/pad_type.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/pad.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -26,10 +26,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class PadOp;
 
-template <typename T>
+template<typename T>
 class PadOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit PadOp(OpConstructContext *context)
@@ -88,12 +88,12 @@ class PadOp<DeviceType::CPU, T> : public Operation {
         for (index_t c = 0; c < channel; ++c) {
           for (index_t h = 0; h < height; ++h) {
             const index_t in_offset = (((b * channel + c) * height) +
-                                      h) * width;
+                h) * width;
             const index_t out_offset =
-                  (((b + this->paddings_[0]) * output->dim(1)
-                + (c + this->paddings_[2])) * output->dim(2)
-                + (h + this->paddings_[4])) * output->dim(3)
-                + this->paddings_[6];
+                (((b + this->paddings_[0]) * output->dim(1)
+                    + (c + this->paddings_[2])) * output->dim(2)
+                    + (h + this->paddings_[4])) * output->dim(3)
+                    + this->paddings_[6];
             memcpy(output_ptr + out_offset,
                    input_ptr + in_offset,
                    width * sizeof(T));
@@ -101,11 +101,11 @@ class PadOp<DeviceType::CPU, T> : public Operation {
         }
       }
     } else if (type_ == PadType::REFLECT || type_ == PadType::SYMMETRIC) {
-      const index_t o_batch   = output->dim(0);
+      const index_t o_batch = output->dim(0);
       const index_t o_channel = output->dim(1);
-      const index_t o_height  = output->dim(2);
-      const index_t o_width   = output->dim(3);
-      const int l_add = type_ == PadType::REFLECT ?  0 : -1;
+      const index_t o_height = output->dim(2);
+      const index_t o_width = output->dim(3);
+      const int l_add = type_ == PadType::REFLECT ? 0 : -1;
       const int r_add = type_ == PadType::REFLECT ? -2 : -1;
 
       for (index_t h = 0; h < o_height; ++h) {
@@ -116,10 +116,10 @@ class PadOp<DeviceType::CPU, T> : public Operation {
 
           for (index_t c = 0; c < o_channel; ++c) {
             index_t c_in = get_src_idx(c, channel, paddings_[2], l_add, r_add);
-            const index_t in_offset = (((b_in * channel + c_in) * height) +
-                                      h_in) * width;
-            index_t out_offset = (((b * o_channel + c) * o_height) +
-                                 h) * o_width;
+            const index_t in_offset =
+                (((b_in * channel + c_in) * height) + h_in) * width;
+            index_t out_offset =
+                (((b * o_channel + c) * o_height) + h) * o_width;
 
             for (index_t i = 0, j = paddings_[6] + l_add;
                  i < paddings_[6]; ++i, --j) {
@@ -169,8 +169,8 @@ class PadOp<DeviceType::CPU, T> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class PadOp<DeviceType::GPU, T> : public Operation {
+template<>
+class PadOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit PadOp(OpConstructContext *context)
       : Operation(context) {
@@ -180,7 +180,7 @@ class PadOp<DeviceType::GPU, T> : public Operation {
     float constant_value = Operation::GetOptionalArg<float>(
         "constant_value", 0.0);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::PadKernel<T>>(
+      kernel_ = make_unique<opencl::image::PadKernel>(
           type, paddings, constant_value);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -198,18 +198,11 @@ class PadOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterPad(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pad", PadOp,
                    DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Pad", PadOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Pad", PadOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Pad", PadOp);
 }
 
 }  // namespace ops

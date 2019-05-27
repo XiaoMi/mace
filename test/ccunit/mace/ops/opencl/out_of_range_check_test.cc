@@ -53,10 +53,10 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
                           DtToCLCMDDt(DataTypeToEnum<float>::value));
   } else {
     built_options.emplace("-DDATA_TYPE=" +
-                          DtToUpCompatibleCLDt(DataTypeToEnum<float>::value));
+                          DtToCLDt(DataTypeToEnum<float>::value));
     built_options.emplace(
         "-DCMD_DATA_TYPE=" +
-            DtToUpCompatibleCLCMDDt(DataTypeToEnum<float>::value));
+            DtToCLCMDDt(DataTypeToEnum<float>::value));
   }
 
   cl::Kernel kernel;

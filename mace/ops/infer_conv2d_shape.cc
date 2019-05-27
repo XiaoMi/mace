@@ -19,7 +19,6 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
 class InferConv2dShapeOp : public Operation {
  public:
   explicit InferConv2dShapeOp(OpConstructContext *context)
@@ -66,20 +65,23 @@ class InferConv2dShapeOp : public Operation {
     int32_t out_h = 0, out_w = 0;
     if (!paddings.empty()) {
       out_h = (in_h - kernels[2] + paddings[0]) / strides[0] + 1;
-      out_w = (in_w - kernels[3]  + paddings[1]) / strides[1] + 1;
+      out_w = (in_w - kernels[3] + paddings[1]) / strides[1] + 1;
     } else {
       switch (padding_type) {
-        case SAME:
+        case SAME: {
           out_h = (in_h + strides[0] - 1) / strides[0];
           out_w = (in_w + strides[1] - 1) / strides[1];
           break;
-        case VALID:
+        }
+        case VALID: {
           out_h = (in_h - kernels[2] + 1) / strides[0];
           out_w = (in_w - kernels[3] + 1) / strides[1];
           break;
-        default:
+        }
+        default: {
           MACE_NOT_IMPLEMENTED;
           break;
+        }
       }
     }
 
@@ -100,15 +102,13 @@ class InferConv2dShapeOp : public Operation {
 };
 
 void RegisterInferConv2dShape(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "InferConv2dShape",
-                   InferConv2dShapeOp, DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "InferConv2dShape",
-                   InferConv2dShapeOp, DeviceType::CPU, int32_t);
+  MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
+                            InferConv2dShapeOp, DeviceType::CPU, float);
+  MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
+                            InferConv2dShapeOp, DeviceType::CPU, int32_t);
 #ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "InferConv2dShape",
-                   InferConv2dShapeOp, DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "InferConv2dShape",
-                   InferConv2dShapeOp, DeviceType::GPU, half);
+  MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
+                            InferConv2dShapeOp, DeviceType::GPU, float);
 #endif  // MACE_ENABLE_OPENCL
 }
 

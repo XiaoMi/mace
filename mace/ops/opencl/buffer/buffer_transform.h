@@ -32,33 +32,27 @@ MaceStatus BufferTypeTransform(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output);
 
 MaceStatus TransformConv2DFilter(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output);
 
 MaceStatus TransformDWConv2DFilter(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output);
 
 MaceStatus TransformArgument(
     OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
-    const DataType dt,
     Tensor *output);
 
-
-template <typename T>
-class BufferTransform: public OpenCLBufferTransformKernel {
+class BufferTransform : public OpenCLBufferTransformKernel {
  public:
   MaceStatus Compute(
       OpContext *context,
@@ -71,32 +65,6 @@ class BufferTransform: public OpenCLBufferTransformKernel {
   cl::Kernel kernel_;
   std::vector<index_t> input_shape_;
 };
-
-template <typename T>
-MaceStatus BufferTransform<T>::Compute(OpContext *context,
-                                       const Tensor *input,
-                                       const OpenCLBufferType type,
-                                       const int wino_blk_size,
-                                       Tensor *output) {
-  MACE_UNUSED(wino_blk_size);
-  const DataType dt = DataTypeToEnum<T>::value;
-  switch (type) {
-    case CONV2D_FILTER:
-      return TransformConv2DFilter(context, &kernel_, input, dt, output);
-    case DW_CONV2D_FILTER:
-      return TransformDWConv2DFilter(context, &kernel_, input, dt, output);
-    case ARGUMENT:
-      return TransformArgument(context, &kernel_, input, dt, output);
-    default:
-      if (input->dtype() != dt) {
-        return BufferTypeTransform(context, &kernel_, input, dt, output);
-      } else {
-        SetFutureDefaultWaitFn(context->future());
-        output->ReuseTensorBuffer(*input);
-        return MaceStatus::MACE_SUCCESS;
-      }
-  }
-}
 
 }  // namespace buffer
 }  // namespace opencl

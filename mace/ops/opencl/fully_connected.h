@@ -15,8 +15,7 @@
 #ifndef MACE_OPS_OPENCL_FULLY_CONNECTED_H_
 #define MACE_OPS_OPENCL_FULLY_CONNECTED_H_
 
-#include "mace/ops/activation.h"
-
+#include "mace/ops/common/activation_type.h"
 #include "mace/public/mace.h"
 #include "mace/utils/math.h"
 

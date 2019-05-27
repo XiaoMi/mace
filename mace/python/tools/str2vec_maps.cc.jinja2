@@ -14,24 +14,32 @@
 
 // This is a generated file. DO NOT EDIT!
 
+#include "mace/codegen/opencl/encrypt_opencl_kernel.h"
+
 #include <map>
 #include <string>
-#include <vector>
 
 namespace mace {
+namespace {{tag}} {
 
-extern const std::map<std::string, std::vector<{{data_type}}>> {{variable_name}} =
-{
-  {% for key, value in maps.items() %}
+const std::map<std::string, ClProgramInfo> {{variable_name}} = {
+{% for key, encrypted_code in maps.items() %}
   {
-    "{{key}}",
-    {
-      {%- for ele in value -%}
-      {{ele}},
-      {%- endfor -%}
+    "{{key}}", {
+      {
+        {%- for header in encrypted_code['headers'] -%}
+        "{{header}}",
+        {%- endfor -%}
+      },
+      {
+        {%- for ele in encrypted_code['code'] -%}
+        {{ele}},
+        {%- endfor -%}
+      }
     }
   },  // {{key}}
 {% endfor %}
 };
 
+}  // {{tag}}
 }  // namespace mace

@@ -29,7 +29,6 @@ namespace {
 MaceStatus WinogradInputTransform(OpContext *context,
                                   cl::Kernel *kernel,
                                   const Tensor *input_tensor,
-                                  const DataType dt,
                                   const int *paddings,
                                   const index_t round_h,
                                   const index_t round_w,
@@ -62,8 +61,8 @@ MaceStatus WinogradInputTransform(OpContext *context,
       MACE_CHECK(false, "mace only supports 4x4 and 2x2 gpu winograd.");
       return MaceStatus::MACE_SUCCESS;
     }
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("winograd_transform",
                                               obfuscated_kernel_name,
                                               built_options,
@@ -93,7 +92,6 @@ MaceStatus WinogradInputTransform(OpContext *context,
     kernel->setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
   }
 
-
   const std::vector<uint32_t> lws = {*kwg_size / 8, 8, 0};
   std::string tuning_key = Concat("winograd_transform_kernel",
                                   output_tensor->dim(0),
@@ -110,7 +108,6 @@ MaceStatus WinogradOutputTransform(OpContext *context,
                                    cl::Kernel *kernel,
                                    const Tensor *input_tensor,
                                    const Tensor *bias,
-                                   const DataType dt,
                                    const index_t round_h,
                                    const index_t round_w,
                                    const int wino_blk_size,
@@ -145,32 +142,40 @@ MaceStatus WinogradOutputTransform(OpContext *context,
       return MaceStatus::MACE_SUCCESS;
     }
 
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
-      case NOOP:
+      case NOOP: {
         break;
-      case RELU:
+      }
+      case RELU: {
         built_options.emplace("-DUSE_RELU");
         break;
-      case RELUX:
+      }
+      case RELUX: {
         built_options.emplace("-DUSE_RELUX");
         break;
-      case PRELU:
+      }
+      case PRELU: {
         built_options.emplace("-DUSE_PRELU");
         break;
-      case TANH:
+      }
+      case TANH: {
         built_options.emplace("-DUSE_TANH");
         break;
-      case SIGMOID:
+      }
+      case SIGMOID: {
         built_options.emplace("-DUSE_SIGMOID");
         break;
-      case LEAKYRELU:
+      }
+      case LEAKYRELU: {
         built_options.emplace("-DUSE_LEAKYRELU");
         break;
-      default:
+      }
+      default: {
         LOG(FATAL) << "Unknown activation type: " << activation;
+      }
     }
 
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("winograd_transform",
@@ -229,7 +234,6 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                                        const ActivationType activation,
                                        const float relux_max_limit,
                                        const float leakyrelu_coefficient,
-                                       const DataType dt,
                                        const int wino_blk_size,
                                        std::vector<index_t> *prev_input_shape,
                                        Tensor *output,
@@ -265,13 +269,14 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                               OpenCLBufferType::IN_OUT_HEIGHT,
                               &t_input_image_shape);
   ScratchImage transformed_input_image(scratch_manager);
-  std::unique_ptr<Tensor> transformed_input = make_unique<Tensor>(
-      transformed_input_image.Scratch(context->device()->allocator(),
-                                      t_input_image_shape, dt), dt);
+  auto input_dt = input->dtype();
+  auto image = transformed_input_image.Scratch(context->device()->allocator(),
+                                               t_input_image_shape, input_dt);
+  auto transformed_input = make_unique<Tensor>(image, input_dt);
   MACE_RETURN_IF_ERROR(transformed_input->ResizeImage(t_input_shape,
                                                       t_input_image_shape));
   MACE_RETURN_IF_ERROR(WinogradInputTransform(
-      context, kernels[0], input, dt, paddings,
+      context, kernels[0], input, paddings,
       round_h, round_w, wino_blk_size,
       input_changed, transformed_input.get(),
       kwg_size[0], &t_input_future));
@@ -290,9 +295,10 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                               &mm_output_image_shape);
 
   ScratchImage mm_output_image(scratch_manager);
+  auto output_dt = input->dtype();
   std::unique_ptr<Tensor> mm_output = make_unique<Tensor>(
       mm_output_image.Scratch(context->device()->allocator(),
-                              mm_output_image_shape, dt), dt);
+                              mm_output_image_shape, output_dt), output_dt);
   MACE_RETURN_IF_ERROR(mm_output->ResizeImage(mm_output_shape,
                                               mm_output_image_shape));
 
@@ -311,8 +317,8 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
     MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("matmul");
     built_options.emplace("-Dmatmul=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("matmul", kernel_name,
                                               built_options, kernels[1]));
 
@@ -334,7 +340,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
 
   const std::vector<uint32_t> lws = {*kwg_size[1] / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", mm_output_shape[0],
-      mm_output_shape[1], mm_output_shape[2]);
+                                  mm_output_shape[1], mm_output_shape[2]);
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernels[1], tuning_key,
                                            gws, lws, &mm_future));
 
@@ -344,7 +350,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   // t_output (blk_sqr, out_chan, out_width) -> output(NHWC)
   MACE_RETURN_IF_ERROR(WinogradOutputTransform(
       context, kernels[2], mm_output.get(), bias,
-      dt, round_h, round_w, wino_blk_size, activation, relux_max_limit,
+      round_h, round_w, wino_blk_size, activation, relux_max_limit,
       leakyrelu_coefficient, input_changed, output, kwg_size[2],
       &t_output_future))
 

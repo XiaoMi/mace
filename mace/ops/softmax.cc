@@ -35,10 +35,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class SoftmaxOp;
 
-template <>
+template<>
 class SoftmaxOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
@@ -139,12 +139,12 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
           sum = std::max(sum, std::numeric_limits<float>::min());
           if (use_log_) {
             for (index_t c = 0; c < class_count; ++c) {
-              output_ptr[c] /=  sum;
+              output_ptr[c] /= sum;
               output_ptr[c] = std::log(output_ptr[c]);
             }
           } else {
             for (index_t c = 0; c < class_count; ++c) {
-              output_ptr[c] /=  sum;
+              output_ptr[c] /= sum;
             }
           }
         }
@@ -407,17 +407,17 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class SoftmaxOp<DeviceType::GPU, T> : public Operation {
+template<>
+class SoftmaxOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context) {
     bool use_log = (
         Operation::GetOptionalArg<bool>("use_log", false));
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::SoftmaxKernel<T>>(use_log);
+      kernel_ = make_unique<opencl::image::SoftmaxKernel>(use_log);
     } else {
-      kernel_ = make_unique<opencl::buffer::SoftmaxKernel<T>>(use_log);
+      kernel_ = make_unique<opencl::buffer::SoftmaxKernel>(use_log);
     }
   }
   MaceStatus Run(OpContext *context) override {
@@ -433,7 +433,6 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterSoftmax(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
                    DeviceType::CPU, float);
@@ -443,13 +442,7 @@ void RegisterSoftmax(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Softmax", SoftmaxOp);
 
   MACE_REGISTER_OP_CONDITION(
       op_registry,
@@ -458,13 +451,13 @@ void RegisterSoftmax(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 if (op->output_shape(0).dims_size() != 2 &&
                     op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

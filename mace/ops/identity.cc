@@ -18,7 +18,6 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
 class IdentityOp : public Operation {
  public:
   explicit IdentityOp(OpConstructContext *context)
@@ -34,15 +33,13 @@ class IdentityOp : public Operation {
 };
 
 void RegisterIdentity(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Identity", IdentityOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "Identity", IdentityOp,
-                   DeviceType::CPU, int32_t);
+  MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
+                            DeviceType::CPU, float);
+  MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
+                            DeviceType::CPU, int32_t);
 #ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Identity", IdentityOp,
-                   DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "Identity", IdentityOp,
-                   DeviceType::GPU, half);
+  MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
+                            DeviceType::GPU, float);
 #endif  // MACE_ENABLE_OPENCL
 }
 

@@ -181,7 +181,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "internal_ops",
     srcs = glob(
@@ -239,10 +238,10 @@ cc_library(
     name = "ops",
     srcs = [
         "registry/ops_registry.cc",
-        ],
+    ],
     hdrs = [
         "registry/ops_registry.h",
-        ],
+    ],
     copts = [
         "-Werror",
         "-Wextra",

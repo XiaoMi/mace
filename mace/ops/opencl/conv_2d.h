@@ -17,8 +17,9 @@
 
 #include <vector>
 
-#include "mace/ops/activation.h"
+#include "mace/ops/common/activation_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
 class OpContext;

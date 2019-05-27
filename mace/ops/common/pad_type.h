@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_POOLING_H_
-#define MACE_OPS_POOLING_H_
-
+#ifndef MACE_OPS_COMMON_PAD_TYPE_H_
+#define MACE_OPS_COMMON_PAD_TYPE_H_
 
 namespace mace {
-enum PoolingType {
-  AVG = 1,  // avg_pool
-  MAX = 2,  // max_pool
+namespace ops {
+
+enum PadType {
+  CONSTANT  = 0,
+  REFLECT   = 1,
+  SYMMETRIC = 2,
 };
+
+}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_POOLING_H_
+#endif  // MACE_OPS_COMMON_PAD_TYPE_H_

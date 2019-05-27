@@ -318,7 +318,7 @@ std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
 
   std::string key = OpKeyBuilder(op_type)
       .Device(device_type)
-      .TypeConstraint("T", dtype)
+      .TypeConstraint("T", dtype == DT_HALF ? DT_FLOAT : dtype)
       .Build();
   if (registry_.at(op_type)->creators.count(key) == 0) {
     LOG(FATAL) << "Key not registered: " << key;

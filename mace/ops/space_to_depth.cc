@@ -24,7 +24,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class SpaceToDepthOp : public Operation {
  public:
   explicit SpaceToDepthOp(OpConstructContext *context)
@@ -88,14 +88,14 @@ class SpaceToDepthOp : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class SpaceToDepthOp<DeviceType::GPU, T> : public Operation {
+template<>
+class SpaceToDepthOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit SpaceToDepthOp(OpConstructContext *context)
       : Operation(context) {
     int block_size = Operation::GetOptionalArg<int>("block_size", 1);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::SpaceToDepthKernel<T>>(block_size);
+      kernel_ = make_unique<opencl::image::SpaceToDepthKernel>(block_size);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -116,13 +116,7 @@ void RegisterSpaceToDepth(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "SpaceToDepth",
                    SpaceToDepthOp, DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "SpaceToDepth",
-                   SpaceToDepthOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "SpaceToDepth",
-                   SpaceToDepthOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "SpaceToDepth", SpaceToDepthOp);
 }
 
 }  // namespace ops

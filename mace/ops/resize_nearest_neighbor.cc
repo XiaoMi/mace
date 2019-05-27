@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/resize_nearest_neighbor.h"
-
 #include <algorithm>
 #include <memory>
 #include <vector>
 
 #include "mace/core/operator.h"
+#include "mace/ops/common/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_nearest_neighbor.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -115,13 +114,13 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
     }
 
     float height_scale =
-        resize_nearest_neighbor::CalculateResizeScale(in_height,
-                                                      out_height,
-                                                      align_corners_);
+        common::utils::CalculateResizeScale(in_height,
+                                            out_height,
+                                            align_corners_);
     float width_scale =
-        resize_nearest_neighbor::CalculateResizeScale(in_width,
-                                                      out_width,
-                                                      align_corners_);
+        common::utils::CalculateResizeScale(in_width,
+                                            out_width,
+                                            align_corners_);
     ResizeImageNCHW(context,
                     input_data,
                     batch,
@@ -142,15 +141,15 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ResizeNearestNeighborOp<DeviceType::GPU, T> : public Operation {
+template<>
+class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
       : Operation(context) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel<T>>(
+      kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel>(
           align_corners);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -176,13 +175,8 @@ void RegisterResizeNearestNeighbor(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeNearestNeighbor",
                    ResizeNearestNeighborOp, DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "ResizeNearestNeighbor",
-                   ResizeNearestNeighborOp, DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "ResizeNearestNeighbor",
-                   ResizeNearestNeighborOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "ResizeNearestNeighbor",
+                       ResizeNearestNeighborOp);
 }
 
 }  // namespace ops

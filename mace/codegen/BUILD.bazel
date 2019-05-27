@@ -5,7 +5,7 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
-load("//mace:mace.bzl", "mace_version_genrule", "encrypt_opencl_kernel_genrule")
+load("//mace:mace.bzl", "encrypt_opencl_kernel_genrule", "mace_version_genrule")
 
 cc_library(
     name = "generated_models",
@@ -28,6 +28,7 @@ encrypt_opencl_kernel_genrule()
 cc_library(
     name = "generated_opencl",
     srcs = ["opencl/encrypt_opencl_kernel.cc"],
+    hdrs = ["opencl/encrypt_opencl_kernel.h"],
     copts = [
         "-Werror",
         "-Wextra",

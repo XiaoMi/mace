@@ -369,24 +369,24 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
+template<>
+class DepthwiseConv2dOp<DeviceType::GPU, float> : public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
       : DepthwiseConv2dOpBase(context) {
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_ = make_unique<opencl::image::DepthwiseConv2dKernel<T>>();
+      kernel_ = make_unique<opencl::image::DepthwiseConv2dKernel>();
     } else {
       mem_type = MemoryType::GPU_BUFFER;
-      kernel_ = make_unique<opencl::buffer::DepthwiseConv2dKernel<T>>();
+      kernel_ = make_unique<opencl::buffer::DepthwiseConv2dKernel>();
     }
     Tensor *filter_tensor = context->workspace()->GetTensor(
         operator_def_->input(1));
     if (filter_tensor != nullptr && filter_tensor->is_weight()) {
       // Transform filter tensor to target format
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context,
           operator_def_.get(),
           1,
@@ -394,7 +394,7 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
           mem_type) == MaceStatus::MACE_SUCCESS);
     }
     if (operator_def_->input_size() > 2) {
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
@@ -431,12 +431,9 @@ void RegisterDepthwiseConv2d(OpRegistryBase *op_registry) {
                    DepthwiseConv2dOp, DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
-                   DepthwiseConv2dOp, DeviceType::GPU, float);
+  MACE_REGISTER_GPU_OP(op_registry, "DepthwiseConv2d", DepthwiseConv2dOp);
 
-  MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
-                   DepthwiseConv2dOp, DeviceType::GPU, half);
+#ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("DepthwiseConv2d")
@@ -467,8 +464,8 @@ void RegisterDepthwiseConv2d(OpRegistryBase *op_registry) {
                 DataFormat op_data_format =
                     static_cast<DataFormat>(
                         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                        *context->operator_def(), "data_format",
-                        static_cast<int>(DataFormat::NONE)));
+                            *context->operator_def(), "data_format",
+                            static_cast<int>(DataFormat::NONE)));
                 return {op_data_format, DataFormat::OIHW, DataFormat::NONE};
               }));
 }

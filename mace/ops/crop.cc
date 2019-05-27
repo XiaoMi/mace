@@ -24,10 +24,10 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class CropOp;
 
-template <class T>
+template<class T>
 class CropOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit CropOp(OpConstructContext *context)
@@ -42,7 +42,6 @@ class CropOp<DeviceType::CPU, T> : public Operation {
       offset_ = TransposeShape<int, int>(offset_, {0, 3, 1, 2});
     }
   }
-
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -71,7 +70,7 @@ class CropOp<DeviceType::CPU, T> : public Operation {
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     T *output_data = output->mutable_data<T>();
 
-    const T * input_data = input0->data<T>();
+    const T *input_data = input0->data<T>();
 
     crop_copy(input_data, output_data, input0->shape(),
               output_shape, offsets.data());
@@ -80,10 +79,10 @@ class CropOp<DeviceType::CPU, T> : public Operation {
   }
 
  private:
-  void crop_copy(const T* input_data, T* output_data,
+  void crop_copy(const T *input_data, T *output_data,
                  const std::vector<index_t> &input_shape,
                  const std::vector<index_t> &output_shape,
-                 const int32_t* offsets) {
+                 const int32_t *offsets) {
     const index_t out_img_size =
         output_shape[1] * output_shape[2] * output_shape[3];
     const index_t out_hw = output_shape[2] * output_shape[3];
@@ -94,9 +93,9 @@ class CropOp<DeviceType::CPU, T> : public Operation {
     for (int b = 0; b < output_shape[0]; ++b) {
       for (int c = 0; c < output_shape[1]; ++c) {
         for (int h = 0; h < output_shape[2]; ++h) {
-          T* out_ptr =
+          T *out_ptr =
               output_data + b * out_img_size + c * out_hw + h * output_shape[3];
-          const T* in_ptr_bch =
+          const T *in_ptr_bch =
               input_data + (b + offsets[0]) * in_img_size +
                   (c + offsets[1]) * in_hw +
                   (h + offsets[2]) * input_shape[3] + offsets[3];
@@ -112,13 +111,13 @@ class CropOp<DeviceType::CPU, T> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class CropOp<DeviceType::GPU, T> : public Operation {
+template<>
+class CropOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit CropOp(OpConstructContext *context)
       : Operation(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::CropKernel<T>>(
+      kernel_ = make_unique<opencl::image::CropKernel>(
           Operation::GetRepeatedArgs<int>("offset"));
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -133,18 +132,10 @@ class CropOp<DeviceType::GPU, T> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterCrop(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Crop", CropOp,
                    DeviceType::CPU, float);
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Crop", CropOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Crop", CropOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Crop", CropOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Crop")
@@ -152,16 +143,16 @@ void RegisterCrop(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

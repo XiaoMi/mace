@@ -83,28 +83,27 @@ class ActivationOp<DeviceType::CPU, float> : public Operation {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ActivationOp<DeviceType::GPU, T> : public Operation {
+template<>
+class ActivationOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ActivationOp(OpConstructContext *context)
       : Operation(context) {
     ActivationType type = ops::StringToActivationType(
         Operation::GetOptionalArg<std::string>("activation",
                                               "NOOP"));
-    auto relux_max_limit = static_cast<T>(
-        Operation::GetOptionalArg<float>("max_limit", 0.0f));
-    auto leakyrelu_coefficient = static_cast<T>(
-        Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f));
+    auto relux_max_limit = Operation::GetOptionalArg<float>("max_limit", 0.0f);
+    auto leakyrelu_coefficient =
+        Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f);
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_ = make_unique<opencl::image::ActivationKernel<T>>(
+      kernel_ = make_unique<opencl::image::ActivationKernel>(
           type, relux_max_limit, leakyrelu_coefficient);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
     if (type == ActivationType::PRELU) {
-      MACE_CHECK(TransformFilter<T>(
+      MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
@@ -126,14 +125,7 @@ class ActivationOp<DeviceType::GPU, T> : public Operation {
 void RegisterActivation(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
                    DeviceType::CPU, float);
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Activation", ActivationOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Activation")
@@ -141,16 +133,16 @@ void RegisterActivation(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

@@ -35,14 +35,14 @@ void TestBidirectionTransform(const OpenCLBufferType type,
   Tensor *b2i_output = net.ws()->CreateTensor(
       "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
 
-  OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
+  OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
       .Transform(&context, net.ws()->GetTensor("Input"),
                  type, MemoryType::GPU_IMAGE, 0, b2i_output);
 
   // Inverse Transform
   Tensor *i2b_output = net.ws()->CreateTensor(
       "I2BOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
-  OpenCLBufferTransformer<T>(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
+  OpenCLBufferTransformer(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
       .Transform(&context, b2i_output,
                  type, MemoryType::GPU_BUFFER, 0, i2b_output);
 
@@ -176,14 +176,14 @@ void TestDiffTypeBidirectionTransform(const OpenCLBufferType type,
   Tensor *b2i_output = net.ws()->CreateTensor(
       "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
 
-  OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
+  OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
       .Transform(&context, net.ws()->GetTensor("Input"),
                  type, MemoryType::GPU_IMAGE, 0, b2i_output);
 
   // Inverse Transform
   Tensor *i2b_output = net.ws()->CreateTensor(
       "I2BOutput", context.device()->allocator(), DT_FLOAT);
-  OpenCLBufferTransformer<float>(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
+  OpenCLBufferTransformer(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
       .Transform(&context, b2i_output,
                  type, MemoryType::GPU_BUFFER, 0, i2b_output);
 
@@ -216,14 +216,14 @@ void TestStringHalfBidirectionTransform(const OpenCLBufferType type,
       "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
 
   // Transform
-  OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
+  OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
       .Transform(&context, net.ws()->GetTensor("Input"),
                  type, MemoryType::GPU_IMAGE, 0, b2i_output);
 
   // Inverse Transform
   Tensor *i2b_output = net.ws()->CreateTensor(
       "I2BOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
-  OpenCLBufferTransformer<T>(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
+  OpenCLBufferTransformer(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
       .Transform(&context, b2i_output,
                  type, MemoryType::GPU_BUFFER, 0, i2b_output);
 

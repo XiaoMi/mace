@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_RESIZE_NEAREST_NEIGHBOR_H_
-#define MACE_OPS_RESIZE_NEAREST_NEIGHBOR_H_
+#ifndef MACE_OPS_COMMON_UTILS_H_
+#define MACE_OPS_COMMON_UTILS_H_
 
 #include "mace/core/types.h"
 
 namespace mace {
 namespace ops {
-namespace resize_nearest_neighbor {
+namespace common {
+namespace utils {
+
+constexpr int64_t kTableSize = (1u << 10);
+
 inline float CalculateResizeScale(index_t in_size,
                                   index_t out_size,
                                   bool align_corners) {
@@ -27,8 +31,10 @@ inline float CalculateResizeScale(index_t in_size,
          ? (in_size - 1) / static_cast<float>(out_size - 1)
          : in_size / static_cast<float>(out_size);
 }
-}  // namespace resize_nearest_neighbor
+
+}  // namespace utils
+}  // namespace common
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_RESIZE_NEAREST_NEIGHBOR_H_
+#endif  // MACE_OPS_COMMON_UTILS_H_

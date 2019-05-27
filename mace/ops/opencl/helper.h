@@ -100,16 +100,8 @@ std::vector<index_t> FormatBufferShape(
 // CPU data type to OpenCL command data type
 std::string DtToCLCMDDt(const DataType dt);
 
-// CPU data type to upward compatible OpenCL command data type
-// e.g. half -> float
-std::string DtToUpCompatibleCLCMDDt(const DataType dt);
-
 // CPU data type to OpenCL data type
 std::string DtToCLDt(const DataType dt);
-
-// CPU data type to upward compatible OpenCL data type
-// e.g. half -> float
-std::string DtToUpCompatibleCLDt(const DataType dt);
 
 // CPU data type to OpenCL condition data type used in select
 // e.g. half -> float

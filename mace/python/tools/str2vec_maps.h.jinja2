@@ -12,26 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_RESIZE_BICUBIC_H_
-#define MACE_OPS_RESIZE_BICUBIC_H_
+// This is a generated file. DO NOT EDIT!
 
-#include "mace/core/types.h"
+#include <map>
+#include <string>
+#include <vector>
 
 namespace mace {
-namespace ops {
-namespace resize_bicubic {
-constexpr int64_t kTableSize = (1u << 10);
+namespace {{tag}} {
 
-inline float CalculateResizeScale(index_t in_size,
-                                  index_t out_size,
-                                  bool align_corners) {
-  return (align_corners && out_size > 1)
-         ? (in_size - 1) / static_cast<float>(out_size - 1)
-         : in_size / static_cast<float>(out_size);
-}
-}  // namespace resize_bicubic
+struct ClProgramInfo {
+  const std::vector<std::string> headers_;
+  const std::vector<{{data_type}}> encrypted_code_;
+};
 
-}  // namespace ops
+extern const std::map<std::string, ClProgramInfo> {{variable_name}};
+
+}  // {{tag}}
 }  // namespace mace
-
-#endif  // MACE_OPS_RESIZE_BICUBIC_H_

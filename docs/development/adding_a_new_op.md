@@ -33,8 +33,8 @@ class MyCustomOp<DeviceType::CPU, float> : public Operation {
 }
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class MyCustomOp<DeviceType::GPU, T> : public Operation {
+template<>
+class MyCustomOp<DeviceType::GPU, float> : public Operation {
 ...
 };
 #endif  // MACE_ENABLE_OPENCL
@@ -43,13 +43,7 @@ void RegisterMyCustomOp(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MyCustomOp", MyCustomOp,
                    DeviceType::CPU, float);
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "MyCustomOp", MyCustomOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "MyCustomOp", MyCustomOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "MyCustomOp", MyCustomOp);
 }
 
 }  // namespace ops

@@ -20,18 +20,21 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
-class SqueezeOp : public Operation {
+class SqueezeOpRaw : public Operation {
  public:
-  explicit SqueezeOp(OpConstructContext *context)
+  explicit SqueezeOpRaw(OpConstructContext *context,
+                        DeviceType device_type,
+                        DataType data_type)
       : Operation(context),
         axis_(Operation::GetRepeatedArgs<int>("axis", {})),
-        checked_(false) {}
+        checked_(false),
+        data_type_(data_type),
+        device_type_(device_type) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    if (!checked_ && D == DeviceType::CPU
-        && DataTypeToEnum<T>::value != DT_UINT8) {
+    if (!checked_ && device_type_ == DeviceType::CPU
+        && data_type_ != DT_UINT8) {
       auto has_df = Operation::GetOptionalArg<int>(
           "has_data_format", 0);
       if (has_df && this->Input(0)->dim_size() == 4) {
@@ -62,6 +65,16 @@ class SqueezeOp : public Operation {
  private:
   std::vector<int> axis_;
   bool checked_;
+  DataType data_type_;
+  DeviceType device_type_;
+};
+
+template<DeviceType D, typename T>
+class SqueezeOp : public SqueezeOpRaw {
+ public:
+  explicit SqueezeOp(OpConstructContext *context)
+      : SqueezeOpRaw(context, D, DataTypeToEnum<T>::value) {
+  }
 };
 
 void RegisterSqueeze(OpRegistryBase *op_registry) {
@@ -69,10 +82,7 @@ void RegisterSqueeze(OpRegistryBase *op_registry) {
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::GPU, float);
-  MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Squeeze", SqueezeOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Squeeze")
@@ -80,13 +90,13 @@ void RegisterSqueeze(OpRegistryBase *op_registry) {
               [](OpConditionContext *context) -> std::set<DeviceType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return { DeviceType::CPU, DeviceType::GPU };
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
                 if (op->output_shape(0).dims_size() != 2 &&
                     op->output_shape(0).dims_size() != 4) {
-                  return { DeviceType::CPU };
+                  return {DeviceType::CPU};
                 }
-                return { DeviceType::CPU, DeviceType::GPU };
+                return {DeviceType::CPU, DeviceType::GPU};
               }));
 }
 

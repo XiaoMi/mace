@@ -16,8 +16,8 @@
 #include <string>
 #include <vector>
 
+#include "mace/ops/common/pad_type.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/pad.h"
 
 namespace mace {
 namespace ops {

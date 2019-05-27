@@ -46,10 +46,10 @@ class ConcatOpBase : public Operation {
   int axis_;
 };
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class ConcatOp;
 
-template <typename T>
+template<typename T>
 class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
@@ -194,13 +194,13 @@ class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
+template<>
+class ConcatOp<DeviceType::GPU, float> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ConcatKernel<T>>();
+      kernel_ = make_unique<opencl::image::ConcatKernel>();
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -215,7 +215,6 @@ class ConcatOp<DeviceType::GPU, T> : public ConcatOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-
 void RegisterConcat(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
                    DeviceType::CPU, float);
@@ -228,51 +227,44 @@ void RegisterConcat(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
-                   DeviceType::GPU, half);
-
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Concat", ConcatOp);
 
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Concat")
           .SetDevicePlacerFunc(
-            [](OpConditionContext *context) -> std::set<DeviceType> {
-              auto op = context->operator_def();
-              if (op->output_shape_size() != op->output_size()) {
-                return { DeviceType::CPU, DeviceType::GPU };
-              }
-              auto tensor_shape_info = context->tensor_shape_info();
-              if (op->output_shape(0).dims_size() != 4) {
-                return { DeviceType::CPU };
-              } else {
-                int has_data_format =
-                    ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                        *op, "has_data_format", 0);
-                int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                    *op, "axis", 3);
-                if (!has_data_format || axis != 3) {
-                  return { DeviceType::CPU };
+              [](OpConditionContext *context) -> std::set<DeviceType> {
+                auto op = context->operator_def();
+                if (op->output_shape_size() != op->output_size()) {
+                  return {DeviceType::CPU, DeviceType::GPU};
                 }
-                bool divisible_four = true;
-                for (const std::string &input : op->input()) {
-                  if (tensor_shape_info->find(input)
-                      != tensor_shape_info->end()) {
-                    divisible_four = divisible_four
-                        && (tensor_shape_info->at(input)[3] % 4 == 0);
+                auto tensor_shape_info = context->tensor_shape_info();
+                if (op->output_shape(0).dims_size() != 4) {
+                  return {DeviceType::CPU};
+                } else {
+                  int has_data_format =
+                      ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                          *op, "has_data_format", 0);
+                  int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                      *op, "axis", 3);
+                  if (!has_data_format || axis != 3) {
+                    return {DeviceType::CPU};
+                  }
+                  bool divisible_four = true;
+                  for (const std::string &input : op->input()) {
+                    if (tensor_shape_info->find(input)
+                        != tensor_shape_info->end()) {
+                      divisible_four = divisible_four
+                          && (tensor_shape_info->at(input)[3] % 4 == 0);
+                    }
+                  }
+                  // Only support not divisible 4 case with 2 inputs.
+                  if (op->input_size() > 2 && !divisible_four) {
+                    return {DeviceType::CPU};
                   }
                 }
-                // Only support not divisible 4 case with 2 inputs.
-                if (op->input_size() > 2 && !divisible_four) {
-                  return { DeviceType::CPU };
-                }
-              }
-              return { DeviceType::CPU, DeviceType::GPU };
-            }));
+                return {DeviceType::CPU, DeviceType::GPU};
+              }));
 }
 
 }  // namespace ops

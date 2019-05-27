@@ -1158,8 +1158,8 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
-class EltwiseOp<DeviceType::GPU, T> : public Operation {
+template<>
+class EltwiseOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit EltwiseOp(OpConstructContext *context)
       : Operation(context) {
@@ -1178,7 +1178,7 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
-      kernel_ = make_unique<opencl::image::EltwiseKernel<T>>(
+      kernel_ = make_unique<opencl::image::EltwiseKernel>(
           type, coeff, scalar_input, scalar_input_index);
     } else {
       MACE_NOT_IMPLEMENTED;
@@ -1190,14 +1190,14 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
       if (ws->HasTensor(operator_def_->input(i)) &&
           ws->GetTensor(operator_def_->input(i))->is_weight()) {
         if (ws->GetTensor(operator_def_->input(i))->dim_size() == 1) {
-          MACE_CHECK(TransformFilter<T>(
+          MACE_CHECK(TransformFilter(
               context,
               operator_def_.get(),
               i,
               OpenCLBufferType::ARGUMENT,
               mem_type) == MaceStatus::MACE_SUCCESS);
         } else if (ws->GetTensor(operator_def_->input(i))->dim_size() == 4) {
-          MACE_CHECK(TransformFilter<T>(
+          MACE_CHECK(TransformFilter(
               context,
               operator_def_.get(),
               i,
@@ -1236,13 +1236,7 @@ void RegisterEltwise(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
+  MACE_REGISTER_GPU_OP(op_registry, "Eltwise", EltwiseOp);
 }
 
 }  // namespace ops

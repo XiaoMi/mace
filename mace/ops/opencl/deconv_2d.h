@@ -17,7 +17,10 @@
 
 #include <vector>
 
-#include "mace/ops/activation.h"
+#include "mace/core/types.h"
+#include "mace/ops/common/activation_type.h"
+#include "mace/public/mace.h"
+#include "mace/utils/macros.h"
 
 namespace mace {
 
