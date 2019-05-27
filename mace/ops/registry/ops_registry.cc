@@ -76,6 +76,7 @@ extern void RegisterSumGroup(OpRegistryBase *op_registry);
 extern void RegisterTargetRMSNorm(OpRegistryBase *op_registry);
 extern void RegisterTranspose(OpRegistryBase *op_registry);
 extern void RegisterUnstack(OpRegistryBase *op_registry);
+extern void RegisterUnsqueeze(OpRegistryBase *op_registry);
 
 #ifdef MACE_ENABLE_QUANTIZE
 extern void RegisterDequantize(OpRegistryBase *op_registry);
@@ -149,6 +150,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterTargetRMSNorm(this);
   ops::RegisterTranspose(this);
   ops::RegisterUnstack(this);
+  ops::RegisterUnsqueeze(this);
 
 #ifdef MACE_ENABLE_QUANTIZE
   ops::RegisterDequantize(this);

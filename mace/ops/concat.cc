@@ -94,8 +94,14 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    T *output_ptr = output->mutable_data<T>();
+    Tensor::MappingGuard output_guard(output);
+    std::vector<Tensor::MappingGuard> mappers;
 
+    for (size_t i = 0; i < inputs_count; ++i) {
+      mappers.emplace_back(Tensor::MappingGuard(inputs[i]));
+    }
+
+    T *output_ptr = output->mutable_data<T>();
     std::vector<const T *> input_ptrs(inputs.size(), nullptr);
     for (size_t i = 0; i < inputs_count; ++i) {
       input_ptrs[i] = inputs[i]->data<T>();

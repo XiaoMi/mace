@@ -156,6 +156,7 @@ MaceSupportedOps = [
     'Squeeze',
     'Stack',
     'Unstack',
+    'Unsqueeze',
     'StridedSlice',
     'Softmax',
     'SpaceToBatchND',

@@ -12,38 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(MACE_ENABLE_NEON)
-#include <arm_neon.h>
-#endif
-
-#include <algorithm>
-#include <cmath>
+#include <unordered_set>
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/ops/common/transpose.h"
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
-class TransposeOp : public Operation {
+template <DeviceType D, class T>
+class UnsqueezeOp : public Operation {
  public:
-  explicit TransposeOp(OpConstructContext *context)
+  explicit UnsqueezeOp(OpConstructContext *context)
       : Operation(context),
-        dims_(Operation::GetRepeatedArgs<int>("dims")) {}
+        axis_(Operation::GetRepeatedArgs<int>("axis", {})) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    const Tensor *input = this->Input(0);
+    const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(0);
-    const std::vector<index_t> &input_shape = input->shape();
-    MACE_CHECK((input_shape.size() == 4 && dims_.size() == 4) ||
-        (input_shape.size() == 2 && dims_.size() == 2),
-               "rank should be 2 or 4");
-    std::vector<index_t> output_shape;
-    for (size_t i = 0; i < dims_.size(); ++i) {
-      output_shape.push_back(input_shape[dims_[i]]);
+    MACE_CHECK(!axis_.empty(), "Unsqueeze op should have axis values.");
+    std::vector<index_t> output_shape = input->shape();
+    for (size_t i = 0; i < axis_.size(); ++i) {
+      MACE_CHECK(axis_[i] >= 0, "axis's value should be non-negative.");
+      output_shape.insert(output_shape.begin() + axis_[i], 1);
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
@@ -52,19 +44,26 @@ class TransposeOp : public Operation {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-    return Transpose(&context->device()->cpu_runtime()->thread_pool(),
-                     input_data, input->shape(), dims_, output_data);
+    const index_t data_size =
+        std::accumulate(input->shape().begin(), input->shape().end(), 1,
+                        std::multiplies<index_t>());
+    memcpy(output_data, input_data, data_size * sizeof(T));
+    return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-  std::vector<int> dims_;
+  std::vector<int> axis_;
+
+ private:
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterTranspose(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
+void RegisterUnsqueeze(OpRegistryBase *op_registry) {
+  MACE_REGISTER_OP(op_registry, "Unsqueeze", UnsqueezeOp,
                    DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
-                   DeviceType::CPU, half);
+  MACE_REGISTER_OP(op_registry, "Unsqueeze", UnsqueezeOp,
+                   DeviceType::CPU, int32_t);
 }
 
 }  // namespace ops
