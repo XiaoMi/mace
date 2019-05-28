@@ -1395,8 +1395,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.type = MaceOp.Squeeze.name
             axis_arg = op.arg.add()
             axis_arg.name = MaceKeyword.mace_axis_str
-            if 'axis' in node.attrs:
-                axis_value = node.attrs['axis']
+            if 'axes' in node.attrs:
+                axis_value = node.attrs['axes']
             else:
                 axis_value = []
             axis_arg.ints.extend(axis_value)
