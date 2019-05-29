@@ -27,7 +27,10 @@ namespace mace {
 namespace ops {
 
 template<DeviceType D, typename T>
-class TransposeOp : public Operation {
+class TransposeOp;
+
+template<DeviceType D>
+class TransposeOp<D, float> : public Operation {
  public:
   explicit TransposeOp(OpConstructContext *context)
       : Operation(context),
@@ -49,8 +52,8 @@ class TransposeOp : public Operation {
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
-    const T *input_data = input->data<T>();
-    T *output_data = output->mutable_data<T>();
+    const float *input_data = input->data<float>();
+    float *output_data = output->mutable_data<float>();
 
     return Transpose(&context->device()->cpu_runtime()->thread_pool(),
                      input_data, input->shape(), dims_, output_data);
@@ -63,8 +66,6 @@ class TransposeOp : public Operation {
 void RegisterTranspose(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
                    DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
-                   DeviceType::CPU, half);
 }
 
 }  // namespace ops
