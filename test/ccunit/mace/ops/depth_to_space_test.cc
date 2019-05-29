@@ -262,6 +262,76 @@ TEST_F(DepthToSpaceOpTest, OPENCLRandomBatchHalf) {
   RandomTest<DeviceType::GPU, half>(2, {2, 384, 384, 8});
 }
 
+namespace {
+
+void TestDepthToSpaceQuantize(const int block_size,
+                              const std::vector<index_t> &shape) {
+  OpsTestNet net;
+  net.AddRandomInput<CPU, float>("Input",
+                                 shape,
+                                 false,
+                                 false,
+                                 true,
+                                 -1.f,
+                                 1.f);
+
+  // run cpu
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+
+  OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
+      .Input("InputNCHW")
+      .AddIntArg("block_size", block_size)
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
+
+  // run quantize
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
+      .Input("QuantizedInput")
+      .Output("QuantizedOutput")
+      .AddIntArg("block_size", block_size)
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  Tensor *eq_output = net.GetTensor("QuantizedInput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("OutputCPU"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+
+}  // namespace
+
+TEST_F(DepthToSpaceOpTest, Quantize) {
+  TestDepthToSpaceQuantize(2, {1, 192, 192, 4});
+  TestDepthToSpaceQuantize(3, {1, 111, 111, 9});
+  TestDepthToSpaceQuantize(5, {1, 20, 20, 25});
+  TestDepthToSpaceQuantize(7, {1, 14, 14, 49});
+}
 
 }  // namespace test
 }  // namespace ops

@@ -253,6 +253,77 @@ TEST_F(SpaceToDepthOpTest, OPENCLBatchRandomHalf) {
   RandomTest<DeviceType::GPU, half>(2, {2, 384, 384, 32});
 }
 
+namespace {
+
+void TestSpaceToDepthQuantize(int block_size,
+                              const std::vector<index_t> &shape) {
+  OpsTestNet net;
+  net.AddRandomInput<CPU, float>("Input",
+                                 shape,
+                                 false,
+                                 false,
+                                 true,
+                                 -1.f,
+                                 1.f);
+
+  // run cpu
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+
+  OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
+      .Input("InputNCHW")
+      .AddIntArg("block_size", block_size)
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
+
+  // run quantize
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
+      .Input("QuantizedInput")
+      .Output("QuantizedOutput")
+      .AddIntArg("block_size", block_size)
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  Tensor *eq_output = net.GetTensor("QuantizedInput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("OutputCPU"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+
+TEST_F(SpaceToDepthOpTest, Quantize) {
+  TestSpaceToDepthQuantize(2, {1, 384, 384, 1});
+  TestSpaceToDepthQuantize(3, {1, 333, 333, 1});
+  TestSpaceToDepthQuantize(5, {1, 100, 100, 1});
+  TestSpaceToDepthQuantize(7, {1, 98, 98, 1});
+}
+
+}  // namespace
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

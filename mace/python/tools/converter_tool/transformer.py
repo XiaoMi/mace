@@ -1819,7 +1819,9 @@ class Transformer(base_converter.ConverterInterface):
                            MaceOp.Reshape.name,
                            MaceOp.ResizeBilinear.name,
                            MaceOp.BatchToSpaceND.name,
-                           MaceOp.SpaceToBatchND.name]:
+                           MaceOp.SpaceToBatchND.name,
+                           MaceOp.SpaceToDepth.name,
+                           MaceOp.DepthToSpace.name]:
                 del op.quantize_info[:]
                 producer_op = self._producer[op.input[0]]
                 if producer_op.output[0] in self._option.input_nodes:
