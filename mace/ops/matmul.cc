@@ -602,14 +602,6 @@ void RegisterMatMul(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::GPU, float);
-
-  MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::GPU, half);
-#endif  // MACE_ENABLE_OPENCL
-
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, float16_t);
