@@ -3,7 +3,7 @@ minor_version: ""
 default_target_cpu: "armhf"
 
 default_toolchain {
-  cpu: "armhf"
+  cpu: "armeabi-v7a"
   toolchain_identifier: "arm-linux-gnueabihf"
 }
 
