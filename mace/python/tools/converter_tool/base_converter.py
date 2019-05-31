@@ -196,6 +196,7 @@ MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.Reduce,
                                  MaceOp.Softmax,
                                  MaceOp.Split,
+                                 MaceOp.Squeeze,
                                  MaceOp.SqrDiffMean]
 
 
