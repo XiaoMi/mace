@@ -1431,6 +1431,18 @@ class Transformer(base_converter.ConverterInterface):
                             if axis_arg.i == 1:
                                 axis_arg.i = 3
 
+            elif op.type == MaceOp.Squeeze.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_axis_str:
+                        if (src_data_format == DataFormat.NCHW
+                                and has_data_format
+                                and len(self._producer[op.input[0]].output_shape[0].dims) == 4  # noqa
+                                and len(op.output_shape[0].dims) == 2
+                                and arg.ints == [2, 3]):
+                            print("Transpose squeeze args: %s(%s)"
+                                  % (op.name, op.type))
+                            arg.ints[:] = [1, 2]
+
             elif op.type == MaceOp.Reduce.name:
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
