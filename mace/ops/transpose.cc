@@ -42,8 +42,9 @@ class TransposeOp<D, float> : public Operation {
     Tensor *output = this->Output(0);
     const std::vector<index_t> &input_shape = input->shape();
     MACE_CHECK((input_shape.size() == 4 && dims_.size() == 4) ||
-        (input_shape.size() == 2 && dims_.size() == 2),
-               "rank should be 2 or 4");
+                   (input_shape.size() == 3 && dims_.size() == 3) ||
+                   (input_shape.size() == 2 && dims_.size() == 2),
+               "rank should be 2, 3 or 4");
     std::vector<index_t> output_shape;
     for (size_t i = 0; i < dims_.size(); ++i) {
       output_shape.push_back(input_shape[dims_[i]]);
