@@ -101,6 +101,64 @@ TEST_F(TransposeOpTest, Rank2) {
                           *net.GetOutput("Output"));
 }
 
+namespace {
+void Transpose3DTest(const std::vector<index_t> &input_shape,
+                     const std::vector<float> &input_data,
+                     const std::vector<int> &dest_dims,
+                     const std::vector<index_t> &expected_shape,
+                     const std::vector<float> &expected_data) {
+  // Construct graph
+  OpsTestNet net;
+  // Add input data
+  net.AddInputFromArray<DeviceType::CPU, float>("Input",
+                                                input_shape,
+                                                input_data);
+
+  OpDefBuilder("Transpose", "TransposeNCHWTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("dims", dest_dims)
+      .Finalize(net.NewOperatorDef());
+
+  // Run on cpu
+  net.RunOp();
+
+  net.AddInputFromArray<CPU, float>("ExpectedOutput", expected_shape,
+                                    expected_data);
+
+  ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
+                          *net.GetOutput("Output"));
+}
+}  // namespace
+
+TEST_F(TransposeOpTest, Rank3) {
+Transpose3DTest({2, 3, 2},
+                {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {0, 2, 1},
+                {2, 2, 3},
+                {1, 3, 5, 2, 4, 6, 7, 9, 11, 8, 10, 12});
+Transpose3DTest({2, 3, 2},
+                {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {1, 0, 2},
+                {3, 2, 2},
+                {1, 2, 7, 8, 3, 4, 9, 10, 5, 6, 11, 12});
+Transpose3DTest({2, 3, 2},
+                {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {1, 2, 0},
+                {3, 2, 2},
+                {1, 7, 2, 8, 3, 9, 4, 10, 5, 11, 6, 12});
+Transpose3DTest({2, 3, 2},
+                {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {2, 0, 1},
+                {2, 2, 3},
+                {1, 3, 5, 7, 9, 11, 2, 4, 6, 8, 10, 12});
+Transpose3DTest({2, 3, 2},
+                {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {2, 1, 0},
+                {2, 3, 2},
+                {1, 7, 3, 9, 5, 11, 2, 8, 4, 10, 6, 12});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
