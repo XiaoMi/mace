@@ -88,6 +88,7 @@ class ReduceType(Enum):
     MIN = 1
     MAX = 2
     PROD = 3
+    SUM = 4
 
 
 class PadType(Enum):

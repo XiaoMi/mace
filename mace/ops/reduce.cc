@@ -167,6 +167,12 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
           tmp = tmp * input[i];
         }
         output[0] = tmp;
+      } else if (type == ReduceType::SUM) {
+        T tmp = 0;
+        for (int i = 0; i < data_reshape_[0]; ++i) {
+          tmp = tmp + input[i];
+        }
+        output[0] = tmp;
       } else {
         MACE_NOT_IMPLEMENTED;
       }
@@ -216,6 +222,14 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
             }
             output[i] = tmp;
           }
+        } else if (type == ReduceType::SUM) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = 0;
+            for (int j = 0; j < data_reshape_[0]; ++j) {
+              tmp += input[j * data_reshape_[1] + i];
+            }
+            output[i] = tmp;
+          }
         } else {
           MACE_NOT_IMPLEMENTED;
         }
@@ -251,6 +265,14 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
             T tmp = input[i * data_reshape_[1]];
             for (int j = 1; j < data_reshape_[1]; ++j) {
               tmp = tmp * input[i * data_reshape_[1] + j];
+            }
+            output[i] = tmp;
+          }
+        } else if (type == ReduceType::SUM) {
+          for (index_t i = start; i < end; i += step) {
+            T tmp = 0;
+            for (int j = 0; j < data_reshape_[1]; ++j) {
+              tmp += input[i * data_reshape_[1] + j];
             }
             output[i] = tmp;
           }
@@ -319,6 +341,16 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
             }
             output[i] = tmp;
           }
+        } else if (type == ReduceType::SUM) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[0]; ++k) {
+                output[i] +=
+                    input[(k * data_reshape_[1] + i) * data_reshape_[2]
+                        + j];
+              }
+            }
+          }
         } else {
           MACE_NOT_IMPLEMENTED;
         }
@@ -369,6 +401,16 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
                     data_reshape_[2] + j];
               }
               output[i * data_reshape_[2] + j] = tmp;
+            }
+          }
+        } else if (type == ReduceType::SUM) {
+          for (index_t i = start; i < end; i += step) {
+            for (int j = 0; j < data_reshape_[2]; ++j) {
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                output[i * data_reshape_[2] + j] +=
+                    input[(i * data_reshape_[1] + k) * data_reshape_[2]
+                        + j];
+              }
             }
           }
         } else {
@@ -445,6 +487,18 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
               output[i * data_reshape_[3] + j] = tmp;
             }
           }
+        } else if (type == ReduceType::SUM) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              for (int k = 0; k < data_reshape_[2]; ++k) {
+                for (int t = 0; t < data_reshape_[0]; ++t) {
+                  output[i * data_reshape_[3] + j] +=
+                      input[((t * data_reshape_[1] + i) *
+                          data_reshape_[2] + k) * data_reshape_[3] + j];
+                }
+              }
+            }
+          }
         } else {
           MACE_NOT_IMPLEMENTED;
         }
@@ -513,6 +567,18 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
               output[i * data_reshape_[2] + j] = tmp;
             }
           }
+        } else if (type == ReduceType::SUM) {
+          for (index_t i = start0; i < end0; i += step0) {
+            for (index_t j = start1; j < end1; j += step1) {
+              for (int k = 0; k < data_reshape_[1]; ++k) {
+                for (int t = 0; t < data_reshape_[3]; ++t) {
+                  output[i * data_reshape_[2] + j] +=
+                      input[((i * data_reshape_[1] + k) *
+                          data_reshape_[2] + j) * data_reshape_[3] + t];
+                }
+              }
+            }
+          }
         } else {
           MACE_NOT_IMPLEMENTED;
         }
@@ -574,6 +640,12 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
         tmp = std::max<uint8_t>(tmp, input[i]);
       }
       output[0] = tmp;
+    } else if (type == ReduceType::SUM) {
+      uint32_t tmp = 0;
+      for (int i = 0; i < data_reshape_[0]; ++i) {
+        tmp = tmp + input[i];
+      }
+      output[0] = static_cast<uint8_t>(tmp + data_reshape_[0] / 2);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -616,6 +688,14 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
           }
           output[i] = tmp;
         }
+      }  else if (type == ReduceType::SUM) {
+        for (index_t i = start; i < end; i += step) {
+          uint32_t tmp = 0;
+          for (int j = 0; j < data_reshape_[0]; ++j) {
+            tmp += input[j * data_reshape_[1] + i];
+          }
+          output[i] = static_cast<uint8_t>(tmp + data_reshape_[0] / 2);
+        }
       } else {
         MACE_NOT_IMPLEMENTED;
       }
@@ -646,6 +726,14 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
             tmp = std::max(tmp, input[i * data_reshape_[1] + j]);
           }
           output[i] = tmp;
+        }
+      } else if (type == ReduceType::SUM) {
+        for (index_t i = start; i < end; i += step) {
+          uint32_t tmp = 0;
+          for (int j = 0; j < data_reshape_[1]; ++j) {
+            tmp += input[i * data_reshape_[1] + j];
+          }
+          output[i] = static_cast<uint8_t>(tmp + data_reshape_[1] / 2);
         }
       } else {
         MACE_NOT_IMPLEMENTED;
@@ -699,6 +787,17 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
           }
           output[i] = tmp;
         }
+      } else if (type == ReduceType::SUM) {
+        for (index_t i = start; i < end; i += step) {
+          uint32_t tmp = 0;
+          for (int j = 0; j < data_reshape_[2]; ++j) {
+            for (int k = 0; k < data_reshape_[0]; ++k) {
+              tmp += input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
+            }
+          }
+          index_t dim = data_reshape_[0] * data_reshape_[2];
+          output[i] = static_cast<uint8_t>(tmp + dim / 2);
+        }
       } else {
         MACE_NOT_IMPLEMENTED;
       }
@@ -740,6 +839,17 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
                                  data_reshape_[2] + j]);
             }
             output[i * data_reshape_[2] + j] = tmp;
+          }
+        }
+      } else if (type == ReduceType::SUM) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint32_t tmp = 0;
+            for (int k = 0; k < data_reshape_[1]; ++k) {
+              tmp += input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
+            }
+            output[i * data_reshape_[2] + j] =
+                static_cast<uint8_t>(tmp + data_reshape_[1] / 2);
           }
         }
       } else {
@@ -804,6 +914,21 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
             output[i * data_reshape_[3] + j] = tmp;
           }
         }
+      } else if (type == ReduceType::SUM) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint32_t tmp = 0;
+            for (int k = 0; k < data_reshape_[2]; ++k) {
+              for (int t = 0; t < data_reshape_[0]; ++t) {
+                tmp += input[((t * data_reshape_[1] + i) *
+                    data_reshape_[2] + k) * data_reshape_[3] + j];
+              }
+            }
+            index_t dim = data_reshape_[0] * data_reshape_[2];
+            output[i * data_reshape_[3] + j] =
+                static_cast<uint8_t>(tmp + dim / 2);
+          }
+        }
       } else {
         MACE_NOT_IMPLEMENTED;
       }
@@ -856,6 +981,21 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
               }
             }
             output[i * data_reshape_[2] + j] = tmp;
+          }
+        }
+      } else if (type == ReduceType::SUM) {
+        for (index_t i = start0; i < end0; i += step0) {
+          for (index_t j = start1; j < end1; j += step1) {
+            uint32_t tmp = 0;
+            for (int k = 0; k < data_reshape_[1]; ++k) {
+              for (int t = 0; t < data_reshape_[3]; ++t) {
+                tmp += input[((i * data_reshape_[1] + k) *
+                    data_reshape_[2] + j) * data_reshape_[3] + t];
+              }
+            }
+            index_t dim = data_reshape_[1] * data_reshape_[3];
+            output[i * data_reshape_[2] + j] =
+                static_cast<uint8_t>(tmp + dim / 2);
           }
         }
       } else {

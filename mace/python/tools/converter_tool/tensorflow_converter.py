@@ -70,6 +70,7 @@ TFSupportedOps = [
     'Square',
     'SquaredDifference',
     'Rsqrt',
+    'Sum',
     'Equal',
     'Relu',
     'LeakyRelu',
@@ -188,6 +189,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Max.name: ReduceType.MAX,
         TFOpType.Mean.name: ReduceType.MEAN,
         TFOpType.Prod.name: ReduceType.PROD,
+        TFOpType.Sum.name: ReduceType.SUM,
     }
 
     pad_type = {
@@ -268,6 +270,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.MirrorPad.name: self.convert_pad,
             TFOpType.Cumsum.name: self.convert_cumsum,
             TFOpType.OneHot.name: self.convert_one_hot,
+            TFOpType.Sum.name: self.convert_reduce,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -909,7 +912,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
                     reduce_dims = tf_op.get_attr('reduction_indices')
                 except ValueError:
                     reduce_dims = []
-        axis_arg.ints.extend(reduce_dims)
+        if isinstance(reduce_dims, list):
+            axis_arg.ints.extend(reduce_dims)
+        else:
+            axis_arg.ints.append(reduce_dims)
         keep_dims_arg = op.arg.add()
         keep_dims_arg.name = MaceKeyword.mace_keepdims_str
         try:
