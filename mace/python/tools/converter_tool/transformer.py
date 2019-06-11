@@ -1192,7 +1192,11 @@ class Transformer(base_converter.ConverterInterface):
                         and self._producer[op.input[0]].type \
                         == MaceOp.Reshape.name \
                         and len(op.output_shape[0].dims) == 2:
-                    should_fold = True
+                    producer = self._producer[op.input[0]]
+                    reshape_input_rank = len(self.get_tensor_shape(
+                        producer.input[0]))
+                    if reshape_input_rank == 4:
+                        should_fold = True
 
                 if should_fold:
                     print(
