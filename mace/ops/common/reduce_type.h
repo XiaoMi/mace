@@ -18,11 +18,11 @@
 
 namespace mace {
 enum ReduceType {
-//  SUM = 0,
   MEAN = 0,
   MIN = 1,
   MAX = 2,
   PROD = 3,
+  SUM = 4,
 //  SUM_SQR = 4,
 //  SQR_MEAN = 5,
 };

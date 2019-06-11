@@ -1205,12 +1205,13 @@ class Transformer(base_converter.ConverterInterface):
                     if op.output[0] in self._consumers:
                         consumer = self._consumers[op.output[0]][0]
                         # if there is a shape op, remove it too
-                        if (consumer.input[1] in self._producer
-                            and self._producer[consumer.input[1]].type
-                                == 'Shape'):
-                            self.safe_remove_node(
-                                self._producer[consumer.input[1]], None,
-                                remove_input_tensor=True)
+                        if len(consumer.input) > 1:
+                            if (consumer.input[1] in self._producer
+                                and self._producer[consumer.input[1]].type
+                                    == 'Shape'):
+                                self.safe_remove_node(
+                                    self._producer[consumer.input[1]], None,
+                                    remove_input_tensor=True)
                         # remove consumer reshape
                         self.safe_remove_node(consumer, op,
                                               remove_input_tensor=True)

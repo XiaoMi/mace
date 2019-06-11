@@ -62,7 +62,7 @@ __kernel void reduce(OUT_OF_RANGE_PARAMS
 // PROD
 #elif REDUCE_TYPE == 3
     part_result = part_result * in;
-// MEAN
+// MEAN or SUM
 #else
     part_result = part_result + in;
 #endif
