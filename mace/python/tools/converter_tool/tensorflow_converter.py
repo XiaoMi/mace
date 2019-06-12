@@ -912,7 +912,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
                     reduce_dims = tf_op.get_attr('reduction_indices')
                 except ValueError:
                     reduce_dims = []
-        if isinstance(reduce_dims, list):
+        if isinstance(reduce_dims, (np.ndarray, list)):
             axis_arg.ints.extend(reduce_dims)
         else:
             axis_arg.ints.append(reduce_dims)
