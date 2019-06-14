@@ -100,7 +100,6 @@ inline void QuantizeMultiplier(double multiplier,
     ++*shift;
   }
   *output_multiplier = static_cast<int32_t>(qint);
-  MACE_CHECK(*output_multiplier <= std::numeric_limits<int32_t>::max());
 }
 
 inline void GetOutputMultiplierAndShift(
