@@ -15,8 +15,17 @@ option(MACE_ENABLE_BENCHMARKS  "whether to build c++ micro benchmarks"      OFF)
 option(MACE_ENABLE_EXAMPLES    "whether to build examples"                  OFF)
 option(MACE_ENABLE_OPT_SIZE    "whether to build with optimized binary size" ON)
 option(MACE_ENABLE_OBFUSCATE   "whether to build with code obfuscation"      ON)
+option(MACE_ENABLE_CCACHE      "whether to build with ccache"                ON)
 
 message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+
+if(MACE_ENABLE_CCACHE)
+  find_program(CCACHE_FOUND ccache)
+  if(CCACHE_FOUND)
+    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+    set(CMAKE_C_COMPILER_LAUNCHER   ccache)
+  endif(CCACHE_FOUND)
+endif(MACE_ENABLE_CCACHE)
 
 # TODO make these flags well defined and organized
 # TODO enable sanitizer

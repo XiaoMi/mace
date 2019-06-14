@@ -111,3 +111,6 @@ RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors
 
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
     cpplint==1.4.4
+
+RUN apt-get install -y --no-install-recommends \
+    ccache
