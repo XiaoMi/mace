@@ -89,10 +89,10 @@ def parse_args():
         default=True,
         help="Whether to use neon optimization")
     parser.add_argument(
-        "--enable_openmp",
+        "--enable_quantize",
         type=str2bool,
-        default=False,
-        help="Whether to use openmp")
+        default=True,
+        help="Whether to use quantization ops")
     parser.add_argument(
         '--address_sanitizer',
         action="store_true",
@@ -127,7 +127,7 @@ def main(unused_args):
             abi=target_abi,
             toolchain=toolchain,
             enable_neon=FLAGS.enable_neon,
-            enable_openmp=FLAGS.enable_openmp,
+            enable_quantize=FLAGS.enable_quantize,
             address_sanitizer=FLAGS.address_sanitizer,
             debug_mode=FLAGS.debug_mode)
         if FLAGS.run_target:
