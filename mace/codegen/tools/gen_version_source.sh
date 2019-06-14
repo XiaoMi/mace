@@ -22,7 +22,7 @@ fi
 mkdir -p $(dirname $OUTPUT_FILENAME)
 
 MACE_SOURCE_DIR=$(dirname $(dirname $(dirname $(dirname $0))))
-GIT_VERSION=$(git --git-dir=${MACE_SOURCE_DIR}/.git --work-tree=${MACE_SOURCE_DIR} describe --long --tags)
+GIT_VERSION=$(git --git-dir=${MACE_SOURCE_DIR}/.git --work-tree=${MACE_SOURCE_DIR} describe --long --tags --abbrev=7)
 
 if [[ $? != 0 ]]; then
   GIT_VERSION=$(git describe --long --tags)
