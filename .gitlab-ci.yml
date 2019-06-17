@@ -1,8 +1,15 @@
 stages:
+  - prepare
   - linting
   - build
   - test
   - extra
+
+setenv:
+  stage: prepare
+  script:
+    - export CCACHE_NOHASHDIR=1
+    - export CCACHE_BASEDIR=${CI_PROJECT_DIR}
 
 cpplint:
   stage: linting

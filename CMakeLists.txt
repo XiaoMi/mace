@@ -15,8 +15,17 @@ option(MACE_ENABLE_BENCHMARKS  "whether to build c++ micro benchmarks"      OFF)
 option(MACE_ENABLE_EXAMPLES    "whether to build examples"                  OFF)
 option(MACE_ENABLE_OPT_SIZE    "whether to build with optimized binary size" ON)
 option(MACE_ENABLE_OBFUSCATE   "whether to build with code obfuscation"      ON)
+option(MACE_ENABLE_CCACHE      "whether to build with ccache"                ON)
 
 message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+
+if(MACE_ENABLE_CCACHE)
+  find_program(CCACHE_FOUND ccache)
+  if(CCACHE_FOUND)
+    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+    set(CMAKE_C_COMPILER_LAUNCHER   ccache)
+  endif(CCACHE_FOUND)
+endif(MACE_ENABLE_CCACHE)
 
 # TODO make these flags well defined and organized
 # TODO enable sanitizer
@@ -33,7 +42,9 @@ if(MACE_ENABLE_OPT_SIZE)
 endif(MACE_ENABLE_OPT_SIZE)
 
 # flags apply only to mace code (third_party excluded)
-set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror")
+# -Wno-error=unused-command-line-argument: official Android toolchain contains
+# unsupported argument and will break ccache preprocessor
+set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror -Wno-error=unused-command-line-argument")
 set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -std=c++11 -D_GLIBCXX_USE_C99_MATH_TR1")
 
 if(IOS)
