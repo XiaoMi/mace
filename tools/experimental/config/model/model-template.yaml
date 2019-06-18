@@ -1,0 +1,17 @@
+models:
+  mobilenet_v2:
+    platform: tensorflow
+    model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/mobilenet-v2/mobilenet-v2-1.0.pb
+    model_sha256_checksum: 369f9a5f38f3c15b4311c1c84c032ce868da9f371b5f78c13d3ea3c537389bb4
+    subgraphs:
+      - input_tensors:
+          - input
+        input_shapes:
+          - 1,224,224,3
+        output_tensors:
+          - MobilenetV2/Predictions/Reshape_1
+        output_shapes:
+          - 1,1001
+        validation_inputs_data:
+          - https://cnbj1.fds.api.xiaomi.com/mace/inputs/dog.npy
+
