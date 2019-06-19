@@ -46,20 +46,22 @@ struct CPUFreq {
   float freq;
 };
 
-size_t GetCpuCoresForPerfomance(const std::vector<CPUFreq> &cpu_freqs) {
+int GetCpuCoresForPerfomance(
+    const std::vector<CPUFreq> &cpu_freqs,
+    const std::function<bool(const float &x, const float &y)> &comp) {
   float total_freq = std::accumulate(cpu_freqs.begin(), cpu_freqs.end(), 0,
                                      [](float accum, CPUFreq cpu_freq) {
                                        return accum + cpu_freq.freq;
                                      });
-  size_t valid_cpu_nums = std::count_if(cpu_freqs.begin(), cpu_freqs.end(),
+  int64_t valid_cpu_nums = std::count_if(cpu_freqs.begin(), cpu_freqs.end(),
                                         [](CPUFreq cpu_freq) {
                                           return cpu_freq.freq != 0;
                                         });
   float avg_freq = total_freq / valid_cpu_nums;
 
-  size_t cores_to_use = 0;
+  int cores_to_use = 0;
   for (auto cpu_info : cpu_freqs) {
-    if ((cpu_info.freq > avg_freq
+    if ((comp(cpu_info.freq, avg_freq)
         && cores_to_use < kMaxCpuCoresForPerformance)
         || cores_to_use < kMinCpuCoresForPerformance) {
       ++cores_to_use;
@@ -73,16 +75,17 @@ size_t GetCpuCoresForPerfomance(const std::vector<CPUFreq> &cpu_freqs) {
 
 MaceStatus GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
                             const CPUAffinityPolicy policy,
-                            const size_t thread_count_hint,
+                            int *thread_count,
                             std::vector<size_t> *cores) {
   if (cpu_max_freqs.empty()) {
+    *thread_count = 1;
     LOG(ERROR) << "CPU core is empty";
     return MaceStatus::MACE_RUNTIME_ERROR;
   }
-  size_t thread_count = thread_count_hint;
-  const size_t cpu_count = cpu_max_freqs.size();
-  if (thread_count == 0 || thread_count > cpu_count) {
-    thread_count = cpu_count;
+  *thread_count = std::max(*thread_count, 0);
+  const int cpu_count = static_cast<int>(cpu_max_freqs.size());
+  if (*thread_count == 0 || *thread_count > cpu_count) {
+    *thread_count = cpu_count;
   }
 
   if (policy != CPUAffinityPolicy::AFFINITY_NONE) {
@@ -108,69 +111,78 @@ MaceStatus GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
     }
 
     // decide num of cores to use
-    size_t cores_to_use = 0;
-    if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY
-        || policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
-      cores_to_use = GetCpuCoresForPerfomance(cpu_freq);
+    int cores_to_use = 0;
+    if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
+      cores_to_use =
+          GetCpuCoresForPerfomance(cpu_freq, std::greater_equal<float>());
+    } else if (policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
+      cores_to_use =
+          GetCpuCoresForPerfomance(cpu_freq, std::less_equal<float>());
     } else {
-      cores_to_use = thread_count;
+      cores_to_use = *thread_count;
     }
     MACE_CHECK(cores_to_use > 0, "number of cores to use should > 0");
-    cores->resize(cores_to_use);
-    for (size_t i = 0; i < cores_to_use; ++i) {
+    cores->resize(static_cast<size_t>(cores_to_use));
+    for (int i = 0; i < cores_to_use; ++i) {
       VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id
               << " with freq "
               << cpu_freq[i].freq;
       (*cores)[i] = static_cast<int>(cpu_freq[i].core_id);
+    }
+    if (*thread_count == 0 || *thread_count > cores_to_use) {
+      *thread_count = cores_to_use;
     }
   }
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-ThreadPool::ThreadPool(const size_t thread_count_hint,
+ThreadPool::ThreadPool(const int thread_count_hint,
                        const CPUAffinityPolicy policy)
     : event_(kThreadPoolNone),
       count_down_latch_(kThreadPoolSpinWaitTime) {
-  size_t thread_count = thread_count_hint;
+  int thread_count = thread_count_hint;
 
-  std::vector<float> cpu_max_freqs;
-  if (port::Env::Default()->GetCPUMaxFreq(&cpu_max_freqs)
+  if (port::Env::Default()->GetCPUMaxFreq(&cpu_max_freqs_)
       != MaceStatus::MACE_SUCCESS) {
     LOG(ERROR) << "Fail to get cpu max frequencies";
   }
 
-  thread_count = std::max(static_cast<size_t>(1),
-                          std::min(thread_count, cpu_max_freqs.size()));
-
   std::vector<size_t> cores_to_use;
-  GetCPUCoresToUse(cpu_max_freqs, policy, thread_count, &cores_to_use);
+  GetCPUCoresToUse(cpu_max_freqs_, policy, &thread_count, &cores_to_use);
+  MACE_CHECK(thread_count > 0);
+  VLOG(2) << "Use " << thread_count << " threads";
+
   if (!cores_to_use.empty()) {
     if (port::Env::Default()->SchedSetAffinity(cores_to_use)
         != MaceStatus::MACE_SUCCESS) {
       LOG(ERROR) << "Failed to sched_set_affinity";
     }
   }
-  if (!cores_to_use.empty() && thread_count > cores_to_use.size()) {
-    thread_count = cores_to_use.size();
-  }
-  VLOG(2) << "Use " << thread_count << " threads";
 
   default_tile_count_ = thread_count;
-  if (cores_to_use.size() >= 2
-      && cpu_max_freqs[cores_to_use[0]] != cpu_max_freqs[cores_to_use.back()]) {
+  if (thread_count > 1) {
     default_tile_count_ = thread_count * kTileCountPerThread;
   }
   MACE_CHECK(default_tile_count_ > 0, "default tile count should > 0");
 
-  threads_ = std::vector<std::thread>(thread_count);
-  thread_infos_ = std::vector<ThreadInfo>(thread_count);
+  threads_ = std::vector<std::thread>(static_cast<size_t>(thread_count));
+  thread_infos_ = std::vector<ThreadInfo>(static_cast<size_t>(thread_count));
   for (auto &thread_info : thread_infos_) {
     thread_info.cpu_cores = cores_to_use;
   }
 }
 
 ThreadPool::~ThreadPool() {
+  // Clear affinity of main thread
+  if (!cpu_max_freqs_.empty()) {
+    std::vector<size_t> cores(cpu_max_freqs_.size());
+    for (size_t i = 0; i < cores.size(); ++i) {
+      cores[i] = i;
+    }
+    port::Env::Default()->SchedSetAffinity(cores);
+  }
+
   Destroy();
 }
 

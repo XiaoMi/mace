@@ -31,12 +31,12 @@ namespace utils {
 
 MaceStatus GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
                             const CPUAffinityPolicy policy,
-                            const size_t thread_count_hint,
+                            int *thread_count_hint,
                             std::vector<size_t> *cores);
 
 class ThreadPool {
  public:
-  ThreadPool(const size_t thread_count,
+  ThreadPool(const int thread_count,
              const CPUAffinityPolicy affinity_policy);
   ~ThreadPool();
 
@@ -114,6 +114,7 @@ class ThreadPool {
   };
   std::vector<ThreadInfo> thread_infos_;
   std::vector<std::thread> threads_;
+  std::vector<float> cpu_max_freqs_;
 
   int64_t default_tile_count_;
 };
