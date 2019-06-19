@@ -104,12 +104,7 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
   std::vector<size_t> cores_to_use;
   MACE_RETURN_IF_ERROR(
       mace::utils::GetCPUCoresToUse(
-          cpu_max_freqs, policy, num_threads_hint, &cores_to_use));
-
-  int cpu_count = static_cast<int>(cores_to_use.size());
-  if (num_threads_hint <= 0 || num_threads_hint > cpu_count) {
-    num_threads_hint = cpu_count;
-  }
+          cpu_max_freqs, policy, &num_threads_hint, &cores_to_use));
 
   if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
 #ifdef MACE_ENABLE_QUANTIZE
