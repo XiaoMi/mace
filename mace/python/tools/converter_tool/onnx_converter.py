@@ -332,7 +332,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.BatchNormalization.name: self.convert_fused_batchnorm,
             OnnxOpType.BatchNorm.name: self.convert_fused_batchnorm,
             OnnxOpType.Cast.name: self.convert_cast,
-            OnnxOpType.Clip.name: self.convert_eltwise,
+            OnnxOpType.Clip.name: self.convert_clip,
             OnnxOpType.Concat.name: self.convert_concat,
             OnnxOpType.Conv.name: self.convert_conv2d,
             OnnxOpType.ConvTranspose.name: self.convert_deconv,
@@ -881,6 +881,29 @@ class OnnxConverter(base_converter.ConverterInterface):
             scale_arg = op.arg.add()
             scale_arg.name = 'scale'
             scale_arg.f = scale
+
+    def convert_clip(self, node):
+        is_relux = False
+        if 'min' in node.attrs:
+            min_value = node.attrs['min']
+            if min_value == 0:
+                is_relux = True
+        if is_relux:
+            op = self.convert_general_op(node)
+            op.type = MaceOp.Activation.name
+
+            type_arg = op.arg.add()
+            type_arg.name = MaceKeyword.mace_activation_type_str
+            if "max" in node.attrs:
+                max_value = node.attrs["max"]
+                type_arg.s = six.b(ActivationType.RELUX.name)
+                alpha_arg = op.arg.add()
+                alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
+                alpha_arg.f = max_value
+            else:
+                type_arg.s = six.b(ActivationType.RELU.name)
+        else:
+            self.convert_eltwise(node)
 
     def convert_eltwise(self, node):
         op = self.convert_general_op(node)
