@@ -713,16 +713,16 @@ class DeviceWrapper:
                 )
                 for runtime in runtime_list:
                     device_type = parse_device_type(runtime)
+                    log_dir = mace_model_dir + "/" + runtime
+                    if os.path.exists(log_dir):
+                        sh.rm('-rf', log_dir)
+                    os.makedirs(log_dir)
                     for output_config in output_configs:
                         self.run_model(flags, configs, target_abi, model_name,
                                        output_config, runtime, tuning)
                         if flags.validate:
                             log_file = ""
                             if flags.layers != "-1":
-                                log_dir = mace_model_dir + "/" + runtime
-                                if os.path.exists(log_dir):
-                                    sh.rm('-rf', log_dir)
-                                os.makedirs(log_dir)
                                 log_file = log_dir + "/log.csv"
                             model_file_path, weight_file_path = \
                                 get_model_files(
