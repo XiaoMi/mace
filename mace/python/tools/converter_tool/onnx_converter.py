@@ -941,6 +941,33 @@ class OnnxConverter(base_converter.ConverterInterface):
             coeff_arg = op.arg.add()
             coeff_arg.name = MaceKeyword.mace_coeff_str
             coeff_arg.floats.extend([min_value, max_value])
+        elif len(node.inputs) == 2:
+            if node.inputs[1] in self._consts and \
+                    node.inputs[0] not in self._consts:
+                const_name = node.inputs[1]
+                const_tensor = self._consts[const_name]
+                if len(const_tensor.dims) == 0:
+                    value_arg = op.arg.add()
+                    value_arg.name = MaceKeyword.mace_scalar_input_str
+                    value_arg.f = const_tensor.float_data[0]
+                    value_index_arg = op.arg.add()
+                    value_index_arg.name = \
+                        MaceKeyword.mace_scalar_input_index_str
+                    value_index_arg.i = 1
+                    del op.input[1]
+            elif node.inputs[0] in self._consts and \
+                    node.inputs[1] not in self._consts:
+                const_name = node.inputs[0]
+                const_tensor = self._consts[const_name]
+                if len(const_tensor.dims) == 0:
+                    value_arg = op.arg.add()
+                    value_arg.name = MaceKeyword.mace_scalar_input_str
+                    value_arg.f = const_tensor.float_data[0]
+                    value_index_arg = op.arg.add()
+                    value_index_arg.name = \
+                        MaceKeyword.mace_scalar_input_index_str
+                    value_index_arg.i = 0
+                    del op.input[0]
 
     @staticmethod
     def copy_node_attr(op, node, attr_name, dtype=AttributeType.INT,
