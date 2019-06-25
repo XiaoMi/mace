@@ -22,12 +22,12 @@ from onnx import optimizer
 
 def main():
     if len(sys.argv) != 3:
-        print "Usage: python onnx_optimizer.py model.onnx model_opt.onnx"
+        print("Usage: python onnx_optimizer.py model.onnx model_opt.onnx")
         sys.exit(0)
     in_path = sys.argv[1]
     out_path = sys.argv[2]
     original_model = onnx.load(in_path)
-    print "Start optimize ONNX model for inference:"
+    print("Start optimize ONNX model for inference:")
     passes = ['eliminate_identity',
               'fuse_consecutive_squeezes',
               'fuse_consecutive_transposes',
@@ -35,15 +35,14 @@ def main():
               'eliminate_nop_transpose',
               'eliminate_unused_initializer',
               'extract_constant_to_initializer',
-              'fuse_add_bias_into_conv',
               'fuse_bn_into_conv',
               'fuse_transpose_into_gemm']
     for i in range(len(passes)):
-        print i, ".", passes[i]
+        print("%s.%s" % (i, passes[i]))
     optimized_model = optimizer.optimize(original_model, passes)
     onnx.save_model(optimized_model, out_path)
-    print "Optimize Finished!"
-    print "Please check new model in:", out_path
+    print("Optimize Finished!")
+    print("Please check new model in:", out_path)
 
 
 if __name__ == '__main__':
