@@ -44,7 +44,11 @@ endif(MACE_ENABLE_OPT_SIZE)
 # flags apply only to mace code (third_party excluded)
 # -Wno-error=unused-command-line-argument: official Android toolchain contains
 # unsupported argument and will break ccache preprocessor
-set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror -Wno-error=unused-command-line-argument")
+if(ANDROID)
+  set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror -Wno-error=unused-command-line-argument")
+else(ANDROID)
+  set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror")
+endif(ANDROID)
 set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -std=c++11 -D_GLIBCXX_USE_C99_MATH_TR1")
 
 if(IOS)
