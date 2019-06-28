@@ -101,6 +101,7 @@ MaceStatus Concat2(OpContext *context,
     kernel->setArg(idx++,
                    *(static_cast<const cl::Image2D *>(input1->opencl_image())));
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
+    kernel->setArg(idx++, static_cast<int32_t>(input1->dim(3)));
     kernel->setArg(idx++,
                    *(static_cast<cl::Image2D *>(output->opencl_image())));
 
