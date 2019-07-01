@@ -356,6 +356,13 @@ class Transformer(base_converter.ConverterInterface):
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
                 return True
+            if op.type == 'Reshape' and \
+                    op.output_shape[0].dims == \
+                    self.get_tensor_shape(op.input[0]):
+                print("Remove useless reshape: %s(%s)" % (op.name, op.type))
+                self.safe_remove_node(op,
+                                      self._producer.get(op.input[0], None))
+                return True
 
         return False
 
