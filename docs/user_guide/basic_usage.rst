@@ -75,8 +75,8 @@ Here we use the mobilenet-v2 model as an example.
 
     .. code:: sh
 
-        # Run example
-        python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --example
+        # Run
+        python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
 
     	# Test model run time
         python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --round=100
@@ -233,7 +233,7 @@ to run and validate your model.
     .. code:: sh
 
         # Benchmark model, get detailed statistics of each Op.
-        python tools/converter.py benchmark --config=/path/to/your/model_deployment_file.yml
+        python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --benchmark
 
 
 =======================================
@@ -308,7 +308,7 @@ header files.
                 └── mace_run_static
 
 
-Please refer to \ ``mace/examples/example.cc``\ for full usage. The following list the key steps.
+Please refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list the key steps.
 
 .. code:: cpp
 

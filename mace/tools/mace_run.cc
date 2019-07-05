@@ -38,6 +38,7 @@
 #include "mace/utils/logging.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/string_util.h"
+#include "mace/utils/statistics.h"
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -45,7 +46,6 @@
 
 namespace mace {
 namespace tools {
-namespace validation {
 
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
@@ -124,7 +124,6 @@ DEFINE_string(input_file,
 DEFINE_string(output_file,
               "",
               "output file name | output file prefix for multiple outputs");
-// TODO(liyin): support batch validation
 DEFINE_string(input_dir,
               "",
               "input directory name");
@@ -152,6 +151,7 @@ DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
+DEFINE_bool(benchmark, false, "enable benchmark op");
 
 bool RunModel(const std::string &model_name,
               const std::vector<std::string> &input_names,
@@ -352,6 +352,7 @@ bool RunModel(const std::string &model_name,
   }
 
   double model_run_millis = -1;
+  benchmark::OpStat op_stat;
   if (FLAGS_round > 0) {
     LOG(INFO) << "Run model";
     int64_t total_run_duration = 0;
@@ -364,9 +365,15 @@ bool RunModel(const std::string &model_name,
             info_log.get(), MakeString(i));
       }
       MaceStatus run_status;
+      RunMetadata metadata;
+      RunMetadata *metadata_ptr = nullptr;
+      if (FLAGS_benchmark) {
+        metadata_ptr = &metadata;
+      }
+
       while (true) {
         int64_t t0 = NowMicros();
-        run_status = engine->Run(inputs, &outputs);
+        run_status = engine->Run(inputs, &outputs, metadata_ptr);
         if (run_status != MaceStatus::MACE_SUCCESS) {
           LOG(ERROR) << "Mace run model runtime error, retry ... errcode: "
                      << run_status.information();
@@ -399,6 +406,9 @@ bool RunModel(const std::string &model_name,
         } else {
           int64_t t1 = NowMicros();
           total_run_duration += (t1 - t0);
+          if (FLAGS_benchmark) {
+            op_stat.StatMetadata(metadata);
+          }
           break;
         }
       }
@@ -406,14 +416,6 @@ bool RunModel(const std::string &model_name,
     model_run_millis = total_run_duration / 1000.0 / FLAGS_round;
     LOG(INFO) << "Average latency: " << model_run_millis << " ms";
   }
-
-  // Metrics reporting tools depends on the format, keep in consistent
-  printf("========================================================\n");
-  printf("     capability(CPU)        init      warmup     run_avg\n");
-  printf("========================================================\n");
-  printf("time %15.3f %11.3f %11.3f %11.3f\n",
-         cpu_capability, init_millis, warmup_millis, model_run_millis);
-
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =
@@ -431,6 +433,16 @@ bool RunModel(const std::string &model_name,
               << output_size << " done.";
   }
 
+  // Metrics reporting tools depends on the format, keep in consistent
+  printf("========================================================\n");
+  printf("     capability(CPU)        init      warmup     run_avg\n");
+  printf("========================================================\n");
+  printf("time %15.3f %11.3f %11.3f %11.3f\n",
+         cpu_capability, init_millis, warmup_millis, model_run_millis);
+  if (FLAGS_benchmark) {
+    op_stat.PrintStat();
+  }
+
   return true;
 }
 
@@ -446,6 +458,10 @@ int Main(int argc, char **argv) {
   if (input_names.empty() || output_names.empty()) {
     LOG(INFO) << gflags::ProgramUsage();
     return 0;
+  }
+
+  if (FLAGS_benchmark) {
+    setenv("MACE_OPENCL_PROFILING", "1", 1);
   }
 
   LOG(INFO) << "model name: " << FLAGS_model_name;
@@ -517,8 +533,9 @@ int Main(int argc, char **argv) {
   return -1;
 }
 
-}  // namespace validation
 }  // namespace tools
 }  // namespace mace
 
-int main(int argc, char **argv) { mace::tools::validation::Main(argc, argv); }
+int main(int argc, char **argv) {
+  mace::tools::Main(argc, argv);
+}

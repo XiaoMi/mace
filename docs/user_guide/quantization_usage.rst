@@ -52,7 +52,7 @@ MACE provides tools to do statistics with following steps:
 		rename 's/^/input/' *
 
 		# Run with input tensors
-		python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml --example
+		python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml
 			--quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
 
 

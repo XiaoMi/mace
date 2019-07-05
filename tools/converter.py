@@ -891,7 +891,7 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
                    ModuleName.RUN,
                    "You should convert model first.")
-        build_arg = "--per_file_copt=mace/tools/validation/mace_run.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+        build_arg = "--per_file_copt=mace/tools/mace_run.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
     sh_commands.bazel_build(
         mace_run_target,
@@ -910,86 +910,6 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
     )
     sh_commands.update_mace_run_binary(build_tmp_binary_dir,
                                        mace_lib_type == MACELibType.dynamic)
-
-
-def build_example(configs, target_abi, toolchain, enable_openmp, mace_lib_type,
-                  cl_binary_to_code, device, debug_mode):
-    library_name = configs[YAMLKeyword.library_name]
-
-    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
-    if os.path.exists(build_tmp_binary_dir):
-        sh.rm("-rf", build_tmp_binary_dir)
-    os.makedirs(build_tmp_binary_dir)
-
-    if cl_binary_to_code:
-        sh_commands.gen_opencl_binary_cpps(
-            get_opencl_binary_output_path(
-                library_name, target_abi, device),
-            get_opencl_parameter_output_path(
-                library_name, target_abi, device),
-            OPENCL_CODEGEN_DIR + '/opencl_binary.cc',
-            OPENCL_CODEGEN_DIR + '/opencl_parameter.cc')
-    else:
-        sh_commands.gen_opencl_binary_cpps(
-            "", "",
-            OPENCL_CODEGEN_DIR + '/opencl_binary.cc',
-            OPENCL_CODEGEN_DIR + '/opencl_parameter.cc')
-
-    libmace_target = LIBMACE_STATIC_TARGET
-    if mace_lib_type == MACELibType.dynamic:
-        libmace_target = LIBMACE_SO_TARGET
-
-    sh_commands.bazel_build(libmace_target,
-                            abi=target_abi,
-                            toolchain=toolchain,
-                            enable_openmp=enable_openmp,
-                            enable_opencl=get_opencl_mode(configs),
-                            enable_quantize=get_quantize_mode(configs),
-                            enable_hexagon=get_hexagon_mode(configs),
-                            enable_hta=get_hta_mode(configs),
-                            enable_apu=get_apu_mode(configs),
-                            address_sanitizer=flags.address_sanitizer,
-                            symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),  # noqa
-                            debug_mode=debug_mode)
-
-    if os.path.exists(LIB_CODEGEN_DIR):
-        sh.rm("-rf", LIB_CODEGEN_DIR)
-    sh.mkdir("-p", LIB_CODEGEN_DIR)
-
-    build_arg = ""
-    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
-                   ModuleName.RUN,
-                   "You should convert model first.")
-        model_lib_path = get_model_lib_output_path(library_name,
-                                                   target_abi)
-        sh.cp("-f", model_lib_path, LIB_CODEGEN_DIR)
-        build_arg = "--per_file_copt=examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
-
-    if mace_lib_type == MACELibType.dynamic:
-        example_target = EXAMPLE_DYNAMIC_TARGET
-        sh.cp("-f", LIBMACE_DYNAMIC_PATH, LIB_CODEGEN_DIR)
-    else:
-        example_target = EXAMPLE_STATIC_TARGET
-        sh.cp("-f", LIBMACE_STATIC_PATH, LIB_CODEGEN_DIR)
-
-    sh_commands.bazel_build(example_target,
-                            abi=target_abi,
-                            toolchain=toolchain,
-                            enable_openmp=enable_openmp,
-                            enable_opencl=get_opencl_mode(configs),
-                            enable_quantize=get_quantize_mode(configs),
-                            enable_hexagon=get_hexagon_mode(configs),
-                            enable_hta=get_hta_mode(configs),
-                            enable_apu=get_apu_mode(configs),
-                            address_sanitizer=flags.address_sanitizer,
-                            debug_mode=debug_mode,
-                            extra_args=build_arg)
-
-    target_bin = "/".join(sh_commands.bazel_target_to_bin(example_target))
-    sh.cp("-f", target_bin, build_tmp_binary_dir)
-    if os.path.exists(LIB_CODEGEN_DIR):
-        sh.rm("-rf", LIB_CODEGEN_DIR)
 
 
 def print_package_summary(package_path):
@@ -1024,23 +944,13 @@ def run_mace(flags):
                 # get toolchain
                 toolchain = infer_toolchain(target_abi)
                 device = DeviceWrapper(dev)
-                if flags.example:
-                    build_example(configs,
-                                  target_abi,
-                                  toolchain,
-                                  flags.enable_openmp,
-                                  flags.mace_lib_type,
-                                  flags.cl_binary_to_code,
-                                  device,
-                                  flags.debug_mode)
-                else:
-                    build_mace_run(configs,
-                                   target_abi,
-                                   toolchain,
-                                   flags.enable_openmp,
-                                   flags.address_sanitizer,
-                                   flags.mace_lib_type,
-                                   flags.debug_mode)
+                build_mace_run(configs,
+                               target_abi,
+                               toolchain,
+                               flags.enable_openmp,
+                               flags.address_sanitizer,
+                               flags.mace_lib_type,
+                               flags.debug_mode)
                 # run
                 start_time = time.time()
                 with device.lock():
@@ -1056,90 +966,6 @@ def run_mace(flags):
     package_path = sh_commands.packaging_lib(BUILD_OUTPUT_DIR,
                                              configs[YAMLKeyword.library_name])
     print_package_summary(package_path)
-
-
-################################
-#  benchmark model
-################################
-def build_benchmark_model(configs,
-                          target_abi,
-                          toolchain,
-                          enable_openmp,
-                          mace_lib_type,
-                          debug_mode):
-    library_name = configs[YAMLKeyword.library_name]
-
-    link_dynamic = mace_lib_type == MACELibType.dynamic
-    if link_dynamic:
-        benchmark_target = BM_MODEL_DYNAMIC_TARGET
-    else:
-        benchmark_target = BM_MODEL_STATIC_TARGET
-
-    build_arg = ""
-    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
-                   ModuleName.BENCHMARK,
-                   "You should convert model first.")
-        build_arg = "--per_file_copt=mace/tools/benchmark/benchmark_model.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
-
-    sh_commands.bazel_build(benchmark_target,
-                            abi=target_abi,
-                            toolchain=toolchain,
-                            enable_openmp=enable_openmp,
-                            enable_opencl=get_opencl_mode(configs),
-                            enable_quantize=get_quantize_mode(configs),
-                            enable_hexagon=get_hexagon_mode(configs),
-                            enable_hta=get_hta_mode(configs),
-                            enable_apu=get_apu_mode(configs),
-                            symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),  # noqa
-                            debug_mode=debug_mode,
-                            extra_args=build_arg)
-    # clear tmp binary dir
-    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
-    if os.path.exists(build_tmp_binary_dir):
-        sh.rm("-rf", build_tmp_binary_dir)
-    os.makedirs(build_tmp_binary_dir)
-
-    target_bin = "/".join(sh_commands.bazel_target_to_bin(benchmark_target))
-    sh.cp("-f", target_bin, build_tmp_binary_dir)
-
-
-def benchmark_model(flags):
-    configs = format_model_config(flags)
-
-    clear_build_dirs(configs[YAMLKeyword.library_name])
-
-    target_socs = configs[YAMLKeyword.target_socs]
-    device_list = DeviceManager.list_devices(flags.device_yml)
-    if target_socs and TargetSOCTag.all not in target_socs:
-        device_list = [dev for dev in device_list
-                       if dev[YAMLKeyword.target_socs].lower() in target_socs]
-    for target_abi in configs[YAMLKeyword.target_abis]:
-        if flags.target_socs == TargetSOCTag.random:
-            target_devices = sh_commands.choose_a_random_device(
-                device_list, target_abi)
-        else:
-            target_devices = device_list
-        # build benchmark_model binary
-        for dev in target_devices:
-            if target_abi in dev[YAMLKeyword.target_abis]:
-                toolchain = infer_toolchain(target_abi)
-                build_benchmark_model(configs,
-                                      target_abi,
-                                      toolchain,
-                                      flags.enable_openmp,
-                                      flags.mace_lib_type,
-                                      flags.debug_mode)
-                device = DeviceWrapper(dev)
-                start_time = time.time()
-                with device.lock():
-                    device.bm_specific_target(flags, configs, target_abi)
-                elapse_minutes = (time.time() - start_time) / 60
-                print("Elapse time: %f minutes." % elapse_minutes)
-            else:
-                six.print_('There is no abi %s with soc %s' %
-                           (target_abi, dev[YAMLKeyword.target_socs]),
-                           file=sys.stderr)
 
 
 ################################
@@ -1210,42 +1036,7 @@ def parse_args():
         '--address_sanitizer',
         action="store_true",
         help="Whether to use address sanitizer to check memory error")
-    run_bm_parent_parser = argparse.ArgumentParser(add_help=False)
-    run_bm_parent_parser.add_argument(
-        "--mace_lib_type",
-        type=str_to_mace_lib_type,
-        default=DefaultValues.mace_lib_type,
-        help="[static | dynamic], Which type MACE library to use.")
-    run_bm_parent_parser.add_argument(
-        "--enable_openmp",
-        action="store_true",
-        help="Enable openmp for multiple thread.")
-    run_bm_parent_parser.add_argument(
-        "--omp_num_threads",
-        type=int,
-        default=DefaultValues.omp_num_threads,
-        help="num of openmp threads")
-    run_bm_parent_parser.add_argument(
-        "--cpu_affinity_policy",
-        type=int,
-        default=DefaultValues.cpu_affinity_policy,
-        help="0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY")
-    run_bm_parent_parser.add_argument(
-        "--gpu_perf_hint",
-        type=int,
-        default=DefaultValues.gpu_perf_hint,
-        help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
-    run_bm_parent_parser.add_argument(
-        "--gpu_priority_hint",
-        type=int,
-        default=DefaultValues.gpu_priority_hint,
-        help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
-    run_bm_parent_parser.add_argument(
-        "--device_yml",
-        type=str,
-        default='',
-        help='embedded linux device config yml file'
-    )
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
     convert = subparsers.add_parser(
@@ -1258,12 +1049,48 @@ def parse_args():
         default=None,
         help="Which type of OpenCL memory type to use [image | buffer].")
     convert.set_defaults(func=convert_func)
+
     run = subparsers.add_parser(
         'run',
-        parents=[all_type_parent_parser, run_bm_parent_parser,
+        parents=[all_type_parent_parser,
                  convert_run_parent_parser],
         help='run model in command line')
     run.set_defaults(func=run_mace)
+    run.add_argument(
+        "--mace_lib_type",
+        type=str_to_mace_lib_type,
+        default=DefaultValues.mace_lib_type,
+        help="[static | dynamic], Which type MACE library to use.")
+    run.add_argument(
+        "--enable_openmp",
+        action="store_true",
+        help="Enable openmp for multiple thread.")
+    run.add_argument(
+        "--omp_num_threads",
+        type=int,
+        default=DefaultValues.omp_num_threads,
+        help="num of openmp threads")
+    run.add_argument(
+        "--cpu_affinity_policy",
+        type=int,
+        default=DefaultValues.cpu_affinity_policy,
+        help="0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY")
+    run.add_argument(
+        "--gpu_perf_hint",
+        type=int,
+        default=DefaultValues.gpu_perf_hint,
+        help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
+    run.add_argument(
+        "--gpu_priority_hint",
+        type=int,
+        default=DefaultValues.gpu_priority_hint,
+        help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
+    run.add_argument(
+        "--device_yml",
+        type=str,
+        default='',
+        help='embedded linux device config yml file'
+    )
     run.add_argument(
         "--disable_tuning",
         action="store_true",
@@ -1319,10 +1146,6 @@ def parse_args():
         default=0.0,
         help="[mock runtime failure ratio].")
     run.add_argument(
-        "--example",
-        action="store_true",
-        help="whether to run example.")
-    run.add_argument(
         "--quantize_stat",
         action="store_true",
         help="whether to stat quantization range.")
@@ -1340,21 +1163,10 @@ def parse_args():
         "--cl_binary_to_code",
         action="store_true",
         help="convert OpenCL binaries to cpp.")
-    benchmark = subparsers.add_parser(
-        'benchmark',
-        parents=[all_type_parent_parser, run_bm_parent_parser],
-        help='benchmark model for detail information')
-    benchmark.set_defaults(func=benchmark_model)
-    benchmark.add_argument(
-        "--max_num_runs",
-        type=int,
-        default=100,
-        help="max number of runs.")
-    benchmark.add_argument(
-        "--max_seconds",
-        type=float,
-        default=10.0,
-        help="max number of seconds to run.")
+    run.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="enable op benchmark.")
     return parser.parse_known_args()
 
 

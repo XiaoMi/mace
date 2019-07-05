@@ -236,7 +236,7 @@ Convert model(s) to C++ code
 
     * **3. Deployment**
         * Link `libmace.a` and `${library_name}.a` to your target.
-        * Refer to \ ``mace/examples/example.cc``\ for full usage. The following list the key steps.
+        * Refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list the key steps.
 
         .. code:: cpp
 
@@ -404,7 +404,7 @@ the detailed information is in :doc:`benchmark`.
 .. code:: sh
 
     # Benchmark model, get detailed statistics of each Op.
-    python tools/converter.py benchmark --config=/path/to/model_deployment_file.yml
+    python tools/converter.py run --config=/path/to/model_deployment_file.yml --benchmark
 
 
 .. warning::
@@ -424,17 +424,17 @@ the detailed information is in :doc:`benchmark`.
         * - --omp_num_threads
           - int
           - -1
-          - ``run``/``benchmark``
+          - ``run``
           - number of threads
         * - --cpu_affinity_policy
           - int
           - 1
-          - ``run``/``benchmark``
+          - ``run``
           - 0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY
         * - --gpu_perf_hint
           - int
           - 3
-          - ``run``/``benchmark``
+          - ``run``
           - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
         * - --gpu_priority_hint
           - int
@@ -449,7 +449,6 @@ Use ``-h`` to get detailed help.
     python tools/converter.py -h
     python tools/converter.py build -h
     python tools/converter.py run -h
-    python tools/converter.py benchmark -h
 
 Reduce Library Size
 -------------------

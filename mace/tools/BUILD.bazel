@@ -1,53 +1,55 @@
+# Benchmark
 # Examples
 load(
     "//mace:mace.bzl",
     "if_android",
-    "if_darwin",
+    "if_hexagon_enabled",
     "if_opencl_enabled",
     "if_openmp_enabled",
 )
 
+licenses(["notice"])  # Apache 2.0
+
 cc_binary(
     name = "mace_run_static",
-    srcs = ["mace_run.cc"],
+    srcs = [
+        "mace_run.cc",
+    ],
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_opencl_enabled([
-        "-DMACE_ENABLE_OPENCL",
-    ]),
-    linkopts = if_darwin(
-        [],
-        default_value = ["-fuse-ld=gold"],
-    ) + if_openmp_enabled([
-        "-fopenmp",
-    ]),
+        "-Wno-missing-field-initializers",
+    ] + if_opencl_enabled(["-DMACE_ENABLE_OPENCL"]),
     linkstatic = 1,
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_models",
         "//mace/libmace",
+        "//mace/utils",
     ],
 )
 
 cc_binary(
     name = "mace_run_dynamic",
-    srcs = ["mace_run.cc"],
+    srcs = [
+        "mace_run.cc",
+    ],
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_opencl_enabled([
-        "-DMACE_ENABLE_OPENCL",
-    ]),
-    linkopts = if_darwin(
-        [],
-        default_value = ["-fuse-ld=gold"],
-    ) + if_openmp_enabled([
-        "-fopenmp",
+        "-Wno-missing-field-initializers",
+    ] + if_opencl_enabled(["-DMACE_ENABLE_OPENCL"]),
+    linkopts = [
+        "-lm",
+    ] + if_android([
+        "-ldl",
+        "-pie",
+        "-llog",
     ]),
     linkstatic = 0,
     deps = [
+        ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_models",

@@ -112,16 +112,13 @@ model_tests:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer
     - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --target_abis=armeabi-v7a,arm64 --validate --model_graph_format=file --model_data_format=file
-    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --target_abis=armeabi-v7a,arm64 --round=1 --validate --model_graph_format=file --model_data_format=file
     - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2-host.yml
     - python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file
     - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=file --model_data_format=file --address_sanitizer
-    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --example --round=1 --validate --model_graph_format=file --model_data_format=file
-    - python tools/converter.py benchmark --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=file --model_data_format=file
+    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=file --model_data_format=file --benchmark
     - python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=code --model_data_format=file
     - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=code --model_data_format=file
-    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --example --round=1 --validate --model_graph_format=code --model_data_format=file
-    - python tools/converter.py benchmark --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=code --model_data_format=file
+    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=code --model_data_format=file --benchmark
     - rm -rf mace-models
 
 quantization_tests:
@@ -141,7 +138,6 @@ quantization_tests:
       do
       python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --round=1 --validate --layers=0 --model_graph_format=file --model_data_format=file || exit 1;
       done
     - rm -rf mace-models
   only:
@@ -162,7 +158,6 @@ dynamic_linking_test:
       fi
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer
-    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --example --mace_lib_type=dynamic --target_abis=armeabi-v7a,arm64 --round=1 --validate --model_graph_format=file --model_data_format=file
     - rm -rf mace-models
   only:
     - triggers

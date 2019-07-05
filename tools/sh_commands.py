@@ -661,10 +661,10 @@ def update_mace_run_binary(build_tmp_binary_dir, link_dynamic=False):
     if os.path.exists(mace_run_filepath):
         sh.rm("-rf", mace_run_filepath)
     if link_dynamic:
-        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_dynamic",
+        sh.cp("-f", "bazel-bin/mace/tools/mace_run_dynamic",
               build_tmp_binary_dir)
     else:
-        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_static",
+        sh.cp("-f", "bazel-bin/mace/tools/mace_run_static",
               build_tmp_binary_dir)
 
 
@@ -865,120 +865,3 @@ def packaging_lib(libmace_output_dir, project_name):
             _fg=True)
     six.print_("Packaging Done!\n")
     return tar_package_path
-
-
-################################
-# benchmark
-################################
-def build_run_throughput_test(abi,
-                              serialno,
-                              vlog_level,
-                              run_seconds,
-                              merged_lib_file,
-                              model_input_dir,
-                              embed_model_data,
-                              input_nodes,
-                              output_nodes,
-                              input_shapes,
-                              output_shapes,
-                              cpu_model_tag,
-                              gpu_model_tag,
-                              dsp_model_tag,
-                              apu_model_tag,
-                              phone_data_dir,
-                              strip="always",
-                              input_file_name="model_input"):
-    six.print_("* Build and run throughput_test")
-
-    model_tag_build_flag = ""
-    if cpu_model_tag:
-        model_tag_build_flag += "--copt=-DMACE_CPU_MODEL_TAG=%s " % \
-                                cpu_model_tag
-    if gpu_model_tag:
-        model_tag_build_flag += "--copt=-DMACE_GPU_MODEL_TAG=%s " % \
-                                gpu_model_tag
-    if dsp_model_tag:
-        model_tag_build_flag += "--copt=-DMACE_DSP_MODEL_TAG=%s " % \
-                                dsp_model_tag
-    if apu_model_tag:
-        model_tag_build_flag += "--copt=-DMACE_APU_MODEL_TAG=%s " % \
-                                apu_model_tag
-    sh.cp("-f", merged_lib_file, "mace/benchmark/libmace_merged.a")
-    sh.bazel(
-        "build",
-        "-c",
-        "opt",
-        "--strip",
-        strip,
-        "--verbose_failures",
-        "//mace/benchmark:model_throughput_test",
-        "--crosstool_top=//external:android/crosstool",
-        "--host_crosstool_top=@bazel_tools//tools/cpp:toolchain",
-        "--cpu=%s" % abi,
-        "--copt=-std=c++11",
-        "--copt=-D_GLIBCXX_USE_C99_MATH_TR1",
-        "--copt=-Werror=return-type",
-        "--copt=-O3",
-        "--define",
-        "neon=true",
-        "--define",
-        "openmp=true",
-        model_tag_build_flag,
-        _fg=True)
-
-    sh.rm("mace/benchmark/libmace_merged.a")
-    sh.adb("-s",
-           serialno,
-           "shell",
-           "mkdir",
-           "-p",
-           phone_data_dir)
-    adb_push("%s/%s_%s" % (model_input_dir, input_file_name,
-                           ",".join(input_nodes)),
-             phone_data_dir,
-             serialno)
-    adb_push("bazel-bin/mace/benchmark/model_throughput_test",
-             phone_data_dir,
-             serialno)
-    if not embed_model_data:
-        adb_push("codegen/models/%s/%s.data" % cpu_model_tag,
-                 phone_data_dir,
-                 serialno)
-        adb_push("codegen/models/%s/%s.data" % gpu_model_tag,
-                 phone_data_dir,
-                 serialno)
-        adb_push("codegen/models/%s/%s.data" % dsp_model_tag,
-                 phone_data_dir,
-                 serialno)
-
-    adb_push("third_party/nnlib/%s/libhexagon_controller.so" % abi,
-             phone_data_dir,
-             serialno)
-    if apu_model_tag:
-        adb_push("third_party/apu/libapu-frontend.so",
-                 phone_data_dir,
-                 serialno)
-    sh.adb(
-        "-s",
-        serialno,
-        "shell",
-        "LD_LIBRARY_PATH=%s" % phone_data_dir,
-        "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-        "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
-        phone_data_dir,
-        "%s/model_throughput_test" % phone_data_dir,
-        "--input_node=%s" % ",".join(input_nodes),
-        "--output_node=%s" % ",".join(output_nodes),
-        "--input_shape=%s" % ":".join(input_shapes),
-        "--output_shape=%s" % ":".join(output_shapes),
-        "--input_file=%s/%s" % (phone_data_dir, input_file_name),
-        "--cpu_model_data_file=%s/%s.data" % (phone_data_dir,
-                                              cpu_model_tag),
-        "--gpu_model_data_file=%s/%s.data" % (phone_data_dir,
-                                              gpu_model_tag),
-        "--dsp_model_data_file=%s/%s.data" % (phone_data_dir,
-                                              dsp_model_tag),
-        "--run_seconds=%s" % run_seconds,
-        _fg=True)
-
-    six.print_("throughput_test done!\n")

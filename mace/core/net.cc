@@ -124,6 +124,11 @@ MaceStatus SerialNet::Init() {
 }
 
 MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
+  const char *profiling = getenv("MACE_OPENCL_PROFILING");
+  bool
+  enable_opencl_profiling =
+      profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1';
+
   MACE_MEMORY_LOGGING_GUARD();
   MACE_LATENCY_LOGGER(1, "Running net");
   OpContext context(ws_, cpu_device_.get());
@@ -146,7 +151,8 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
     if (run_metadata == nullptr) {
       MACE_RETURN_IF_ERROR(op->Run(&context));
     } else {
-      if (device_type == DeviceType::CPU) {
+      if (device_type == DeviceType::CPU
+          || (device_type == DeviceType::GPU && !enable_opencl_profiling)) {
         call_stats.start_micros = NowMicros();
         MACE_RETURN_IF_ERROR(op->Run(&context));
         call_stats.end_micros = NowMicros();
