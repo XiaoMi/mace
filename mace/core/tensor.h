@@ -111,7 +111,8 @@ class Tensor {
         scale_(0.f),
         zero_point_(0),
         minval_(0.f),
-        maxval_(0.f) {}
+        maxval_(0.f),
+        data_format_(DataFormat::NONE) {}
 
   Tensor(BufferBase *buffer, DataType dtype,
          bool is_weight = false,
@@ -125,7 +126,8 @@ class Tensor {
       scale_(0.f),
       zero_point_(0),
       minval_(0.f),
-      maxval_(0.f) {}
+      maxval_(0.f),
+      data_format_(DataFormat::NONE) {}
 
   Tensor(const BufferSlice &buffer_slice,
          DataType dtype,
@@ -140,7 +142,8 @@ class Tensor {
         scale_(0.f),
         zero_point_(0),
         minval_(0.f),
-        maxval_(0.f) {
+        maxval_(0.f),
+        data_format_(DataFormat::NONE) {
     buffer_ = &buffer_slice_;
   }
 
