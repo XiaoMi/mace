@@ -14,6 +14,21 @@
 
 // This Op is for Fused-LstmNonlinearityComponent
 // with prev cell states as inputs in Kaldi.
+// prev_out_delay: is the IfDefined componnet's delay value.
+//                 means which previous frame's output will
+//                 be used here as an input.
+// prev_cell_delay: similar as prev_out_delay.
+// prev_out_offset: output offset.
+// prev_out_dim: prev output's dim.
+// prev_cell_dim: prev cell's dim.
+// bias_a: the first affine's bias' flag, 1:has bias; 0:no bias.
+// bias_b: similar to bias_a.
+// scale: scale value of previous output and cell.
+// forward_indexes: contains the index of frames will be used for computaion.
+//                  This is pre-computed in kaldi-onnx converter
+// cell_cache_indexes: indicates which frame's cell will be cached for next
+//                     computation.
+// out_cache_indexes: similar to cell_cache_indexes.
 // http://kaldi-asr.org/doc/nnet-combined-component_8h_source.html#l00255
 // More details are in docs/development/dynamic_lstm.md
 
@@ -50,7 +65,44 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         prev_cell_dim_(Operation::GetOptionalArg<int>("prev_cell_dim", 0)),
         has_bias_a_(Operation::GetOptionalArg<int>("bias_a", 1)),
         has_bias_b_(Operation::GetOptionalArg<int>("bias_b", 1)),
-        scale_(Operation::GetOptionalArg<float>("scale", 1.0f)) {}
+        scale_(Operation::GetOptionalArg<float>("scale", 1.0f)),
+        subsample_factor_(
+            Operation::GetOptionalArg<int>("subsample_factor", 1)),
+        forward_indexes_(
+            Operation::GetRepeatedArgs<index_t>("forward_indexes")),
+        cell_cache_indexes_(
+            Operation::GetRepeatedArgs<index_t>("cell_cache_indexes")),
+        out_cache_indexes_(
+            Operation::GetRepeatedArgs<index_t>("out_cache_indexes")) {}
+
+  inline void Validate() {
+    const Tensor *input = this->Input(0);
+    const unsigned int rank = static_cast<unsigned int>(input->dim_size());
+    MACE_CHECK(rank >= 2, "DynamicLSTM's input should have at least 2 dims.");
+    const index_t input_chunk = input->dim(rank - 2);
+    for (size_t i = 0; i < forward_indexes_.size(); ++i) {
+      MACE_CHECK(forward_indexes_[i] < input_chunk && forward_indexes_[i] >= 0,
+                 "index is over range.");
+    }
+
+    MACE_CHECK(this->InputSize() >= 6,
+               "DynamicLSTM should have at least six inputs.",
+               "But has only ", this->InputSize(), " inputs.");
+    MACE_CHECK(prev_cell_delay_ < 0 && prev_out_delay_ < 0,
+               "prev_cell_delay(", prev_cell_delay_,
+               ") and prev_out_delay(", prev_out_delay_,
+               ") should be less than zero.");
+    MACE_CHECK(prev_cell_delay_ % subsample_factor_ == 0 &&
+               prev_out_delay_ % subsample_factor_ == 0,
+               "prev_cell_delay(", prev_cell_delay_,
+               ") and prev_out_delay(", prev_out_delay_,
+               ") should be multiples of subsample_factor(",
+               subsample_factor_, ").");
+    MACE_CHECK(prev_out_dim_ > 0 && prev_cell_dim_ > 0,
+               "prev_out_dim(", prev_out_dim_,
+               ") and prev_cell_dim(", prev_cell_dim_,
+               ") should be greater than zero.");
+  }
 
   void UpdateCell(float *cell_data,
                   const index_t cell_dim,
@@ -65,7 +117,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
       in_vec = vmulq_f32(in_vec, scale_vec);
       vst1q_f32(cell_data + i, in_vec);
 #else
-      for (int j = 0; j < 4; ++j) {
+      for (index_t j = 0; j < 4; ++j) {
         cell_data[i + j] *= scale;
       }
 #endif
@@ -92,7 +144,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
       in_vec = vmulq_f32(in_vec, scale_vec);
       vst1q_f32(cell_data + i, in_vec);
 #else
-      for (int j = 0; j < 4; ++j) {
+      for (index_t j = 0; j < 4; ++j) {
         cell_data[i + j] = src_data[i + j] * scale;
       }
 #endif
@@ -104,32 +156,26 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    int max_input_num = 4;
-    MACE_CHECK(this->InputSize() >= max_input_num,
-               "DynamicLSTM has at least four inputs.");
-    MACE_CHECK(prev_cell_delay_ < 0 && prev_out_delay_ < 0);
-    MACE_CHECK(prev_out_dim_ > 0 && prev_cell_dim_ > 0);
+    Validate();
     const Tensor *input = this->Input(INPUT);
+    const Tensor *prev_out = this->Input(PREV_OUT);
+    const Tensor *prev_cell = this->Input(PREV_CELL);
     const Tensor *weights_a = this->Input(WEIGHTS_A);
     const Tensor *lstm_params = this->Input(PARAMS);
     const Tensor *weights_b = this->Input(WEIGHTS_B);
-    if (has_bias_a_) {
-      max_input_num++;
-      MACE_CHECK(this->InputSize() >= max_input_num,
-                 "The first affine needs a bias input.");
-    }
+    int max_input_num = 6;
+    max_input_num = has_bias_a_ ? max_input_num + 1 : max_input_num;
+    MACE_CHECK(this->InputSize() >= max_input_num,
+               "The first affine needs a bias input.");
     const Tensor *bias_a = has_bias_a_ ?
                            this->Input(max_input_num - 1) :
                            nullptr;
-    if (has_bias_b_) {
-      max_input_num++;
-      MACE_CHECK(this->InputSize() >= max_input_num,
-                 "The second affine needs a bias input.");
-    }
+    max_input_num = has_bias_b_ ? max_input_num + 1 : max_input_num;
+    MACE_CHECK(this->InputSize() >= max_input_num,
+               "The second affine needs a bias input.");
     const Tensor *bias_b = has_bias_b_ ?
                            this->Input(max_input_num - 1) :
                            nullptr;
-
     const index_t input_rank = input->dim_size();
     MACE_CHECK(input_rank >= 2,
                "Dynamic LSTM Cell's input dim size should be >= 2.");
@@ -150,12 +196,15 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     const index_t lstm_input_dim = affine_a_out_dim + prev_cell_dim_;
     const index_t lstm_cell_dim = lstm_input_dim / 5;
     const index_t params_stride = lstm_params->dim(1);
-    MACE_CHECK(lstm_input_dim == (lstm_cell_dim * 5));
+    MACE_CHECK(lstm_input_dim == (lstm_cell_dim * 5),
+               "lstm_input_dim(", lstm_input_dim,
+               ") should be 5 times of lstm_cell_dim(",
+               lstm_cell_dim, ").");
     MACE_CHECK(lstm_params->dim(0) == 3 &&
         params_stride == lstm_cell_dim && lstm_cell_dim == prev_cell_dim_)
-      << "lstm params rows:" << lstm_params->dim(0)
-      << "params_stride:" << params_stride
-      << "!=" << "cell_dim:" << lstm_cell_dim << std::endl;
+      << " lstm params rows: " << lstm_params->dim(0)
+      << " params_stride: " << params_stride
+      << " != " << " cell_dim: " << lstm_cell_dim << std::endl;
     const index_t affine_b_out_dim = weights_b->dim(0);
     const index_t affine_b_depth = weights_b->dim(1);
     const index_t affine_b_in_dim = lstm_cell_dim;
@@ -164,7 +213,10 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
       << "!=" << "affine_b's weights' depth:" << affine_b_depth << std::endl;
 
     const index_t output_dim = affine_b_out_dim;
-    MACE_CHECK(prev_out_offset_ + prev_out_dim_ <= output_dim);
+    MACE_CHECK(prev_out_offset_ + prev_out_dim_ <= output_dim)
+        << " prev_out_offset: " << prev_out_offset_
+        << " prev_out_dim: " << prev_out_dim_
+        << " output_dim: " << output_dim;
 
     const index_t affine_a_in_size =
         PadAlignSize(affine_a_in_dim * sizeof(float));
@@ -175,8 +227,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     const index_t affine_b_out_size =
         PadAlignSize(affine_b_out_dim * sizeof(float));
 
-    const int out_buf_chunk = abs(prev_out_delay_);
-    const int cell_buf_chunk = abs(prev_cell_delay_);
+    const int out_buf_chunk = abs(prev_out_delay_ / subsample_factor_);
+    const int cell_buf_chunk = abs(prev_cell_delay_ / subsample_factor_);
     const index_t out_buf_size =
         PadAlignSize(out_buf_chunk * prev_out_dim_ * sizeof(float));
     const index_t cell_buf_size =
@@ -187,13 +239,13 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                           + affine_b_in_size + affine_b_out_size
                           + out_buf_size + cell_buf_size);
 
-    Tensor prev_out(scratch->Scratch(out_buf_size), DT_FLOAT);
-    prev_out.Reshape({out_buf_chunk, prev_out_dim_});
-    float *prev_out_data = prev_out.mutable_data<float>();
+    Tensor prev_out_buf(scratch->Scratch(out_buf_size), DT_FLOAT);
+    prev_out_buf.Reshape({out_buf_chunk, prev_out_dim_});
+    float *prev_out_buf_data = prev_out_buf.mutable_data<float>();
 
-    Tensor prev_cell(scratch->Scratch(cell_buf_size), DT_FLOAT);
-    prev_cell.Reshape({cell_buf_chunk, prev_cell_dim_});
-    float *prev_cell_data = prev_cell.mutable_data<float>();
+    Tensor prev_cell_buf(scratch->Scratch(cell_buf_size), DT_FLOAT);
+    prev_cell_buf.Reshape({cell_buf_chunk, prev_cell_dim_});
+    float *prev_cell_buf_data = prev_cell_buf.mutable_data<float>();
 
     Tensor affine_a_in(scratch->Scratch(affine_a_in_size), DT_FLOAT);
     affine_a_in.Reshape({1, affine_a_in_dim});
@@ -212,38 +264,57 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     float *affine_b_out_data = affine_b_out.mutable_data<float>();
 
     Tensor *output = this->Output(OUTPUT);
+    Tensor *out_cache = this->Output(OUT_CACHE);
+    Tensor *cell_cache = this->Output(CELL_CACHE);
 
     std::vector<index_t> output_shape = input->shape();
+    const index_t out_chunk = forward_indexes_.size();
     output_shape[input_rank - 1] = output_dim;
+    std::vector<index_t> prev_out_shape = input->shape();
+    prev_out_shape[input_rank - 1] = prev_out_dim_;
+    prev_out_shape[input_rank - 2] = out_buf_chunk;
+    std::vector<index_t> prev_cell_shape = input->shape();
+    prev_cell_shape[input_rank - 1] = prev_cell_dim_;
+    prev_cell_shape[input_rank - 2] = cell_buf_chunk;
 
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(out_cache->Resize(prev_out_shape));
+    MACE_RETURN_IF_ERROR(cell_cache->Resize(prev_cell_shape));
 
     Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard prev_out_guard(prev_out);
+    Tensor::MappingGuard prev_cell_guard(prev_cell);
     Tensor::MappingGuard lstm_params_guard(lstm_params);
+
     Tensor::MappingGuard output_guard(output);
+    Tensor::MappingGuard out_cache_guard(out_cache);
+    Tensor::MappingGuard cell_cache_guard(cell_cache);
+
     const float *input_data = input->data<float>();
+    const float *prev_out_data = prev_out->data<float>();
+    const float *prev_cell_data = prev_cell->data<float>();
     const float *lstm_params_data = lstm_params->data<float>();
     float *output_data = output->mutable_data<float>();
+    float *out_cache_data = out_cache->mutable_data<float>();
+    float *cell_cache_data = cell_cache->mutable_data<float>();
 
     for (int b = 0; b < batch; ++b) {
-      int prev_out_idx = prev_out_delay_;
-      int prev_cell_idx = prev_cell_delay_;
-      prev_cell.Clear();
-      prev_out.Clear();
-      affine_a_in.Clear();
-      affine_a_out.Clear();
-      affine_b_in.Clear();
-      affine_b_out.Clear();
-      for (int i = 0; i < chunk; ++i) {
-        const float *input_ptr = input_data + (b * chunk + i) * input_dim;
-        float *output_ptr = output_data + (b * chunk + i) * output_dim;
+      memcpy(prev_out_buf_data,
+             prev_out_data + b * out_buf_chunk * prev_out_dim_,
+             sizeof(float) * out_buf_chunk * prev_out_dim_);
+      memcpy(prev_cell_buf_data,
+             prev_cell_data + b * cell_buf_chunk * prev_cell_dim_,
+             sizeof(float) * cell_buf_chunk * prev_cell_dim_);
+
+      for (index_t i = 0; i < out_chunk; ++i) {
+        const float *input_ptr =
+            input_data + (b * chunk + forward_indexes_[i]) * input_dim;
+        float *output_ptr = output_data + (b * out_chunk + i) * output_dim;
         // Append
         memcpy(affine_a_in_data, input_ptr, input_dim * sizeof(float));
-        if (prev_out_idx >= 0) {
-          memcpy(affine_a_in_data + input_dim,
-                 prev_out_data + prev_out_idx % out_buf_chunk * prev_out_dim_,
-                 prev_out_dim_ * sizeof(float));
-        }
+        memcpy(affine_a_in_data + input_dim,
+               prev_out_buf_data + i % out_buf_chunk * prev_out_dim_,
+               prev_out_dim_ * sizeof(float));
         // Affine
         gemv_.Compute(context,
                       weights_a,
@@ -256,15 +327,13 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                       false,
                       &affine_a_out);
         // Prepare LSTMNonlinear input and output pointer
-        float *prev_cell_ptr =
-            prev_cell_idx < 0 ? nullptr :
-            prev_cell_data + prev_cell_idx % cell_buf_chunk * prev_cell_dim_;
-        float *curr_cell_ptr =
-            prev_cell_data + i % cell_buf_chunk * prev_cell_dim_;
+        float *lstm_cell_ptr =
+            prev_cell_buf_data + i % cell_buf_chunk * prev_cell_dim_;
+        float *curr_cell_ptr = lstm_cell_ptr;
         // LSTMNonlinear
         LSTMNonlinearKernel(context,
                             affine_a_out_data,
-                            prev_cell_ptr,
+                            lstm_cell_ptr,
                             nullptr,
                             lstm_params_data,
                             false,
@@ -289,16 +358,36 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                affine_b_out_data,
                output_dim * sizeof(float));
         // Update
-        float *curr_out_ptr = prev_out_data + i % out_buf_chunk * prev_out_dim_;
+        float *curr_out_ptr =
+            prev_out_buf_data + i % out_buf_chunk * prev_out_dim_;
         CopyAndUpdateCell(affine_b_out_data + prev_out_offset_,
                           prev_out_dim_,
                           scale_,
                           curr_out_ptr);
-        prev_out_idx++;
-        prev_cell_idx++;
+
+        for (size_t k = 0; k < out_cache_indexes_.size(); ++k) {
+          if (i == out_cache_indexes_[k]) {
+            const index_t idx = b * out_buf_chunk + k;
+            float *out_cache_ptr =
+                out_cache_data + idx * prev_out_dim_;
+            memcpy(out_cache_ptr,
+                   curr_out_ptr,
+                   sizeof(float) * prev_out_dim_);
+          }
+        }
+
+        for (size_t k = 0; k < cell_cache_indexes_.size(); ++k) {
+          if (i == cell_cache_indexes_[k]) {
+            const index_t idx = b * cell_buf_chunk + k;
+            float *cell_cache_ptr =
+                cell_cache_data + idx * prev_cell_dim_;
+            memcpy(cell_cache_ptr,
+                   curr_cell_ptr,
+                   sizeof(float) * prev_cell_dim_);
+          }
+        }
       }
     }
-
     return MaceStatus::MACE_SUCCESS;
   }
 
@@ -311,6 +400,10 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
   int has_bias_a_;
   int has_bias_b_;
   float scale_;
+  int subsample_factor_;
+  std::vector<index_t> forward_indexes_;
+  std::vector<index_t> cell_cache_indexes_;
+  std::vector<index_t> out_cache_indexes_;
 
 #ifdef MACE_ENABLE_NEON
   arm::fp32::Gemv gemv_;
@@ -318,8 +411,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
   ref::Gemv<float> gemv_;
 #endif  // MACE_ENABLE_NEON
 
-  MACE_OP_INPUT_TAGS(INPUT, WEIGHTS_A, PARAMS, WEIGHTS_B);
-  MACE_OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, PREV_OUT, PREV_CELL, WEIGHTS_A, PARAMS, WEIGHTS_B);
+  MACE_OP_OUTPUT_TAGS(OUTPUT, OUT_CACHE, CELL_CACHE);
 };
 
 void RegisterDynamicLSTM(OpRegistryBase *op_registry) {

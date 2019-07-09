@@ -26,6 +26,8 @@ void TestSplice(const std::vector<index_t> &input_shape,
                 const std::vector<T> &input,
                 const std::vector<int> &context,
                 const int const_dim,
+                const std::vector<int> &forward_indexes,
+                const std::vector<int> &forward_const_indexes,
                 const std::vector<index_t> &output_shape,
                 const std::vector<T> &output) {
   OpsTestNet net;
@@ -38,6 +40,8 @@ void TestSplice(const std::vector<index_t> &input_shape,
       .Output("Output")
       .AddIntsArg("context", context)
       .AddIntArg("const_component_dim", const_dim)
+      .AddIntsArg("forward_indexes", forward_indexes)
+      .AddIntsArg("forward_const_indexes", forward_const_indexes)
       .Finalize(net.NewOperatorDef());
 
   net.RunOp();
@@ -53,6 +57,8 @@ TEST_F(SpliceOpTest, WithoutConstDim) {
     {1, 7, 2},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14},
     {-2, -1, 0, 1, 2}, 0,
+    {0, 1, 2, 3, 4, 1, 2, 3, 4, 5, 2, 3, 4, 5, 6},
+    {},
     {1, 3, 10},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
      3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
@@ -68,8 +74,10 @@ TEST_F(SpliceOpTest, WithConstDim) {
      4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
      5, 6, 7, 8, 9, 10, 11, 12, 13, 14},
     {-2, -1, 0, 1, 2}, 7,
+    {0, 1, 2, 3, 4},
+    {2},
     {1, 1, 22},
-    {1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7, 4, 5, 6, 7, 8, 9, 10});
+    {1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7, 6, 7, 8, 9, 10, 11, 12});
 }
 }  // namespace test
 }  // namespace ops

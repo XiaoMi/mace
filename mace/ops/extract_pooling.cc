@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This Op is for fused StatisticsExtraction, StatisticsPooling and
-// Round Components in Kaldi.
+// This Op is for fused StatisticsExtraction and StatisticsPooling
+// Components in Kaldi.
 // This op is used to extract moving-average mean and standard-deviation
 // statistics of input data.
-// 'input_indexes' indicates which frames will be used for extract statistics.
-// 'output_indexes' indicates which frames  of outputs will be used to
+// 'forward_indexes' indicates which frames of input will be used for
+// extraction.
 // save statistics results.
-// 'modulus' will be used for extent results to all frames.
-// 'start_index' and 'end_index' indicate time indexes of output frames.
 // 'forward_indexes' and 'count' were from precomputed index in kaldi.
-// Reference to
+// Reference to tools/extract_pooling.py and
 // http://kaldi-asr.org/doc/nnet-general-component_8h_source.html#l00158
 
 #include <functional>
@@ -42,7 +40,6 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ExtractPoolingOp(OpConstructContext *context)
       : Operation(context),
-        modulus_(Operation::GetOptionalArg<int>("modulus", 1)),
         include_variance_(
             static_cast<bool>(
                 Operation::GetOptionalArg<int>("include_variance", 0))),
@@ -50,39 +47,36 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
             Operation::GetOptionalArg<int>("num_log_count", 0)),
         variance_floor_(
             Operation::GetOptionalArg<float>("variance_floor", 1.0e-10)),
-        input_indexes_(Operation::GetRepeatedArgs<int>("input_indexes")),
-        output_indexes_(Operation::GetRepeatedArgs<int>("output_indexes")),
         forward_indexes_(Operation::GetRepeatedArgs<int>("forward_indexes")),
-        counts_(Operation::GetRepeatedArgs<float>("counts")),
-        input_time_range_(Operation::GetRepeatedArgs<int>("input_time_range")),
-        output_time_range_(
-            Operation::GetRepeatedArgs<int>("output_time_range")) {}
+        counts_(Operation::GetRepeatedArgs<float>("counts")) {}
+
+  inline void Validate() {
+    const Tensor *input = this->Input(0);
+    const unsigned int rank = static_cast<unsigned int>(input->dim_size());
+    MACE_CHECK(rank >= 2,
+               "ExtractPooling only supports input dim size >= 2");
+    MACE_CHECK(counts_.size() * 2 == forward_indexes_.size(),
+               "counts length(", counts_.size(),
+               ") should be 2 times of forward_indexes length(",
+               forward_indexes_.size(), ").");
+    for (size_t i = 0; i < counts_.size(); ++i) {
+      MACE_CHECK(static_cast<index_t>(counts_[i]) ==
+                     forward_indexes_[2 * i + 1] - forward_indexes_[2 * i],
+                 "invalid forward indexes and counts values");
+    }
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
-
+    Validate();
     const std::vector<index_t> &input_shape = input->shape();
-    const index_t dim_size = input_shape.size();
-    MACE_CHECK(dim_size >= 2,
-               "ExtractPooling only supports input dim size >= 2");
-    MACE_CHECK(modulus_ >= 1,
-               "ExtractPooling's pooling size should be greater than zero.");
-    MACE_CHECK(input_time_range_.size() == 2 && output_time_range_.size() == 2
-                   && counts_.size() * 2 == forward_indexes_.size()
-                   && counts_.size() == output_indexes_.size());
-    int in_start_index = input_time_range_[0];
-    int out_start_index = output_time_range_[0];
-    int out_end_index = output_time_range_[1];
-    MACE_CHECK(out_end_index >= out_start_index
-                   && input_time_range_[1] >= input_time_range_[0],
-               "end index should be greater than start index.");
-    const index_t output_chunk = out_end_index - out_start_index + 1;
+    const unsigned int dim_size = static_cast<unsigned int>(input->dim_size());
+
     const index_t input_dim = input_shape[dim_size - 1];
     const index_t chunk = input_shape[dim_size - 2];
-    MACE_CHECK(chunk == input_time_range_[1] - input_time_range_[0] + 1,
-               "input chunk should be equal to end - start + 1.");
+    const index_t output_chunk = counts_.size();
     const index_t batch =
         std::accumulate(input_shape.begin(), input_shape.end() - 2, 1,
                         std::multiplies<index_t>());
@@ -94,10 +88,6 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
     output_shape[dim_size - 2] = output_chunk;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    const index_t num_input_indexes = input_indexes_.size();
-    const index_t num_output_indexes = output_indexes_.size();
-    MACE_CHECK(num_input_indexes > 0 && num_output_indexes > 0,
-               "ExtractPooling's input_indexes or output_indexes is empty.");
     const index_t extract_out_size = PadAlignSize(output_dim * sizeof(float));
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
@@ -117,7 +107,7 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
     for (index_t b = 0; b < batch; ++b) {
-      for (index_t i = 0; i < num_output_indexes; ++i) {
+      for (index_t i = 0; i < output_chunk; ++i) {
         int start = forward_indexes_[2 * i];
         int end = forward_indexes_[2 * i + 1];
         float count = counts_[i];
@@ -139,7 +129,7 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
               float variance = 0.f;
               for (int t = start; t < end; ++t) {
                 index_t input_index =
-                    (b * chunk + input_indexes_[t] - in_start_index)
+                    (b * chunk + t)
                         * input_dim;
                 float x = input_data[input_index + d];
                 mean += x;
@@ -163,30 +153,15 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
               float mean = 0.f;
               for (int t = start; t < end; ++t) {
                 index_t input_index =
-                    (b * chunk + input_indexes_[t] - in_start_index)
-                        * input_dim;
+                    (b * chunk + t) * input_dim;
                 mean += input_data[input_index + d];
               }
               extract_out_data[d + num_log_count_] = mean * mean_scale;
             }
           }, 0, input_dim, 1);
         }
-
-        int output_start = output_indexes_[i] < out_start_index ?
-                           out_start_index : output_indexes_[i];
-        int output_end = output_indexes_[i] + modulus_;
-        output_end = output_end > out_end_index ?
-                     out_end_index + 1 :
-                     output_end;
-        thread_pool.Compute1D([=](index_t start0,
-                                  index_t end0,
-                                  index_t step0) {
-          for (index_t idx = start0; idx < end0; idx += step0) {
-            memcpy(output_data + (b * output_chunk + idx - out_start_index)
-                       * output_dim,
-                   extract_out_data, output_dim * sizeof(float));
-          }
-        }, output_start, output_end, 1);
+        memcpy(output_data + (b * output_chunk + i) * output_dim,
+               extract_out_data, output_dim * sizeof(float));
       }
     }
 
@@ -194,16 +169,11 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
   }
 
  private:
-  int modulus_;
   bool include_variance_;
   int num_log_count_;
   float variance_floor_;
-  std::vector<int> input_indexes_;
-  std::vector<int> output_indexes_;
   std::vector<int> forward_indexes_;
   std::vector<float> counts_;
-  std::vector<int> input_time_range_;
-  std::vector<int> output_time_range_;
 };
 
 void RegisterExtractPooling(OpRegistryBase *op_registry) {
