@@ -289,8 +289,10 @@ def get_model_files(model_config, model_output_dir):
         model_config[YAMLKeyword.model_file_path] = model_file
 
     if sha256_checksum(model_file) != model_sha256_checksum:
-        MaceLogger.error(ModuleName.MODEL_CONVERTER,
-                         "model file sha256checksum not match")
+        error_info = model_file_path + \
+            " model file sha256checksum not match " + \
+            model_sha256_checksum
+        MaceLogger.error(ModuleName.MODEL_CONVERTER, error_info)
 
     if weight_file_path.startswith("http://") or \
             weight_file_path.startswith("https://"):
@@ -306,8 +308,10 @@ def get_model_files(model_config, model_output_dir):
 
     if weight_file:
         if sha256_checksum(weight_file) != weight_sha256_checksum:
-            MaceLogger.error(ModuleName.MODEL_CONVERTER,
-                             "weight file sha256checksum not match")
+            error_info = weight_file_path + \
+                " weight file sha256checksum not match " + \
+                weight_sha256_checksum
+            MaceLogger.error(ModuleName.MODEL_CONVERTER, error_info)
 
     if quantize_range_file_path.startswith("http://") or \
             quantize_range_file_path.startswith("https://"):
