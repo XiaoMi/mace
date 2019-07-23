@@ -12,7 +12,6 @@ option(MACE_ENABLE_HEXAGON_HTA "whether to enable Hexagon HTA support"      OFF)
 option(MACE_ENABLE_MTK_APU     "whether to enable MTK APU support"          OFF)
 option(MACE_ENABLE_TESTS       "whether to build c++ unit tests"            OFF)
 option(MACE_ENABLE_BENCHMARKS  "whether to build c++ micro benchmarks"      OFF)
-option(MACE_ENABLE_EXAMPLES    "whether to build examples"                  OFF)
 option(MACE_ENABLE_OPT_SIZE    "whether to build with optimized binary size" ON)
 option(MACE_ENABLE_OBFUSCATE   "whether to build with code obfuscation"      ON)
 option(MACE_ENABLE_CCACHE      "whether to build with ccache"                ON)
@@ -130,10 +129,6 @@ include_directories("${PROJECT_BINARY_DIR}") # proto
 
 add_subdirectory(include)
 add_subdirectory(mace)
-
-if(MACE_ENABLE_EXAMPLES)
-  add_subdirectory(examples)
-endif(MACE_ENABLE_EXAMPLES)
 
 if(MACE_ENABLE_TESTS OR MACE_ENABLE_BENCHMARKS)
   add_subdirectory(test)

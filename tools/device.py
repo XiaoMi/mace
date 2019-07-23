@@ -186,6 +186,7 @@ class DeviceWrapper:
                    link_dynamic=False,
                    quantize_stat=False,
                    layers_validate_file="",
+                   benchmark=False,
                    ):
         six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
                    "out_of_range_check=%s, omp_num_threads=%s, "
@@ -343,6 +344,9 @@ class DeviceWrapper:
                 "--opencl_parameter_file=%s/%s" %
                 (self.data_dir, os.path.basename(opencl_parameter_file)),
             ])
+            if benchmark:
+                cmd.append("--benchmark=%s" % benchmark)
+
             cmd = ' '.join(cmd)
             cmd_file_name = "%s-%s-%s" % ('cmd_file',
                                           model_tag,
@@ -473,16 +477,10 @@ class DeviceWrapper:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
         # get target name for run
         mace_lib_type = flags.mace_lib_type
-        if flags.example:
-            if mace_lib_type == MACELibType.static:
-                target_name = EXAMPLE_STATIC_NAME
-            else:
-                target_name = EXAMPLE_DYNAMIC_NAME
+        if mace_lib_type == MACELibType.static:
+            target_name = MACE_RUN_STATIC_NAME
         else:
-            if mace_lib_type == MACELibType.static:
-                target_name = MACE_RUN_STATIC_NAME
-            else:
-                target_name = MACE_RUN_DYNAMIC_NAME
+            target_name = MACE_RUN_DYNAMIC_NAME
         link_dynamic = mace_lib_type == MACELibType.dynamic
 
         if target_abi != ABIType.host:
@@ -557,7 +555,8 @@ class DeviceWrapper:
             input_dir=flags.input_dir,
             output_dir=flags.output_dir,
             layers_validate_file=output_config[
-                YAMLKeyword.model_file_path]
+                YAMLKeyword.model_file_path],
+            benchmark=flags.benchmark,
         )
 
     def get_output_map(self,
@@ -621,7 +620,6 @@ class DeviceWrapper:
 
             tuning = False
             if not flags.address_sanitizer \
-                    and not flags.example \
                     and target_abi != ABIType.host \
                     and (configs[YAMLKeyword.target_socs]
                          or flags.target_socs) \
@@ -858,254 +856,6 @@ class DeviceWrapper:
                     tuned=tuned)
         with open(report_filename, 'a') as f:
             f.write(data_str)
-
-    def benchmark_model(self,
-                        abi,
-                        benchmark_binary_dir,
-                        benchmark_binary_name,
-                        vlog_level,
-                        embed_model_data,
-                        model_output_dir,
-                        mace_model_dir,
-                        input_nodes,
-                        output_nodes,
-                        input_shapes,
-                        output_shapes,
-                        input_data_formats,
-                        output_data_formats,
-                        max_num_runs,
-                        max_seconds,
-                        model_tag,
-                        device_type,
-                        model_graph_format,
-                        opencl_binary_file,
-                        opencl_parameter_file,
-                        libmace_dynamic_library_path,
-                        omp_num_threads=-1,
-                        cpu_affinity_policy=1,
-                        gpu_perf_hint=3,
-                        gpu_priority_hint=3,
-                        input_file_name='model_input',
-                        link_dynamic=False):
-        six.print_('* Benchmark for %s' % model_tag)
-        mace_model_path = ''
-        if model_graph_format == ModelFormat.file:
-            mace_model_path = '%s/%s.pb' % (mace_model_dir, model_tag)
-
-        model_data_file = ""
-        if not embed_model_data:
-            if self.system == SystemType.host:
-                model_data_file = "%s/%s.data" % (mace_model_dir, model_tag)
-            else:
-                model_data_file = "%s/%s.data" % (self.data_dir, model_tag)
-
-        if abi == ABIType.host:
-            libmace_dynamic_lib_dir_path = \
-                os.path.dirname(libmace_dynamic_library_path)
-            p = subprocess.Popen(
-                [
-                    'env',
-                    'LD_LIBRARY_PATH=%s' % libmace_dynamic_lib_dir_path,
-                    'MACE_CPP_MIN_VLOG_LEVEL=%s' % vlog_level,
-                    '%s/%s' % (benchmark_binary_dir, benchmark_binary_name),
-                    '--model_name=%s' % model_tag,
-                    '--input_node=%s' % ','.join(input_nodes),
-                    '--output_node=%s' % ','.join(output_nodes),
-                    '--input_shape=%s' % ':'.join(input_shapes),
-                    '--output_shape=%s' % ':'.join(output_shapes),
-                    "--input_data_format=%s" % ",".join(input_data_formats),
-                    "--output_data_format=%s" % ",".join(output_data_formats),
-                    '--input_file=%s/%s' % (model_output_dir, input_file_name),
-                    "--model_data_file=%s" % model_data_file,
-                    '--max_num_runs=%d' % max_num_runs,
-                    '--max_seconds=%f' % max_seconds,
-                    '--device=%s' % device_type,
-                    '--omp_num_threads=%s' % omp_num_threads,
-                    '--cpu_affinity_policy=%s' % cpu_affinity_policy,
-                    '--gpu_perf_hint=%s' % gpu_perf_hint,
-                    '--gpu_priority_hint=%s' % gpu_priority_hint,
-                    '--model_file=%s' % mace_model_path
-                ])
-            p.wait()
-        elif self.system in [SystemType.android, SystemType.arm_linux]:
-            self.exec_command('mkdir -p %s' % self.data_dir)
-            internal_storage_dir = self.create_internal_storage_dir()
-            for input_name in input_nodes:
-                formatted_name = formatted_file_name(input_file_name,
-                                                     input_name)
-                self.push('%s/%s' % (model_output_dir, formatted_name),
-                          self.data_dir)
-            if not embed_model_data:
-                self.push('%s/%s.data' % (mace_model_dir, model_tag),
-                          self.data_dir)
-            if device_type == common.DeviceType.GPU:
-                if os.path.exists(opencl_binary_file):
-                    self.push(opencl_binary_file, self.data_dir)
-                if os.path.exists(opencl_parameter_file):
-                    self.push(opencl_parameter_file, self.data_dir)
-            mace_model_device_path = ''
-            if model_graph_format == ModelFormat.file:
-                mace_model_device_path = '%s/%s.pb' % \
-                                         (self.data_dir, model_tag)
-                self.push(mace_model_path, mace_model_device_path)
-            if link_dynamic:
-                self.push(libmace_dynamic_library_path, self.data_dir)
-                if self.system == SystemType.android:
-                    sh_commands.push_depended_so_libs(
-                        libmace_dynamic_library_path, abi, self.data_dir,
-                        self.address)
-            self.rm('%s/%s' % (self.data_dir, benchmark_binary_name))
-            self.push('%s/%s' % (benchmark_binary_dir, benchmark_binary_name),
-                      self.data_dir)
-
-            cmd = [
-                'LD_LIBRARY_PATH=%s' % self.data_dir,
-                'MACE_CPP_MIN_VLOG_LEVEL=%s' % vlog_level,
-                'MACE_RUN_PARAMETER_PATH=%s/mace_run.config' % self.data_dir,
-                'MACE_INTERNAL_STORAGE_PATH=%s' % internal_storage_dir,
-                'MACE_OPENCL_PROFILING=1',
-                '%s/%s' % (self.data_dir, benchmark_binary_name),
-                '--model_name=%s' % model_tag,
-                '--input_node=%s' % ','.join(input_nodes),
-                '--output_node=%s' % ','.join(output_nodes),
-                '--input_shape=%s' % ':'.join(input_shapes),
-                '--output_shape=%s' % ':'.join(output_shapes),
-                "--input_data_format=%s" % ",".join(input_data_formats),
-                "--output_data_format=%s" % ",".join(output_data_formats),
-                '--input_file=%s/%s' % (self.data_dir, input_file_name),
-                "--model_data_file=%s" % model_data_file,
-                '--max_num_runs=%d' % max_num_runs,
-                '--max_seconds=%f' % max_seconds,
-                '--device=%s' % device_type,
-                '--omp_num_threads=%s' % omp_num_threads,
-                '--cpu_affinity_policy=%s' % cpu_affinity_policy,
-                '--gpu_perf_hint=%s' % gpu_perf_hint,
-                '--gpu_priority_hint=%s' % gpu_priority_hint,
-                '--model_file=%s' % mace_model_device_path,
-                '--opencl_binary_file=%s/%s' %
-                (self.data_dir, os.path.basename(opencl_binary_file)),
-                '--opencl_parameter_file=%s/%s' %
-                (self.data_dir, os.path.basename(opencl_parameter_file))
-            ]
-
-            cmd = ' '.join(cmd)
-            cmd_file_name = '%s-%s-%s' % \
-                            ('cmd_file', model_tag, str(time.time()))
-
-            cmd_file_path = '%s/%s' % (self.data_dir, cmd_file_name)
-            tmp_cmd_file = '%s/%s' % ('/tmp', cmd_file_name)
-            with open(tmp_cmd_file, 'w') as f:
-                f.write(cmd)
-            self.push(tmp_cmd_file, cmd_file_path)
-            os.remove(tmp_cmd_file)
-
-            if self.system == SystemType.android:
-                sh.adb('-s', self.address, 'shell', 'sh', cmd_file_path,
-                       _fg=True)
-            elif self.system == SystemType.arm_linux:
-                sh.ssh('%s@%s' % (self.username, self.address),
-                       'sh', cmd_file_path, _fg=True)
-            self.rm(cmd_file_path)
-            six.print_('Benchmark done! \n')
-
-    def bm_specific_target(self, flags, configs, target_abi):
-        library_name = configs[YAMLKeyword.library_name]
-        embed_model_data = \
-            configs[YAMLKeyword.model_data_format] == ModelFormat.code
-        opencl_output_bin_path = ''
-        opencl_parameter_path = ''
-        link_dynamic = flags.mace_lib_type == MACELibType.dynamic
-
-        if link_dynamic:
-            bm_model_binary_name = BM_MODEL_DYNAMIC_NAME
-        else:
-            bm_model_binary_name = BM_MODEL_STATIC_NAME
-        build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
-        if (configs[YAMLKeyword.target_socs] or flags.target_socs)\
-                and target_abi != ABIType.host:
-            opencl_output_bin_path = get_opencl_binary_output_path(
-                library_name, target_abi, self
-            )
-            opencl_parameter_path = get_opencl_parameter_output_path(
-                library_name, target_abi, self
-            )
-
-        for model_name in configs[YAMLKeyword.models]:
-            check_model_converted(library_name,
-                                  model_name,
-                                  configs[YAMLKeyword.model_graph_format],
-                                  configs[YAMLKeyword.model_data_format],
-                                  target_abi)
-            MaceLogger.header(
-                StringFormatter.block(
-                    'Benchmark model %s on %s' % (model_name,
-                                                  self.device_name)))
-            model_config = configs[YAMLKeyword.models][model_name]
-            model_runtime = model_config[YAMLKeyword.runtime]
-            subgraphs = model_config[YAMLKeyword.subgraphs]
-
-            model_output_base_dir, model_output_dir, mace_model_dir = \
-                get_build_model_dirs(library_name, model_name,
-                                     target_abi, self,
-                                     model_config[YAMLKeyword.model_file_path])
-            if os.path.exists(model_output_dir):
-                sh.rm('-rf', model_output_dir)
-            os.makedirs(model_output_dir)
-
-            if target_abi != ABIType.host:
-                self.clear_data_dir()
-            sh_commands.gen_input(
-                model_output_dir,
-                subgraphs[0][YAMLKeyword.input_tensors],
-                subgraphs[0][YAMLKeyword.input_shapes],
-                subgraphs[0][YAMLKeyword.validation_inputs_data],
-                input_ranges=subgraphs[0][YAMLKeyword.input_ranges],
-                input_data_types=subgraphs[0][YAMLKeyword.input_data_types]
-            )
-            runtime_list = []
-            if target_abi == ABIType.host:
-                runtime_list.append(RuntimeType.cpu)
-            elif model_runtime == RuntimeType.cpu_gpu:
-                runtime_list.extend([RuntimeType.cpu, RuntimeType.gpu])
-            else:
-                runtime_list.append(model_runtime)
-            for runtime in runtime_list:
-                device_type = parse_device_type(runtime)
-                if not subgraphs[0][YAMLKeyword.check_tensors]:
-                    output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
-                    output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
-                else:
-                    output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
-                    output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
-                self.benchmark_model(
-                    abi=target_abi,
-                    benchmark_binary_dir=build_tmp_binary_dir,
-                    benchmark_binary_name=bm_model_binary_name,
-                    vlog_level=0,
-                    embed_model_data=embed_model_data,
-                    model_output_dir=model_output_dir,
-                    input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                    output_nodes=output_nodes,
-                    input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                    output_shapes=output_shapes,
-                    input_data_formats=subgraphs[0][
-                        YAMLKeyword.input_data_formats],
-                    output_data_formats=subgraphs[0][
-                        YAMLKeyword.output_data_formats],
-                    max_num_runs=flags.max_num_runs,
-                    max_seconds=flags.max_seconds,
-                    mace_model_dir=mace_model_dir,
-                    model_tag=model_name,
-                    device_type=device_type,
-                    model_graph_format=configs[YAMLKeyword.model_graph_format],
-                    omp_num_threads=flags.omp_num_threads,
-                    cpu_affinity_policy=flags.cpu_affinity_policy,
-                    gpu_perf_hint=flags.gpu_perf_hint,
-                    gpu_priority_hint=flags.gpu_priority_hint,
-                    opencl_binary_file=opencl_output_bin_path,
-                    opencl_parameter_file=opencl_parameter_path,
-                    libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
-                    link_dynamic=link_dynamic)
 
     def run(self,
             abi,

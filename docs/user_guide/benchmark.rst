@@ -68,7 +68,7 @@ Usage
 
     .. code:: bash
 
-        python tools/converter.py benchmark --config=/path/to/your/model_deployment.yml
+        python tools/converter.py run --config=/path/to/your/model_deployment.yml --benchmark
 
 ======
 Output
@@ -76,29 +76,6 @@ Output
 
     .. code:: bash
 
-        I benchmark_model.cc:158 ---------------------------------------------------------------------
-        I benchmark_model.cc:158                                Warm Up
-        I benchmark_model.cc:158 ----------------------------------------------------------------------
-        I benchmark_model.cc:158 | round | first(ms) | curr(ms) | min(ms) | max(ms) | avg(ms) |   std |
-        I benchmark_model.cc:158 ----------------------------------------------------------------------
-        I benchmark_model.cc:158 |     1 |    51.481 |   51.481 |  51.481 |  51.481 |  51.481 | 0.000 |
-        I benchmark_model.cc:158 ----------------------------------------------------------------------
-        I benchmark_model.cc:158
-        I benchmark_model.cc:158 ------------------------------------------------------------------------
-        I benchmark_model.cc:158                          Run without statistics
-        I benchmark_model.cc:158 -------------------------------------------------------------------------
-        I benchmark_model.cc:158 | round | first(ms) | curr(ms) | min(ms) | max(ms) | avg(ms) |      std |
-        I benchmark_model.cc:158 -------------------------------------------------------------------------
-        I benchmark_model.cc:158 |   100 |    30.272 |   31.390 |  29.938 |  45.966 |  30.913 | 1850.983 |
-        I benchmark_model.cc:158 -------------------------------------------------------------------------
-        I benchmark_model.cc:158
-        I benchmark_model.cc:158 -----------------------------------------------------------------------
-        I benchmark_model.cc:158                           Run with statistics
-        I benchmark_model.cc:158 ------------------------------------------------------------------------
-        I benchmark_model.cc:158 | round | first(ms) | curr(ms) | min(ms) | max(ms) | avg(ms) |     std |
-        I benchmark_model.cc:158 ------------------------------------------------------------------------
-        I benchmark_model.cc:158 |   100 |    32.358 |   33.327 |  32.293 |  33.607 |  33.002 | 310.435 |
-        I benchmark_model.cc:158 ------------------------------------------------------------------------
         I statistics.cc:343 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         I statistics.cc:343                                                                                      Sort by Run Order
         I statistics.cc:343 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
