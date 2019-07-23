@@ -89,9 +89,9 @@ in one deployment file.
     * - input_data_types
       - [optional] The input data type for specific op(eg. gather), which can be [int32, float32], default to float32.
     * - input_data_formats
-      - [optional] The format of the input tensors, one of [NONE, NHWC]. If there is no format of the input, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
+      - [optional] The format of the input tensors, one of [NONE, NHWC, NCHW]. If there is no format of the input, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
     * - output_data_formats
-      - [optional] The format of the output tensors, one of [NONE, NHWC]. If there is no format of the output, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
+      - [optional] The format of the output tensors, one of [NONE, NHWC, NCHW]. If there is no format of the output, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
     * - limit_opencl_kernel_time
       - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default is 0.
     * - obfuscate

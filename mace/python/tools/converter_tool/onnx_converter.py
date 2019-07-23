@@ -89,7 +89,7 @@ OnnxSupportedOps = [
     # 'Expand',
     'ExtractPooling',
     # 'EyeLike',
-    # 'Flatten',
+    'Flatten',
     # 'Floor',
     # 'GRU',
     'Gather',
@@ -332,7 +332,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.BatchNormalization.name: self.convert_fused_batchnorm,
             OnnxOpType.BatchNorm.name: self.convert_fused_batchnorm,
             OnnxOpType.Cast.name: self.convert_cast,
-            OnnxOpType.Clip.name: self.convert_eltwise,
+            OnnxOpType.Clip.name: self.convert_clip,
             OnnxOpType.Concat.name: self.convert_concat,
             OnnxOpType.Conv.name: self.convert_conv2d,
             OnnxOpType.ConvTranspose.name: self.convert_deconv,
@@ -343,6 +343,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Div.name: self.convert_eltwise,
             OnnxOpType.Equal.name: self.convert_eltwise,
             OnnxOpType.ExtractPooling.name: self.convert_extract_pooling,
+            OnnxOpType.Flatten.name: self.convert_flatten,
             OnnxOpType.Gather.name: self.convert_gather,
             OnnxOpType.Gemm.name: self.convert_gemm,
             OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
@@ -882,6 +883,32 @@ class OnnxConverter(base_converter.ConverterInterface):
             scale_arg.name = 'scale'
             scale_arg.f = scale
 
+    def convert_clip(self, node):
+        #  If clip's min value is zero,
+        #  convert clip to activation(ReLU or ReLUX)
+        #  so it can be fused into convolution.
+        is_relux = False
+        if 'min' in node.attrs:
+            min_value = node.attrs['min']
+            if min_value == 0:
+                is_relux = True
+        if is_relux:
+            op = self.convert_general_op(node)
+            op.type = MaceOp.Activation.name
+
+            type_arg = op.arg.add()
+            type_arg.name = MaceKeyword.mace_activation_type_str
+            if "max" in node.attrs:
+                max_value = node.attrs["max"]
+                type_arg.s = six.b(ActivationType.RELUX.name)
+                alpha_arg = op.arg.add()
+                alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
+                alpha_arg.f = max_value
+            else:
+                type_arg.s = six.b(ActivationType.RELU.name)
+        else:
+            self.convert_eltwise(node)
+
     def convert_eltwise(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Eltwise.name
@@ -914,6 +941,33 @@ class OnnxConverter(base_converter.ConverterInterface):
             coeff_arg = op.arg.add()
             coeff_arg.name = MaceKeyword.mace_coeff_str
             coeff_arg.floats.extend([min_value, max_value])
+        elif len(node.inputs) == 2:
+            if node.inputs[1] in self._consts and \
+                    node.inputs[0] not in self._consts:
+                const_name = node.inputs[1]
+                const_tensor = self._consts[const_name]
+                if len(const_tensor.dims) == 0:
+                    value_arg = op.arg.add()
+                    value_arg.name = MaceKeyword.mace_scalar_input_str
+                    value_arg.f = const_tensor.float_data[0]
+                    value_index_arg = op.arg.add()
+                    value_index_arg.name = \
+                        MaceKeyword.mace_scalar_input_index_str
+                    value_index_arg.i = 1
+                    del op.input[1]
+            elif node.inputs[0] in self._consts and \
+                    node.inputs[1] not in self._consts:
+                const_name = node.inputs[0]
+                const_tensor = self._consts[const_name]
+                if len(const_tensor.dims) == 0:
+                    value_arg = op.arg.add()
+                    value_arg.name = MaceKeyword.mace_scalar_input_str
+                    value_arg.f = const_tensor.float_data[0]
+                    value_index_arg = op.arg.add()
+                    value_index_arg.name = \
+                        MaceKeyword.mace_scalar_input_index_str
+                    value_index_arg.i = 0
+                    del op.input[0]
 
     @staticmethod
     def copy_node_attr(op, node, attr_name, dtype=AttributeType.INT,
@@ -1015,6 +1069,16 @@ class OnnxConverter(base_converter.ConverterInterface):
     def convert_flatten(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Reshape.name
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = 1
+        if 'axis' in node.attrs:
+            axis_arg.i = node.attrs['axis']
+        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
+
+        end_axis_arg = op.arg.add()
+        end_axis_arg.name = MaceKeyword.mace_end_axis_str
+        end_axis_arg.i = -1
 
     def convert_kaldi_batchnorm(self, node):
         op = self.convert_general_op(node)
@@ -1395,8 +1459,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.type = MaceOp.Squeeze.name
             axis_arg = op.arg.add()
             axis_arg.name = MaceKeyword.mace_axis_str
-            if 'axis' in node.attrs:
-                axis_value = node.attrs['axis']
+            if 'axes' in node.attrs:
+                axis_value = node.attrs['axes']
             else:
                 axis_value = []
             axis_arg.ints.extend(axis_value)

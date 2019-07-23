@@ -62,15 +62,15 @@ jobs:
     - stage: Unit Test
       script:
         - echo "Ops Test On Darwin"
-        - python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" --run_target=False --enable_openmp=false --target_abis=host || exit 1;
-        - bazel build "//test/ccunit:mace_cc_test" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
+        - python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" --run_target=False --target_abis=host || exit 1;
+        - bazel build "//test/ccunit:mace_cc_test" --config=ios --config=optimization_darwin --define quantize=true --define neon=true --config symbol_hidden || exit 1;
       env: TYPE=Ops-Test
       os: osx
       osx_image: xcode7.2
     - stage: Unit Test
       script:
         - echo "Ops Test Without NEON"
-        - python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a,arm64 --enable_neon=false || exit 1
+        - python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a,arm64 --enable_neon=false --enable_quantize=false || exit 1
       env: TYPE=Ops-Test-Without-NEON
       os: linux
       dist: xenial
@@ -90,8 +90,8 @@ jobs:
       osx_image: xcode7.2
     - stage: Unit Test
       script:
-        - python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=False --enable_openmp=false --target_abis=host || exit 1;
-        - bazel build "//test/ccbenchmark:mace_cc_benchmark" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
+        - python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=False --target_abis=host || exit 1;
+        - bazel build "//test/ccbenchmark:mace_cc_benchmark" --config=ios --config=optimization_darwin --define quantize=true --define neon=true --config symbol_hidden || exit 1;
       env: TYPE=Ops-Benchmark
       os: osx
       osx_image: xcode7.2
@@ -115,15 +115,15 @@ jobs:
       sudo: required
     - stage: Extra Test
       script:
-        - bazel build "//mace/libmace:libmace_static" --config=darwin --config=optimization_darwin --define openmp=false --define quantize=true --config symbol_hidden || exit 1;
-        - bazel build "//mace/libmace:libmace_dynamic" --config=darwin --config=optimization_darwin --define openmp=false --define quantize=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_static" --config=darwin --config=optimization_darwin --define quantize=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_dynamic" --config=darwin --config=optimization_darwin --define quantize=true --config symbol_hidden || exit 1;
       env: TYPE=Build-Library
       os: osx
       osx_image: xcode7.2
     - stage: Extra Test
       script:
-        - bazel build "//mace/libmace:libmace_static" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
-        - bazel build "//mace/libmace:libmace_dynamic" --config=ios --config=optimization_darwin --define openmp=false --define quantize=true --define neon=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_static" --config=ios --config=optimization_darwin --define quantize=true --define neon=true --config symbol_hidden || exit 1;
+        - bazel build "//mace/libmace:libmace_dynamic" --config=ios --config=optimization_darwin --define quantize=true --define neon=true --config symbol_hidden || exit 1;
       env: TYPE=Build-Library
       os: osx
       osx_image: xcode7.2

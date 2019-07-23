@@ -27,7 +27,10 @@ namespace mace {
 namespace ops {
 
 template<DeviceType D, typename T>
-class TransposeOp : public Operation {
+class TransposeOp;
+
+template<DeviceType D>
+class TransposeOp<D, float> : public Operation {
  public:
   explicit TransposeOp(OpConstructContext *context)
       : Operation(context),
@@ -39,8 +42,9 @@ class TransposeOp : public Operation {
     Tensor *output = this->Output(0);
     const std::vector<index_t> &input_shape = input->shape();
     MACE_CHECK((input_shape.size() == 4 && dims_.size() == 4) ||
-        (input_shape.size() == 2 && dims_.size() == 2),
-               "rank should be 2 or 4");
+                   (input_shape.size() == 3 && dims_.size() == 3) ||
+                   (input_shape.size() == 2 && dims_.size() == 2),
+               "rank should be 2, 3 or 4");
     std::vector<index_t> output_shape;
     for (size_t i = 0; i < dims_.size(); ++i) {
       output_shape.push_back(input_shape[dims_[i]]);
@@ -49,8 +53,8 @@ class TransposeOp : public Operation {
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
-    const T *input_data = input->data<T>();
-    T *output_data = output->mutable_data<T>();
+    const float *input_data = input->data<float>();
+    float *output_data = output->mutable_data<float>();
 
     return Transpose(&context->device()->cpu_runtime()->thread_pool(),
                      input_data, input->shape(), dims_, output_data);
@@ -63,8 +67,6 @@ class TransposeOp : public Operation {
 void RegisterTranspose(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
                    DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
-                   DeviceType::CPU, half);
 }
 
 }  // namespace ops

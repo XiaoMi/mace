@@ -137,7 +137,6 @@ class Transformer(base_converter.ConverterInterface):
                 changed = transformer()
                 if not changed:
                     break
-        self.delete_after_check_nodes()
         return self._model, self._quantize_activation_info
 
     def initialize_name_map(self):
@@ -354,6 +353,13 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if op.type == 'Identity':
                 print("Remove identity: %s(%s)" % (op.name, op.type))
+                self.safe_remove_node(op,
+                                      self._producer.get(op.input[0], None))
+                return True
+            if op.type == 'Reshape' and \
+                    op.output_shape[0].dims == \
+                    self.get_tensor_shape(op.input[0]):
+                print("Remove useless reshape: %s(%s)" % (op.name, op.type))
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
                 return True
@@ -617,9 +623,9 @@ class Transformer(base_converter.ConverterInterface):
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 input_len = len(op.input)
-                if consumer_op.type == MaceOp.BatchNorm.name and \
-                        (input_len == 2 or
-                         (input_len == 3 and op.input[-1] in self._consts)):
+                if (consumer_op.type == MaceOp.BatchNorm.name
+                        and (input_len == 2 or (input_len == 3 and op.input[-1] in self._consts))  # noqa
+                        and len(self._consumers[op.input[1]]) == 1):
                     print("Fold conv and bn: %s(%s)" % (op.name, op.type))
                     filter = self._consts[op.input[1]]
                     scale = self._consts[consumer_op.input[1]]
@@ -672,13 +678,14 @@ class Transformer(base_converter.ConverterInterface):
                 framework = ConverterUtil.get_arg(
                         op, MaceKeyword.mace_framework_type_str).i
                 input_len = len(op.input)
-                if consumer_op.type == MaceOp.BatchNorm.name and (
+                if (consumer_op.type == MaceOp.BatchNorm.name and (
                         (framework == FrameworkType.CAFFE.value and
                          (input_len == 2 or (input_len == 3 and
                                              op.input[-1] in self._consts))) or
                         (framework == FrameworkType.TENSORFLOW.value and
                          (input_len == 3 or (input_len == 4 and
-                                             op.input[-1] in self._consts)))):
+                                             op.input[-1] in self._consts))))
+                        and len(self._consumers[op.input[1]]) == 1):
                     print("Fold deconv and bn: %s(%s)" % (op.name, op.type))
                     filter = self._consts[op.input[1]]
                     scale = self._consts[consumer_op.input[1]]
@@ -739,9 +746,9 @@ class Transformer(base_converter.ConverterInterface):
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 input_len = len(op.input)
-                if consumer_op.type == MaceOp.BatchNorm.name and \
-                        (input_len == 2 or
-                         (input_len == 3 and op.input[-1] in self._consts)):
+                if (consumer_op.type == MaceOp.BatchNorm.name
+                        and (input_len == 2 or (input_len == 3 and op.input[-1] in self._consts))  # noqa
+                        and len(self._consumers[op.input[1]]) == 1):
                     print("Fold depthwise conv and bn: %s(%s)"
                           % (op.name, op.type))
                     filter = self._consts[op.input[1]]
@@ -1048,6 +1055,7 @@ class Transformer(base_converter.ConverterInterface):
         if self._option.device != DeviceType.CPU.value:
             return False
         net = self._model
+        transposed_weights = []
         for op in net.op:
             if op.type == MaceOp.MatMul.name:  # noqa
                 rhs = op.input[1]
@@ -1059,15 +1067,17 @@ class Transformer(base_converter.ConverterInterface):
                         arg.name = MaceKeyword.mace_transpose_b_str
                         arg.i = 0
                     if arg.i == 0:
-                        filter = self._consts[rhs]
-                        filter_data = np.array(filter.float_data).reshape(
-                            filter.dims)
-                        filter_data = filter_data.transpose(1, 0)
-                        filter.float_data[:] = filter_data.flat
-                        filter.dims[:] = filter_data.shape
                         arg.i = 1
-                        six.print_('Transpose matmul weight to shape:',
-                                   filter.dims)
+                        if rhs not in transposed_weights:
+                            filter = self._consts[rhs]
+                            filter_data = np.array(filter.float_data).reshape(
+                                filter.dims)
+                            filter_data = filter_data.transpose(1, 0)
+                            filter.float_data[:] = filter_data.flat
+                            filter.dims[:] = filter_data.shape
+                            transposed_weights.append(rhs)
+                            six.print_('Transpose matmul weight to shape:',
+                                       filter.dims)
 
     def transpose_filters(self):
         net = self._model
@@ -1190,7 +1200,11 @@ class Transformer(base_converter.ConverterInterface):
                         and self._producer[op.input[0]].type \
                         == MaceOp.Reshape.name \
                         and len(op.output_shape[0].dims) == 2:
-                    should_fold = True
+                    producer = self._producer[op.input[0]]
+                    reshape_input_rank = len(self.get_tensor_shape(
+                        producer.input[0]))
+                    if reshape_input_rank == 4:
+                        should_fold = True
 
                 if should_fold:
                     print(
@@ -1203,12 +1217,13 @@ class Transformer(base_converter.ConverterInterface):
                     if op.output[0] in self._consumers:
                         consumer = self._consumers[op.output[0]][0]
                         # if there is a shape op, remove it too
-                        if (consumer.input[1] in self._producer
-                            and self._producer[consumer.input[1]].type
-                                == 'Shape'):
-                            self.safe_remove_node(
-                                self._producer[consumer.input[1]], None,
-                                remove_input_tensor=True)
+                        if len(consumer.input) > 1:
+                            if (consumer.input[1] in self._producer
+                                and self._producer[consumer.input[1]].type
+                                    == 'Shape'):
+                                self.safe_remove_node(
+                                    self._producer[consumer.input[1]], None,
+                                    remove_input_tensor=True)
                         # remove consumer reshape
                         self.safe_remove_node(consumer, op,
                                               remove_input_tensor=True)
@@ -1332,7 +1347,10 @@ class Transformer(base_converter.ConverterInterface):
         visited = set()
         sorted_nodes = []
 
-        for output_node in self._option.output_nodes:
+        output_nodes = self._option.check_nodes
+        if not self._quantize_activation_info:
+            output_nodes.update(self._option.output_nodes)
+        for output_node in output_nodes:
             mace_check(output_node in self._producer,
                        "output_tensor %s not existed in model" % output_node)
             self.sort_dfs(self._producer[output_node], visited, sorted_nodes)
@@ -1428,6 +1446,18 @@ class Transformer(base_converter.ConverterInterface):
                                 op, MaceKeyword.mace_axis_str)
                             if axis_arg.i == 1:
                                 axis_arg.i = 3
+
+            elif op.type == MaceOp.Squeeze.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_axis_str:
+                        if (src_data_format == DataFormat.NCHW
+                                and has_data_format
+                                and len(self._producer[op.input[0]].output_shape[0].dims) == 4  # noqa
+                                and len(op.output_shape[0].dims) == 2
+                                and arg.ints == [2, 3]):
+                            print("Transpose squeeze args: %s(%s)"
+                                  % (op.name, op.type))
+                            arg.ints[:] = [1, 2]
 
             elif op.type == MaceOp.Reduce.name:
                 for arg in op.arg:
@@ -1817,7 +1847,9 @@ class Transformer(base_converter.ConverterInterface):
                            MaceOp.Reshape.name,
                            MaceOp.ResizeBilinear.name,
                            MaceOp.BatchToSpaceND.name,
-                           MaceOp.SpaceToBatchND.name]:
+                           MaceOp.SpaceToBatchND.name,
+                           MaceOp.SpaceToDepth.name,
+                           MaceOp.DepthToSpace.name]:
                 del op.quantize_info[:]
                 producer_op = self._producer[op.input[0]]
                 if producer_op.output[0] in self._option.input_nodes:
@@ -2009,18 +2041,6 @@ class Transformer(base_converter.ConverterInterface):
         arg.name = MaceKeyword.mace_opencl_mem_type
         arg.i = mace_pb2.GPU_IMAGE if self._option.cl_mem_type == "image"\
             else mace_pb2.GPU_BUFFER
-
-    def delete_after_check_nodes(self):
-        if self._option.check_nodes != self._option.output_nodes:
-            mace_check(len(self._option.check_nodes) == 1,
-                       "Only support one check node now.")
-            check_node = None
-            for i in six.moves.range(len(self._model.op)):
-                if self._model.op[i].output[0] in self._option.check_nodes:
-                    check_node = self._model.op[i]
-                    del self._model.op[i+1:]
-                    break
-            mace_check(check_node is not None, "check node not found.")
 
     def transform_caffe_reshape_and_flatten(self):
         net = self._model

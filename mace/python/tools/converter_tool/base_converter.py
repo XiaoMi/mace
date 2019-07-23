@@ -88,6 +88,7 @@ class ReduceType(Enum):
     MIN = 1
     MAX = 2
     PROD = 3
+    SUM = 4
 
 
 class PadType(Enum):
@@ -196,6 +197,7 @@ MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.Reduce,
                                  MaceOp.Softmax,
                                  MaceOp.Split,
+                                 MaceOp.Squeeze,
                                  MaceOp.SqrDiffMean]
 
 

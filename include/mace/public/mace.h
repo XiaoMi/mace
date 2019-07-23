@@ -155,7 +155,7 @@ MACE_API Capability GetCapability(DeviceType device_type,
 
 MACE_API const char *MaceVersion();
 
-class MaceStatus {
+class MACE_API MaceStatus {
  public:
   enum Code {
     MACE_SUCCESS = 0,

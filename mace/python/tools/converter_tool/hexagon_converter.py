@@ -35,6 +35,7 @@ from six.moves import reduce
 
 HexagonSupportedOps = [
     'BatchToSpaceND_8',
+    'DepthToSpace_8',
     'DepthwiseSupernode_8x8p32to8',
     'DequantizeOUTPUT_8tof',
     'INPUT',
@@ -45,8 +46,10 @@ HexagonSupportedOps = [
     'QuantizedMaxPool_8',
     'QuantizedResizeBilinear_8',
     'QuantizedSoftmax_8',
+    'QuantizedSub_8p8to8',
     'QuantizeINPUT_f_to_8',
     'SpaceToBatchND_8',
+    'SpaceToDepth_8',
     'Supernode_8x8p32to8',
     'Nop',
 ]
@@ -59,12 +62,14 @@ class HexagonOps(object):
     def __init__(self):
         self.hexagon_ops = {
             MaceOp.BatchToSpaceND.name: HexagonOp.BatchToSpaceND_8.name,
+            MaceOp.DepthToSpace.name: HexagonOp.DepthToSpace_8.name,
             MaceOp.Concat.name: HexagonOp.QuantizedConcat_8.name,
             MaceOp.Conv2D.name: HexagonOp.Supernode_8x8p32to8.name,
             MaceOp.DepthwiseConv2d.name:
                 HexagonOp.DepthwiseSupernode_8x8p32to8.name,
             MaceOp.Dequantize.name: HexagonOp.DequantizeOUTPUT_8tof.name,
-            MaceOp.Eltwise.name: [HexagonOp.QuantizedAdd_8p8to8],
+            MaceOp.Eltwise.name: [HexagonOp.QuantizedAdd_8p8to8.name,
+                                  HexagonOp.QuantizedSub_8p8to8.name],
             MaceOp.Identity.name: HexagonOp.Nop.name,
             MaceOp.Quantize.name: HexagonOp.QuantizeINPUT_f_to_8.name,
             MaceOp.Pooling.name: [HexagonOp.QuantizedAvgPool_8.name,
@@ -73,6 +78,7 @@ class HexagonOps(object):
             MaceOp.ResizeBilinear.name:
                 HexagonOp.QuantizedResizeBilinear_8.name,
             MaceOp.SpaceToBatchND.name: HexagonOp.SpaceToBatchND_8.name,
+            MaceOp.SpaceToDepth.name: HexagonOp.SpaceToDepth_8.name,
             MaceOp.Softmax.name: HexagonOp.QuantizedSoftmax_8.name,
         }
 
@@ -207,6 +213,17 @@ class HexagonConverter(base_converter.ConverterInterface):
                 pad_tensor.int32_data.extend(pad_arg.ints)
                 op.input.extend([strides_tensor.name, pad_tensor.name])
                 self.add_min_max_const_node(op, op.input[0])
+            elif op.type == MaceOp.DepthToSpace.name \
+                    or op.type == MaceOp.SpaceToDepth.name:
+                size_arg = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_space_depth_block_size_str)
+                size_tensor = self._model.tensors.add()
+                size_tensor.name = op.name + '/block_size:0'
+                size_tensor.data_type = mace_pb2.DT_INT32
+                size_tensor.dims.extend([1])
+                size_tensor.int32_data.extend([size_arg.i])
+                op.input.extend([size_tensor.name])
+                self.add_min_max_const_node(op, op.input[0])
             elif op.type == MaceOp.Pooling.name:
                 self.add_min_max_const_node(op, op.input[0])
                 window_arg = ConverterUtil.get_arg(
@@ -315,11 +332,18 @@ class HexagonConverter(base_converter.ConverterInterface):
             if arg is not None:
                 op.padding = padding_mode[PaddingMode(arg.i)]
 
-            if (op.type == MaceOp.Eltwise.name
-                    and ConverterUtil.get_arg(
-                        op, MaceKeyword.mace_element_type_str).i
-                    == EltwiseType.SUM.value):
-                op.type = HexagonOp.QuantizedAdd_8p8to8.name
+            if op.type == MaceOp.Eltwise.name:
+                element_type = \
+                    ConverterUtil.get_arg(op,
+                                          MaceKeyword.mace_element_type_str).i
+                if element_type == EltwiseType.SUM.value:
+                    op.type = HexagonOp.QuantizedAdd_8p8to8.name
+                elif element_type == EltwiseType.SUB.value:
+                    op.type = HexagonOp.QuantizedSub_8p8to8.name
+                else:
+                    mace_check(False,
+                               "Hexagon does not support eltmentwise %s"
+                               % EltwiseType(element_type).name)
             elif op.type == MaceOp.Pooling.name:
                 pooling_type_arg = ConverterUtil.get_arg(
                     op, MaceKeyword.mace_pooling_type_str)

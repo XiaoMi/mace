@@ -294,7 +294,7 @@ def validate_onnx_model(platform, device_type, model_file,
         input_dict[input_names[i]] = input_value
     onnx_outputs = []
     for i in range(len(output_names)):
-        out_shape = output_shapes[i]
+        out_shape = output_shapes[i][:]
         if output_data_formats[i] == common.DataFormat.NHWC and\
                 len(out_shape) == 4:
             out_shape[1], out_shape[2], out_shape[3] = \
