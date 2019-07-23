@@ -56,33 +56,29 @@ void ArgMaxTest(const std::vector<index_t> &input_shape,
 }
 }  // namespace
 
-TEST_F(ArgMaxOpTest, Vector) { ArgMaxTest<CPU, int32_t>({3}, {-3, -1, -2}, {}, {1}); }
+TEST_F(ArgMaxOpTest, Vector) {
+  ArgMaxTest<CPU, int32_t>({3}, {-3, -1, -2}, {}, {1});
+}
 
 TEST_F(ArgMaxOpTest, Matrix) {
   ArgMaxTest<CPU, int32_t>({3, 3}, {4, 5, 6, 9, 8, 7, 1, 2, 3}, {3}, {2, 0, 2});
 }
 
 TEST_F(ArgMaxOpTest, Matrix3DCPU) {
-  ArgMaxTest<CPU, int32_t>({1, 2, 2, 5}, {1, 2, 3, 4, 5, 
-                                        1, 2, 0, 9, 1,
-                                        0, 1, 2, 1, 0,
-                                        3, 2, 1, 0, 0}, 
-                         {1, 2, 2}, {4, 3, 
-                                     2, 0});
+  ArgMaxTest<CPU, int32_t>({1, 2, 2, 5}, {1, 2, 3, 4, 5, 1, 2, 0, 9, 1,
+                                          0, 1, 2, 1, 0, 3, 2, 1, 0, 0},
+                           {1, 2, 2}, {4, 3, 2, 0});
 }
 
 TEST_F(ArgMaxOpTest, Matrix3DOPENCL) {
-  ArgMaxTest<GPU, float>({1, 2, 2, 5}, {1, 2, 3, 4, 5, 
-                                        1, 2, 0, 9, 1,
-                                        0, 1, 2, 1, 0,
-                                        3, 2, 1, 0, 0}, 
-                         {1, 2, 2, 1}, {4, 3, 
-                                        2, 0});
+  ArgMaxTest<GPU, float>({1, 2, 2, 5}, {1, 2, 3, 4, 5, 1, 2, 0, 9, 1,
+                                        0, 1, 2, 1, 0, 3, 2, 1, 0, 0},
+                         {1, 2, 2, 1}, {4, 3, 2, 0});
 }
 
 TEST_F(ArgMaxOpTest, HighRank) {
   ArgMaxTest<CPU, int32_t>({1, 2, 2, 3}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
-                  {1, 2, 2}, {2, 2, 2, 2});
+                           {1, 2, 2}, {2, 2, 2, 2});
 }
 
 }  // namespace test

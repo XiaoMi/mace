@@ -1,11 +1,9 @@
 #include <common.h>
 
-__kernel void argmax(OUT_OF_RANGE_PARAMS
-                     GLOBAL_WORK_GROUP_SIZE_DIM3
-                     __read_only image2d_t input,
+__kernel void argmax(OUT_OF_RANGE_PARAMS GLOBAL_WORK_GROUP_SIZE_DIM3 __read_only
+                         image2d_t input,
                      __private const int channel_blocks,
                      __write_only image2d_t output) {
-
   const int w = get_global_id(1);
   const int h = get_global_id(2);
 

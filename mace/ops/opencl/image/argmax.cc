@@ -1,3 +1,21 @@
+// Copyright 2019 The MACE Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <string>
+#include <vector>
+#include <set>
+
 #include "mace/ops/opencl/image/argmax.h"
 
 namespace mace {
@@ -5,8 +23,9 @@ namespace ops {
 namespace opencl {
 namespace image {
 
-MaceStatus ArgMaxKernel::Compute(OpContext *context, const Tensor *input, Tensor *output) {
-
+MaceStatus ArgMaxKernel::Compute(OpContext *context,
+                                 const Tensor *input,
+                                 Tensor *output) {
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
   const index_t channels = input->dim(3);
@@ -27,18 +46,21 @@ MaceStatus ArgMaxKernel::Compute(OpContext *context, const Tensor *input, Tensor
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("argmax", kernel_name, built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(
+        runtime->BuildKernel("argmax", kernel_name, built_options, &kernel_));
 
-    kwg_size_ = static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t gws[3] = {1, static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+  const uint32_t gws[3] = {1, static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height)};
 
-  MACE_OUT_OF_RANGE_INIT(kernel_);       
+  MACE_OUT_OF_RANGE_INIT(kernel_);
   if (!IsVecEqual(input_shape_, input->shape())) {
-
     std::vector<size_t> output_image_shape;
-    OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL, &output_image_shape);
+    OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                                &output_image_shape);
     MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
     int idx = 0;
@@ -48,11 +70,14 @@ MaceStatus ArgMaxKernel::Compute(OpContext *context, const Tensor *input, Tensor
     kernel_.setArg(idx++, static_cast<uint32_t>(channel_blocks));
     kernel_.setArg(idx++, *(output->opencl_image()));
     input_shape_ = input->shape();
-  }             
+  }
 
   const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
-  std::string tuning_key = Concat("argmax_opencl_kernel", output->dim(0), output->dim(1), output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key, gws, lws, context->future()));
+  std::string tuning_key =
+      Concat("argmax_opencl_kernel", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3));
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key, gws,
+                                           lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
