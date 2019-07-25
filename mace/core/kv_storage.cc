@@ -106,7 +106,7 @@ int FileStorage::Load() {
   auto status = fs->NewReadOnlyMemoryRegionFromFile(
       file_path_.c_str(), &kv_data);
   if (status != MaceStatus::MACE_SUCCESS)  {
-    LOG(ERROR) << "Failed to read kv store file: " << file_path_;
+    LOG(WARNING) << "Failed to read kv store file: " << file_path_;
     return -1;
   } else {
     ParseKVData(static_cast<const unsigned char *>(kv_data->data()),
