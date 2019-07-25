@@ -171,6 +171,16 @@ class OpenCLLibrary final {
                                                     size_t,
                                                     void *,
                                                     cl_int *);
+  using clCreateImage3DFunc = cl_mem(CL_API_CALL *)(cl_context,  // NOLINT
+                                                    cl_mem_flags,
+                                                    const cl_image_format *,
+                                                    size_t,
+                                                    size_t,
+                                                    size_t,
+                                                    size_t,
+                                                    size_t,
+                                                    void *,
+                                                    cl_int *);
   using clCreateImageFunc = cl_mem (*)(cl_context,
                                        cl_mem_flags,
                                        const cl_image_format *,
@@ -218,6 +228,7 @@ class OpenCLLibrary final {
   MACE_CL_DEFINE_FUNC_PTR(clCreateBuffer);
   MACE_CL_DEFINE_FUNC_PTR(clCreateImage);
   MACE_CL_DEFINE_FUNC_PTR(clCreateImage2D);
+  MACE_CL_DEFINE_FUNC_PTR(clCreateImage3D);
   MACE_CL_DEFINE_FUNC_PTR(clRetainKernel);
   MACE_CL_DEFINE_FUNC_PTR(clCreateKernel);
   MACE_CL_DEFINE_FUNC_PTR(clGetProgramInfo);
@@ -352,6 +363,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateBuffer);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateImage);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateImage2D);
+  MACE_CL_ASSIGN_FROM_DLSYM(clCreateImage3D);
   MACE_CL_ASSIGN_FROM_DLSYM(clRetainKernel);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateKernel);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetProgramInfo);
@@ -1087,6 +1099,28 @@ CL_API_ENTRY /* CL_EXT_PREFIX__VERSION_1_1_DEPRECATED */ cl_mem clCreateImage2D(
     MACE_LATENCY_LOGGER(3, "clCreateImage2D");
     return func(context, flags, image_format, image_width, image_height,
                 image_row_pitch, host_ptr, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
+}
+
+CL_API_ENTRY /* CL_EXT_PREFIX__VERSION_1_1_DEPRECATED */ cl_mem clCreateImage3D(
+    cl_context context,
+    cl_mem_flags flags,
+    const cl_image_format *image_format,
+    size_t image_width,
+    size_t image_height,
+    size_t image_depth,
+    size_t image_row_pitch,
+    size_t image_slice_pitch,
+    void *host_ptr,
+    cl_int *errcode_ret) /* CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED */ {
+  auto func = mace::runtime::OpenCLLibrary::Get()->clCreateImage3D;
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateImage3D");
+    return func(context, flags, image_format, image_width, image_height,
+    image_depth, image_row_pitch, image_slice_pitch, host_ptr, errcode_ret);
   } else {
     if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
     return nullptr;
