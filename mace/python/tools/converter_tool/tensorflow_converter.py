@@ -1017,6 +1017,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.ArgMax.name
         op.output_type.extend([mace_pb2.DT_INT32])
+        op.output_shape[0].dims.append(1L)
 
     def convert_split(self, tf_op):
         op = self.convert_general_op(tf_op)

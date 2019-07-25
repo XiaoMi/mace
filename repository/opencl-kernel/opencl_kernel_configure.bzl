@@ -26,6 +26,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     )
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/activation.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/addn.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/argmax.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/batch_norm.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/batch_to_space.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/bias_add.cl"))

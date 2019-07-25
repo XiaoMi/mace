@@ -20,11 +20,42 @@
 
 #include "mace/core/operator.h"
 
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/image/argmax.h"
+#endif  // MACE_ENABLE_OPENCL
+
 namespace mace {
 namespace ops {
 
 template <DeviceType D, class T>
-class ArgMaxOp : public Operation {
+class ArgMaxOp;
+
+#ifdef MACE_ENABLE_OPENCL
+template <>
+class ArgMaxOp<GPU, float> : public Operation {
+ public:
+  explicit ArgMaxOp(OpConstructContext *context) : Operation(context) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
+      kernel_ = make_unique<opencl::image::ArgMaxKernel>();
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  }
+
+  MaceStatus Run(OpContext *context) override {
+    const Tensor *input = this->Input(0);
+    Tensor *output = this->Output(0);
+
+    return kernel_->Compute(context, input, output);
+  }
+
+ private:
+  std::unique_ptr<opencl::image::ArgMaxKernel> kernel_;
+};
+#endif  // MACE_ENABLE_OPENCL
+
+template <class T>
+class ArgMaxOp<CPU, T> : public Operation {
  public:
   explicit ArgMaxOp(OpConstructContext *context)
       : Operation(context),
@@ -35,8 +66,7 @@ class ArgMaxOp : public Operation {
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
-    const Tensor *axis = this->InputSize() == 2 ?
-                         this->Input(1) : nullptr;
+    const Tensor *axis = this->InputSize() == 2 ? this->Input(1) : nullptr;
     Tensor *output = this->Output(0);
 
     MACE_CHECK(keep_dims_, "Mace only supports keep_dims ArgMax.");
@@ -107,11 +137,9 @@ class ArgMaxOp : public Operation {
   bool argmin_;
 };
 
-
-
 void RegisterArgMax(OpRegistryBase *op_registry) {
-  MACE_REGISTER_OP(op_registry, "ArgMax", ArgMaxOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "ArgMax", ArgMaxOp, DeviceType::CPU, float);
+  MACE_REGISTER_GPU_OP(op_registry, "ArgMax", ArgMaxOp);
 }
 
 }  // namespace ops
