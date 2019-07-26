@@ -1911,7 +1911,7 @@ class Transformer(base_converter.ConverterInterface):
                         - producer_op1.quantize_info[0].minval
                 else:
                     mace_check(False, "Quantized Elementwise only support:"
-                                      " SUM and SUB now.")
+                                      " SUM and SUB without ranges now.")
                 quantize_info = \
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
