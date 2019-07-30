@@ -167,8 +167,8 @@ class Tuner {
       auto status = fs->NewReadOnlyMemoryRegionFromFile(
           tuned_param_file_path_.c_str(), &param_data);
       if (status != MaceStatus::MACE_SUCCESS)  {
-        LOG(ERROR) << "Failed to read tuned param file: "
-                   << tuned_param_file_path_;
+        LOG(WARNING) << "Failed to read tuned param file: "
+                     << tuned_param_file_path_;
         return;
       } else {
         ParseData(static_cast<const unsigned char *>(param_data->data()),
