@@ -55,6 +55,7 @@ void Simple(bool use_log = false) {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
+        .AddIntArg("has_data_format", 1)
         .AddIntArg("use_log", static_cast<int>(use_log))
         .Finalize(net.NewOperatorDef());
 

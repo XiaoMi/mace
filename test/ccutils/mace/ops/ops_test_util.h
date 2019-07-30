@@ -244,6 +244,7 @@ class OpsTestNet {
           }
         }
       }
+      output->set_data_format(DataFormat::NCHW);
     } else if (src_format == DataFormat::NCHW &&
         dst_format == DataFormat::NHWC) {
       index_t batch = input_shape[0];
@@ -265,6 +266,7 @@ class OpsTestNet {
           }
         }
       }
+      output->set_data_format(DataFormat::NHWC);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

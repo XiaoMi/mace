@@ -43,120 +43,202 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context),
-        use_log_(Operation::GetOptionalArg<bool>("use_log", false)) {}
+        use_log_(Operation::GetOptionalArg<bool>("use_log", false)),
+        has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    const Tensor *input = this->Input(0);
-    Tensor *output = this->Output(0);
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
-    const float *input_data = input->data<float>();
-    float *output_data = output->mutable_data<float>();
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-    // softmax for nchw image
-    if (input->dim_size() == 4) {
-      const index_t batch = input->dim(0);
-      const index_t class_count = input->dim(1);
-      const index_t class_size = input->dim(2) * input->dim(3);
-      const index_t batch_size = class_count * class_size;
-
-      for (index_t b = 0; b < batch; ++b) {
-        thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
-          for (index_t k = start; k < end; k += step) {
-            const float *input_ptr = input_data + b * batch_size + k;
-            float *output_ptr = output_data + b * batch_size + k;
-
-            float max_val = std::numeric_limits<float>::lowest();
-            index_t channel_offset = 0;
-            for (index_t c = 0; c < class_count; ++c) {
-              float data = input_ptr[channel_offset];
-              if (data > max_val) {
-                max_val = data;
-              }
-              channel_offset += class_size;
-            }
-
-            channel_offset = 0;
-            float sum = 0;
-            for (index_t c = 0; c < class_count; ++c) {
-              float exp_value = ::exp(input_ptr[channel_offset] - max_val);
-              sum += exp_value;
-              output_ptr[channel_offset] = exp_value;
-              channel_offset += class_size;
-            }
-
-            sum = std::max(sum, std::numeric_limits<float>::min());
-            channel_offset = 0;
-            if (use_log_) {
-              for (index_t c = 0; c < class_count; ++c) {
-                output_ptr[channel_offset] /= sum;
-                output_ptr[channel_offset] =
-                    std::log(output_ptr[channel_offset]);
-                channel_offset += class_size;
-              }
-            } else {
-              for (index_t c = 0; c < class_count; ++c) {
-                output_ptr[channel_offset] /= sum;
-                channel_offset += class_size;
-              }
-            }
-          }  // k
-        }, 0, class_size, 1);
-      }  // b
-    } else if (input->dim_size() == 2 || input->dim_size() == 3) {
-      // normal 2d softmax and 3d softmax (dim(0) is batch)
-      index_t class_size = 0;
-      index_t class_count = 0;
-      if (input->dim_size() == 2) {
-        class_size = input->dim(0);
-        class_count = input->dim(1);
-      } else {
-        class_size = input->dim(0) * input->dim(1);
-        class_count = input->dim(2);
-      }
-      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
-        for (index_t k = start; k < end; k += step) {
-          const float *input_ptr = input_data + k * class_count;
-          float *output_ptr = output_data + k * class_count;
-
-          float max_val = std::numeric_limits<float>::lowest();
-          for (index_t c = 0; c < class_count; ++c) {
-            max_val = std::max(max_val, input_ptr[c]);
-          }
-
-          float sum = 0;
-          for (index_t c = 0; c < class_count; ++c) {
-            float exp_value = std::exp(input_ptr[c] - max_val);
-            sum += exp_value;
-            output_ptr[c] = exp_value;
-          }
-
-          sum = std::max(sum, std::numeric_limits<float>::min());
-          if (use_log_) {
-            for (index_t c = 0; c < class_count; ++c) {
-              output_ptr[c] /= sum;
-              output_ptr[c] = std::log(output_ptr[c]);
-            }
-          } else {
-            for (index_t c = 0; c < class_count; ++c) {
-              output_ptr[c] /= sum;
-            }
-          }
-        }
-      }, 0, class_size, 1);
+    if (isNCHW(input)) {  // NCHW
+      return RunForNCHW(context);
     } else {
-      MACE_NOT_IMPLEMENTED;
+      return RunForNHWC(context);
     }
-    return MaceStatus::MACE_SUCCESS;
   }
 
  protected:
   bool use_log_;
+  bool has_df_;
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
+
+ protected:
+  MaceStatus RunForNCHW(OpContext *context) {
+    const Tensor *input = this->Input(INPUT);
+    const float *input_data = input->data<float>();
+    Tensor *output = this->Output(OUTPUT);
+    float *output_data = output->mutable_data<float>();
+
+    MACE_CHECK(input->dim_size() == 4, "The dim size of NCHW should be 4.");
+    index_t hw_stride = input->dim(3);
+    index_t hw_size = hw_stride * input->dim(2);
+    index_t class_stride = hw_size;
+    index_t class_size = class_stride * input->dim(1);
+    index_t batch_stride = class_size;
+    index_t batch_size = batch_stride * input->dim(0);
+
+    Buffer cache_buffer(context->device()->allocator());
+    MACE_RETURN_IF_ERROR(cache_buffer.Allocate(hw_size * sizeof(float)));
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    float std_lowest = std::numeric_limits<float>::lowest();
+    float *cache_ptr = cache_buffer.mutable_data<float>();
+
+    for (index_t b_offset = 0;
+         b_offset < batch_size; b_offset += batch_stride) {
+      const float *input_b_base = input_data + b_offset;
+      float *output_b_base = output_data + b_offset;
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        const auto raw_step_size = step * sizeof(float);
+        for (index_t k = start; k < end; k += step) {
+          float *cache_k_ptr = cache_ptr + k;
+          for (index_t i = 0; i < step; ++i) {
+            cache_k_ptr[i] = std_lowest;
+          }
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          const float *input_c_base = input_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            const float *input_ptr = input_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              cache_k_ptr[i] = std::max(cache_k_ptr[i], input_ptr[i]);
+            }
+          }
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          const float *input_c_base = input_b_base + c_offset;
+          float *output_c_base = output_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            const float *input_ptr = input_c_base + k;
+            float *output_ptr = output_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              output_ptr[i] = ::exp(input_ptr[i] - cache_k_ptr[i]);
+            }
+          }
+        }
+
+        for (index_t k = start; k < end; k += step) {
+          memset(cache_ptr + k, 0, raw_step_size);
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          float *output_c_base = output_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            float *output_ptr = output_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              cache_k_ptr[i] += output_ptr[i];
+            }
+          }
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          float *output_c_base = output_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            float *output_ptr = output_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              output_ptr[i] = output_ptr[i] / cache_k_ptr[i];
+            }
+          }
+        }
+
+        if (use_log_) {
+          for (index_t c_offset = 0; c_offset < class_size;
+               c_offset += class_stride) {
+            float *output_c_base = output_b_base + c_offset;
+            for (index_t k = start; k < end; k += step) {
+              float *output_ptr = output_c_base + k;
+              for (index_t i = 0; i < step; ++i) {
+                output_ptr[i] = std::log(output_ptr[i]);
+              }
+            }
+          }
+        }  // use_log_
+      }, 0, hw_size, hw_stride);
+    }
+
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  MaceStatus RunForNHWC(OpContext *context) {
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
+    float *output_data = output->mutable_data<float>();
+
+    MACE_CHECK(input->dim_size() >= 2, "The input->dim_size() >= 2 failed.");
+    index_t class_size = input->dim(input->dim_size() - 1);
+    index_t hw_stride = class_size;
+    index_t hw_size = std::accumulate(input->shape().begin() + 1,
+                                      input->shape().end() - 1,
+                                      hw_stride,
+                                      std::multiplies<index_t>());
+    index_t batch_stride = hw_size;
+    index_t batch_size = std::accumulate(input->shape().begin(),
+                                         input->shape().end(),
+                                         1,
+                                         std::multiplies<index_t>());
+
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    const float *input_data = input->data<float>();
+    float std_lowest = std::numeric_limits<float>::lowest();
+    for (index_t b_offset = 0; b_offset < batch_size;
+         b_offset += batch_stride) {
+      const float *input_b_ptr = input_data + b_offset;
+      float *output_b_ptr = output_data + b_offset;
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        for (index_t k = start; k < end; k += step) {
+          const float *input_ptr = input_b_ptr + k;
+          float *output_ptr = output_b_ptr + k;
+
+          float max_val = std_lowest;
+          for (index_t c = 0; c < class_size; ++c) {
+            max_val = std::max(max_val, input_ptr[c]);
+          }
+
+          float sum = 0;
+          for (index_t c = 0; c < class_size; ++c) {
+            float exp_value = ::exp(input_ptr[c] - max_val);
+            sum += exp_value;
+            output_ptr[c] = exp_value;
+          }
+
+          if (use_log_) {
+            for (index_t c = 0; c < class_size; ++c) {
+              output_ptr[c] /= sum;
+              output_ptr[c] = std::log(output_ptr[c]);
+            }
+          } else {
+            for (index_t c = 0; c < class_size; ++c) {
+              output_ptr[c] /= sum;
+            }
+          }
+        }  // k
+      }, 0, hw_size, hw_stride);
+    }  // b_offset
+
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  inline bool isNCHW(const Tensor *input) {
+    auto data_format = input->data_format();
+    auto dim_size = input->dim_size();
+    return dim_size == 4 && (has_df_ || data_format == DataFormat::NCHW);
+  }
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -173,8 +255,8 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     MACE_CHECK(!use_log_, "MACE dose not support quantized logsoftmax yet.");
-    const Tensor *input = this->Input(0);
-    Tensor *output = this->Output(0);
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
     // Ignore range stat, fix range to [0, 1]. For large depth, each softmax
     // output may be too small (<<1), which causes precision issue. But it is
@@ -403,6 +485,8 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
 
  protected:
   bool use_log_;
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -421,8 +505,8 @@ class SoftmaxOp<DeviceType::GPU, float> : public Operation {
     }
   }
   MaceStatus Run(OpContext *context) override {
-    const Tensor *input = this->Input(0);
-    Tensor *output = this->Output(0);
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
     return kernel_->Compute(context, input, output);
@@ -430,6 +514,8 @@ class SoftmaxOp<DeviceType::GPU, float> : public Operation {
 
  private:
   std::unique_ptr<OpenCLSoftmaxKernel> kernel_;
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 #endif  // MACE_ENABLE_OPENCL
 
