@@ -44,6 +44,7 @@ HexagonSupportedOps = [
     'QuantizedAvgPool_8',
     'QuantizedConcat_8',
     'QuantizedMaxPool_8',
+    'QuantizedMul_8x8to8',
     'QuantizedResizeBilinear_8',
     'QuantizedSoftmax_8',
     'QuantizedSub_8p8to8',
@@ -69,7 +70,8 @@ class HexagonOps(object):
                 HexagonOp.DepthwiseSupernode_8x8p32to8.name,
             MaceOp.Dequantize.name: HexagonOp.DequantizeOUTPUT_8tof.name,
             MaceOp.Eltwise.name: [HexagonOp.QuantizedAdd_8p8to8.name,
-                                  HexagonOp.QuantizedSub_8p8to8.name],
+                                  HexagonOp.QuantizedSub_8p8to8.name,
+                                  HexagonOp.QuantizedMul_8x8to8.name],
             MaceOp.Identity.name: HexagonOp.Nop.name,
             MaceOp.Quantize.name: HexagonOp.QuantizeINPUT_f_to_8.name,
             MaceOp.Pooling.name: [HexagonOp.QuantizedAvgPool_8.name,
@@ -189,8 +191,13 @@ class HexagonConverter(base_converter.ConverterInterface):
             elif op.type == MaceOp.Eltwise.name:
                 self.add_min_max_const_node(op, op.input[0])
                 self.add_min_max_const_node(op, op.input[1])
-                self.add_min_max_const_node(
-                    op, op.output[0], True, True, False)
+                element_type = \
+                    ConverterUtil.get_arg(op,
+                                          MaceKeyword.mace_element_type_str).i
+                if element_type == EltwiseType.SUM.value \
+                        or element_type == EltwiseType.SUB.value:
+                    self.add_min_max_const_node(
+                        op, op.output[0], True, True, False)
             elif op.type == MaceOp.BatchToSpaceND.name \
                     or op.type == MaceOp.SpaceToBatchND.name:
                 strides_arg = ConverterUtil.get_arg(
@@ -340,9 +347,11 @@ class HexagonConverter(base_converter.ConverterInterface):
                     op.type = HexagonOp.QuantizedAdd_8p8to8.name
                 elif element_type == EltwiseType.SUB.value:
                     op.type = HexagonOp.QuantizedSub_8p8to8.name
+                elif element_type == EltwiseType.PROD.value:
+                    op.type = HexagonOp.QuantizedMul_8x8to8.name
                 else:
                     mace_check(False,
-                               "Hexagon does not support eltmentwise %s"
+                               "Hexagon does not support elementwise %s"
                                % EltwiseType(element_type).name)
             elif op.type == MaceOp.Pooling.name:
                 pooling_type_arg = ConverterUtil.get_arg(
