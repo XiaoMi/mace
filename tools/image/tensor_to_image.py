@@ -37,6 +37,7 @@ def tensors_to_images(input_files, image_shape):
         output = tf.placeholder(tf.string, name='output_file')
         # use the second channel if it is gray image
         if image_shape[2] == 2:
+            input = tf.nn.softmax(input)
             _, input = tf.split(input, 2, axis=2)
         tensor_data = tf.image.convert_image_dtype(input,
                                                    tf.uint8,
