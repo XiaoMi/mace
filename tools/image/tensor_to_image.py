@@ -28,16 +28,21 @@ def parse_args():
         "--image_shape",
         type=str,
         help="target image shape, e.g, 224,224,3")
+    parser.add_argument(
+        "--add_softmax",
+        action="store_true",
+        help="add softmax before convert to image")
     return parser.parse_known_args()
 
 
-def tensors_to_images(input_files, image_shape):
+def tensors_to_images(input_files, image_shape, add_softmax):
     with tf.Graph().as_default():
         input = tf.placeholder(tf.float32, shape=image_shape, name='input')
         output = tf.placeholder(tf.string, name='output_file')
+        if add_softmax:
+            input = tf.nn.softmax(input)
         # use the second channel if it is gray image
         if image_shape[2] == 2:
-            input = tf.nn.softmax(input)
             _, input = tf.split(input, 2, axis=2)
         tensor_data = tf.image.convert_image_dtype(input,
                                                    tf.uint8,
@@ -68,7 +73,7 @@ def main(unused_args):
         input_files.append(FLAGS.input)
 
     image_shape = [int(dim) for dim in FLAGS.image_shape.split(',')]
-    tensors_to_images(input_files, image_shape)
+    tensors_to_images(input_files, image_shape, FLAGS.add_softmax)
 
 
 if __name__ == '__main__':

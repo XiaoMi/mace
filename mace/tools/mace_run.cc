@@ -24,6 +24,8 @@
  *          --model_data_file=model_data.data \
  *          --device=GPU
  */
+#include <sys/types.h>
+#include <dirent.h>
 #include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
@@ -276,6 +278,7 @@ bool RunModel(const std::string &model_name,
 
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;
+  std::map<std::string, int64_t> inputs_size;
   for (size_t i = 0; i < input_count; ++i) {
     // Allocate input and output
     // only support float and int32, use char for generalization
@@ -283,6 +286,7 @@ bool RunModel(const std::string &model_name,
     int64_t input_size =
         std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 4,
                         std::multiplies<int64_t>());
+    inputs_size[input_names[i]] = input_size;
     auto buffer_in = std::shared_ptr<char>(new char[input_size],
                                            std::default_delete<char[]>());
     // load input
@@ -310,90 +314,139 @@ bool RunModel(const std::string &model_name,
         output_data_formats[i]);
   }
 
-  LOG(INFO) << "Warm up run";
-  double warmup_millis;
-  while (true) {
-    int64_t t3 = NowMicros();
-    MaceStatus warmup_status = engine->Run(inputs, &outputs);
-    if (warmup_status != MaceStatus::MACE_SUCCESS) {
-      LOG(ERROR) << "Warmup runtime error, retry ... errcode: "
-                 << warmup_status.information();
-      do {
-#ifdef MODEL_GRAPH_FORMAT_CODE
-        create_engine_status =
-          CreateMaceEngineFromCode(model_name,
-                                   reinterpret_cast<const unsigned char *>(
-                                     model_weights_data->data()),
-                                   model_weights_data->length(),
-                                   input_names,
-                                   output_names,
-                                   config,
-                                   &engine);
-#else
-        create_engine_status =
-            CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
-                                        model_graph_data->data()),
-                                      model_graph_data->length(),
-                                      reinterpret_cast<const unsigned char *>(
-                                        model_weights_data->data()),
-                                      model_weights_data->length(),
-                                      input_names,
-                                      output_names,
-                                      config,
-                                      &engine);
-#endif
-      } while (create_engine_status != MaceStatus::MACE_SUCCESS);
+  if (!FLAGS_input_dir.empty()) {
+    DIR *dir_parent;
+    struct dirent *entry;
+    dir_parent = opendir(FLAGS_input_dir.c_str());
+    if (dir_parent) {
+      while ((entry = readdir(dir_parent))) {
+        std::string file_name = std::string(entry->d_name);
+        std::string prefix = FormatName(input_names[0]);
+        if (file_name.find(prefix) == 0) {
+          std::string suffix = file_name.substr(prefix.size());
+
+          for (size_t i = 0; i < input_count; ++i) {
+            file_name = FLAGS_input_dir + "/" + FormatName(input_names[i])
+                + suffix;
+            std::ifstream in_file(file_name, std::ios::in | std::ios::binary);
+            std::cout << "Read " << file_name << std::endl;
+            if (in_file.is_open()) {
+              in_file.read(reinterpret_cast<char *>(
+                               inputs[input_names[i]].data().get()),
+                           inputs_size[input_names[i]] * sizeof(float));
+              in_file.close();
+            } else {
+              std::cerr << "Open input file failed" << std::endl;
+              return -1;
+            }
+          }
+          engine->Run(inputs, &outputs);
+
+          if (!FLAGS_output_dir.empty()) {
+            for (size_t i = 0; i < output_count; ++i) {
+              std::string output_name =
+                  FLAGS_output_dir + "/" + FormatName(output_names[i]) + suffix;
+              std::ofstream out_file(output_name, std::ios::binary);
+              if (out_file.is_open()) {
+                int64_t output_size =
+                    std::accumulate(output_shapes[i].begin(),
+                                    output_shapes[i].end(),
+                                    1,
+                                    std::multiplies<int64_t>());
+                out_file.write(
+                    reinterpret_cast<char *>(
+                        outputs[output_names[i]].data().get()),
+                    output_size * sizeof(float));
+                out_file.flush();
+                out_file.close();
+              } else {
+                std::cerr << "Open output file failed" << std::endl;
+                return -1;
+              }
+            }
+          }
+        }
+      }
+
+      closedir(dir_parent);
     } else {
-      int64_t t4 = NowMicros();
-      warmup_millis = (t4 - t3) / 1000.0;
-      LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
-      break;
+      std::cerr << "Directory " << FLAGS_input_dir << " does not exist."
+                << std::endl;
     }
-  }
-
-  double model_run_millis = -1;
-  benchmark::OpStat op_stat;
-  if (FLAGS_round > 0) {
-    LOG(INFO) << "Run model";
-    int64_t total_run_duration = 0;
-    for (int i = 0; i < FLAGS_round; ++i) {
-      std::unique_ptr<port::Logger> info_log;
-      std::unique_ptr<port::MallocLogger> malloc_logger;
-      if (FLAGS_malloc_check_cycle >= 1 && i % FLAGS_malloc_check_cycle == 0) {
-        info_log = LOG_PTR(INFO);
-        malloc_logger = port::Env::Default()->NewMallocLogger(
-            info_log.get(), MakeString(i));
-      }
-      MaceStatus run_status;
-      RunMetadata metadata;
-      RunMetadata *metadata_ptr = nullptr;
-      if (FLAGS_benchmark) {
-        metadata_ptr = &metadata;
-      }
-
-      while (true) {
-        int64_t t0 = NowMicros();
-        run_status = engine->Run(inputs, &outputs, metadata_ptr);
-        if (run_status != MaceStatus::MACE_SUCCESS) {
-          LOG(ERROR) << "Mace run model runtime error, retry ... errcode: "
-                     << run_status.information();
-          do {
+  } else {
+    LOG(INFO) << "Warm up run";
+    double warmup_millis;
+    while (true) {
+      int64_t t3 = NowMicros();
+      MaceStatus warmup_status = engine->Run(inputs, &outputs);
+      if (warmup_status != MaceStatus::MACE_SUCCESS) {
+        LOG(ERROR) << "Warmup runtime error, retry ... errcode: "
+                   << warmup_status.information();
+        do {
 #ifdef MODEL_GRAPH_FORMAT_CODE
-            create_engine_status =
-              CreateMaceEngineFromCode(model_name,
-                                       reinterpret_cast<const unsigned char *>(
-                                         model_weights_data->data()),
-                                       model_weights_data->length(),
-                                       input_names,
-                                       output_names,
-                                       config,
-                                       &engine);
+          create_engine_status =
+            CreateMaceEngineFromCode(model_name,
+                                     reinterpret_cast<const unsigned char *>(
+                                       model_weights_data->data()),
+                                     model_weights_data->length(),
+                                     input_names,
+                                     output_names,
+                                     config,
+                                     &engine);
 #else
-            create_engine_status =
-                CreateMaceEngineFromProto(
-                    reinterpret_cast<const unsigned char *>(
-                      model_graph_data->data()),
-                    model_graph_data->length(),
+          create_engine_status =
+              CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
+                                            model_graph_data->data()),
+                                        model_graph_data->length(),
+                                        reinterpret_cast<const unsigned char *>(
+                                            model_weights_data->data()),
+                                        model_weights_data->length(),
+                                        input_names,
+                                        output_names,
+                                        config,
+                                        &engine);
+#endif
+        } while (create_engine_status != MaceStatus::MACE_SUCCESS);
+      } else {
+        int64_t t4 = NowMicros();
+        warmup_millis = (t4 - t3) / 1000.0;
+        LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
+        break;
+      }
+    }
+
+    double model_run_millis = -1;
+    benchmark::OpStat op_stat;
+    if (FLAGS_round > 0) {
+      LOG(INFO) << "Run model";
+      int64_t total_run_duration = 0;
+      for (int i = 0; i < FLAGS_round; ++i) {
+        std::unique_ptr<port::Logger> info_log;
+        std::unique_ptr<port::MallocLogger> malloc_logger;
+        if (FLAGS_malloc_check_cycle >= 1
+            && i % FLAGS_malloc_check_cycle == 0) {
+          info_log = LOG_PTR(INFO);
+          malloc_logger = port::Env::Default()->NewMallocLogger(
+              info_log.get(), MakeString(i));
+        }
+        MaceStatus run_status;
+        RunMetadata metadata;
+        RunMetadata *metadata_ptr = nullptr;
+        if (FLAGS_benchmark) {
+          metadata_ptr = &metadata;
+        }
+
+        while (true) {
+          int64_t t0 = NowMicros();
+          run_status = engine->Run(inputs, &outputs, metadata_ptr);
+          if (run_status != MaceStatus::MACE_SUCCESS) {
+            LOG(ERROR) << "Mace run model runtime error, retry ... errcode: "
+                       << run_status.information();
+            do {
+#ifdef MODEL_GRAPH_FORMAT_CODE
+              create_engine_status =
+                CreateMaceEngineFromCode(
+                    model_name,
                     reinterpret_cast<const unsigned char *>(
                       model_weights_data->data()),
                     model_weights_data->length(),
@@ -401,46 +454,60 @@ bool RunModel(const std::string &model_name,
                     output_names,
                     config,
                     &engine);
+#else
+              create_engine_status =
+                  CreateMaceEngineFromProto(
+                      reinterpret_cast<const unsigned char *>(
+                          model_graph_data->data()),
+                      model_graph_data->length(),
+                      reinterpret_cast<const unsigned char *>(
+                          model_weights_data->data()),
+                      model_weights_data->length(),
+                      input_names,
+                      output_names,
+                      config,
+                      &engine);
 #endif
-          } while (create_engine_status != MaceStatus::MACE_SUCCESS);
-        } else {
-          int64_t t1 = NowMicros();
-          total_run_duration += (t1 - t0);
-          if (FLAGS_benchmark) {
-            op_stat.StatMetadata(metadata);
+            } while (create_engine_status != MaceStatus::MACE_SUCCESS);
+          } else {
+            int64_t t1 = NowMicros();
+            total_run_duration += (t1 - t0);
+            if (FLAGS_benchmark) {
+              op_stat.StatMetadata(metadata);
+            }
+            break;
           }
-          break;
         }
       }
+      model_run_millis = total_run_duration / 1000.0 / FLAGS_round;
+      LOG(INFO) << "Average latency: " << model_run_millis << " ms";
     }
-    model_run_millis = total_run_duration / 1000.0 / FLAGS_round;
-    LOG(INFO) << "Average latency: " << model_run_millis << " ms";
-  }
 
-  for (size_t i = 0; i < output_count; ++i) {
-    std::string output_name =
-        FLAGS_output_file + "_" + FormatName(output_names[i]);
-    std::ofstream out_file(output_name, std::ios::binary);
-    // only support float and int32
-    int64_t output_size =
-        std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 4,
-                        std::multiplies<int64_t>());
-    out_file.write(
-        outputs[output_names[i]].data<char>().get(), output_size);
-    out_file.flush();
-    out_file.close();
-    LOG(INFO) << "Write output file " << output_name << " with size "
-              << output_size << " done.";
-  }
+    for (size_t i = 0; i < output_count; ++i) {
+      std::string output_name =
+          FLAGS_output_file + "_" + FormatName(output_names[i]);
+      std::ofstream out_file(output_name, std::ios::binary);
+      // only support float and int32
+      int64_t output_size =
+          std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 4,
+                          std::multiplies<int64_t>());
+      out_file.write(
+          outputs[output_names[i]].data<char>().get(), output_size);
+      out_file.flush();
+      out_file.close();
+      LOG(INFO) << "Write output file " << output_name << " with size "
+                << output_size << " done.";
+    }
 
-  // Metrics reporting tools depends on the format, keep in consistent
-  printf("========================================================\n");
-  printf("     capability(CPU)        init      warmup     run_avg\n");
-  printf("========================================================\n");
-  printf("time %15.3f %11.3f %11.3f %11.3f\n",
-         cpu_capability, init_millis, warmup_millis, model_run_millis);
-  if (FLAGS_benchmark) {
-    op_stat.PrintStat();
+    // Metrics reporting tools depends on the format, keep in consistent
+    printf("========================================================\n");
+    printf("     capability(CPU)        init      warmup     run_avg\n");
+    printf("========================================================\n");
+    printf("time %15.3f %11.3f %11.3f %11.3f\n",
+           cpu_capability, init_millis, warmup_millis, model_run_millis);
+    if (FLAGS_benchmark) {
+      op_stat.PrintStat();
+    }
   }
 
   return true;
@@ -514,10 +581,12 @@ int Main(int argc, char **argv) {
     output_data_formats[i] = ParseDataFormat(raw_output_data_formats[i]);
   }
 
-
-  // get cpu capability
-  Capability cpu_capability = GetCapability(DeviceType::CPU);
-  float cpu_float32_performance = cpu_capability.float32_performance.exec_time;
+  float cpu_float32_performance = 0.0f;
+  if (FLAGS_input_dir.empty()) {
+    // get cpu capability
+    Capability cpu_capability = GetCapability(DeviceType::CPU);
+    cpu_float32_performance = cpu_capability.float32_performance.exec_time;
+  }
 
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
