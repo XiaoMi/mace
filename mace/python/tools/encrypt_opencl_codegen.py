@@ -55,7 +55,8 @@ def create_output_dir(dir_path):
 
 def write_cl_encrypted_kernel_to_file(
         encrypted_code_maps, template_path, output_path):
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
+    cwd = os.path.dirname(__file__)
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(cwd))
     cl_encrypted_kernel = env.get_template(template_path).render(
         tag='codegen',
         maps=encrypted_code_maps,

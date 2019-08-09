@@ -16,28 +16,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import re
 import os
-import yaml
+from utils import device
 
+cwd = os.path.dirname(__file__)
 
-def sanitize_load(s):
-    # do not let yaml parse ON/OFF to boolean
-    for w in ["ON", "OFF", "on", "off"]:
-        s = re.sub(r":\s+" + w, r": '" + w + "'", s)
+# TODO: Remove bazel deps
+device.execute("bazel build //mace/proto:mace_py")
+device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
 
-    # sub ${} to env value
-    s = re.sub(r"\${(\w+)}", lambda x: os.environ[x.group(1)], s)
-    return yaml.load(s)
-
-
-def parse(path):
-    with open(path) as f:
-        config = sanitize_load(f.read())
-
-    return config
-
-
-def parse_device_info(path):
-    conf = parse(path)
-    return conf["devices"]
+device.execute("bazel build //third_party/caffe:caffe_py")
+device.execute("cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)

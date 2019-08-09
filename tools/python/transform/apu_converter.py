@@ -17,19 +17,18 @@ import numpy as np
 from enum import Enum
 from operator import mul
 
-from mace.proto import mace_pb2
-from mace.python.tools.converter_tool import base_converter
-from mace.python.tools.converter_tool.base_converter import ConverterUtil
-from mace.python.tools.converter_tool.base_converter import EltwiseType
-from mace.python.tools.converter_tool.base_converter import MaceKeyword
-from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import PaddingMode
-from mace.python.tools.converter_tool.base_converter import PoolingType
-from mace.python.tools.converter_tool.base_converter import ReduceType
-from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FrameworkType
-from mace.python.tools.convert_util import mace_check
-from mace.python.tools import graph_util
+from py_proto import mace_pb2
+from transform import base_converter
+from transform.base_converter import ConverterUtil
+from transform.base_converter import EltwiseType
+from transform.base_converter import MaceKeyword
+from transform.base_converter import MaceOp
+from transform.base_converter import PaddingMode
+from transform.base_converter import PoolingType
+from transform.base_converter import ReduceType
+from transform.base_converter import DataFormat
+from transform.base_converter import FrameworkType
+from utils.util import mace_check
 
 
 ApuSupportedOps = [

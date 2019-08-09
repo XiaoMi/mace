@@ -18,22 +18,22 @@ import re
 import numpy as np
 import six
 
-from mace.proto import mace_pb2
-from mace.python.tools.converter_tool import base_converter
-from mace.python.tools.converter_tool.base_converter import ConverterUtil
-from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import DeviceType
-from mace.python.tools.converter_tool.base_converter import EltwiseType
-from mace.python.tools.converter_tool.base_converter import FrameworkType
-from mace.python.tools.converter_tool.base_converter import MaceKeyword
-from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import MaceFixedDataFormatOps  # noqa
-from mace.python.tools.converter_tool.base_converter import MaceTransposableDataFormatOps  # noqa
-from mace.python.tools.converter_tool.base_converter import PaddingMode
-from mace.python.tools.converter_tool.base_converter import ReduceType
-from mace.python.tools.converter_tool.base_converter import TransformerRule
-from mace.python.tools.convert_util import mace_check
-from mace.python.tools.quantization import quantize_util
+from py_proto import mace_pb2
+from transform import base_converter
+from transform.base_converter import ConverterUtil
+from transform.base_converter import DataFormat
+from transform.base_converter import DeviceType
+from transform.base_converter import EltwiseType
+from transform.base_converter import FrameworkType
+from transform.base_converter import MaceKeyword
+from transform.base_converter import MaceOp
+from transform.base_converter import MaceFixedDataFormatOps  # noqa
+from transform.base_converter import MaceTransposableDataFormatOps  # noqa
+from transform.base_converter import PaddingMode
+from transform.base_converter import ReduceType
+from transform.base_converter import TransformerRule
+from quantize import quantize_util
+from utils.util import mace_check
 
 
 class Transformer(base_converter.ConverterInterface):
@@ -1309,12 +1309,27 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def update_float_op_data_type(self):
-        if self._option.quantize:
-            return
-
         print("update op with float data type")
         net = self._model
         data_type = self._option.data_type
+        net.data_type = data_type
+
+        for tensor in net.tensors:
+            if tensor.data_type == mace_pb2.DT_FLOAT:
+                tensor.data_type = data_type
+
+            if tensor.data_type == mace_pb2.DT_FLOAT \
+                    or tensor.data_type == mace_pb2.DT_HALF \
+                    or tensor.data_type == mace_pb2.DT_FLOAT16:
+                tensor.data_size = len(tensor.float_data)
+            elif tensor.data_type == mace_pb2.DT_INT32:
+                tensor.data_size = len(tensor.int32_data)
+            elif tensor.data_type == mace_pb2.DT_UINT8:
+                tensor.data_size = len(tensor.int32_data)
+
+        if self._option.quantize:
+            return
+
         for op in net.op:
             data_type_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_op_data_type_str)
@@ -1732,6 +1747,8 @@ class Transformer(base_converter.ConverterInterface):
                 self._quantize_activation_info[op.input[0]] = quantize_info
                 # for add -> fakequant pattern
                 self._quantize_activation_info[op.output[0]] = quantize_info
+
+                print(op.input[0], op.output[0])
                 op.type = MaceOp.Identity.name
 
         return False
@@ -1857,7 +1874,8 @@ class Transformer(base_converter.ConverterInterface):
                     self.copy_quantize_info(
                         op, self._quantize_activation_info[new_input_name])
                 else:
-                    self.copy_quantize_info(op, producer_op.quantize_info[0])
+                    self.copy_quantize_info(op,
+                                            producer_op.quantize_info[0])
                 self._quantize_activation_info[op.output[0]] = \
                     op.quantize_info[0]
             elif (op.type == MaceOp.Concat.name

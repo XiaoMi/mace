@@ -29,8 +29,9 @@ def generate_opencl_code(binary_file_name, load_func_name, size_func_name,
         with open(binary_file_name, 'rb') as f:
             binary_array = np.fromfile(f, dtype=np.uint8)
 
+    cwd = os.path.dirname(__file__)
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(sys.path[0]))
+        loader=jinja2.FileSystemLoader(cwd))
     content = env.get_template('file_binary.cc.jinja2').render(
         data=binary_array,
         data_size=len(binary_array),

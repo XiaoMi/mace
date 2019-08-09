@@ -166,10 +166,5 @@ const std::string ModelBuildTime() {
   return {{ build_time|tojson }};
 }
 
-const std::string ModelBuildOptions() {
-  return {{ "obfuscate: {}, embed_model_data: {}, winograd: {}"
-        .format(obfuscate, embed_model_data, winograd_conv)|tojson }};
-}
-
 }  // namespace {{tag}}
 }  // namespace mace

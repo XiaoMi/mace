@@ -22,7 +22,7 @@
 namespace mace {
 namespace {{tag}} {
 
-void CreateTensor{{tensor_info.id}}(mace::ConstTensor *const_tensor) {
+void CreateTensor{{tensor_id}}(mace::ConstTensor *const_tensor) {
   MACE_LATENCY_LOGGER(2, "Create tensor {{ tensor.name }}");
   const_tensor->set_name({{ tensor.name|tojson }});
   const_tensor->set_offset({{ tensor.offset }});
@@ -30,7 +30,7 @@ void CreateTensor{{tensor_info.id}}(mace::ConstTensor *const_tensor) {
   {% for dim in tensor.dims %}
   const_tensor->add_dims({{ dim }});
   {% endfor %}
-  const_tensor->set_data_type(static_cast<DataType>({{ tensor_info.data_type }}));
+  const_tensor->set_data_type(static_cast<DataType>({{ tensor.data_type }}));
   const_tensor->set_node_id({{ tensor.node_id }});
   const_tensor->set_scale({{ tensor.scale }});
   const_tensor->set_zero_point({{ tensor.zero_point }});

@@ -18,12 +18,12 @@ import math
 import numpy as np
 import six
 
-from mace.python.tools.converter_tool.transformer import Transformer
-from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import MaceKeyword
-from mace.python.tools.converter_tool.base_converter import ConverterUtil
-from mace.python.tools.convert_util import mace_check
+from transform.transformer import Transformer
+from transform.base_converter import DataFormat
+from transform.base_converter import MaceOp
+from transform.base_converter import MaceKeyword
+from transform.base_converter import ConverterUtil
+from utils.util import mace_check
 
 
 class ShapeInference(object):

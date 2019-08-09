@@ -9,8 +9,8 @@ load("//mace:mace.bzl", "encrypt_opencl_kernel_genrule", "mace_version_genrule")
 
 cc_library(
     name = "generated_models",
-    srcs = glob(["models/*/*.cc"]),
-    hdrs = glob(["models/*/*.h"]),
+    srcs = glob(["models/**/*.cc"]),
+    hdrs = glob(["models/**/*.h"]),
     copts = [
         "-Werror",
         "-Wextra",
