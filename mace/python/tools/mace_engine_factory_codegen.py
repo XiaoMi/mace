@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import os
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -20,11 +21,10 @@ from jinja2 import Environment, FileSystemLoader
 FLAGS = None
 
 
-def gen_mace_engine_factory(model_tags, template_dir,
-                            embed_model_data, output_dir):
-    # Create the jinja2 environment.
+def gen_mace_engine_factory(model_tags, embed_model_data, output_dir):
+    cwd = os.path.dirname(__file__)
     j2_env = Environment(
-        loader=FileSystemLoader(template_dir), trim_blocks=True)
+        loader=FileSystemLoader(cwd), trim_blocks=True)
     # generate mace_run BUILD file
     template_name = 'mace_engine_factory.h.jinja2'
     model_tags = list(model_tags)

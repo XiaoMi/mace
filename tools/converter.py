@@ -12,20 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
 import glob
 import sh
 import sys
 import time
 import yaml
-
-from enum import Enum
-import six
-
 import sh_commands
+from enum import Enum
 
+sys.path.insert(0, "tools/python")  # noqa
 from common import *
 from device import DeviceWrapper, DeviceManager
+from utils import config_parser
+import convert
+import encrypt
 
 ################################
 # set environment
@@ -711,111 +716,6 @@ def print_configuration(configs):
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
 
-def convert_model(configs, cl_mem_type):
-    # Remove previous output dirs
-    library_name = configs[YAMLKeyword.library_name]
-    if not os.path.exists(BUILD_OUTPUT_DIR):
-        os.makedirs(BUILD_OUTPUT_DIR)
-    elif os.path.exists(os.path.join(BUILD_OUTPUT_DIR, library_name)):
-        sh.rm("-rf", os.path.join(BUILD_OUTPUT_DIR, library_name))
-    os.makedirs(os.path.join(BUILD_OUTPUT_DIR, library_name))
-    if not os.path.exists(BUILD_DOWNLOADS_DIR):
-        os.makedirs(BUILD_DOWNLOADS_DIR)
-
-    model_output_dir = \
-        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
-    model_header_dir = \
-        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_HEADER_DIR_PATH)
-    # clear output dir
-    if os.path.exists(model_output_dir):
-        sh.rm("-rf", model_output_dir)
-    os.makedirs(model_output_dir)
-    if os.path.exists(model_header_dir):
-        sh.rm("-rf", model_header_dir)
-
-    embed_model_data = \
-        configs[YAMLKeyword.model_data_format] == ModelFormat.code
-
-    if os.path.exists(MODEL_CODEGEN_DIR):
-        sh.rm("-rf", MODEL_CODEGEN_DIR)
-    if os.path.exists(ENGINE_CODEGEN_DIR):
-        sh.rm("-rf", ENGINE_CODEGEN_DIR)
-
-    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        os.makedirs(model_header_dir)
-        sh_commands.gen_mace_engine_factory_source(
-            configs[YAMLKeyword.models].keys(),
-            embed_model_data)
-        sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
-              model_header_dir)
-
-    for model_name in configs[YAMLKeyword.models]:
-        MaceLogger.header(
-            StringFormatter.block("Convert %s model" % model_name))
-        model_config = configs[YAMLKeyword.models][model_name]
-        runtime = model_config[YAMLKeyword.runtime]
-        if cl_mem_type:
-            model_config[YAMLKeyword.cl_mem_type] = cl_mem_type
-        else:
-            model_config[YAMLKeyword.cl_mem_type] = "image"
-
-        data_type = model_config[YAMLKeyword.data_type]
-        # TODO(liuqi): support multiple subgraphs
-        subgraphs = model_config[YAMLKeyword.subgraphs]
-
-        model_codegen_dir = "%s/%s" % (MODEL_CODEGEN_DIR, model_name)
-        sh_commands.gen_model_code(
-            model_codegen_dir,
-            model_config[YAMLKeyword.platform],
-            model_config[YAMLKeyword.model_file_path],
-            model_config[YAMLKeyword.weight_file_path],
-            model_config[YAMLKeyword.model_sha256_checksum],
-            model_config[YAMLKeyword.weight_sha256_checksum],
-            ",".join(subgraphs[0][YAMLKeyword.input_tensors]),
-            ",".join(subgraphs[0][YAMLKeyword.input_data_types]),
-            ",".join(subgraphs[0][YAMLKeyword.input_data_formats]),
-            ",".join(subgraphs[0][YAMLKeyword.output_tensors]),
-            ",".join(subgraphs[0][YAMLKeyword.output_data_types]),
-            ",".join(subgraphs[0][YAMLKeyword.output_data_formats]),
-            ",".join(subgraphs[0][YAMLKeyword.check_tensors]),
-            runtime,
-            model_name,
-            ":".join(subgraphs[0][YAMLKeyword.input_shapes]),
-            ":".join(subgraphs[0][YAMLKeyword.input_ranges]),
-            ":".join(subgraphs[0][YAMLKeyword.output_shapes]),
-            ":".join(subgraphs[0][YAMLKeyword.check_shapes]),
-            model_config[YAMLKeyword.nnlib_graph_mode],
-            embed_model_data,
-            model_config[YAMLKeyword.winograd],
-            model_config[YAMLKeyword.quantize],
-            model_config[YAMLKeyword.quantize_large_weights],
-            model_config[YAMLKeyword.quantize_range_file],
-            model_config[YAMLKeyword.change_concat_ranges],
-            model_config[YAMLKeyword.obfuscate],
-            configs[YAMLKeyword.model_graph_format],
-            data_type,
-            model_config[YAMLKeyword.cl_mem_type],
-            ",".join(model_config.get(YAMLKeyword.graph_optimize_options, [])))
-
-        if configs[YAMLKeyword.model_graph_format] == ModelFormat.file:
-            sh.mv("-f",
-                  '%s/%s.pb' % (model_codegen_dir, model_name),
-                  model_output_dir)
-            sh.mv("-f",
-                  '%s/%s.data' % (model_codegen_dir, model_name),
-                  model_output_dir)
-        else:
-            if not embed_model_data:
-                sh.mv("-f",
-                      '%s/%s.data' % (model_codegen_dir, model_name),
-                      model_output_dir)
-            sh.cp("-f", glob.glob("mace/codegen/models/*/*.h"),
-                  model_header_dir)
-
-        MaceLogger.summary(
-            StringFormatter.block("Model %s converted" % model_name))
-
-
 def build_model_lib(configs, address_sanitizer, debug_mode):
     MaceLogger.header(StringFormatter.block("Building model library"))
 
@@ -863,13 +763,85 @@ def print_library_summary(configs):
 
 
 def convert_func(flags):
-    configs = format_model_config(flags)
+    configs = config_parser.parse(flags.config)
+    library_name = configs[YAMLKeyword.library_name]
+    if not os.path.exists(BUILD_OUTPUT_DIR):
+        os.makedirs(BUILD_OUTPUT_DIR)
+    elif os.path.exists(os.path.join(BUILD_OUTPUT_DIR, library_name)):
+        sh.rm("-rf", os.path.join(BUILD_OUTPUT_DIR, library_name))
+    os.makedirs(os.path.join(BUILD_OUTPUT_DIR, library_name))
+    if not os.path.exists(BUILD_DOWNLOADS_DIR):
+        os.makedirs(BUILD_DOWNLOADS_DIR)
 
-    print_configuration(configs)
+    model_output_dir = \
+        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
+    model_header_dir = \
+        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_HEADER_DIR_PATH)
+    # clear output dir
+    if os.path.exists(model_output_dir):
+        sh.rm("-rf", model_output_dir)
+    os.makedirs(model_output_dir)
+    if os.path.exists(model_header_dir):
+        sh.rm("-rf", model_header_dir)
 
-    convert_model(configs, flags.cl_mem_type)
+    if os.path.exists(MODEL_CODEGEN_DIR):
+        sh.rm("-rf", MODEL_CODEGEN_DIR)
+    if os.path.exists(ENGINE_CODEGEN_DIR):
+        sh.rm("-rf", ENGINE_CODEGEN_DIR)
 
-    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+    if flags.model_data_format:
+        model_data_format = flags.model_data_format
+    else:
+        model_data_format = configs.get(YAMLKeyword.model_data_format,
+                                        "file")
+    embed_model_data = model_data_format == ModelFormat.code
+
+    if flags.model_graph_format:
+        model_graph_format = flags.model_graph_format
+    else:
+        model_graph_format = configs.get(YAMLKeyword.model_graph_format,
+                                         "file")
+    if model_graph_format == ModelFormat.code:
+        os.makedirs(model_header_dir)
+        sh_commands.gen_mace_engine_factory_source(
+            configs[YAMLKeyword.models].keys(),
+            embed_model_data)
+        sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
+              model_header_dir)
+
+    convert.convert(configs, MODEL_CODEGEN_DIR)
+
+    for model_name, model_config in configs[YAMLKeyword.models].items():
+        model_codegen_dir = "%s/%s" % (MODEL_CODEGEN_DIR, model_name)
+        encrypt.encrypt(model_name,
+                        "%s/%s.pb" % (model_codegen_dir, model_name),
+                        "%s/%s.data" % (model_codegen_dir, model_name),
+                        model_config[YAMLKeyword.runtime],
+                        model_codegen_dir,
+                        bool(model_config[YAMLKeyword.obfuscate]))
+
+        if model_graph_format == ModelFormat.file:
+            sh.mv("-f",
+                  '%s/file/%s.pb' % (model_codegen_dir, model_name),
+                  model_output_dir)
+            sh.mv("-f",
+                  '%s/file/%s.data' % (model_codegen_dir, model_name),
+                  model_output_dir)
+            sh.rm("-rf", '%s/code' % model_codegen_dir)
+        else:
+            if not embed_model_data:
+                sh.mv("-f",
+                      '%s/file/%s.data' % (model_codegen_dir, model_name),
+                      model_output_dir)
+                sh.rm('%s/code/tensor_data.cc' % model_codegen_dir)
+
+            sh.cp("-f", glob.glob("mace/codegen/models/*/code/*.h"),
+                  model_header_dir)
+
+        MaceLogger.summary(
+            StringFormatter.block("Model %s converted" % model_name))
+
+    if model_graph_format == ModelFormat.code:
         build_model_lib(configs, flags.address_sanitizer, flags.debug_mode)
 
     print_library_summary(configs)
@@ -1047,11 +1019,6 @@ def parse_args():
         'convert',
         parents=[all_type_parent_parser, convert_run_parent_parser],
         help='convert to mace model (file or code)')
-    convert.add_argument(
-        "--cl_mem_type",
-        type=str,
-        default=None,
-        help="Which type of OpenCL memory type to use [image | buffer].")
     convert.set_defaults(func=convert_func)
 
     run = subparsers.add_parser(

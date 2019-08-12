@@ -368,7 +368,6 @@ def gen_mace_engine_factory_source(model_tags,
     sh.mkdir("-p", codegen_tools_dir)
     gen_mace_engine_factory(
         model_tags,
-        "mace/python/tools",
         embed_model_data,
         codegen_tools_dir)
     six.print_("Generate mace engine creator source done!\n")

@@ -1,3 +1,4 @@
+import os
 import json
 import numpy as np
 
@@ -19,8 +20,8 @@ class NPEncoder(json.JSONEncoder):
 
 
 class ModelVisualizer(object):
-    def __init__(self, model_name, proto):
-        self._output_file = "build/%s_index.html" % model_name
+    def __init__(self, model_name, proto, output_dir):
+        self._output_file = "%s/%s_index.html" % (output_dir, model_name)
         self._proto = proto
 
     def render_html(self):
@@ -82,7 +83,8 @@ class ModelVisualizer(object):
 
         json_msg = json.dumps(json_obj, cls=NPEncoder)
 
-        with open("mace/python/tools/visualization/index.html") as f:
+        cwd = os.path.dirname(__file__)
+        with open(cwd + "/index.html") as f:
             html = f.read()
             return html % json_msg
 

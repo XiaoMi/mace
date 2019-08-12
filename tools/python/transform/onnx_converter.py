@@ -17,20 +17,20 @@ import sys
 from enum import Enum
 import six
 
-from mace.proto import mace_pb2
-from mace.python.tools.converter_tool import base_converter
-from mace.python.tools.converter_tool.base_converter import PoolingType
-from mace.python.tools.converter_tool.base_converter import PaddingMode
-from mace.python.tools.converter_tool.base_converter import ActivationType
-from mace.python.tools.converter_tool.base_converter import EltwiseType
-from mace.python.tools.converter_tool.base_converter import ReduceType
-from mace.python.tools.converter_tool.base_converter import FrameworkType
-from mace.python.tools.converter_tool.base_converter import RoundMode
-from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import MaceKeyword
-from mace.python.tools.converter_tool.base_converter import ConverterUtil
-from mace.python.tools.convert_util import mace_check
+from py_proto import mace_pb2
+from transform import base_converter
+from transform.base_converter import PoolingType
+from transform.base_converter import PaddingMode
+from transform.base_converter import ActivationType
+from transform.base_converter import EltwiseType
+from transform.base_converter import ReduceType
+from transform.base_converter import FrameworkType
+from transform.base_converter import RoundMode
+from transform.base_converter import DataFormat
+from transform.base_converter import MaceOp
+from transform.base_converter import MaceKeyword
+from transform.base_converter import ConverterUtil
+from utils.util import mace_check
 
 import numpy as np
 

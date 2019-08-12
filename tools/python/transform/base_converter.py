@@ -15,7 +15,7 @@
 
 from enum import Enum
 
-from mace.proto import mace_pb2
+from py_proto import mace_pb2
 
 
 class DeviceType(Enum):

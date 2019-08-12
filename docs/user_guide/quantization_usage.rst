@@ -62,7 +62,7 @@ MACE provides tools to do statistics with following steps:
 
 	.. code:: sh
 
-		python mace/python/tools/quantization/quantize_stat.py --log_file range_log > overall_range
+		python tools/python/tools/quantize/quantize_stat.py --log_file range_log > overall_range
 
 
 	4. Convert quantized model (by setting `target_abis` to the final target abis, e.g., `armeabi-v7a`,
