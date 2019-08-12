@@ -87,15 +87,16 @@ def file_checksum(fname):
 def download_or_get_file(file,
                          sha256_checksum,
                          output_dir):
-    model_file = output_dir + "/" + sha256_checksum + ".pb"
+    filename = os.path.basename(file)
+    output_file = "%s/%s-%s.pb" % (output_dir, filename, sha256_checksum)
 
     if file.startswith("http://") or file.startswith("https://"):
-        if not os.path.exists(model_file) or file_checksum(
-                model_file) != sha256_checksum:
+        if not os.path.exists(output_file) or file_checksum(
+                output_file) != sha256_checksum:
             MaceLogger.info("Downloading file %s, please wait ..." % file)
-            urllib.urlretrieve(file, model_file)
+            urllib.urlretrieve(file, output_file)
             MaceLogger.info("Model downloaded successfully.")
     else:
-        device.execute("cp %s %s" % (file, model_file))
+        device.execute("cp %s %s" % (file, output_file))
 
-    return model_file
+    return output_file

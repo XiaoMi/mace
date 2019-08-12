@@ -140,8 +140,6 @@ quantization_tests:
       python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
       done
     - rm -rf mace-models
-  only:
-    - triggers
 
 dynamic_linking_test:
   stage: extra

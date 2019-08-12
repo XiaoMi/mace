@@ -1314,19 +1314,6 @@ class Transformer(base_converter.ConverterInterface):
         data_type = self._option.data_type
         net.data_type = data_type
 
-        for tensor in net.tensors:
-            if tensor.data_type == mace_pb2.DT_FLOAT:
-                tensor.data_type = data_type
-
-            if tensor.data_type == mace_pb2.DT_FLOAT \
-                    or tensor.data_type == mace_pb2.DT_HALF \
-                    or tensor.data_type == mace_pb2.DT_FLOAT16:
-                tensor.data_size = len(tensor.float_data)
-            elif tensor.data_type == mace_pb2.DT_INT32:
-                tensor.data_size = len(tensor.int32_data)
-            elif tensor.data_type == mace_pb2.DT_UINT8:
-                tensor.data_size = len(tensor.int32_data)
-
         if self._option.quantize:
             return
 

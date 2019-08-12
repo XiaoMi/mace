@@ -117,6 +117,12 @@ def convert(conf, output):
                 model_conf["weight_file_path"],
                 model_conf["weight_sha256_checksum"], model_output)
             model_conf["weight_file_path"] = weight_file
+        # TODO: remove the following after quantize tool is made
+        if "quantize_range_file" in model_conf:
+            range_file = util.download_or_get_file(
+                model_conf["quantize_range_file"],
+                "", model_output)
+            model_conf["quantize_range_file"] = range_file
 
         mace_model = convert_model(model_conf)
 
@@ -215,16 +221,16 @@ def convert_model(conf):
             output_node.data_format = cvt.DataFormat.NHWC
         option.add_output_node(output_node)
 
-    if "check_node" in conf:
-        check_node_names = to_list(conf["check_node"])
-        check_node_shapes = [parse_int_array_from_str(shape) for shape in
-                             to_list(conf["check_shape"])]
-        mace_check(len(check_node_names) == len(check_node_shapes),
-                   "check node count and shape count do not match.")
-        for i in range(len(check_node_names)):
+    if "check_tensors" in conf:
+        check_tensors = to_list(conf["check_tensors"])
+        check_tensors_shapes = [parse_int_array_from_str(shape) for shape in
+                                to_list(conf["check_shapes"])]
+        mace_check(len(check_tensors) == len(check_tensors_shapes),
+                   "check tensors count and shape count do not match.")
+        for i in range(len(check_tensors)):
             check_node = cvt.NodeInfo()
-            check_node.name = check_node_names[i]
-            check_node.shape = check_node_shapes[i]
+            check_node.name = check_tensors[i]
+            check_node.shape = check_tensors_shapes[i]
             option.add_check_node(check_node)
     else:
         option.check_nodes = option.output_nodes
@@ -276,18 +282,23 @@ def merge_params(net_def):
         if tensor.data_type == mace_pb2.DT_HALF:
             data = bytearray(
                 np.array(tensor.float_data).astype(np.float16).tobytes())
+            tensor.data_size = len(tensor.float_data)
         elif tensor.data_type == mace_pb2.DT_FLOAT:
             data = bytearray(
                 np.array(tensor.float_data).astype(np.float32).tobytes())
+            tensor.data_size = len(tensor.float_data)
         elif tensor.data_type == mace_pb2.DT_INT32:
             data = bytearray(
                 np.array(tensor.int32_data).astype(np.int32).tobytes())
+            tensor.data_size = len(tensor.int32_data)
         elif tensor.data_type == mace_pb2.DT_UINT8:
             data = bytearray(
                 np.array(tensor.int32_data).astype(np.uint8).tolist())
+            tensor.data_size = len(tensor.int32_data)
         elif tensor.data_type == mace_pb2.DT_FLOAT16:
             data = bytearray(
                 np.array(tensor.float_data).astype(np.float16).tobytes())
+            tensor.data_size = len(tensor.float_data)
         else:
             raise Exception('Tensor data type %s not supported' %
                             tensor.data_type)
