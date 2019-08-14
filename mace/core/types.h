@@ -64,6 +64,7 @@ MACE_MAPPING_DATA_TYPE_AND_ENUM(int32_t, DT_INT32);
 enum FrameworkType {
   TENSORFLOW = 0,
   CAFFE = 1,
+  ONNX = 2,
 };
 
 template <typename T>
