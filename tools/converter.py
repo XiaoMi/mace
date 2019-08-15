@@ -32,6 +32,8 @@ from utils import config_parser
 import convert
 import encrypt
 
+from dana.dana_util import DanaUtil
+
 ################################
 # set environment
 ################################

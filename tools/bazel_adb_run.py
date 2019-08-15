@@ -21,12 +21,14 @@
 
 import argparse
 import sys
-
 import sh_commands
 
 from common import *
-
+from dana.dana_util import DanaUtil
+from dana.dana_cli import DanaTrend
 from device import DeviceWrapper, DeviceManager
+
+TABLE_NAME = 'Ops'
 
 
 def unittest_stdout_processor(stdout, device_properties, abi):
@@ -69,7 +71,7 @@ def parse_args():
         type=str,
         default="all",
         help="SoCs (ro.board.platform from getprop) to build, "
-        "comma seperated list or all/random")
+             "comma seperated list or all/random")
     parser.add_argument(
         "--target", type=str, default="//...", help="Bazel target to build")
     parser.add_argument(
@@ -115,10 +117,44 @@ def parse_args():
     return parser.parse_known_args()
 
 
+def report_to_dana(dana_util, item_name, metric_name,
+                   device, soc, abi, value, trend):
+    serie_id = dana_util.create_serie_id_lite(
+        TABLE_NAME, "%s_%s_%s_%s_%s" % (metric_name, device,
+                                        soc, abi, item_name))
+    dana_util.report_benchmark(serie_id=serie_id, value=value, trend=trend)
+
+
+def report_run_statistics(stdouts, device, soc, abi, dana_util):
+    if stdouts is None:
+        print('report_run_statistics failed: stdouts is None.')
+        return
+    for line in stdouts.split('\n'):
+        line = line.strip()
+        parts = line.split()
+        if len(parts) == 5 and parts[0].startswith('MACE'):
+            item_name = str(parts[0])
+            report_to_dana(dana_util, item_name, 'time-ns', device, soc,
+                           abi, float(parts[1]), DanaTrend.SMALLER)
+            report_to_dana(dana_util, item_name, 'iterations', device, soc,
+                           abi, float(parts[2]), DanaTrend.HIGHER)
+            input_mbs = float(parts[3])
+            if input_mbs < sys.float_info.min:
+                input_mbs = sys.float_info.min
+            report_to_dana(dana_util, item_name, 'input-MBS', device, soc,
+                           abi, input_mbs, DanaTrend.HIGHER)
+            gmacps = float(parts[4])
+            if gmacps < sys.float_info.min:
+                gmacps = sys.float_info.min
+            report_to_dana(dana_util, item_name, 'GMACPS', device, soc,
+                           abi, gmacps, DanaTrend.HIGHER)
+
+
 def main(unused_args):
     target = FLAGS.target
     host_bin_path, bin_name = sh_commands.bazel_target_to_bin(target)
     target_abis = FLAGS.target_abis.split(',')
+    dana_util = DanaUtil()
 
     for target_abi in target_abis:
         toolchain = infer_toolchain(target_abi)
@@ -132,7 +168,7 @@ def main(unused_args):
             debug_mode=FLAGS.debug_mode)
         if FLAGS.run_target:
             target_devices = DeviceManager.list_devices(FLAGS.device_yml)
-            if FLAGS.target_socs != TargetSOCTag.all and\
+            if FLAGS.target_socs != TargetSOCTag.all and \
                     FLAGS.target_socs != TargetSOCTag.random:
                 target_socs = set(FLAGS.target_socs.split(','))
                 target_devices = \
@@ -159,6 +195,10 @@ def main(unused_args):
                     address_sanitizer=FLAGS.address_sanitizer,
                     simpleperf=FLAGS.simpleperf)
                 globals()[FLAGS.stdout_processor](stdouts, dev, target_abi)
+                report_run_statistics(stdouts=stdouts,
+                                      device=dev['device_name'],
+                                      soc=dev['target_socs'],
+                                      abi=target_abi, dana_util=dana_util)
 
 
 if __name__ == "__main__":

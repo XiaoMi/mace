@@ -25,6 +25,9 @@ import yaml
 
 import common
 from common import *
+from dana.dana_cli import DanaTrend
+from dana.dana_util import DanaUtil
+
 
 import sh_commands
 
@@ -41,6 +44,7 @@ class DeviceWrapper:
                        device_name, target_abis, target_socs, system,
                         address, username
         """
+        self._dana_util = DanaUtil()
         diff = set(device_dict.keys()) - set(YAMLKeyword.__dict__.keys())
         if len(diff) > 0:
             six.print_('Wrong key detected: ')
@@ -783,13 +787,13 @@ class DeviceWrapper:
                                     YAMLKeyword.validation_outputs_data],
                                 log_file=log_file,
                             )
-                        if flags.report and flags.round > 0:
+                        if flags.round > 0:
                             tuned = tuning and device_type == DeviceType.GPU
                             self.report_run_statistics(
                                 target_abi=target_abi,
                                 model_name=model_name,
                                 device_type=device_type,
-                                output_dir=flags.report_dir,
+                                flags=flags,
                                 tuned=tuned)
 
         if model_output_dirs:
@@ -826,7 +830,7 @@ class DeviceWrapper:
                               target_abi,
                               model_name,
                               device_type,
-                              output_dir,
+                              flags,
                               tuned):
         metrics = [0] * 3
         for line in self.stdout.split('\n'):
@@ -837,14 +841,16 @@ class DeviceWrapper:
                 metrics[1] = str(float(parts[3]))
                 metrics[2] = str(float(parts[4]))
                 break
-        report_filename = output_dir + '/report.csv'
-        if not os.path.exists(report_filename):
-            with open(report_filename, 'w') as f:
-                f.write('model_name,device_name,soc,abi,runtime,'
-                        'init(ms),warmup(ms),run_avg(ms),tuned\n')
+        if flags.report:
+            report_filename = flags.report_dir + '/report.csv'
+            if not os.path.exists(report_filename):
+                with open(report_filename, 'w') as f:
+                    f.write('model_name,device_name,soc,abi,runtime,'
+                            'init(ms),warmup(ms),run_avg(ms),tuned\n')
 
-        data_str = '{model_name},{device_name},{soc},{abi},{device_type},' \
-                   '{init},{warmup},{run_avg},{tuned}\n'.format(
+            data_str = \
+                '{model_name},{device_name},{soc},{abi},{device_type},' \
+                '{init},{warmup},{run_avg},{tuned}\n'.format(
                     model_name=model_name,
                     device_name=self.device_name,
                     soc=self.target_socs,
@@ -854,8 +860,25 @@ class DeviceWrapper:
                     warmup=metrics[1],
                     run_avg=metrics[2],
                     tuned=tuned)
-        with open(report_filename, 'a') as f:
-            f.write(data_str)
+            with open(report_filename, 'a') as f:
+                f.write(data_str)
+        self.report_to_dana(model_name, target_abi, device_type,
+                            {
+                                'init': metrics[0],
+                                'warmup': metrics[1],
+                                'run-avg': metrics[2]
+                            })
+
+    def report_to_dana(self, model_name, target_abi, device_type, metrics):
+        if not self._dana_util.service_available():
+            return
+        for (key, value) in metrics.items():
+            value = float(value)
+            self._dana_util.fast_report_benchmark(
+                table_name="Models", base_name="%s_%s" % (key, model_name),
+                device_name=self.device_name, soc=self.target_socs,
+                target_abi=target_abi, runtime=device_type,
+                value=value, trend=DanaTrend.SMALLER)
 
     def run(self,
             abi,
