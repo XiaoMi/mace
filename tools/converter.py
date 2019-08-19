@@ -820,7 +820,7 @@ def convert_func(flags):
                         "%s/%s.data" % (model_codegen_dir, model_name),
                         model_config[YAMLKeyword.runtime],
                         model_codegen_dir,
-                        bool(model_config[YAMLKeyword.obfuscate]))
+                        bool(model_config.get(YAMLKeyword.obfuscate, 1)))
 
         if model_graph_format == ModelFormat.file:
             sh.mv("-f",
