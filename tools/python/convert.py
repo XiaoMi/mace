@@ -158,7 +158,7 @@ def convert_model(conf):
 
     option = cvt.ConverterOption()
     if "graph_optimize_options" in conf:
-        option.transformer_option = conf["graph_optimize_options"].split(',')
+        option.transformer_option = (conf["graph_optimize_options"])
     option.winograd = conf.get("winograd", 0)
     option.quantize = bool(conf.get("quantize", 0))
     option.quantize_large_weights = bool(conf.get("quantize_large_weights", 0))
