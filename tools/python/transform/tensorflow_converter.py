@@ -1007,11 +1007,11 @@ class TensorflowConverter(base_converter.ConverterInterface):
             if dtype == tf.int32:
                 op.output_type.extend([mace_pb2.DT_INT32])
             elif dtype == tf.float32:
-                op.output_type.extend([self._option.data_type])
+                op.output_type.extend([mace_pb2.DT_FLOAT])
             else:
                 mace_check(False, "data type %s not supported" % dtype)
         except ValueError:
-            op.output_type.extend([self._option.data_type])
+            op.output_type.extend([mace_pb2.DT_FLOAT])
 
     def convert_argmax(self, tf_op):
         op = self.convert_general_op(tf_op)
