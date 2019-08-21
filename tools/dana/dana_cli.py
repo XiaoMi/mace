@@ -15,7 +15,13 @@
 import fcntl
 import json
 import os
-import urllib2
+
+try:
+    from urllib2 import Request as SixUrlRequest
+    from urllib2 import urlopen as SixUrlOpen
+except ImportError:
+    from urllib.request import Request as SixUrlRequest
+    from urllib.request import urlopen as SixUrlOpen
 
 DANA_HEADERS = {
     'User-Agent': 'Mozilla/5.0',
@@ -36,10 +42,10 @@ class DanaCli:
 
     def service_available(self):
         index_url = "http://%s" % self._domain
-        request = urllib2.Request(index_url)
+        request = SixUrlRequest(index_url)
         response = None
         try:
-            response = urllib2.urlopen(request).read()
+            response = SixUrlOpen(request).read()
         except Exception:
             print("Dana service is not available.")
         return (response is not None)
@@ -165,11 +171,11 @@ class DanaCli:
     def post_data(self, request_url, json_data):
         json_data = json.dumps(json_data).replace('\'', '\"')
         data = json_data.encode()
-        request = urllib2.Request(request_url,
-                                  headers=DANA_HEADERS,
-                                  data=data)
+        request = SixUrlRequest(request_url,
+                                headers=DANA_HEADERS,
+                                data=data)
         try:
-            response = urllib2.urlopen(request).read()
+            response = SixUrlOpen(request).read()
         except Exception as e:
             print("Http error, url=%s\npost_data=%s\n%s" %
                   (request_url, json_data, e))
