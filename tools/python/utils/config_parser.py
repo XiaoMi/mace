@@ -46,7 +46,7 @@ CPP_KEYWORDS = [
 def sanitize_load(s):
     # do not let yaml parse ON/OFF to boolean
     for w in ["ON", "OFF", "on", "off"]:
-        s = re.sub(r":\s+" + w, r": '" + w + "'", s)
+        s = re.sub(r":\s+" + w + "$", r": '" + w + "'", s)
 
     # sub ${} to env value
     s = re.sub(r"\${(\w+)}", lambda x: os.environ[x.group(1)], s)
