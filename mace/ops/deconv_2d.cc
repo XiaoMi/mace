@@ -270,6 +270,7 @@ void RegisterDeconv2D(OpRegistryBase *op_registry) {
                   } else {
                     MACE_NOT_IMPLEMENTED;
                   }
+                  context->set_output_mem_type(mem_type);
                   FrameworkType framework_type =
                       static_cast<FrameworkType>(
                         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
@@ -279,8 +280,9 @@ void RegisterDeconv2D(OpRegistryBase *op_registry) {
                     context->SetInputInfo(2, MemoryType::CPU_BUFFER,
                                           DataType::DT_INT32);
                   }
+                } else {
+                  context->set_output_mem_type(mem_type);
                 }
-                context->set_output_mem_type(mem_type);
               }));
 #endif  // MACE_ENABLE_OPENCL
 }
