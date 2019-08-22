@@ -134,7 +134,7 @@ def save_model_to_code(namespace, model, params, model_checksum,
     try:
         device = cvt.DeviceType[device.upper()]
     except:  # noqa
-        if device.upper == "DSP":
+        if device.upper() == "DSP":
             device = cvt.DeviceType.HEXAGON
         else:
             device = cvt.DeviceType.CPU
@@ -145,7 +145,7 @@ def save_model_to_code(namespace, model, params, model_checksum,
             end=min(start + 10, op_size),
             net=model,
             tag=namespace,
-            device=device,
+            device=device.value,
         )
         with open(output + "/op" + str(counter) + ".cc", "w") as f:
             f.write(source)

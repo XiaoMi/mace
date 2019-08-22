@@ -155,7 +155,8 @@ dynamic_linking_test:
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer
+    - python tools/converter.py convert --config=${CONF_FILE}  --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file --cl_mem_type=buffer || exit 1;
+    - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file --mace_lib_type=dynamic || exit 1;
     - rm -rf mace-models
   only:
     - triggers
