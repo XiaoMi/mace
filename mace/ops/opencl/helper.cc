@@ -96,6 +96,29 @@ std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
   return lws;
 }
 
+/**
+ * For GPUs like Arm Mali, when too many commands are added in the command
+ * queue, the UI responsiveness may be poor. This function limits the number of
+ * comands in the command queue to no more than kQueueWndSize. when
+ * opencl_commands >= kQueueWndSize, it will wait for the completion of GPU
+ * command queue's execution.
+ *
+ * If kQueueWndSize <= 0, this function does nothing.
+ */
+inline void WaitForQueueExecution(OpenCLRuntime *runtime,
+                                  const cl::Event &event) {
+  static const unsigned int kQueueWndSize =
+      runtime->tuner()->GetOpenclQueueWindowSize();
+  static thread_local unsigned int opencl_commands = 0;
+  if (kQueueWndSize > 0) {
+    opencl_commands++;
+    if (opencl_commands >= kQueueWndSize) {
+      event.wait();
+      opencl_commands = 0;
+    }
+  }
+}
+
 MaceStatus TuningOrRun3DKernel(OpenCLRuntime *runtime,
                                const cl::Kernel &kernel,
                                const std::string tuning_key,
@@ -176,6 +199,7 @@ MaceStatus TuningOrRun3DKernel(OpenCLRuntime *runtime,
             cl::NDRange(internal_gws[0], internal_gws[1], gws2),
             cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
         MACE_CL_RET_ERROR(error);
+        WaitForQueueExecution(runtime, event);
       }
     } else {
       timer->ClearTiming();
@@ -285,6 +309,7 @@ MaceStatus TuningOrRun2DKernel(OpenCLRuntime *runtime,
             cl::NDRange(internal_gws[0], gws1),
             cl::NDRange(params[0], params[1]), nullptr, &event);
         MACE_CL_RET_ERROR(error);
+        WaitForQueueExecution(runtime, event);
       }
     } else {
       timer->ClearTiming();

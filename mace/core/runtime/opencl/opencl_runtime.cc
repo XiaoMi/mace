@@ -323,7 +323,7 @@ OpenCLRuntime::OpenCLRuntime(
   cl_command_queue_properties properties = 0;
 
   const char *profiling = getenv("MACE_OPENCL_PROFILING");
-  if (IsTuning() ||
+  if (tuner_->IsTuning() ||
       (profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1')) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
     is_profiling_enabled_ = true;

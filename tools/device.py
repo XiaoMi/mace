@@ -171,6 +171,7 @@ class DeviceWrapper:
                    running_round,
                    restart_round,
                    limit_opencl_kernel_time,
+                   opencl_queue_window_size,
                    tuning,
                    out_of_range_check,
                    model_graph_format,
@@ -312,6 +313,7 @@ class DeviceWrapper:
                 "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % self.data_dir,
                 "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
                 "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
+                "MACE_OPENCL_QUEUE_WINDOW_SIZE=%s" % opencl_queue_window_size,
                 "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
                 "MACE_LOG_TENSOR_RANGE=%d" % (1 if quantize_stat else 0),
             ]
@@ -429,6 +431,8 @@ class DeviceWrapper:
             restart_round=1,
             limit_opencl_kernel_time=model_config[
                 YAMLKeyword.limit_opencl_kernel_time],
+            opencl_queue_window_size=model_config[
+                YAMLKeyword.opencl_queue_window_size],
             tuning=True,
             out_of_range_check=False,
             model_graph_format=model_graph_format,
@@ -541,6 +545,8 @@ class DeviceWrapper:
             restart_round=flags.restart_round,
             limit_opencl_kernel_time=model_config[
                 YAMLKeyword.limit_opencl_kernel_time],
+            opencl_queue_window_size=model_config[
+                YAMLKeyword.opencl_queue_window_size],
             tuning=False,
             out_of_range_check=flags.gpu_out_of_range_check,
             model_graph_format=configs[

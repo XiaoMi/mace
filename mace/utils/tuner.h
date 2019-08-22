@@ -35,10 +35,22 @@
 
 namespace mace {
 
-inline bool IsTuning() {
+constexpr const char *kOpenClWindowSize = "MACE_OPENCL_QUEUE_WINDOW_SIZE";
+
+inline bool GetTuningFromEnv() {
   std::string tuning;
   GetEnv("MACE_TUNING", &tuning);
   return tuning.size() == 1 && tuning[0] == '1';
+}
+
+inline unsigned int GetOpenclQueueWindowSizeFromEnv() {
+  std::string str_size;
+  GetEnv(kOpenClWindowSize, &str_size);
+  unsigned int window_size = 0;
+  if (str_size.size() > 0) {
+    window_size = std::stoi(str_size);
+  }
+  return window_size;
 }
 
 template <typename param_type>
@@ -46,9 +58,15 @@ class Tuner {
  public:
   explicit Tuner(const std::string tuned_param_file_path = "",
       const unsigned char *param_byte_stream = nullptr,
-      const size_t param_byte_stream_size = 0):
+      const size_t param_byte_stream_size = 0) :
       tuned_param_file_path_(tuned_param_file_path) {
     GetEnv("MACE_RUN_PARAMETER_PATH", &path_);
+    is_tuning_ = GetTuningFromEnv();
+    if (is_tuning_) {
+      unsigned int wnd_size = GetOpenclQueueWindowSizeFromEnv();
+      param_table_[kOpenClWindowSize] = {wnd_size};
+    }
+
     if (param_byte_stream != nullptr && param_byte_stream_size != 0) {
       ParseData(param_byte_stream, param_byte_stream_size);
     } else {
@@ -90,6 +108,19 @@ class Tuner {
         return func(default_param, nullptr, nullptr);
       }
     }
+  }
+
+  unsigned int GetOpenclQueueWindowSize() {
+    unsigned int window_size = 0;
+    if (!IsTuning()
+        && param_table_.find(kOpenClWindowSize) != param_table_.end()) {
+      window_size = param_table_[kOpenClWindowSize][0];
+    }
+    return window_size;
+  }
+
+  bool IsTuning() {
+    return is_tuning_;
   }
 
  private:
@@ -239,6 +270,8 @@ class Tuner {
   std::string tuned_param_file_path_;
   std::string path_;
   std::unordered_map<std::string, std::vector<param_type>> param_table_;
+  unsigned int opencl_queue_window_size_;
+  bool is_tuning_;
 };
 
 }  // namespace mace
