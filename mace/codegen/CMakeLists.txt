@@ -31,3 +31,21 @@ add_dependencies(generated_opencl_kernel opencl_kernel_src)
 
 install(TARGETS generated_version ARCHIVE DESTINATION lib)
 install(TARGETS generated_opencl_kernel ARCHIVE DESTINATION lib)
+
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cc "")
+file(GLOB CODEGEN_MODELS ${CMAKE_CURRENT_BINARY_DIR}/null.cc models/**/code/*.cc)
+
+add_library(model STATIC ${CODEGEN_MODELS})
+target_link_libraries(model PRIVATE core proto utils port)
+install(TARGETS model ARCHIVE DESTINATION lib)
+
+add_library(model_shared SHARED ${CODEGEN_MODELS})
+target_link_libraries(model_shared PRIVATE core proto utils port)
+if(NOT APPLE)
+    set_target_properties(model_shared PROPERTIES LINK_FLAGS
+            "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/model_version_script.lds")
+endif(NOT APPLE)
+install(TARGETS model_shared DESTINATION lib)
+
+file(GLOB MODEL_HEADERS engine/mace_engine_factory.h models/**/code/*.h)
+install(FILES ${MODEL_HEADERS} DESTINATION include/models)

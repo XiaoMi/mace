@@ -15,6 +15,7 @@ option(MACE_ENABLE_BENCHMARKS  "whether to build c++ micro benchmarks"      OFF)
 option(MACE_ENABLE_OPT_SIZE    "whether to build with optimized binary size" ON)
 option(MACE_ENABLE_OBFUSCATE   "whether to build with code obfuscation"      ON)
 option(MACE_ENABLE_CCACHE      "whether to build with ccache"                ON)
+option(MACE_ENABLE_CODE_MODE   "whether to use code mode"                   OFF)
 
 message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
@@ -40,11 +41,15 @@ if(MACE_ENABLE_OPT_SIZE)
   set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -fno-rtti -fno-exceptions -DGOOGLE_PROTOBUF_NO_RTTI -DPROTOBUF_USE_EXCEPTIONS=0")
 endif(MACE_ENABLE_OPT_SIZE)
 
+if(MACE_ENABLE_CODE_MODE)
+  set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -DMODEL_GRAPH_FORMAT_CODE")
+endif(MACE_ENABLE_CODE_MODE)
+
 # flags apply only to mace code (third_party excluded)
 # -Wno-error=unused-command-line-argument: official Android toolchain contains
 # unsupported argument and will break ccache preprocessor
 if(ANDROID)
-  set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror -Wno-error=unused-command-line-argument")
+  set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror -Wno-error=unused-command-line-argument -Wno-error=unevaluated-expression -Wno-error=tautological-compare")
 else(ANDROID)
   set(MACE_CODE_CC_FLAGS "${MACE_CODE_CC_FLAGS} -Wall -Werror")
 endif(ANDROID)

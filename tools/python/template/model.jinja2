@@ -133,7 +133,7 @@ void CreateTensors(NetDef *net_def) {
 
 namespace {{tag}} {
 
-const std::shared_ptr<NetDef> CreateNet() {
+MACE_API const std::shared_ptr<NetDef> CreateNet() {
   MACE_LATENCY_LOGGER(1, "Create net {{ net.name }}");
 
   std::shared_ptr<NetDef> net_def(new NetDef());
@@ -154,15 +154,15 @@ const std::shared_ptr<NetDef> CreateNet() {
   return net_def;
 }
 
-const std::string ModelName() {
+MACE_API const std::string ModelName() {
   return {{ tag|tojson }};
 }
 
-const std::string ModelChecksum() {
+MACE_API const std::string ModelChecksum() {
   return {{ checksum|tojson }};
 }
 
-const std::string ModelBuildTime() {
+MACE_API const std::string ModelBuildTime() {
   return {{ build_time|tojson }};
 }
 

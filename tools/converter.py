@@ -224,7 +224,7 @@ def get_opencl_mode(configs):
 
 def get_quantize_mode(configs):
     for model_name in configs[YAMLKeyword.models]:
-        quantize =\
+        quantize = \
             configs[YAMLKeyword.models][model_name].get(
                 YAMLKeyword.quantize, 0)
         if quantize == 1:
@@ -297,8 +297,8 @@ def get_model_files(model_config, model_output_dir):
 
     if sha256_checksum(model_file) != model_sha256_checksum:
         error_info = model_file_path + \
-            " model file sha256checksum not match " + \
-            model_sha256_checksum
+                     " model file sha256checksum not match " + \
+                     model_sha256_checksum
         MaceLogger.error(ModuleName.MODEL_CONVERTER, error_info)
 
     if weight_file_path.startswith("http://") or \
@@ -316,8 +316,8 @@ def get_model_files(model_config, model_output_dir):
     if weight_file:
         if sha256_checksum(weight_file) != weight_sha256_checksum:
             error_info = weight_file_path + \
-                " weight file sha256checksum not match " + \
-                weight_sha256_checksum
+                         " weight file sha256checksum not match " + \
+                         weight_sha256_checksum
             MaceLogger.error(ModuleName.MODEL_CONVERTER, error_info)
 
     if quantize_range_file_path.startswith("http://") or \
@@ -547,7 +547,7 @@ def format_model_config(flags):
                                               [])
             if input_data_formats:
                 if not isinstance(input_data_formats, list):
-                    subgraph[YAMLKeyword.input_data_formats] =\
+                    subgraph[YAMLKeyword.input_data_formats] = \
                         [input_data_formats] * input_size
                 else:
                     mace_check(len(input_data_formats)
@@ -555,7 +555,7 @@ def format_model_config(flags):
                                ModuleName.YAML_CONFIG,
                                "input_data_formats should match"
                                " the size of input.")
-                for input_data_format in\
+                for input_data_format in \
                         subgraph[YAMLKeyword.input_data_formats]:
                     mace_check(input_data_format in DataFormatStrs,
                                ModuleName.YAML_CONFIG,
@@ -578,14 +578,14 @@ def format_model_config(flags):
                                ModuleName.YAML_CONFIG,
                                "output_data_formats should match"
                                " the size of output")
-                for output_data_format in\
+                for output_data_format in \
                         subgraph[YAMLKeyword.output_data_formats]:
                     mace_check(output_data_format in DataFormatStrs,
                                ModuleName.YAML_CONFIG,
                                "'output_data_formats' must be in "
                                + str(DataFormatStrs))
             else:
-                subgraph[YAMLKeyword.output_data_formats] =\
+                subgraph[YAMLKeyword.output_data_formats] = \
                     [DataFormat.NHWC] * output_size
 
             validation_threshold = subgraph.get(
@@ -767,6 +767,7 @@ def print_library_summary(configs):
 
 def convert_func(flags):
     configs = config_parser.parse(flags.config)
+    print(configs)
     library_name = configs[YAMLKeyword.library_name]
     if not os.path.exists(BUILD_OUTPUT_DIR):
         os.makedirs(BUILD_OUTPUT_DIR)
@@ -817,26 +818,27 @@ def convert_func(flags):
     for model_name, model_config in configs[YAMLKeyword.models].items():
         model_codegen_dir = "%s/%s" % (MODEL_CODEGEN_DIR, model_name)
         encrypt.encrypt(model_name,
-                        "%s/%s.pb" % (model_codegen_dir, model_name),
-                        "%s/%s.data" % (model_codegen_dir, model_name),
-                        model_config[YAMLKeyword.runtime],
+                        "%s/model/%s.pb" % (model_codegen_dir, model_name),
+                        "%s/model/%s.data" % (model_codegen_dir, model_name),
+                        config_parser.parse_device_type(
+                            model_config[YAMLKeyword.runtime]),
                         model_codegen_dir,
-                        bool(model_config.get(YAMLKeyword.obfuscate, 1)))
+                        bool(model_config.get(YAMLKeyword.obfuscate, 1)),
+                        model_graph_format == "code",
+                        model_data_format == "code")
 
         if model_graph_format == ModelFormat.file:
             sh.mv("-f",
-                  '%s/file/%s.pb' % (model_codegen_dir, model_name),
+                  '%s/model/%s.pb' % (model_codegen_dir, model_name),
                   model_output_dir)
             sh.mv("-f",
-                  '%s/file/%s.data' % (model_codegen_dir, model_name),
+                  '%s/model/%s.data' % (model_codegen_dir, model_name),
                   model_output_dir)
-            sh.rm("-rf", '%s/code' % model_codegen_dir)
         else:
             if not embed_model_data:
                 sh.mv("-f",
-                      '%s/file/%s.data' % (model_codegen_dir, model_name),
+                      '%s/model/%s.data' % (model_codegen_dir, model_name),
                       model_output_dir)
-                sh.rm('%s/code/tensor_data.cc' % model_codegen_dir)
 
             sh.cp("-f", glob.glob("mace/codegen/models/*/code/*.h"),
                   model_header_dir)

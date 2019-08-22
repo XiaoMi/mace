@@ -1,6 +1,7 @@
 set(MACE_PROTO_PROTOS mace.proto)
 set(MACE_PROTO_SRCS)
 set(MACE_PROTO_HDRS)
+set(MACE_PROTO_PYTHON_DIR ${PROJECT_SOURCE_DIR}/tools/python/py_proto)
 
 foreach(proto_file ${MACE_PROTO_PROTOS})
   get_filename_component(proto_file_abs ${proto_file} ABSOLUTE)
@@ -17,10 +18,20 @@ foreach(proto_file ${MACE_PROTO_PROTOS})
       DEPENDS protoc_bin
       VERBATIM
   )
+
+  set(PROTO_GENERATED_PY_FILES ${MACE_PROTO_PYTHON_DIR}/${basename}_pb2.py)
+  add_custom_command(
+      OUTPUT ${PROTO_GENERATED_PY_FILES}
+      COMMAND ${PROTOC_BIN} --python_out ${MACE_PROTO_PYTHON_DIR} -I ${CMAKE_CURRENT_SOURCE_DIR} ${proto_file_abs}
+      COMMENT "Generating ${PROTO_GENERATED_PY_FILES} from ${proto_file}"
+      DEPENDS protoc_bin
+      VERBATIM
+  )
 endforeach()
 
-add_custom_target(mace_proto_src DEPENDS ${MACE_PROTO_SRCS}
-  COMMENT "Checking if re-generation is required" )
+add_custom_target(mace_proto_src DEPENDS ${PROTO_GENERATED_FILES}
+        COMMENT "Checking if re-generation is required")
+add_custom_target(mace_proto_py ALL DEPENDS ${PROTO_GENERATED_PY_FILES})
 
 add_library(proto ${MACE_PROTO_SRCS})
 target_link_libraries(proto libprotobuf_lite)

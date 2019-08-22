@@ -17,24 +17,8 @@ from enum import Enum
 
 from py_proto import mace_pb2
 
-
-class DeviceType(Enum):
-    CPU = 0
-    GPU = 2
-    HEXAGON = 3
-    HTA = 4
-    APU = 5
-
-
-class DataFormat(Enum):
-    NONE = 0
-    NHWC = 1
-    NCHW = 2
-    HWIO = 100
-    OIHW = 101
-    HWOI = 102
-    OHWI = 103
-    AUTO = 1000
+from utils.config_parser import DataFormat
+from utils.config_parser import DeviceType
 
 
 # SAME_LOWER: if the amount of paddings to be added is odd,
@@ -402,7 +386,7 @@ class ConverterOption(object):
         self._quantize_range_file = ""
         self._change_concat_ranges = False
         self._transformer_option = None
-        self._cl_mem_type = ""
+        self._cl_mem_type = "image"
 
     @property
     def input_nodes(self):

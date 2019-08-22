@@ -1,5 +1,5 @@
 bazel-*
-build/
+build/*
 cmake-build/
 cmake-build-debug/
 docs/_build/
