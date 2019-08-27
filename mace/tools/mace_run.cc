@@ -548,6 +548,10 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
   LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;
   LOG(INFO) << "cpu_affinity_policy: " << FLAGS_cpu_affinity_policy;
+  LOG(INFO) << "limit_opencl_kernel_time: "
+            << getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
+  LOG(INFO) << "opencl_queue_window_size: "
+            << getenv("MACE_OPENCL_QUEUE_WINDOW_SIZE");
 
   std::vector<std::string> input_shapes = Split(FLAGS_input_shape, ':');
   std::vector<std::string> output_shapes = Split(FLAGS_output_shape, ':');

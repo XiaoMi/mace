@@ -656,6 +656,7 @@ def format_model_config(flags):
                 accuracy_validation_script
 
         for key in [YAMLKeyword.limit_opencl_kernel_time,
+                    YAMLKeyword.opencl_queue_window_size,
                     YAMLKeyword.nnlib_graph_mode,
                     YAMLKeyword.obfuscate,
                     YAMLKeyword.winograd,

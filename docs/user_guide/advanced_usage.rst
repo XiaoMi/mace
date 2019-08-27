@@ -94,6 +94,8 @@ in one deployment file.
       - [optional] The format of the output tensors, one of [NONE, NHWC, NCHW]. If there is no format of the output, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
     * - limit_opencl_kernel_time
       - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default is 0.
+    * - opencl_queue_window_size
+      - [optional] Limit the max commands in OpenCL command queue to keep UI responsiveness, default is 0.
     * - obfuscate
       - [optional] Whether to obfuscate the model operator name, default to 0.
     * - winograd

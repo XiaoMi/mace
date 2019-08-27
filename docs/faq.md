@@ -55,6 +55,13 @@ Try to set `limit_opencl_kernel_time` to `1`. If still not resolved, try to
 modify the source code to use even smaller time intervals or changed to CPU
 or DSP runtime.
 
+For GPUs such as Arm Mali, sometimes even setting `limit_opencl_kernel_time` to
+a small time interval can not solve the problem. At this time, you can try to
+set `opencl_queue_window_size`, such as 16. This parameter means that the GPU
+command queue will contain only `opencl_queue_window_size` commands at most.
+You can adjust this parameter to achieve a balance between performance and UI
+response. You should not use this parameter unless you have to.
+
 Why is MACE not working on DSP?
 ------------------------------------------------------------------------------
 Running models on Hexagon DSP need a few prerequisites for DSP developers:

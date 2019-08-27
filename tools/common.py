@@ -407,6 +407,7 @@ class YAMLKeyword(object):
     input_data_formats = 'input_data_formats'
     output_data_formats = 'output_data_formats'
     limit_opencl_kernel_time = 'limit_opencl_kernel_time'
+    opencl_queue_window_size = 'opencl_queue_window_size'
     nnlib_graph_mode = 'nnlib_graph_mode'
     obfuscate = 'obfuscate'
     winograd = 'winograd'
