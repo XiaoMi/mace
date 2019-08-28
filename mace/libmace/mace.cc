@@ -226,7 +226,7 @@ MaceEngineConfig::Impl::Impl(const DeviceType device_type)
     : device_type_(device_type),
       num_threads_(-1),
       cpu_affinity_policy_(CPUAffinityPolicy::AFFINITY_NONE),
-      gpu_context_(new GPUContext),
+      gpu_context_(nullptr),
       gpu_priority_hint_(GPUPriorityHint::PRIORITY_LOW),
       gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {}
 
