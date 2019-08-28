@@ -224,7 +224,7 @@ class HexagonConverter(base_converter.ConverterInterface):
                 pad_tensor = self._model.tensors.add()
                 pad_tensor.name = op.name + '/pad:0'
                 pad_tensor.data_type = mace_pb2.DT_INT32
-                pad_tensor.dims.extend([1, 1, len(pad_arg.ints) / 2, 2])
+                pad_tensor.dims.extend([1, 1, len(pad_arg.ints) // 2, 2])
                 pad_tensor.int32_data.extend(pad_arg.ints)
                 op.input.extend([strides_tensor.name, pad_tensor.name])
                 self.add_min_max_const_node(op, op.input[0])
