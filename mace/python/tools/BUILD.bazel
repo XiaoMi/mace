@@ -4,15 +4,3 @@ py_binary(
     srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
 )
-
-py_binary(
-    name = "layers_validate",
-    srcs = [
-        "layers_validate.py",
-    ],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":converter_lib",
-        ":model_saver_lib",
-    ],
-)

@@ -18,13 +18,13 @@ import os
 import sys
 import yaml
 
-from mace.proto import mace_pb2
-from mace.python.tools.converter_tool.base_converter import ConverterUtil
-from mace.python.tools.converter_tool.base_converter import MaceKeyword
-from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.hexagon_converter import HexagonOp
-from mace.python.tools.convert_util import mace_check
-from mace.python.tools.model_saver import save_model_to_proto
+sys.path.insert(0, "tools/python")  # noqa
+from py_proto import mace_pb2
+from transform.base_converter import ConverterUtil
+from transform.base_converter import MaceKeyword
+from transform.base_converter import MaceOp
+from transform.hexagon_converter import HexagonOp
+from utils.util import mace_check
 
 
 def normalize_op_name(name):
@@ -52,13 +52,22 @@ def handle_index(start, end, layers):
     return start_index, end_index
 
 
-def main(unused_args):
-    mace_check(os.path.isfile(FLAGS.model_file),
-               "Input graph file '" + FLAGS.model_file + "' does not exist!")
-    mace_check(os.path.isdir(FLAGS.output_dir),
-               "Output directory '" + FLAGS.output_dir + "' does not exist!")
+def save_model_to_proto(net_def, model_name, output_dir):
+    output_path = output_dir + "/" + model_name + ".pb"
+    with open(output_path, "wb") as f:
+        f.write(net_def.SerializeToString())
+    with open(output_path + "_txt", "w") as f:
+        f.write(str(net_def))
+    return output_path
+
+
+def convert(model_file, output_dir, layers):
+    mace_check(os.path.isfile(model_file),
+               "Input graph file '" + model_file + "' does not exist!")
+    mace_check(os.path.isdir(output_dir),
+               "Output directory '" + output_dir + "' does not exist!")
     net_def = mace_pb2.NetDef()
-    with open(FLAGS.model_file, "rb") as f:
+    with open(model_file, "rb") as f:
         net_def.ParseFromString(f.read())
 
     quantize_flag = ConverterUtil.get_arg(
@@ -89,7 +98,7 @@ def main(unused_args):
     # omit original output
     end_index -= 1
 
-    index, end_index = handle_index(index, end_index, FLAGS.layers)
+    index, end_index = handle_index(index, end_index, layers)
 
     data_format = net_def.output_info[0].data_format
     output_configs = {"subgraphs": []}
@@ -163,13 +172,13 @@ def main(unused_args):
                     del dequantize_op.node_input[3:]
 
         model_path = save_model_to_proto(net, normalize_op_name(op_name),
-                                         FLAGS.output_dir)
+                                         output_dir)
         output_config = {"model_file_path": str(model_path),
                          "output_tensors": output_tensors,
                          "output_shapes": output_shapes}
         output_configs["subgraphs"].append(output_config)
 
-    output_configs_path = FLAGS.output_dir + "outputs.yml"
+    output_configs_path = output_dir + "outputs.yml"
     with open(output_configs_path, "w") as f:
         yaml.dump(output_configs, f, default_flow_style=False)
 
@@ -197,5 +206,5 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    FLAGS, _ = parse_args()
+    convert(FLAGS.model_file, FLAGS.output_dir, FLAGS.layers)

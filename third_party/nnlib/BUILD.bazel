@@ -6,8 +6,8 @@ exports_files(["license.txt"])
 
 load(
     "//mace:mace.bzl",
-    "if_android_armv7",
     "if_android_arm64",
+    "if_android_armv7",
 )
 
 cc_library(
@@ -15,6 +15,7 @@ cc_library(
     srcs = if_android_armv7([
         "armeabi-v7a/libhexagon_controller.so",
     ]) + if_android_arm64([
+        "arm64-v8a/libcdsprpc.so",
         "arm64-v8a/libhexagon_controller.so",
     ]),
     hdrs = [

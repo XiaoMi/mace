@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-import os
 import sys
-import socket
 import subprocess
 import time
-
-import six
 import sh
 import yaml
 
@@ -27,8 +23,7 @@ import common
 from common import *
 from dana.dana_cli import DanaTrend
 from dana.dana_util import DanaUtil
-
-
+import layers_validate
 import sh_commands
 
 
@@ -456,19 +451,13 @@ class DeviceWrapper:
 
     @staticmethod
     def get_layers(model_dir, model_name, layers):
-        sh_commands.bazel_build_common("//mace/python/tools:layers_validate")
-
         model_file = "%s/%s.pb" % (model_dir, model_name)
         output_dir = "%s/output_models/" % model_dir
         if os.path.exists(output_dir):
             sh.rm('-rf', output_dir)
         os.makedirs(output_dir)
-        sh.python("bazel-bin/mace/python/tools/layers_validate",
-                  "-u",
-                  "--model_file=%s" % model_file,
-                  "--output_dir=%s" % output_dir,
-                  "--layers=%s" % layers,
-                  _fg=True)
+
+        layers_validate.convert(model_file, output_dir, layers)
 
         output_configs_path = output_dir + "outputs.yml"
         with open(output_configs_path) as f:
