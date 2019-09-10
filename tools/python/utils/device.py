@@ -17,13 +17,15 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import re
 import subprocess
+import random
+import tempfile
+
+from utils import util
 
 
-MACE_TOOL_QUIET_ENV = "MACE_TOOL_QUIET"
-
-
-def execute(cmd):
+def execute(cmd, verbose=True):
     print("CMD> %s" % cmd)
     p = subprocess.Popen([cmd],
                          shell=True,
@@ -31,20 +33,28 @@ def execute(cmd):
                          stderr=subprocess.STDOUT,
                          stdin=subprocess.PIPE,
                          universal_newlines=True)
-    returncode = p.poll()
+
+    if not verbose:
+        if p.wait() != 0:
+            raise Exception("errorcode: %s" % p.returncode)
+        return p.stdout.read()
+
     buf = []
-    while returncode is None:
-        line = p.stdout.readline()
-        returncode = p.poll()
-        line = line.strip()
-        if MACE_TOOL_QUIET_ENV not in os.environ:
+
+    while p.poll() is None:
+        line = p.stdout.readline().strip()
+        if verbose:
             print(line)
         buf.append(line)
 
-    p.wait()
+    for l in p.stdout:
+        line = l.strip()
+        if verbose:
+            print(line)
+        buf.append(line)
 
-    if returncode != 0:
-        raise Exception("errorcode: %s" % returncode)
+    if p.returncode != 0:
+        raise Exception("errorcode: %s" % p.returncode)
 
     return "\n".join(buf)
 
@@ -60,6 +70,12 @@ class Device(object):
         pass
 
     def pull(self, target, out_dir):
+        pass
+
+    def mkdir(self, dirname):
+        pass
+
+    def info(self):
         pass
 
 
@@ -98,6 +114,9 @@ class HostDevice(Device):
         if out_dir.strip() and out_dir != os.path.dirname(target.path):
             execute("cp -r %s %s" % (target.path, out_dir))
 
+    def mkdir(self, dirname):
+        execute("mkdir -p %s" % dirname)
+
 
 class AndroidDevice(Device):
     def __init__(self, device_id):
@@ -120,9 +139,15 @@ class AndroidDevice(Device):
         sn = self._device_id
 
         execute("adb -s %s shell mkdir -p %s" % (sn, install_dir))
-        execute("adb -s %s push %s %s" % (sn, target.path, install_dir))
+        if os.path.isdir(target.path):
+            execute("adb -s %s push %s/* %s" % (sn, target.path, install_dir),
+                    False)
+        else:
+            execute("adb -s %s push %s %s" % (sn, target.path, install_dir),
+                    False)
+
         for lib in target.libs:
-            execute("adb -s %s push %s %s" % (sn, lib, install_dir))
+            execute("adb -s %s push %s %s" % (sn, lib, install_dir), False)
 
         target.path = "%s/%s" % (install_dir, os.path.basename(target.path))
         target.libs = ["%s/%s" % (install_dir, os.path.basename(lib))
@@ -132,7 +157,17 @@ class AndroidDevice(Device):
         return target
 
     def run(self, target):
-        out = execute("adb -s %s shell %s" % (self._device_id, target))
+        tmpdirname = tempfile.mkdtemp()
+        cmd_file_path = tmpdirname + "/cmd.sh"
+        with open(cmd_file_path, "w") as cmd_file:
+            cmd_file.write(str(target))
+        target_dir = os.path.dirname(target.path)
+        execute("adb -s %s push %s %s" % (self._device_id,
+                                          cmd_file_path,
+                                          target_dir))
+
+        out = execute("adb -s %s shell sh %s" % (self._device_id,
+                                                 target_dir + "/cmd.sh"))
         # May have false positive using the following error word
         for line in out.split("\n")[:-10]:
             if ("Aborted" in line
@@ -141,7 +176,23 @@ class AndroidDevice(Device):
 
     def pull(self, target, out_dir):
         sn = self._device_id
-        execute("adb -s %s pull %s %s" % (sn, target.path, out_dir))
+        execute("adb -s %s pull %s %s" % (sn, target.path, out_dir), False)
+
+    def mkdir(self, dirname):
+        sn = self._device_id
+        execute("adb -s %s shell mkdir -p %s" % (sn, dirname))
+
+    def info(self):
+        sn = self._device_id
+        output = execute("adb -s %s shell getprop" % sn, False)
+        raw_props = output.split("\n")
+        props = {}
+        p = re.compile(r'\[(.+)\]: \[(.+)\]')
+        for raw_prop in raw_props:
+            m = p.match(raw_prop)
+            if m:
+                props[m.group(1)] = m.group(2)
+        return props
 
 
 class ArmLinuxDevice(Device):
@@ -153,10 +204,12 @@ class ArmLinuxDevice(Device):
     @staticmethod
     def list_devices():
         device_ids = []
-        for dev_name, dev_info in ArmLinuxDevice.devices:
+        print("!!!", ArmLinuxDevice.devices)
+        for dev_name, dev_info in ArmLinuxDevice.devices.items():
             address = dev_info["address"]
             username = dev_info["username"]
             device_ids.append("%s@%s" % (username, address))
+        return device_ids
 
     @staticmethod
     def set_devices(devices):
@@ -166,10 +219,10 @@ class ArmLinuxDevice(Device):
         install_dir = os.path.abspath(install_dir)
         ip = self._device_id
 
-        execute("ssh %s mkdir -p %s" % install_dir)
-        execute("scp %s %s:%s" % (target.path, ip, install_dir))
+        execute("ssh %s mkdir -p %s" % (ip, install_dir))
+        execute("scp -r %s %s:%s" % (target.path, ip, install_dir))
         for lib in target.libs:
-            execute("scp %s:%s" % (lib, install_dir))
+            execute("scp -r %s:%s" % (lib, install_dir))
 
         target.path = "%s/%s" % (install_dir, os.path.basename(target.path))
         target.libs = ["%s/%s" % (install_dir, os.path.basename(lib))
@@ -179,11 +232,15 @@ class ArmLinuxDevice(Device):
         return target
 
     def run(self, target):
-        execute("ssh %s shell %s" % (self._device_id, target))
+        execute("ssh %s %s" % (self._device_id, target))
 
     def pull(self, target, out_dir):
         sn = self._device_id
-        execute("scp %s:%s %s" % (sn, target.path, out_dir))
+        execute("scp -r %s:%s %s" % (sn, target.path, out_dir))
+
+    def mkdir(self, dirname):
+        sn = self._device_id
+        execute("ssh %s mkdir -p %s" % (sn, dirname))
 
 
 def device_class(target_abi):
@@ -204,3 +261,23 @@ def device_class(target_abi):
 
 def crete_device(target_abi, device_id=None):
     return device_class(target_abi)(device_id)
+
+
+def choose_devices(target_abi, target_ids):
+    device_clazz = device_class(target_abi)
+    devices = device_clazz.list_devices()
+
+    if target_ids == "all":
+        run_devices = devices
+    elif target_ids == "random":
+        unlocked_devices = [dev for dev in devices if
+                            not util.is_device_locked(dev)]
+        if unlocked_devices:
+            run_devices = [random.choice(unlocked_devices)]
+        else:
+            run_devices = [random.choice(devices)]
+    else:
+        device_id_list = [dev.strip() for dev in target_ids.split(",")]
+        run_devices = [dev for dev in device_id_list if dev in devices]
+
+    return run_devices

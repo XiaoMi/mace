@@ -22,10 +22,13 @@ import os
 import hashlib
 from jinja2 import Environment, FileSystemLoader
 from py_proto import mace_pb2
+from utils import device
 from utils import util
-from transform import base_converter as cvt
 from utils.util import mace_check
+from utils.util import MaceLogger
+from utils import config_parser
 from utils.config_parser import CPP_KEYWORDS
+from utils.config_parser import ModelKeys
 
 GENERATED_NAME = set()
 
@@ -99,9 +102,8 @@ def obfuscate_name(model):
 
 
 def save_model_to_code(namespace, model, params, model_checksum,
-                       params_checksum, device, output):
-    if not os.path.exists(output):
-        os.mkdir(output)
+                       params_checksum, device, output, gencode_params):
+    util.mkdir_p(output)
     cwd = os.path.dirname(__file__)
     j2_env = Environment(
         loader=FileSystemLoader(cwd + "/template"), trim_blocks=True)
@@ -120,24 +122,18 @@ def save_model_to_code(namespace, model, params, model_checksum,
             f.write(source)
         counter += 1
 
-    template_name = "tensor_data.jinja2"
-    source = j2_env.get_template(template_name).render(
-        tag=namespace,
-        model_data_size=len(params),
-        model_data=params)
-    with open(output + "/tensor_data.cc", "w") as f:
-        f.write(source)
+    if gencode_params:
+        template_name = "tensor_data.jinja2"
+        source = j2_env.get_template(template_name).render(
+            tag=namespace,
+            model_data_size=len(params),
+            model_data=params)
+        with open(output + "/tensor_data.cc", "w") as f:
+            f.write(source)
 
     template_name = "operator.jinja2"
     counter = 0
     op_size = len(model.op)
-    try:
-        device = cvt.DeviceType[device.upper()]
-    except:  # noqa
-        if device.upper() == "DSP":
-            device = cvt.DeviceType.HEXAGON
-        else:
-            device = cvt.DeviceType.CPU
 
     for start in range(0, op_size, 10):
         source = j2_env.get_template(template_name).render(
@@ -170,8 +166,7 @@ def save_model_to_code(namespace, model, params, model_checksum,
 
 
 def save_model_to_file(model_name, model, params, output):
-    if not os.path.exists(output):
-        os.mkdir(output)
+    util.mkdir_p(output)
     with open(output + "/" + model_name + ".pb", "wb") as f:
         f.write(model.SerializeToString())
     with open(output + "/" + model_name + ".data", "wb") as f:
@@ -179,7 +174,7 @@ def save_model_to_file(model_name, model, params, output):
 
 
 def encrypt(model_name, model_file, params_file, device, output,
-            is_obfuscate=False):
+            is_obfuscate=False, gencode_model=False, gencode_params=False):
     model_checksum = util.file_checksum(model_file)
     params_checksum = util.file_checksum(params_file)
 
@@ -191,9 +186,11 @@ def encrypt(model_name, model_file, params_file, device, output,
 
             if is_obfuscate:
                 obfuscate_name(model)
-            save_model_to_file(model_name, model, params, output + "/file/")
-            save_model_to_code(model_name, model, params, model_checksum,
-                               params_checksum, device, output + "/code/")
+            save_model_to_file(model_name, model, params, output)
+            if gencode_model:
+                save_model_to_code(model_name, model, params, model_checksum,
+                                   params_checksum, device, output + "/code/",
+                                   gencode_params)
 
 
 def parse_args():
@@ -216,22 +213,89 @@ def parse_args():
         default='cpu',
         help="cpu/gpu/hexagon/hta/apu")
     parser.add_argument(
-        '--output',
+        '--config',
         type=str,
-        default=".",
-        help="output dir")
+        help="model config")
     parser.add_argument(
-        "--obfuscate",
+        "--no_obfuscate",
         action="store_true",
         help="obfuscate model names")
+    parser.add_argument(
+        "--gencode_model",
+        action="store_true",
+        help="generate model code")
+    parser.add_argument(
+        "--gencode_param",
+        action="store_true",
+        help="generate params code")
+    parser.add_argument(
+        '--output',
+        type=str,
+        default="build",
+        help="output dir")
 
     flgs, _ = parser.parse_known_args()
-    mace_check(flags.model_name not in CPP_KEYWORDS, "model name cannot be cpp"
-                                                     "keywords")
+    mace_check(flgs.model_name not in CPP_KEYWORDS, "model name cannot be cpp"
+                                                    "keywords")
     return flgs
+
+
+def gen_mace_engine_factory(model_name, embed_model_data, output):
+    util.mkdir_p(output)
+    cwd = os.path.dirname(__file__)
+    j2_env = Environment(
+        loader=FileSystemLoader(cwd + "/template"), trim_blocks=True)
+    # generate mace_run BUILD file
+    template_name = 'mace_engine_factory.h.jinja2'
+    model_name = list(model_name)
+    source = j2_env.get_template(template_name).render(
+        model_tags=model_name,
+        embed_model_data=embed_model_data,
+    )
+    with open(output + '/mace_engine_factory.h', "w") as f:
+        f.write(source)
 
 
 if __name__ == '__main__':
     flags = parse_args()
-    encrypt(flags.model_name, flags.model_file, flags.params_file,
-            flags.device, flags.output, flags.obfuscate)
+    codegen_dir = "mace/codegen/models"
+    device.execute("rm -rf %s/*" % codegen_dir)
+
+    models = []
+    if flags.config:
+        conf = config_parser.parse(flags.config)
+
+        for name, model_conf in conf["models"].items():
+            model_conf = config_parser.normalize_model_config(model_conf)
+            if not flags.model_name or name == flags.model_name:
+                MaceLogger.info("Encrypt model %s" % name)
+                encrypt(name,
+                        "build/%s/model/%s.pb" % (name, name),
+                        "build/%s/model/%s.data" % (name, name),
+                        model_conf[ModelKeys.runtime],
+                        codegen_dir + "/" + name,
+                        not flags.no_obfuscate,
+                        flags.gencode_model,
+                        flags.gencode_param)
+                models.append(name)
+                os.rename("%s/%s/%s.pb" % (codegen_dir, name, name),
+                          "build/%s/model/%s.pb" % (name, name))
+                os.rename("%s/%s/%s.data" % (codegen_dir, name, name),
+                          "build/%s/model/%s.data" % (name, name))
+    else:
+        device_type = config_parser.parse_device_type(flags.device)
+        encrypt(flags.model_name, flags.model_file, flags.params_file,
+                device_type, codegen_dir, not flags.no_obfuscate,
+                flags.gencode_model, flags.gencode_param)
+        models.append(flags.model_name)
+        os.rename(
+            "%s/%s/%s.pb" % (codegen_dir, flags.model_name, flags.model_name),
+            "build/%s/model/%s.pb" % (flags.model_name, flags.model_name))
+        os.rename(
+            "%s/%s/%s.data" % (codegen_dir, flags.model_name,
+                               flags.model_name),
+            "build/%s/model/%s.data" % (flags.model_name, flags.model_name))
+
+    if flags.gencode_model:
+        gen_mace_engine_factory(models, flags.gencode_param,
+                                "mace/codegen/engine")

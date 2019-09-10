@@ -548,10 +548,16 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
   LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;
   LOG(INFO) << "cpu_affinity_policy: " << FLAGS_cpu_affinity_policy;
-  LOG(INFO) << "limit_opencl_kernel_time: "
-            << getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
-  LOG(INFO) << "opencl_queue_window_size: "
-            << getenv("MACE_OPENCL_QUEUE_WINDOW_SIZE");
+  auto limit_opencl_kernel_time = getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
+  if (limit_opencl_kernel_time) {
+    LOG(INFO) << "limit_opencl_kernel_time: "
+              << limit_opencl_kernel_time;
+  }
+  auto opencl_queue_window_size = getenv("MACE_OPENCL_QUEUE_WINDOW_SIZE");
+  if (opencl_queue_window_size) {
+    LOG(INFO) << "opencl_queue_window_size: "
+              << getenv("MACE_OPENCL_QUEUE_WINDOW_SIZE");
+  }
 
   std::vector<std::string> input_shapes = Split(FLAGS_input_shape, ':');
   std::vector<std::string> output_shapes = Split(FLAGS_output_shape, ':');
@@ -584,14 +590,12 @@ int Main(int argc, char **argv) {
   for (size_t i = 0; i < output_count; ++i) {
     output_data_formats[i] = ParseDataFormat(raw_output_data_formats[i]);
   }
-
   float cpu_float32_performance = 0.0f;
   if (FLAGS_input_dir.empty()) {
     // get cpu capability
     Capability cpu_capability = GetCapability(DeviceType::CPU);
     cpu_float32_performance = cpu_capability.float32_performance.exec_time;
   }
-
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;

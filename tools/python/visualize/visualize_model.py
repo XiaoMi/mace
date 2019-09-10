@@ -90,5 +90,5 @@ class ModelVisualizer(object):
 
     def save_html(self):
         html = self.render_html()
-        with open(self._output_file, "wb") as f:
+        with open(self._output_file, "w") as f:
             f.write(html)

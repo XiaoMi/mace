@@ -603,8 +603,10 @@ MaceEngine::Impl::~Impl() {
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
     if (VLOG_IS_ON(2)) {
-      hexagon_controller_->GetPerfInfo();
       hexagon_controller_->PrintLog();
+    }
+    if (VLOG_IS_ON(1)) {
+      hexagon_controller_->GetPerfInfo();
     }
     MACE_CHECK(hexagon_controller_->TeardownGraph(), "hexagon teardown error");
     MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");

@@ -4,6 +4,7 @@ file(GLOB MACE_RUN_SRCS
 add_executable(mace_run ${MACE_RUN_SRCS})
 target_link_libraries(mace_run PUBLIC
   mace_static
+  model
   gflags
 )
 

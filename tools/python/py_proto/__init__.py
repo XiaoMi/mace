@@ -18,12 +18,17 @@ from __future__ import print_function
 
 import os
 from utils import device
+from utils.util import MaceLogger
 
 cwd = os.path.dirname(__file__)
 
 # TODO: Remove bazel deps
-device.execute("bazel build //mace/proto:mace_py")
-device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
+try:
+    device.execute("bazel build //mace/proto:mace_py")
+    device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
 
-device.execute("bazel build //third_party/caffe:caffe_py")
-device.execute("cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)
+    device.execute("bazel build //third_party/caffe:caffe_py")
+    device.execute(
+        "cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)
+except:  # noqa
+    MaceLogger.warning("No bazel, use cmake.")

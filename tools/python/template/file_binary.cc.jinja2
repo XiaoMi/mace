@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2019 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,25 @@
 
 // This is a generated file. DO NOT EDIT!
 
-#include "mace/public/mace.h"
+#include <cstring>
 
 namespace mace {
-namespace {{tag}} {
 
-alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
-{% for d in model_data %}{{"0x%02X, " % d }}{%endfor%}
-};
+const unsigned char *{{ load_func_name }}() {
+{% if data_size == 0 %}
+  return nullptr;
+{% else %}
+  static const unsigned char kData[{{ data_size }}] = {
+  {% for d in data %}{{"0x%02X, " % d }}{%endfor%}
+  };
 
-MACE_API const unsigned char *LoadModelData() {
-  return model_data;
+  return kData;
+{% endif %}
 }
 
-}  // namespace {{tag}}
+size_t {{ size_func_name }}() {
+  return {{ data_size }};
+}
+
 }  // namespace mace
 
