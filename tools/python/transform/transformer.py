@@ -1349,9 +1349,9 @@ class Transformer(base_converter.ConverterInterface):
         visited = set()
         sorted_nodes = []
 
-        output_nodes = self._option.check_nodes
+        output_nodes = self._option.check_nodes.keys()
         if not self._quantize_activation_info:
-            output_nodes.update(self._option.output_nodes)
+            output_nodes.extend(self._option.output_nodes)
         for output_node in output_nodes:
             mace_check(output_node in self._producer,
                        "output_tensor %s not existed in model" % output_node)
