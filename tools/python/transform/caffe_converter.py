@@ -553,13 +553,16 @@ class CaffeConverter(base_converter.ConverterInterface):
         param = caffe_op.layer.crop_param
         op.type = MaceOp.Crop.name
 
-        axis = param.axis
+        axis = 2
+        if param.HasField('axis'):
+            axis = param.axis
         axis = 4 + axis if axis < 0 else axis
+
         offset_value = -1 * np.ones(4, dtype=np.int32)
         offset_len = len(param.offset)
-        if offset_len == 1:
+        if offset_len <= 1:
             while axis < 4:
-                offset_value[axis] = param.offset[0]
+                offset_value[axis] = 0 if offset_len < 1 else param.offset[0]
                 axis += 1
         else:
             offset_value[axis:] = param.offset
