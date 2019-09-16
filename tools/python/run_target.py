@@ -48,7 +48,7 @@ def run_target(target_abi, install_dir, target_obj, device_ids="all"):
 
         # reinstall target
         print("Install target from %s to %s" % (target_obj.path, install_dir))
-        device_target = dev.install(target_obj, install_dir)
+        device_target = dev.install(target_obj, install_dir, install_deps=True)
         print(device_target)
 
         # run on device

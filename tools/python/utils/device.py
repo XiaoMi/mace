@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import os
 import re
 import subprocess
@@ -60,10 +61,11 @@ def execute(cmd, verbose=True):
 
 
 class Device(object):
-    def __init__(self, device_id):
+    def __init__(self, device_id, target_abi):
         self._device_id = device_id
+        self._target_abi = target_abi
 
-    def install(self, target, install_dir):
+    def install(self, target, install_dir, install_deps=False):
         pass
 
     def run(self, target):
@@ -80,14 +82,14 @@ class Device(object):
 
 
 class HostDevice(Device):
-    def __init__(self, device_id):
-        super(HostDevice, self).__init__(device_id)
+    def __init__(self, device_id, target_abi):
+        super(HostDevice, self).__init__(device_id, target_abi)
 
     @staticmethod
     def list_devices():
         return ["host"]
 
-    def install(self, target, install_dir):
+    def install(self, target, install_dir, install_deps=False):
         install_dir = os.path.abspath(install_dir)
 
         if install_dir.strip() and install_dir != os.path.dirname(target.path):
@@ -119,8 +121,8 @@ class HostDevice(Device):
 
 
 class AndroidDevice(Device):
-    def __init__(self, device_id):
-        super(AndroidDevice, self).__init__(device_id)
+    def __init__(self, device_id, target_abi):
+        super(AndroidDevice, self).__init__(device_id, target_abi)
 
     @staticmethod
     def list_devices():
@@ -134,7 +136,7 @@ class AndroidDevice(Device):
 
         return devices
 
-    def install(self, target, install_dir):
+    def install(self, target, install_dir, install_deps=False):
         install_dir = os.path.abspath(install_dir)
         sn = self._device_id
 
@@ -149,12 +151,36 @@ class AndroidDevice(Device):
         for lib in target.libs:
             execute("adb -s %s push %s %s" % (sn, lib, install_dir), False)
 
-        target.path = "%s/%s" % (install_dir, os.path.basename(target.path))
-        target.libs = ["%s/%s" % (install_dir, os.path.basename(lib))
-                       for lib in target.libs]
-        target.envs.append("LD_LIBRARY_PATH=%s" % install_dir)
+        device_target = copy.deepcopy(target)
+        device_target.path = "%s/%s" % (install_dir,
+                                        os.path.basename(target.path))
+        device_target.libs = ["%s/%s" % (install_dir, os.path.basename(lib))
+                              for lib in target.libs]
+        device_target.envs.append("LD_LIBRARY_PATH=%s" % install_dir)
 
-        return target
+        if install_deps:
+            self.install_common_libs_for_target(target, install_dir)
+
+        return device_target
+
+    def install_common_libs_for_target(self, target, install_dir):
+        sn = self._device_id
+        dep_so_libs = execute(os.environ["ANDROID_NDK_HOME"] + "/ndk-depends "
+                              + target.path)
+        lib_file = ""
+        for dep in dep_so_libs.split("\n"):
+            if dep == "libgnustl_shared.so":
+                lib_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
+                           "%s/libgnustl_shared.so" \
+                           % (os.environ["ANDROID_NDK_HOME"], self._target_abi)
+            elif dep == "libc++_shared.so":
+                lib_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
+                           "%s/libc++_shared.so" \
+                           % (os.environ["ANDROID_NDK_HOME"], self._target_abi)
+
+        if lib_file:
+            execute("adb -s %s push %s %s" % (sn, lib_file, install_dir),
+                    False)
 
     def run(self, target):
         tmpdirname = tempfile.mkdtemp()
@@ -198,8 +224,8 @@ class AndroidDevice(Device):
 class ArmLinuxDevice(Device):
     devices = {}
 
-    def __init__(self, device_id):
-        super(ArmLinuxDevice, self).__init__(device_id)
+    def __init__(self, device_id, target_abi):
+        super(ArmLinuxDevice, self).__init__(device_id, target_abi)
 
     @staticmethod
     def list_devices():
@@ -215,7 +241,7 @@ class ArmLinuxDevice(Device):
     def set_devices(devices):
         ArmLinuxDevice.devices = devices
 
-    def install(self, target, install_dir):
+    def install(self, target, install_dir, install_deps=False):
         install_dir = os.path.abspath(install_dir)
         ip = self._device_id
 
@@ -260,7 +286,7 @@ def device_class(target_abi):
 
 
 def crete_device(target_abi, device_id=None):
-    return device_class(target_abi)(device_id)
+    return device_class(target_abi)(device_id, target_abi)
 
 
 def choose_devices(target_abi, target_ids):
