@@ -94,7 +94,8 @@ def obfuscate_name(model):
             t.name = tensor_map[t.name]
     for op in model.op:
         for i in range(len(op.input)):
-            if op.input[i] not in input_nodes:
+            if (op.input[i] not in input_nodes) and \
+                    (op.input[i] not in output_nodes):
                 op.input[i] = in_out_map[op.input[i]]
         for i in range(len(op.output)):
             if op.output[i] not in output_nodes:
