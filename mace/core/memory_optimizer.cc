@@ -31,11 +31,19 @@
 
 namespace mace {
 
-bool MemoryOptimizer::IsMemoryReuseOp(const std::string &op_type) {
+bool MemoryOptimizer::IsMemoryReuseOp(const std::string &op_type,
+                                      const MemoryType mem_type) {
   static const std::unordered_set<std::string> kReuseOp = {
       "Reshape", "Identity", "Squeeze", "ExpandDims"
   };
-  return kReuseOp.count(op_type) == 1;
+  static const std::unordered_set<std::string> kGpuImageReuseOp = {
+      "Identity", "Squeeze", "ExpandDims"
+  };
+  if (mem_type == MemoryType::GPU_IMAGE) {
+    return kGpuImageReuseOp.count(op_type) == 1;
+  } else {
+    return kReuseOp.count(op_type) == 1;
+  }
 }
 
 void MemoryOptimizer::UpdateTensorRef(const std::string &tensor_name) {
@@ -142,7 +150,7 @@ void MemoryOptimizer::Optimize(
     }
     MemoryBlock op_mem_block = CreateMemoryBlock(op_def, i, dt, mem_type);
     MemoryBlock best_mem_block;
-    if (IsMemoryReuseOp(op_def->type())) {
+    if (IsMemoryReuseOp(op_def->type(), mem_type)) {
       if (tensor_mem_map_.count(op_def->input(0)) == 1) {
         best_mem_id = tensor_mem_map_.at(op_def->input(0)).mem_id;
       }

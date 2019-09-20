@@ -90,7 +90,8 @@ class MemoryOptimizer {
   };
 
  public:
-  static bool IsMemoryReuseOp(const std::string &op_type);
+  static bool IsMemoryReuseOp(const std::string &op_type,
+                              const MemoryType mem_type);
   void UpdateTensorRef(const std::string &tensor_name);
   void UpdateTensorRef(const OperatorDef *op_def);
   void Optimize(

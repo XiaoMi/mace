@@ -97,11 +97,11 @@ class Transformer(base_converter.ConverterInterface):
                 self.add_opencl_informations,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
             TransformerRule.UPDATE_DATA_FORMAT: self.update_data_format,
+            TransformerRule.TRANSPOSE_RESHAPE_AND_FLATTEN:
+                self.transform_reshape_and_flatten,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.CHECK_QUANTIZE_INFO:
                 self.check_quantize_info,
-            TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN:
-                self.transform_caffe_reshape_and_flatten,
             TransformerRule.TRANSFORM_CHANNEL_SHUFFLE:
                 self.transform_channel_shuffle,
             TransformerRule.QUANTIZE_SPECIFIC_OPS_ONLY:
@@ -1493,6 +1493,13 @@ class Transformer(base_converter.ConverterInterface):
                 print("Transpose crop args: %s(%s)"
                       % (op.name, op.type))
                 self.transpose_shape(offset_arg.ints, [0, 2, 3, 1])
+            elif op.type == MaceOp.Reshape.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_dim_str and \
+                            len(arg.ints) == 4 and \
+                            src_data_format == DataFormat.NCHW and \
+                            has_data_format:
+                        self.transpose_shape(arg.ints, [0, 2, 3, 1])
 
             # transpose op output shape
             if src_data_format == DataFormat.NCHW and \
@@ -2048,14 +2055,16 @@ class Transformer(base_converter.ConverterInterface):
         arg.i = mace_pb2.GPU_IMAGE if self._option.cl_mem_type == "image"\
             else mace_pb2.GPU_BUFFER
 
-    def transform_caffe_reshape_and_flatten(self):
+    def transform_reshape_and_flatten(self):
         net = self._model
         for op in net.op:
-            if op.type == MaceOp.Reshape.name and \
-                    len(op.input) == 1:
+            if op.type != MaceOp.Reshape.name:
+                continue
+            dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
+            shape_tensor = None
+            if len(op.input) == 1:
                 print("Transform Caffe Reshape")
                 dims = []
-                dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
                 axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
                 # transform caffe reshape op
                 if dim_arg:
@@ -2080,6 +2089,13 @@ class Transformer(base_converter.ConverterInterface):
                     mace_check(False, "Only support reshape and flatten")
                 shape_tensor.int32_data.extend(dims)
                 op.input.append(shape_tensor.name)
+            if len(op.input) == 2 and dim_arg is None:
+                if shape_tensor is None and op.input[1] in self._consts:
+                    shape_tensor = self._consts[op.input[1]]
+                if shape_tensor is not None:
+                    dim_arg = op.arg.add()
+                    dim_arg.name = MaceKeyword.mace_dim_str
+                    dim_arg.ints.extend(shape_tensor.int32_data)
 
     def fold_fc_reshape(self):
         net = self._model

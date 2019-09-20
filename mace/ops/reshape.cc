@@ -17,10 +17,61 @@
 #include "mace/core/operator.h"
 #include "mace/utils/math.h"
 
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/image/reshape.h"
+#include "mace/ops/opencl/buffer/reshape.h"
+#endif
+
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+namespace {
+
+MaceStatus GetOutputShape(const Tensor *input,
+                          const int32_t *shape_data,
+                          const index_t num_dims,
+                          std::vector<index_t> *out_shape) {
+  MACE_CHECK(input != nullptr && shape_data != nullptr && out_shape != nullptr);
+  int unknown_idx = -1;
+  index_t product = 1;
+  index_t n = 0;
+
+  out_shape->resize(num_dims);
+  for (int i = 0; i < num_dims; ++i) {
+    if (shape_data[i] == -1) {
+      MACE_CHECK(unknown_idx == -1, "Only one input size may be -1");
+      unknown_idx = i;
+      (*out_shape)[i] = 1;
+    } else {
+      MACE_CHECK(shape_data[i] >= 0, "Shape must be non-negative: ",
+                 shape_data[i]);
+      if (shape_data[i] == 0) {
+        MACE_CHECK(i < input->dim_size(),
+                   "dims:0 out of input dims' range.");
+        n = input->dim(i);
+      } else {
+        n = shape_data[i];
+      }
+      (*out_shape)[i] = n;
+      product *= n;
+    }
+  }
+
+  if (unknown_idx != -1) {
+    MACE_CHECK(product != 0)
+      << "Cannot infer shape if there is zero shape size.";
+    const index_t missing = input->size() / product;
+    MACE_CHECK(missing * product == input->size())
+      << "Input size not match reshaped tensor size";
+    (*out_shape)[unknown_idx] = missing;
+  }
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
+}  // namespace
+
+template<DeviceType D, class T>
 class ReshapeOp : public Operation {
  public:
   explicit ReshapeOp(OpConstructContext *context)
@@ -31,46 +82,14 @@ class ReshapeOp : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(INPUT);
     const Tensor *shape = this->Input(SHAPE);
-    const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
     Tensor::MappingGuard shape_guard(shape);
     const int32_t *shape_data = shape->data<int32_t>();
+    const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
+    std::vector<index_t> out_shape;
+    MACE_RETURN_IF_ERROR(
+        GetOutputShape(input, shape_data, num_dims, &out_shape));
 
-    int unknown_idx = -1;
-    index_t product = 1;
-    std::vector<index_t> out_shape(num_dims);
-    index_t n = 0;
-
-    for (int i = 0; i < num_dims; ++i) {
-      if (shape_data[i] == -1) {
-        MACE_CHECK(unknown_idx == -1, "Only one input size may be -1");
-        unknown_idx = i;
-        out_shape[i] = 1;
-      } else {
-        MACE_CHECK(shape_data[i] >= 0, "Shape must be non-negative: ",
-                   shape_data[i]);
-        if (shape_data[i] == 0) {
-          MACE_CHECK(i < input->dim_size(),
-                     "dims:0 out of input dims' range.");
-          n = input->dim(i);
-        } else {
-          n = shape_data[i];
-        }
-        out_shape[i] = n;
-        product *= n;
-      }
-    }
-
-    if (unknown_idx != -1) {
-      MACE_CHECK(product != 0)
-          << "Cannot infer shape if there is zero shape size.";
-      const index_t missing = input->size() / product;
-      MACE_CHECK(missing * product == input->size())
-          << "Input size not match reshaped tensor size";
-      out_shape[unknown_idx] = missing;
-    }
-    Tensor *output = this->Output(OUTPUT);
     // NHWC -> NCHW
-
     if (has_df_ && D == DeviceType::CPU
         && out_shape.size() == 4 && shape->is_weight()) {
       std::vector<int> dst_dims = {0, 3, 1, 2};
@@ -79,6 +98,7 @@ class ReshapeOp : public Operation {
       out_shape = trans_shape;
     }
 
+    Tensor *output = this->Output(OUTPUT);
     output->ReuseTensorBuffer(*input);
     output->Reshape(out_shape);
 
@@ -93,11 +113,46 @@ class ReshapeOp : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
+#ifdef MACE_ENABLE_OPENCL
+template<>
+class ReshapeOp<GPU, float> : public Operation {
+ public:
+  explicit ReshapeOp(OpConstructContext *context)
+      : Operation(context),
+        dim_(Operation::GetRepeatedArgs<int>("dim")) {
+    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
+      kernel_ = make_unique<opencl::image::ReshapeKernel>(context);
+    } else {
+      kernel_ = make_unique<opencl::buffer::ReshapeKernel>();
+    }
+  }
+
+  MaceStatus Run(OpContext *context) override {
+    const Tensor *input = this->Input(INPUT);
+    const int32_t *shape_data = dim_.data();
+    const index_t num_dims = dim_.size();
+    std::vector<index_t> out_shape;
+    MACE_RETURN_IF_ERROR(
+        GetOutputShape(input, shape_data, num_dims, &out_shape));
+
+    Tensor *output = this->Output(OUTPUT);
+    return kernel_->Compute(context, input, out_shape, output);
+  }
+
+ private:
+  std::vector<int> dim_;
+  std::unique_ptr<OpenCLReshapeKernel> kernel_;
+  MACE_OP_INPUT_TAGS(INPUT, SHAPE);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
+};
+#endif
+
 void RegisterReshape(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
                    DeviceType::CPU, int32_t);
+  MACE_REGISTER_GPU_OP(op_registry, "Reshape", ReshapeOp);
 }
 
 }  // namespace ops

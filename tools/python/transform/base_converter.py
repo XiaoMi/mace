@@ -179,6 +179,7 @@ MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.Eltwise,
                                  MaceOp.Pad,
                                  MaceOp.Reduce,
+                                 MaceOp.Reshape,
                                  MaceOp.Softmax,
                                  MaceOp.Split,
                                  MaceOp.Squeeze,
@@ -300,7 +301,7 @@ class TransformerRule(Enum):
     FOLD_SQRDIFF_MEAN = 33
     TRANSPOSE_MATMUL_WEIGHT = 34
     FOLD_EMBEDDING_LOOKUP = 35
-    TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN = 36
+    TRANSPOSE_RESHAPE_AND_FLATTEN = 36
     FOLD_FC_RESHAPE = 37
     TRANSFORM_CHANNEL_SHUFFLE = 38
     UPDATE_DATA_FORMAT = 39
@@ -517,7 +518,7 @@ class ConverterOption(object):
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
                 TransformerRule.TRANSFORM_BASIC_LSTMCELL,
-                TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN,
+                TransformerRule.TRANSPOSE_RESHAPE_AND_FLATTEN,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
                 # For StoB -> conv -> BtoS -> BN pattern
