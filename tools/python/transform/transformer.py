@@ -887,7 +887,8 @@ class Transformer(base_converter.ConverterInterface):
 
     def flatten_atrous_conv(self):
         if self._option.device != DeviceType.GPU.value \
-               and self._option.device != DeviceType.APU.value:
+               and self._option.device != DeviceType.APU.value \
+               and self._option.device != DeviceType.HTA.value:
             return
 
         net = self._model

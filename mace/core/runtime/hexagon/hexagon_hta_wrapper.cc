@@ -313,9 +313,9 @@ bool HexagonHTAWrapper::ExecuteGraphNew(
     }
     auto output_tensor = output_tensors->at(output_info_[i].name);
     MACE_CHECK(static_cast<index_t>(outputs[i].data_valid_len)
-                   == output_tensor->raw_size(),
-               outputs[i].data_valid_len, " vs ", output_tensor->raw_size(),
-               " wrong output bytes inferred.");
+                   == output_tensor->size(),
+               outputs[i].data_valid_len, " vs ", output_tensor->size(),
+               " wrong output size inferred.");
 
     const uint8_t *output_data_u8 = output_info_[i].tensor_u8->data<uint8_t>();
     float *output_data = output_tensor->mutable_data<float>();
