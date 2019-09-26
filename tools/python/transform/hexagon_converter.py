@@ -16,24 +16,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import copy
 import numpy as np
 from enum import Enum
 from operator import mul
 from functools import reduce
 
-from py_proto import mace_pb2
-from transform import base_converter
-from transform.base_converter import ConverterUtil
-from transform.base_converter import DeviceType
-from transform.base_converter import EltwiseType
-from transform.base_converter import MaceKeyword
-from transform.base_converter import MaceOp
-from transform.base_converter import PaddingMode
-from transform.base_converter import PoolingType
-from transform.base_converter import ReduceType
-from utils.util import mace_check
+from python.py_proto import mace_pb2
+from python.utils.util import mace_check
+from . import base_converter
+from .base_converter import ConverterUtil
+from .base_converter import DeviceType
+from .base_converter import EltwiseType
+from .base_converter import MaceKeyword
+from .base_converter import MaceOp
+from .base_converter import PaddingMode
+from .base_converter import PoolingType
+from .base_converter import ReduceType
 
 
 HexagonSupportedOps = [

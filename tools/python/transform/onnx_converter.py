@@ -12,32 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import sys
 from enum import Enum
 import six
-
-from py_proto import mace_pb2
-from transform import base_converter
-from transform.base_converter import PoolingType
-from transform.base_converter import PaddingMode
-from transform.base_converter import ActivationType
-from transform.base_converter import EltwiseType
-from transform.base_converter import ReduceType
-from transform.base_converter import FrameworkType
-from transform.base_converter import RoundMode
-from transform.base_converter import DataFormat
-from transform.base_converter import MaceOp
-from transform.base_converter import MaceKeyword
-from transform.base_converter import ConverterUtil
-from utils.util import mace_check
-
 import numpy as np
+from numbers import Number
+
+from python.py_proto import mace_pb2
+from . import base_converter
+from .base_converter import PoolingType
+from .base_converter import PaddingMode
+from .base_converter import ActivationType
+from .base_converter import EltwiseType
+from .base_converter import ReduceType
+from .base_converter import FrameworkType
+from .base_converter import RoundMode
+from .base_converter import DataFormat
+from .base_converter import MaceOp
+from .base_converter import MaceKeyword
+from .base_converter import ConverterUtil
+from python.utils.util import mace_check
 
 import onnx
 import onnx.utils
 from onnx import mapping, numpy_helper, TensorProto
-from numbers import Number
 
 IS_PYTHON3 = sys.version_info > (3,)
 
@@ -191,9 +193,9 @@ OnnxOpType = Enum('OnnxOpType',
 onnx_attr_translator = {
     "axis": lambda x: int(x),
     "axes": lambda x: [int(a) for a in x],
-    "dtype": lambda x: data_type.onnx2tf(x),
+    "dtype": lambda x: onnx_dtype(x),
     "keepdims": lambda x: bool(x),
-    "to": lambda x: data_type.onnx2tf(x),
+    "to": lambda x: onnx_dtype(x),
 }
 
 
@@ -567,11 +569,7 @@ class OnnxConverter(base_converter.ConverterInterface):
                     tensor.data_type = mace_pb2.DT_FLOAT
                     tensor.float_data.extend(
                         onnx_tensor.astype(np.float32).flat)
-                elif data_type == np.int32:
-                    tensor.data_type = mace_pb2.DT_INT32
-                    tensor.int32_data.extend(
-                        onnx_tensor.astype(np.int32).flat)
-                elif data_type == np.int64:
+                elif data_type == np.int32 or data_type == np.int64:
                     tensor.data_type = mace_pb2.DT_INT32
                     tensor.int32_data.extend(
                         onnx_tensor.astype(np.int32).flat)
@@ -668,9 +666,9 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         if 'to' in node.attrs:
             dtype = node.attrs['to']
-            if dtype == TensorProto.FLOAT:
+            if dtype == np.float32 or dtype == np.float64:
                 op.output_type.extend([self._option.data_type])
-            elif dtype == TensorProto.INT:
+            elif dtype == np.int64 or dtype == np.int32:
                 op.output_type.extend([mace_pb2.DT_INT32])
             else:
                 mace_check(False, "data type %s not supported" % dtype)
@@ -959,7 +957,10 @@ class OnnxConverter(base_converter.ConverterInterface):
                 if len(const_tensor.dims) == 0:
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
-                    value_arg.f = const_tensor.float_data[0]
+                    if const_tensor.data_type == mace_pb2.DT_INT32:
+                        value_arg.f = float(const_tensor.int32_data[0])
+                    elif const_tensor.data_type == mace_pb2.DT_FLOAT:
+                        value_arg.f = const_tensor.float_data[0]
                     value_index_arg = op.arg.add()
                     value_index_arg.name = \
                         MaceKeyword.mace_scalar_input_index_str
@@ -972,7 +973,10 @@ class OnnxConverter(base_converter.ConverterInterface):
                 if len(const_tensor.dims) == 0:
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
-                    value_arg.f = const_tensor.float_data[0]
+                    if const_tensor.data_type == mace_pb2.DT_INT32:
+                        value_arg.f = float(const_tensor.int32_data[0])
+                    elif const_tensor.data_type == mace_pb2.DT_FLOAT:
+                        value_arg.f = const_tensor.float_data[0]
                     value_index_arg = op.arg.add()
                     value_index_arg.name = \
                         MaceKeyword.mace_scalar_input_index_str

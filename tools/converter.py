@@ -25,14 +25,11 @@ import yaml
 import sh_commands
 from enum import Enum
 
-sys.path.insert(0, "tools/python")  # noqa
 from common import *
 from device import DeviceWrapper, DeviceManager
-from utils import config_parser
-import convert
-import encrypt
-
-from dana.dana_util import DanaUtil
+from python.utils import config_parser
+from python import convert
+from python import encrypt
 
 ################################
 # set environment

@@ -22,20 +22,19 @@ from __future__ import print_function
 import argparse
 import sys
 import numpy as np
-import shutil
-import tempfile
-from utils import config_parser
-from utils.config_parser import DataFormat
-from utils.config_parser import DeviceType
-from utils.config_parser import Platform
-from utils import util
-from utils.util import mace_check
-from utils.config_parser import normalize_model_config
-from utils.config_parser import ModelKeys
-from py_proto import mace_pb2
-from transform import base_converter as cvt
-from transform import transformer
-from visualize import visualize_model
+
+from python.utils import config_parser
+from python.utils.config_parser import DataFormat
+from python.utils.config_parser import DeviceType
+from python.utils.config_parser import Platform
+from python.utils import util
+from python.utils.util import mace_check
+from python.utils.config_parser import normalize_model_config
+from python.utils.config_parser import ModelKeys
+from python.py_proto import mace_pb2
+from python.transform import base_converter as cvt
+from python.transform import transformer
+from python.visualize import visualize_model
 
 
 def transpose_shape(shape, dst_order):
@@ -162,16 +161,16 @@ def convert_model(conf):
     print("Transform model to one that can better run on device")
     platform = conf[ModelKeys.platform]
     if platform == Platform.TENSORFLOW:
-        from transform import tensorflow_converter
+        from python.transform import tensorflow_converter
         converter = tensorflow_converter.TensorflowConverter(
             option, conf["model_file_path"])
     elif platform == Platform.CAFFE:
-        from transform import caffe_converter
+        from python.transform import caffe_converter
         converter = caffe_converter.CaffeConverter(option,
                                                    conf["model_file_path"],
                                                    conf["weight_file_path"])
     elif platform == Platform.ONNX:
-        from transform import onnx_converter
+        from python.transform import onnx_converter
         converter = onnx_converter.OnnxConverter(option,
                                                  conf["model_file_path"])
     else:
@@ -185,14 +184,14 @@ def convert_model(conf):
     runtime = conf[ModelKeys.runtime]
     if runtime in [DeviceType.HEXAGON,
                    DeviceType.HTA]:
-        from transform import hexagon_converter
+        from python.transform import hexagon_converter
         converter = hexagon_converter.HexagonConverter(
             option, output_graph_def, quantize_activation_info)
         output_graph_def = converter.run()
     elif runtime == DeviceType.APU:
         mace_check(platform == Platform.TENSORFLOW,
                    "apu only support model from tensorflow")
-        from transform import apu_converter
+        from python.transform import apu_converter
         converter = apu_converter.ApuConverter(
             option, output_graph_def, quantize_activation_info)
         output_graph_def = converter.run()

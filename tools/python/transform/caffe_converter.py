@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import math
 
@@ -19,20 +22,18 @@ import numpy as np
 import six
 import google.protobuf.text_format
 
-from py_proto import mace_pb2
-from transform import base_converter
-from transform import shape_inference
-from transform.base_converter import PoolingType
-from transform.base_converter import ActivationType
-from transform.base_converter import EltwiseType
-from transform.base_converter import FrameworkType
-from transform.base_converter import DataFormat
-from transform.base_converter import MaceOp
-from transform.base_converter import MaceKeyword
-from transform.base_converter import ConverterUtil
-from utils.util import mace_check
-
-from py_proto import caffe_pb2
+from python.py_proto import mace_pb2, caffe_pb2
+from python.utils.util import mace_check
+from . import base_converter
+from . import shape_inference
+from .base_converter import PoolingType
+from .base_converter import ActivationType
+from .base_converter import EltwiseType
+from .base_converter import FrameworkType
+from .base_converter import DataFormat
+from .base_converter import MaceOp
+from .base_converter import MaceKeyword
+from .base_converter import ConverterUtil
 
 caffe_group_str = 'group'
 caffe_kernel_h_str = 'kernel_h'

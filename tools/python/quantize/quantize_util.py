@@ -19,7 +19,7 @@ from __future__ import print_function
 import numpy as np
 import math
 
-from transform.base_converter import DeviceType
+from python.transform.base_converter import DeviceType
 
 
 class QuantizedData(object):

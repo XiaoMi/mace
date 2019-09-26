@@ -22,9 +22,9 @@ import copy
 import yaml
 from enum import Enum
 
-from utils.util import mace_check
-from utils.util import MaceLogger
-from py_proto import mace_pb2
+from python.utils.util import mace_check
+from python.utils.util import MaceLogger
+from python.py_proto import mace_pb2
 
 CPP_KEYWORDS = [
     'alignas', 'alignof', 'and', 'and_eq', 'asm', 'atomic_cancel',

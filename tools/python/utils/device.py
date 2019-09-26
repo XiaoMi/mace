@@ -23,7 +23,7 @@ import subprocess
 import random
 import tempfile
 
-from utils import util
+from python.utils import util
 
 
 def execute(cmd, verbose=True):

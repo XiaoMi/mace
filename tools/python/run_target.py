@@ -28,10 +28,10 @@ from __future__ import print_function
 import argparse
 import os
 
-from utils import device
-from utils import target
-from utils import config_parser
-from utils import util
+from python.utils import device
+from python.utils import target
+from python.utils import config_parser
+from python.utils import util
 
 
 def run_target(target_abi, install_dir, target_obj, device_ids="all"):

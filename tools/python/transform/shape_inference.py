@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import math
-
 import numpy as np
 import six
 
-from transform.transformer import Transformer
-from transform.base_converter import DataFormat
-from transform.base_converter import MaceOp
-from transform.base_converter import MaceKeyword
-from transform.base_converter import ConverterUtil
-from utils.util import mace_check
+from .transformer import Transformer
+from .base_converter import DataFormat
+from .base_converter import MaceOp
+from .base_converter import MaceKeyword
+from .base_converter import ConverterUtil
+from python.utils.util import mace_check
 
 
 class ShapeInference(object):
@@ -253,7 +255,7 @@ class ShapeInference(object):
         aspect_ratio = ConverterUtil.get_arg(op, MaceKeyword.mace_aspect_ratio_str).floats  # noqa
         num_prior = len(aspect_ratio) * len(min_size) + len(max_size)
 
-        output_shape[2] = num_prior * input_h * input_w * 4
+        output_shape[2] = int(num_prior * input_h * input_w * 4)
         self.add_output_shape(op, [output_shape])
 
     def infer_shape_reshape(self, op):
@@ -275,7 +277,7 @@ class ShapeInference(object):
                     output_shape[i] = dim[i]
                     product *= dim[i]
             if idx != -1:
-                output_shape[idx] = input_size / product
+                output_shape[idx] = int(input_size / product)
             self.add_output_shape(op, [output_shape])
         else:
             output_shape = []

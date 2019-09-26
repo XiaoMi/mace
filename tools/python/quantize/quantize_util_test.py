@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-import quantize.quantize_util
+import quantize_util
 
 
 class TestQuantize(unittest.TestCase):

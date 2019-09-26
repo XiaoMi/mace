@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import argparse
-import sys
 import numpy as np
-import re
 import common
 
 import six

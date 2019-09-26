@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
 import copy
 import os
-import sys
 import yaml
 
-sys.path.insert(0, "tools/python")  # noqa
-from py_proto import mace_pb2
-from transform.base_converter import ConverterUtil
-from transform.base_converter import MaceKeyword
-from transform.base_converter import MaceOp
-from transform.hexagon_converter import HexagonOp
-from utils.util import mace_check
+from python.py_proto import mace_pb2
+from python.transform.base_converter import ConverterUtil
+from python.transform.base_converter import MaceKeyword
+from python.transform.base_converter import MaceOp
+from python.transform.hexagon_converter import HexagonOp
+from python.utils.util import mace_check
 
 
 def normalize_op_name(name):

@@ -12,27 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import math
 import numpy as np
 import six
 import tensorflow as tf
 from enum import Enum
 
-from py_proto import mace_pb2
-from transform import base_converter
-from transform.base_converter import PoolingType
-from transform.base_converter import PaddingMode
-from transform.base_converter import ActivationType
-from transform.base_converter import EltwiseType
-from transform.base_converter import PadType
-from transform.base_converter import FrameworkType
-from transform.base_converter import ReduceType
-from transform.base_converter import DataFormat
-from transform.base_converter import MaceOp
-from transform.base_converter import MaceKeyword
-from transform.base_converter import ConverterUtil
-from utils.util import mace_check
+from python.py_proto import mace_pb2
+from . import base_converter
+from .base_converter import PoolingType
+from .base_converter import PaddingMode
+from .base_converter import ActivationType
+from .base_converter import EltwiseType
+from .base_converter import PadType
+from .base_converter import FrameworkType
+from .base_converter import ReduceType
+from .base_converter import DataFormat
+from .base_converter import MaceOp
+from .base_converter import MaceKeyword
+from .base_converter import ConverterUtil
+from python.utils.util import mace_check
 
 from tensorflow.core.framework import tensor_shape_pb2
 from tensorflow.tools.graph_transforms import TransformGraph
