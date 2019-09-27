@@ -610,6 +610,10 @@ class CaffeConverter(base_converter.ConverterInterface):
         size_arg.name = MaceKeyword.mace_resize_size_str
         size_value = np.array([param.height, param.width], dtype=np.int32)
         size_arg.ints.extend(size_value)
+        # interp op's `align_corners` param is always true in caffe
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = 1
 
     def convert_fully_connected(self, caffe_op):
         op = self.convert_general_op(caffe_op)
