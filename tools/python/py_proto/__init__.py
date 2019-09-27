@@ -17,8 +17,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from python.utils import device
-from python.utils.util import MaceLogger
+from utils import device
+from utils.util import MaceLogger
 
 cwd = os.path.dirname(__file__)
 

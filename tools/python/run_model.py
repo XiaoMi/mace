@@ -22,17 +22,17 @@ import tempfile
 import shutil
 import numpy as np
 
-from python.py_proto import mace_pb2
-from python.utils import util
-from python.utils import device
-from python.utils import config_parser
-from python.utils.config_parser import DeviceType
-from python.utils.target import Target
-from python.utils.config_parser import ModelKeys
-from python.utils.util import MaceLogger
-from python.utils.util import mace_check
-from python import run_target
-from python import validate
+from py_proto import mace_pb2
+from utils import util
+from utils import device
+from utils import config_parser
+from utils.config_parser import DeviceType
+from utils.target import Target
+from utils.config_parser import ModelKeys
+from utils.util import MaceLogger
+from utils.util import mace_check
+import run_target
+import validate
 
 """
 Tool for mace_run:

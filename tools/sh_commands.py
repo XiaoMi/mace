@@ -21,6 +21,7 @@ import re
 import sh
 import struct
 import sys
+import time
 import platform
 
 import six

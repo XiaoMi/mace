@@ -12,24 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import copy
 import numpy as np
 from enum import Enum
+from operator import mul
 
-from python.py_proto import mace_pb2
-from python.transform import base_converter
-from python.transform.base_converter import ConverterUtil
-from python.transform.base_converter import EltwiseType
-from python.transform.base_converter import MaceKeyword
-from python.transform.base_converter import MaceOp
-from python.transform.base_converter import PaddingMode
-from python.transform.base_converter import PoolingType
-from python.transform.base_converter import DataFormat
-from python.transform.base_converter import FrameworkType
-from python.utils.util import mace_check
+from py_proto import mace_pb2
+from transform import base_converter
+from transform.base_converter import ConverterUtil
+from transform.base_converter import EltwiseType
+from transform.base_converter import MaceKeyword
+from transform.base_converter import MaceOp
+from transform.base_converter import PaddingMode
+from transform.base_converter import PoolingType
+from transform.base_converter import ReduceType
+from transform.base_converter import DataFormat
+from transform.base_converter import FrameworkType
+from utils.util import mace_check
 
 
 ApuSupportedOps = [
