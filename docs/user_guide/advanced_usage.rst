@@ -1,5 +1,5 @@
-Advanced usage
-===============
+Advanced usage for Bazel users
+================================
 
 This part contains the full usage of MACE.
 

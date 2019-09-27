@@ -18,7 +18,7 @@ Internal tool for mace_cc_benchmark, mace_cc_test:
 
 python tools/python/run_target.py \
     --target_abi=armeabi-v7a --target_socs=all --target_name=mace_cc_test \
-    --gtest_filter=EnvTest.*  --envs="MACE_CPP_MIN_VLOG_LEVEL=5"
+    --gtest_filter=EnvTest.*  --envs="MACE_CPP_MIN_VLOG_LEVEL=5
 """
 
 from __future__ import absolute_import

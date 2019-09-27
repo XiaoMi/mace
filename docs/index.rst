@@ -25,7 +25,9 @@ The main documentation is organized into the following sections:
    :caption: User guide
    :name: sec-user
 
+   user_guide/basic_usage_cmake
    user_guide/basic_usage
+   user_guide/advanced_usage_cmake
    user_guide/advanced_usage
    user_guide/benchmark
    user_guide/op_lists
@@ -50,3 +52,13 @@ The main documentation is organized into the following sections:
    :name: sec-faq
 
    faq
+
+.. toctree::
+   :maxdepth: 1
+   :caption: 中文
+   :name: sec-ch
+
+   chinese
+
+
+

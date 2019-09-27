@@ -15,9 +15,6 @@ Required dependencies
     * - Python
       -
       - 2.7 or 3.6
-    * - Bazel
-      - `bazel installation guide <https://docs.bazel.build/versions/master/install.html>`__
-      - 0.13.0
     * - CMake
       - Linux:``apt-get install cmake`` Mac:``brew install cmake``
       - >= 3.11.3
@@ -57,9 +54,9 @@ Optional dependencies
     * - Android NDK
       - `NDK installation guide <https://developer.android.com/ndk/guides/setup#install>`__
       - Required by Android build, r15b, r15c, r16b, r17b
-    * - CMake
-      - apt-get install cmake
-      - >= 3.11.3
+    * - Bazel
+      - `bazel installation guide <https://docs.bazel.build/versions/master/install.html>`__
+      - 0.13.0      
     * - ADB
       - Linux:``apt-get install android-tools-adb`` Mac:``brew cask install android-platform-tools``
       - Required by Android run, >= 1.0.32

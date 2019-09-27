@@ -30,12 +30,7 @@ This method requires developer to calculate tensor range of each activation laye
 MACE provides tools to do statistics with following steps:
 
 	1. Convert original model to run on CPU host without obfuscation (by setting `target_abis` to `host`, `runtime` to `cpu`,
-	and `obfuscate` to `0`, appending `:0` to `output_tensors` if missing in yaml config). E.g.,
-
-	.. code:: sh
-
-		python tools/converter.py convert --config ../mace-models/inception-v3/inception-v3.yml
-
+	and `obfuscate` to `0`, appending `:0` to `output_tensors` if missing in yaml config). 
 
 	2. Log tensor range of each activation layer by inferring several samples on CPU host. Sample inputs should be
 	representative to calculate the ranges of each layer properly.
@@ -52,6 +47,11 @@ MACE provides tools to do statistics with following steps:
 		rename 's/^/input/' *
 
 		# Run with input tensors
+		# For CMake users:
+		python tools/python/run_model.py --config ../mace-models/inception-v3/inception-v3.yml
+			--quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
+
+		# For Bazel users:
 		python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml
 			--quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
 

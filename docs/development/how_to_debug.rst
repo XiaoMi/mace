@@ -34,13 +34,7 @@ It is usually used to measure classification accuracy. The higher the better.
 where :math:`X` is expected output (from training platform) whereas :math:`X'` is actual output (from MACE) .
 
 
-You can validate it by specifying `--validate` while running the model.
-
-    .. code:: sh
-
-        # Validate the correctness by comparing the results against the
-        # original model and framework
-        python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --validate
+You can validate it by specifying `--validate` option while running the model.
 
 MACE automatically validate these metrics by running models with synthetic inputs.
 If you want to specify input data to use, you can add an option in yaml config under 'subgraphs', e.g.,
@@ -83,6 +77,10 @@ Debug with crash
 When MACE crashes, a complete stacktrace is useful in debugging. But because of `selinux problem <https://github.com/android-ndk/ndk/issues/943#issuecomment-477834810>`__,
 symbols table is not loaded in memory, which leading to no symbol in stack trace.
 To circumvent this problem, you can rebuild `mace_run` with `--debug_mode` option to reserve debug symbols, e.g.,
+
+For CMake users, modify the cmake configuration located in ``tools/cmake/`` as ``-DCMAKE_BUILD_TYPE=Debug``, and rebuild the engine.
+
+For Bazel users,
 
   .. code:: sh
 
@@ -131,11 +129,7 @@ The threshold can be configured through environment variable, e.g. ``MACE_CPP_MI
 With VLOG, the lower the verbose level, the more likely messages are to be logged. For example, when the threshold is set
 to 2, both ``VLOG(1)``, ``VLOG(2)`` log messages will be printed, but ``VLOG(3)`` and highers won't. 
 
-By using ``mace_run`` tool, VLOG level can be easily set by option, e.g.,
-
-	.. code:: sh
-
-		python tools/converter.py run --config /path/to/model.yml --vlog_level=2
+By using ``mace_run`` tool, VLOG level can be easily set by option, e.g., ``--vlog_level=2``
 
 
 If models are run on android, you might need to use ``adb logcat`` to view logs.

@@ -18,9 +18,20 @@ Operator Benchmark is used for test and optimize the performance of specific ope
 Usage
 =====
 
+For CMake users:
+
     .. code:: bash
 
-        python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=True  --args="--filter=.*BM_CONV.*"
+        python tools/python/run_target.py \
+            --target_abi=armeabi-v7a --target_socs=all --target_name=mace_cc_benchmark \
+            --filter=.*BM_CONV.*
+
+or for Bazel users:
+
+    .. code:: bash
+
+        python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" \
+            --run_target=True  --args="--filter=.*BM_CONV.*"
 
 ======
 Output
@@ -66,9 +77,18 @@ This tool could record the running time of the model and the detailed running in
 Usage
 =====
 
+For CMake users:
+
     .. code:: bash
 
-        python tools/converter.py run --config=/path/to/your/model_deployment.yml --benchmark
+        python tools/python/run_model.py --config=/path/to/your/model_deployment.yml --benchmark
+
+
+or for Bazel users:
+
+    .. code:: bash
+
+        python tools/python/converter.py run --config=/path/to/your/model_deployment.yml --benchmark
 
 ======
 Output

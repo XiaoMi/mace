@@ -1,5 +1,5 @@
-Basic usage
-============
+Basic usage for Bazel users
+============================
 
 
 Build and run an example model
