@@ -1550,7 +1550,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         if node.attrs['mode'] == 'nearest':
             op.type = MaceOp.ResizeNearestNeighbor.name
             size_tensor_name = op.name + ":size"
-            self.add_tensor(size_tensor_name, output_size.shape, mace_pb2.DT_INT32, output_size)
+            self.add_tensor(size_tensor_name, output_size.shape,
+                            mace_pb2.DT_INT32, output_size)
             op.input.append(size_tensor_name)
         else:
             op.type = MaceOp.ResizeBilinear.name
@@ -1562,4 +1563,3 @@ class OnnxConverter(base_converter.ConverterInterface):
         align_corners_arg = op.arg.add()
         align_corners_arg.name = MaceKeyword.mace_align_corners_str
         align_corners_arg.i = node.attrs.get('align_corners', 0)
-
