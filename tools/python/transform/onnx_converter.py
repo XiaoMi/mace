@@ -1543,7 +1543,7 @@ class OnnxConverter(base_converter.ConverterInterface):
 
     def convert_upsample(self, node):
         op = self.convert_general_op(node)
-        op.input = op.input[1:]  # cut all unnecessary inputs (onnx>=1.5)
+        del op.input[1:]  # cut all unnecessary inputs (onnx>=1.5)
 
         output_size = self._graph_shapes_dict[op.output[0]]
         output_size = np.array(output_size[-2:]).astype(np.int32)
