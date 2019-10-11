@@ -1013,7 +1013,8 @@ class Transformer(base_converter.ConverterInterface):
                             zero_padding = False
 
                 if height == filter_height and width == filter_width \
-                        and zero_padding:
+                        and zero_padding \
+                        and len(self._consumers[op.input[1]]) == 1:
                     print("transform global conv to fc %s(%s)"
                           % (op.name, op.type))
                     op.type = MaceOp.FullyConnected.name
