@@ -310,6 +310,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         self.add_shape_info(transformed_graph_def)
 
+        # reset default graph to clear earlier import
+        tf.reset_default_graph()
         with tf.Session() as session:
             with session.graph.as_default() as graph:
                 tf.import_graph_def(transformed_graph_def, name='')
@@ -319,7 +321,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
         # we have polluted graph with 'shape' ops, so reset it and reload it
         # again
         tf.reset_default_graph()
-
         with tf.Session() as session:
             with session.graph.as_default() as graph:
                 tf.import_graph_def(transformed_graph_def, name='')
