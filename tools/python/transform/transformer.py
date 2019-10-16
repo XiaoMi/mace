@@ -307,14 +307,8 @@ class Transformer(base_converter.ConverterInterface):
                        "!= len(replace_op.output)")
 
             for i in six.moves.range(len(op.output)):
-                for consumer_op in self._consumers.get(op.output[i], []):
-                    self.replace(consumer_op.input,
-                                 op.output[i],
-                                 replace_op.output[i])
-
-            # if the op is output node, change replace_op output name to the op
-            # output name
-            for i in six.moves.range(len(op.output)):
+                # if the op is output node, change replace_op output name
+                # to the op output name
                 if op.output[i] in self._option.output_nodes:
                     for consumer in self._consumers.get(
                             replace_op.output[i], []):
@@ -322,6 +316,11 @@ class Transformer(base_converter.ConverterInterface):
                                      replace_op.output[i],
                                      op.output[i])
                     replace_op.output[i] = op.output[i]
+                else:
+                    for consumer_op in self._consumers.get(op.output[i], []):
+                        self.replace(consumer_op.input,
+                                     op.output[i],
+                                     replace_op.output[i])
 
         if remove_input_tensor:
             for input_name in op.input:
