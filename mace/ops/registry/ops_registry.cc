@@ -74,6 +74,7 @@ extern void RegisterStack(OpRegistryBase *op_registry);
 extern void RegisterStridedSlice(OpRegistryBase *op_registry);
 extern void RegisterSumGroup(OpRegistryBase *op_registry);
 extern void RegisterTargetRMSNorm(OpRegistryBase *op_registry);
+extern void RegisterTile(OpRegistryBase *op_registry);
 extern void RegisterTranspose(OpRegistryBase *op_registry);
 extern void RegisterUnstack(OpRegistryBase *op_registry);
 extern void RegisterUnsqueeze(OpRegistryBase *op_registry);
@@ -148,6 +149,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterSqueeze(this);
   ops::RegisterSumGroup(this);
   ops::RegisterTargetRMSNorm(this);
+  ops::RegisterTile(this);
   ops::RegisterTranspose(this);
   ops::RegisterUnstack(this);
   ops::RegisterUnsqueeze(this);

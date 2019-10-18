@@ -126,6 +126,7 @@ TFSupportedOps = [
     'MirrorPad',
     'Cumsum',
     'OneHot',
+    'Tile',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -276,6 +277,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Cumsum.name: self.convert_cumsum,
             TFOpType.OneHot.name: self.convert_one_hot,
             TFOpType.Sum.name: self.convert_reduce,
+            TFOpType.Tile.name: self.convert_tile,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -1049,6 +1051,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
             num_split_arg.i = num_or_size_splits
         del op.input[0]
         self._skip_tensor.add(tf_op.inputs[0].name)
+
+    def convert_tile(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Tile.name
 
     def convert_fake_quantize(self, tf_op):
         op = self.convert_general_op(tf_op)

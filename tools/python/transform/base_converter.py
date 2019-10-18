@@ -153,6 +153,7 @@ MaceSupportedOps = [
     'TargetRMSNorm',
     'Transpose',
     'Cumsum',
+    'Tile',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -185,7 +186,8 @@ MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.Softmax,
                                  MaceOp.Split,
                                  MaceOp.Squeeze,
-                                 MaceOp.SqrDiffMean]
+                                 MaceOp.SqrDiffMean,
+                                 MaceOp.Tile]
 
 
 class MaceKeyword(object):
