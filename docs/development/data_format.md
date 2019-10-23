@@ -38,7 +38,7 @@ Based on these conditions, We partition the ops into 3 categories.
 By default, the operators not in either `FixedDataFormatOps` or `TransposableDataFormatOps`
 are listed in `SourceDataFormatOps`.
 
-For detailed information, you could refer to [code](https://github.com/XiaoMi/mace/blob/master/mace/python/tools/converter_tool/base_converter.py).
+For detailed information, you could refer to [code](https://github.com/XiaoMi/mace/blob/master/tools/python/transform/base_converter.py).
 
 
 Data Format in Operator
