@@ -152,6 +152,8 @@ MaceSupportedOps = [
     'Transpose',
     'Cumsum',
     'Tile',
+    'LpNorm',
+    'MVNorm',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -169,7 +171,9 @@ MaceFixedDataFormatOps = [MaceOp.BatchNorm,
                           MaceOp.ResizeBilinear,
                           MaceOp.ResizeNearestNeighbor,
                           MaceOp.SpaceToBatchND,
-                          MaceOp.SpaceToDepth]
+                          MaceOp.SpaceToDepth,
+                          MaceOp.LpNorm,
+                          MaceOp.MVNorm]
 
 MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.AddN,
@@ -180,6 +184,7 @@ MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.Eltwise,
                                  MaceOp.Pad,
                                  MaceOp.Reduce,
+                                 MaceOp.Reshape,
                                  MaceOp.Softmax,
                                  MaceOp.Split,
                                  MaceOp.Squeeze,
@@ -264,6 +269,9 @@ class MaceKeyword(object):
     mace_reverse_str = 'reverse'
     mace_const_data_num_arg_str = 'const_data_num'
     mace_coeff_str = 'coeff'
+    mace_p_str = 'p'
+    mace_nor_var_str = 'normalize_variance'
+    mace_across_ch_str = 'across_channels'
 
 
 class TransformerRule(Enum):

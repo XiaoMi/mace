@@ -159,8 +159,10 @@ void RegisterReshape(OpRegistryBase *op_registry) {
 
                          auto tensor_shape_info = context->tensor_shape_info();
                          const std::string &input_0 = op->input(0);
-                         if (4 == op->output_shape(0).dims_size() &&
-                             4 == tensor_shape_info->at(input_0).size()) {
+                         const auto out_dims_size =
+                             op->output_shape(0).dims_size();
+                         if (4 == tensor_shape_info->at(input_0).size()
+                             && (out_dims_size == 4 || out_dims_size == 2)) {
                            return {DeviceType::CPU, DeviceType::GPU};
                          }
                          return {DeviceType::CPU};

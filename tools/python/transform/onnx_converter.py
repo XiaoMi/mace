@@ -113,7 +113,7 @@ OnnxSupportedOps = [
     # 'Log',
     'LogSoftmax',
     # 'Loop',
-    # 'LpNormalization',
+    'LpNormalization',
     # 'LpPool',
     'MatMul',
     'Max',
@@ -353,6 +353,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.ImageScaler.name: self.convert_imagescaler,
             OnnxOpType.LeakyRelu.name: self.convert_activation,
             OnnxOpType.LogSoftmax.name: self.convert_softmax,
+            OnnxOpType.LpNormalization: self.convert_lpnormalization,
             OnnxOpType.LstmNonlinear.name: self.convert_lstm_nonlinear,
             OnnxOpType.DynamicLSTM.name: self.convert_dynamic_lstm,
             OnnxOpType.Max.name: self.convert_eltwise,
@@ -1435,6 +1436,18 @@ class OnnxConverter(base_converter.ConverterInterface):
             use_log_arg.name = 'use_log'
             use_log_arg.i = 1
 
+    def convert_lpnormalization(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.LpNorm.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = node.attrs.get('axis', -1)
+
+        p_arg = op.arg.add()
+        p_arg.name = MaceKeyword.mace_p_str
+        p_arg.i = node.attrs.get('p', 2)
+
     def convert_splice(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Splice.name
@@ -1565,7 +1578,6 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.input.append(size_tensor_name)
         else:
             op.type = MaceOp.ResizeBilinear.name
-
             size_arg = op.arg.add()
             size_arg.name = MaceKeyword.mace_resize_size_str
             size_arg.ints.extend(output_size.tolist())

@@ -56,12 +56,13 @@ void BiasAdd::AddBias(const OpContext *context,
   const index_t width = output->dim(3);
   const index_t image_size = height * width;
 
+  auto bias_b = bias->dim_size() == 1 ? 0 : bias->shape()[1];
   for (index_t b = 0; b < batch; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const index_t offset = (b * channels + c) * image_size;
       auto input_ptr = input_data + offset;
       auto output_ptr = output_data + offset;
-      const float bias = bias_data[c];
+      const float bias = bias_data[bias_b * channels + c];
 
       for (index_t i = 0; i < image_size; ++i) {
         (*output_ptr++) = (*input_ptr++) + bias;

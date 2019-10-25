@@ -748,7 +748,6 @@ class DeviceWrapper:
                                 ) if YAMLKeyword.dockerfile_path \
                                      in model_config \
                                     else ("third_party/caffe", "lastest")
-
                             sh_commands.validate_model(
                                 abi=target_abi,
                                 device=self,

@@ -1376,6 +1376,16 @@ class Transformer(base_converter.ConverterInterface):
                 out_shape.dims for out_shape in op.output_shape]))
         return False
 
+    def is_transposable_data_format_ops(self, op):
+        if op.type == MaceOp.Reshape:
+            input_op = self._producer[op.input[0]]
+            out_dims_len = len(op.output_shape[0].dims)
+            if len(input_op.output_shape[0].dims) != 4 \
+                    or (out_dims_len != 4 and out_dims_len != 2):
+                print("In this model, reshape is not transposable op.")
+                return False
+        return op.type in MaceTransposableDataFormatOps
+
     def update_data_format(self):
         print("update data format")
         net = self._model
@@ -1387,7 +1397,7 @@ class Transformer(base_converter.ConverterInterface):
                 df_arg.name = MaceKeyword.mace_data_format_str
             if op.type in MaceFixedDataFormatOps:
                 df_arg.i = DataFormat.AUTO.value
-            elif op.type in MaceTransposableDataFormatOps:
+            elif self.is_transposable_data_format_ops(op):
                 input_df = DataFormat.AUTO.value
                 for input_tensor in op.input:
                     if input_tensor in self._consts:
