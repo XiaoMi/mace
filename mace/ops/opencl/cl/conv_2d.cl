@@ -17,7 +17,8 @@ __kernel void conv_2d(OUT_OF_RANGE_PARAMS
                       __private const int out_width,
                       __private const int filter_height,
                       __private const int filter_width,
-                      __private const int stride,
+                      __private const int stride_h,
+                      __private const int stride_w,
                       __private const int padding_top,
                       __private const int padding_left,
                       __private const int dilation_h,
@@ -47,12 +48,12 @@ __kernel void conv_2d(OUT_OF_RANGE_PARAMS
   DATA_TYPE4 out3 = 0;
 #endif
 
-  int in_width_stride = mul24(out_w_blks, stride);
-  int in_width0 = mad24(out_w_blk, stride, -padding_left);
+  int in_width_stride = mul24(out_w_blks, stride_w);
+  int in_width0 = mad24(out_w_blk, stride_w, -padding_left);
   int in_width1 = in_width0 + in_width_stride;
   int in_width2 = in_width1 + in_width_stride;
   int in_width3 = in_width2 + in_width_stride;
-  const int height_start = mad24((out_hb % out_height), stride, -padding_top);
+  const int height_start = mad24((out_hb % out_height), stride_h, -padding_top);
   int in_height_gap = select(
       0,
       (-height_start + dilation_h - 1) / dilation_h,

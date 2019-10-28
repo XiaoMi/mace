@@ -72,7 +72,8 @@ MaceStatus Conv2d(OpContext *context,
                   const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
-                  const int stride,
+                  const int stride_h,
+                  const int stride_w,
                   const int *padding,
                   const int *dilations,
                   const ActivationType activation,
@@ -164,7 +165,8 @@ MaceStatus Conv2d(OpContext *context,
     kernel->setArg(idx++, static_cast<uint32_t>(width));
     kernel->setArg(idx++, static_cast<uint32_t>(filter->dim(2)));
     kernel->setArg(idx++, static_cast<uint32_t>(filter->dim(3)));
-    kernel->setArg(idx++, static_cast<uint32_t>(stride));
+    kernel->setArg(idx++, static_cast<uint32_t>(stride_h));
+    kernel->setArg(idx++, static_cast<uint32_t>(stride_w));
     kernel->setArg(idx++, padding[0] / 2);
     kernel->setArg(idx++, padding[1] / 2);
     kernel->setArg(idx++, dilations[0]);
