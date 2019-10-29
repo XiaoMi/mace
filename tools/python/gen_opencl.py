@@ -22,9 +22,9 @@ import os
 import struct
 import numpy as np
 
-from python.utils import util
-from python.utils.util import MaceLogger
-from python.utils.util import mace_check
+from utils import util
+from utils.util import MaceLogger
+from utils.util import mace_check
 
 
 def generate_opencl_code(binary_file_name, load_func_name, size_func_name,

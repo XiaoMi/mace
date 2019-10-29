@@ -12,32 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import re
 
 import numpy as np
 import six
 
-from python.py_proto import mace_pb2
-from . import base_converter
-from .base_converter import ConverterUtil
-from .base_converter import DataFormat
-from .base_converter import DeviceType
-from .base_converter import EltwiseType
-from .base_converter import FrameworkType
-from .base_converter import MaceKeyword
-from .base_converter import MaceOp
-from .base_converter import MaceFixedDataFormatOps  # noqa
-from .base_converter import MaceTransposableDataFormatOps  # noqa
-from .base_converter import PaddingMode
-from .base_converter import ReduceType
-from .base_converter import TransformerRule
-from python.quantize import quantize_util
-from python.utils.util import mace_check
-from python.utils.util import MaceLogger
+from py_proto import mace_pb2
+from transform import base_converter
+from transform.base_converter import ConverterUtil
+from transform.base_converter import DataFormat
+from transform.base_converter import DeviceType
+from transform.base_converter import EltwiseType
+from transform.base_converter import FrameworkType
+from transform.base_converter import MaceKeyword
+from transform.base_converter import MaceOp
+from transform.base_converter import MaceFixedDataFormatOps  # noqa
+from transform.base_converter import MaceTransposableDataFormatOps  # noqa
+from transform.base_converter import PaddingMode
+from transform.base_converter import ReduceType
+from transform.base_converter import TransformerRule
+from quantize import quantize_util
+from utils.util import mace_check
 
 
 class Transformer(base_converter.ConverterInterface):
@@ -1444,15 +1440,15 @@ class Transformer(base_converter.ConverterInterface):
                                 arg.i = 1
                             elif arg.i == 3:
                                 arg.i = 2
-                        if op.input[0] in self._producer:
-                            producer = self._producer[op.input[0]]
-                            input_shape = producer.output_shape[0].dims
-                            if producer.type == MaceOp.FullyConnected.name and\
-                                    len(input_shape) == 2:
-                                axis_arg = ConverterUtil.get_arg(
-                                    op, MaceKeyword.mace_axis_str)
-                                if axis_arg.i == 1:
-                                    axis_arg.i = 3
+
+                        producer = self._producer[op.input[0]]
+                        input_shape = producer.output_shape[0].dims
+                        if producer.type == MaceOp.FullyConnected.name and \
+                                len(input_shape) == 2:
+                            axis_arg = ConverterUtil.get_arg(
+                                op, MaceKeyword.mace_axis_str)
+                            if axis_arg.i == 1:
+                                axis_arg.i = 3
 
             elif op.type == MaceOp.Squeeze.name:
                 for arg in op.arg:

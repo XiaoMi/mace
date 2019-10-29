@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import os.path
 import numpy as np
 import six
 
-from python.py_proto import mace_pb2
-from python.utils import util
-from python.utils.config_parser import DataFormat
-from python.utils.config_parser import Platform
+from py_proto import mace_pb2
+from utils import util
+from utils.config_parser import DataFormat
+from utils.config_parser import Platform
 
 VALIDATION_MODULE = 'VALIDATION'
 

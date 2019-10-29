@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from enum import Enum
 
-from python.py_proto import mace_pb2
-from python.utils.config_parser import DataFormat
-from python.utils.config_parser import DeviceType
+from py_proto import mace_pb2
+
+from utils.config_parser import DataFormat
+from utils.config_parser import DeviceType
 
 
 # SAME_LOWER: if the amount of paddings to be added is odd,

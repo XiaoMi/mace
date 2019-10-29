@@ -21,15 +21,14 @@ import datetime
 import os
 import hashlib
 from jinja2 import Environment, FileSystemLoader
-
-from python.py_proto import mace_pb2
-from python.utils import device
-from python.utils import util
-from python.utils.util import mace_check
-from python.utils.util import MaceLogger
-from python.utils import config_parser
-from python.utils.config_parser import CPP_KEYWORDS
-from python.utils.config_parser import ModelKeys
+from py_proto import mace_pb2
+from utils import device
+from utils import util
+from utils.util import mace_check
+from utils.util import MaceLogger
+from utils import config_parser
+from utils.config_parser import CPP_KEYWORDS
+from utils.config_parser import ModelKeys
 
 GENERATED_NAME = set()
 
