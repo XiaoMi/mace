@@ -253,7 +253,7 @@ class ShapeInference(object):
         aspect_ratio = ConverterUtil.get_arg(op, MaceKeyword.mace_aspect_ratio_str).floats  # noqa
         num_prior = len(aspect_ratio) * len(min_size) + len(max_size)
 
-        output_shape[2] = num_prior * input_h * input_w * 4
+        output_shape[2] = int(num_prior * input_h * input_w * 4)
         self.add_output_shape(op, [output_shape])
 
     def infer_shape_reshape(self, op):
@@ -275,7 +275,7 @@ class ShapeInference(object):
                     output_shape[i] = dim[i]
                     product *= dim[i]
             if idx != -1:
-                output_shape[idx] = input_size / product
+                output_shape[idx] = int(input_size / product)
             self.add_output_shape(op, [output_shape])
         else:
             output_shape = []

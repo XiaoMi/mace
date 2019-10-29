@@ -1440,15 +1440,15 @@ class Transformer(base_converter.ConverterInterface):
                                 arg.i = 1
                             elif arg.i == 3:
                                 arg.i = 2
-
-                        producer = self._producer[op.input[0]]
-                        input_shape = producer.output_shape[0].dims
-                        if producer.type == MaceOp.FullyConnected.name and \
-                                len(input_shape) == 2:
-                            axis_arg = ConverterUtil.get_arg(
-                                op, MaceKeyword.mace_axis_str)
-                            if axis_arg.i == 1:
-                                axis_arg.i = 3
+                        if op.input[0] in self._producer:
+                            producer = self._producer[op.input[0]]
+                            input_shape = producer.output_shape[0].dims
+                            if (producer.type == MaceOp.FullyConnected.name
+                                    and len(input_shape) == 2):
+                                axis_arg = ConverterUtil.get_arg(
+                                        op, MaceKeyword.mace_axis_str)
+                                if axis_arg.i == 1:
+                                    axis_arg.i = 3
 
             elif op.type == MaceOp.Squeeze.name:
                 for arg in op.arg:
