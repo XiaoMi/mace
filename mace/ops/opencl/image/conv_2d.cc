@@ -73,8 +73,7 @@ MaceStatus Conv2dKernel::Compute(
     Tensor *output) {
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
-  if (strides[0] != strides[1] ||
-      (dilations[0] > 1 && (strides[0] > 1 || kernel_h == 1))) {
+  if (dilations[0] > 1 && (strides[0] > 1 || kernel_h == 1)) {
     LOG(WARNING) << "OpenCL conv2d kernel with "
                  << "filter" << kernel_h << "x" << kernel_w << ","
                  << " stride " << strides[0] << "x" << strides[1]
@@ -131,6 +130,7 @@ MaceStatus Conv2dKernel::Compute(
                         filter,
                         bias,
                         strides[0],
+                        strides[1],
                         paddings.data(),
                         dilations,
                         activation,
@@ -148,6 +148,7 @@ MaceStatus Conv2dKernel::Compute(
                         filter,
                         bias,
                         strides[0],
+                        strides[1],
                         paddings.data(),
                         dilations,
                         activation,
@@ -165,6 +166,7 @@ MaceStatus Conv2dKernel::Compute(
                     filter,
                     bias,
                     strides[0],
+                    strides[1],
                     paddings.data(),
                     dilations,
                     activation,

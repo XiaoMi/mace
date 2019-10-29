@@ -71,7 +71,8 @@ MaceStatus Conv2dK1x1(OpContext *context,
                       const Tensor *input,
                       const Tensor *filter,
                       const Tensor *bias,
-                      const int stride,
+                      const int stride_h,
+                      const int stride_w,
                       const int *padding,
                       const int *dilations,
                       const ActivationType activation,
@@ -170,7 +171,8 @@ MaceStatus Conv2dK1x1(OpContext *context,
     kernel->setArg(idx++, static_cast<int>(input_channel_blocks));
     kernel->setArg(idx++, static_cast<int>(height));
     kernel->setArg(idx++, static_cast<int>(width));
-    kernel->setArg(idx++, stride);
+    kernel->setArg(idx++, stride_h);
+    kernel->setArg(idx++, stride_w);
 
     *prev_input_shape = input->shape();
   }

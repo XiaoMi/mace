@@ -42,7 +42,8 @@ void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, true);
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+      true);
   net.AddInputFromArray<D, float>("Bias", {1}, {0.1f}, true);
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
@@ -100,7 +101,8 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, true);
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+      true);
   net.AddInputFromArray<D, float>("Bias", {1}, {0.1f}, true);
   const std::vector<index_t> output_shape = {1, 3, 3, 1};
 
@@ -149,6 +151,65 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3, 1e-3);
   }
 }
+
+template <DeviceType D, typename T>
+void TestNHWCSimple3x3NeqStride(int wino_blk_size = 0) {
+  OpsTestNet net;
+  // Add input data
+  net.AddInputFromArray<D, float>(
+      "Input", {1, 3, 3, 2},
+      {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+  net.AddInputFromArray<D, float>(
+      "Filter", {1, 2, 3, 3},
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+      true);
+  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f}, true);
+  const std::vector<index_t> output_shape = {1, 3, 2, 1};
+
+  if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("InputNCHW")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("OutputNCHW")
+        .AddIntsArg("strides", {1, 2})
+        .AddIntArg("padding", Padding::SAME)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
+  } else if (D == DeviceType::GPU) {
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .OutputShape(output_shape)
+        .AddIntsArg("strides", {1, 2})
+        .AddIntArg("padding", Padding::SAME)
+        .AddIntsArg("dilations", {1, 1})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .AddIntArg("wino_block_size", wino_blk_size)
+        .Finalize(net.NewOperatorDef());
+
+    net.RunOp(D);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  auto expected = net.CreateTensor<float>(
+      output_shape, {8.1f, 8.1f, 12.1f, 12.1f, 8.1f, 8.1f});
+  if (DataTypeToEnum<T>::value == DataType::DT_FLOAT) {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+  } else {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3, 1e-3);
+  }
+}
 }  // namespace
 
 TEST_F(Conv2dOpTest, CPUSimple) {
@@ -171,7 +232,12 @@ TEST_F(Conv2dOpTest, OPENCLSimpleWinograd) {
   TestNHWCSimple3x3VALID<DeviceType::GPU, float>(2);
   TestNHWCSimple3x3VALID<DeviceType::GPU, half>(2);
   // TODO(liutuo): the precision of the last value is not normal.
-//  TestNHWCSimple3x3SAME<DeviceType::GPU, half>(4);
+  //  TestNHWCSimple3x3SAME<DeviceType::GPU, half>(4);
+}
+
+TEST_F(Conv2dOpTest, NotEqualStrideSimple) {
+  TestNHWCSimple3x3NeqStride<DeviceType::CPU, float>();
+  TestNHWCSimple3x3NeqStride<DeviceType::GPU, float>();
 }
 
 namespace {
@@ -186,7 +252,8 @@ void TestNHWCSimple3x3WithoutBias() {
   net.AddInputFromArray<D, T>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, true);
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+      true);
 
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>(
@@ -316,7 +383,8 @@ void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, true);
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+      true);
   net.AddInputFromArray<D, float>("Bias", {1}, {-0.1f}, true);
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
@@ -372,7 +440,8 @@ void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, true);
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+      true);
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
   if (D == DeviceType::CPU) {
@@ -502,17 +571,87 @@ void TestConv1x1() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+
+template <DeviceType D>
+void TestConv1x1NeqStride() {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<D, float>(
+      "Input", {1, 3, 10, 5},
+      {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+  net.AddInputFromArray<D, float>(
+      "Filter", {2, 5, 1, 1},
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, true);
+  net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f}, true);
+
+  if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+    OpDefBuilder("Conv2D", "Conv2DTest")
+        .Input("InputNCHW")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("OutputNCHW")
+        .AddIntsArg("strides", {1, 2})
+        .AddIntArg("padding", Padding::VALID)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
+  } else if (D == DeviceType::GPU) {
+    OpDefBuilder("Conv2D", "Conv2DTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {1, 2})
+        .AddIntArg("padding", Padding::VALID)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  // Check
+  auto expected = net.CreateTensor<float>(
+      {1, 3, 5, 2},
+      {5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f,
+       5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f,
+       5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f});
+
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+}
 }  // namespace
 
 TEST_F(Conv2dOpTest, CPUConv1x1) { TestConv1x1<DeviceType::CPU>(); }
 
 TEST_F(Conv2dOpTest, OPENCLConv1x1) { TestConv1x1<DeviceType::GPU>(); }
 
+TEST_F(Conv2dOpTest, CPUConv1x1NotEqualStride) {
+  TestConv1x1NeqStride<DeviceType::CPU>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLConv1x1NotEqualStride) {
+  TestConv1x1NeqStride<DeviceType::GPU>();
+}
+
 namespace {
 template <DeviceType D, typename T>
-void TestComplexConvNxNS12(const std::vector<index_t> &shape,
-                           const int stride,
-                           const int wino_blk_size = 0) {
+void TestComplexConvNxN(const std::vector<index_t> &shape,
+                        const std::vector<int> strides,
+                        const int wino_blk_size = 0) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -581,35 +720,40 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
   };
 
   for (int kernel_size : {1, 3, 5, 7}) {
-    func(kernel_size, kernel_size, stride, stride, VALID);
-    func(kernel_size, kernel_size, stride, stride, SAME);
+    func(kernel_size, kernel_size, strides[0], strides[1], VALID);
+    func(kernel_size, kernel_size, strides[0], strides[1], SAME);
   }
 }
 }  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
-  TestComplexConvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 1);
-  TestComplexConvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 2);
+  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {1, 1});
+  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNWinograd) {
-  TestComplexConvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 1, 2);
-  TestComplexConvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 1, 4);
+  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {1, 1}, 2);
+  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {1, 1}, 4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
-  TestComplexConvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 1);
-  TestComplexConvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 2);
+  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {1, 1});
+  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNWinograd) {
-  TestComplexConvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 1, 4);
-  TestComplexConvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 1, 2);
+  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {1, 1}, 4);
+  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {1, 1}, 2);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS34) {
-  TestComplexConvNxNS12<DeviceType::GPU, float>({31, 113, 13, 17}, 3);
-  TestComplexConvNxNS12<DeviceType::GPU, float>({32, 32, 13, 17}, 4);
+  TestComplexConvNxN<DeviceType::GPU, float>({31, 113, 13, 17}, {3, 3});
+  TestComplexConvNxN<DeviceType::GPU, float>({32, 32, 13, 17}, {4, 4});
+}
+
+TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNWithNotEqualStride) {
+  TestComplexConvNxN<DeviceType::GPU, float>({31, 113, 13, 17}, {1, 2});
+  TestComplexConvNxN<DeviceType::GPU, float>({32, 32, 13, 17}, {3, 4});
 }
 
 namespace {
@@ -646,9 +790,7 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     net.AddInputFromArray<D, float>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w},
         float_filter_data, true);
-    net.AddInputFromArray<D, float>("Bias",
-                                    {output_channels},
-                                    float_bias_data,
+    net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data,
                                     true);
 
     net.TransformDataFormat<DeviceType::CPU, float>(
@@ -713,11 +855,11 @@ TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3Winograd) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64},
-                                             {1, 1}, 2);
-// TODO(liutuo) : the precision error is large.
-//  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64},
-//                                             {1, 1}, 4);
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64}, {1, 1},
+                                             2);
+  // TODO(liutuo) : the precision error is large.
+  //  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64},
+  //                                             {1, 1}, 4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv5x5S12) {
@@ -769,10 +911,10 @@ TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv3x3S12) {
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv3x3Winograd) {
   // TODO(liutuo) : the precision error is large.
-//  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7},
-//                                             {1, 1}, 4);
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7},
-                                             {1, 1}, 2);
+  //  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7},
+  //                                             {1, 1}, 4);
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7}, {1, 1},
+                                             2);
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfConv5x5Dilation2) {
@@ -1045,10 +1187,10 @@ TEST_F(Conv2dOpTest, OPENCLAlignedPad2) {
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedPad2Winograd) {
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16},
-                                                  {2, 2}, 2);
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16},
-                                                  {2, 2}, 4);
+  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16}, {2, 2},
+                                                  2);
+  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16}, {2, 2},
+                                                  4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedPad4) {
@@ -1071,15 +1213,15 @@ void TestQuantSimple3x3() {
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, uint8_t>(
-      "Filter", {1, 3, 3, 2},
-      {102, 150, 123, 135, 1, 216, 137, 47, 53, 75, 145, 130, 171, 62, 255,
-       122, 72, 211}, true, 0.0226, 127);
+      "Filter", {1, 3, 3, 2}, {102, 150, 123, 135, 1, 216, 137, 47, 53, 75, 145,
+                               130, 171, 62, 255, 122, 72, 211},
+      true, 0.0226, 127);
   net.AddInputFromArray<DeviceType::CPU, uint8_t>(
-      "Input", {1, 3, 3, 2},
-      {1, 75, 117, 161, 127, 119, 94, 151, 203, 151, 84, 61, 55, 142, 113, 139,
-       3, 255}, false, 0.0204, 93);
-  net.AddInputFromArray<DeviceType::CPU, int32_t>(
-      "Bias", {1}, {2}, true, 0.00046104, 0);
+      "Input", {1, 3, 3, 2}, {1, 75, 117, 161, 127, 119, 94, 151, 203, 151, 84,
+                              61, 55, 142, 113, 139, 3, 255},
+      false, 0.0204, 93);
+  net.AddInputFromArray<DeviceType::CPU, int32_t>("Bias", {1}, {2}, true,
+                                                  0.00046104, 0);
 
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
@@ -1113,17 +1255,15 @@ void TestQuant(const index_t batch,
                enum Padding padding_type,
                const std::vector<int> &strides) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input", {batch, in_height, in_width,
-                                           in_channels});
-  net.AddRandomInput<CPU, float>("Filter", {out_channels, k_height, k_width,
-                                            in_channels}, true);
+  net.AddRandomInput<CPU, float>("Input",
+                                 {batch, in_height, in_width, in_channels});
+  net.AddRandomInput<CPU, float>(
+      "Filter", {out_channels, k_height, k_width, in_channels}, true);
   net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
   net.TransformDataFormat<DeviceType::CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-  net.TransformFilterDataFormat<DeviceType::CPU, float>("Filter",
-                                                        DataFormat::OHWI,
-                                                        "FilterOIHW",
-                                                        DataFormat::OIHW);
+  net.TransformFilterDataFormat<DeviceType::CPU, float>(
+      "Filter", DataFormat::OHWI, "FilterOIHW", DataFormat::OIHW);
 
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
@@ -1172,10 +1312,10 @@ void TestQuant(const index_t batch,
   auto bias_data = bias->data<float>();
   float bias_scale = q_input->scale() * q_filter->scale();
   std::vector<int32_t> q_bias(bias->size());
-  QuantizeUtil<float, int32_t>
-      quantize_util(OpTestContext::Get()->thread_pool());
-  quantize_util.QuantizeWithScaleAndZeropoint(
-      bias_data, bias->size(), bias_scale, 0, q_bias.data());
+  QuantizeUtil<float, int32_t> quantize_util(
+      OpTestContext::Get()->thread_pool());
+  quantize_util.QuantizeWithScaleAndZeropoint(bias_data, bias->size(),
+                                              bias_scale, 0, q_bias.data());
   net.AddInputFromArray<DeviceType::CPU, int32_t>(
       "QuantizedBias", {out_channels}, q_bias, true, bias_scale, 0);
 
