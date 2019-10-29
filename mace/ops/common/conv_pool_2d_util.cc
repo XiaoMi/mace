@@ -76,7 +76,8 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,
       output_height = (input_height - k_extent_height) / strides[0] + 1;
       output_width = (input_width - k_extent_width) / strides[1] + 1;
       break;
-    case SAME:output_height = (input_height - 1) / strides[0] + 1;
+    case SAME:
+      output_height = (input_height - 1) / strides[0] + 1;
       output_width = (input_width - 1) / strides[1] + 1;
       break;
     case FULL:

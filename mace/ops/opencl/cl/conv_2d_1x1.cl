@@ -15,7 +15,8 @@ __kernel void conv_2d_1x1(OUT_OF_RANGE_PARAMS
                           __private const int in_ch_blks,
                           __private const int height,
                           __private const int width,
-                          __private const int stride) {
+                          __private const int stride_h,
+                          __private const int stride_w) {
   const int out_ch_blk = get_global_id(0);
   const int out_w_blk = get_global_id(1);
   const int out_hb = get_global_id(2);
@@ -41,14 +42,14 @@ __kernel void conv_2d_1x1(OUT_OF_RANGE_PARAMS
 #endif
 
   int4 w;
-  int in_width_stride = mul24(out_w_blks, stride);
-  w.x = mul24(out_w_blk, stride);
+  int in_width_stride = mul24(out_w_blks, stride_w);
+  w.x = mul24(out_w_blk, stride_w);
   w.y = w.x + in_width_stride;
   w.z = w.y + in_width_stride;
   w.w = w.z + in_width_stride;
   int batch = out_hb / height;
   int h_idx = out_hb - mul24(batch, height);
-  int out_hb_idx = mul24(h_idx, stride);
+  int out_hb_idx = mul24(h_idx, stride_h);
 
   w.x = select(w.x, INT_MIN, w.x >= in_width);
   w.y = select(w.y, INT_MIN, w.y >= in_width);

@@ -1075,6 +1075,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         if tf_op.type == TFOpType.FakeQuantWithMinMaxVars.name:
             self._skip_tensor.add(tf_op.inputs[1].name)
             self._skip_tensor.add(tf_op.inputs[2].name)
+        del op.input[1:]
 
     def convert_cumsum(self, tf_op):
         op = self.convert_general_op(tf_op)

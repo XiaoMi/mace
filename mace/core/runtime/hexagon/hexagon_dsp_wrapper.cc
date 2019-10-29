@@ -432,7 +432,7 @@ bool HexagonDSPWrapper::ExecuteGraph(const Tensor &input_tensor,
   }
   MACE_CHECK(output_bytes == output_tensor->raw_size(),
              "wrong output bytes inferred.");
-  return res == 0;
+  return true;
 }
 
 bool HexagonDSPWrapper::ExecuteGraphNew(
@@ -495,6 +495,7 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
                                    num_inputs * kNumMetaData,
                                    outputs.data(),
                                    num_outputs * kNumMetaData);
+  MACE_CHECK(res == 0, "execute error");
 
   // handle hexagon output
   for (size_t i = 0; i < num_outputs; ++i) {
@@ -504,12 +505,12 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
         outputs[index].depth};
     MACE_CHECK(output_shape.size() == output_info_[i].shape.size(),
                output_shape.size(), " vs ", output_info_[i].shape.size(),
-                "wrong output shape inferred");
+                " wrong output shape inferred");
     for (size_t j = 0; j < output_shape.size(); ++j) {
       MACE_CHECK(static_cast<index_t>(output_shape[j])
                      == output_info_[i].shape[j],
                  output_shape[j], " vs ", output_info_[i].shape[j],
-                 "wrong output shape inferred");
+                 " wrong output shape[", j, "] inferred");
     }
     auto output_tensor = output_tensors->at(output_info_[i].name);
     MACE_CHECK(static_cast<index_t>(outputs[index].data_valid_len)
@@ -518,7 +519,7 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
                " wrong output bytes inferred.");
   }
 
-  return res == 0;
+  return true;
 }
 
 }  // namespace mace

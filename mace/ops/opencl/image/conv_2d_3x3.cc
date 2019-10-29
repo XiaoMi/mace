@@ -64,7 +64,8 @@ MaceStatus Conv2dK3x3(OpContext *context,
                       const Tensor *input,
                       const Tensor *filter,
                       const Tensor *bias,
-                      const int stride,
+                      const int stride_h,
+                      const int stride_w,
                       const int *padding,
                       const int *dilations,
                       const ActivationType activation,
@@ -154,7 +155,8 @@ MaceStatus Conv2dK3x3(OpContext *context,
     kernel->setArg(idx++, static_cast<int>(input_channel_blocks));
     kernel->setArg(idx++, static_cast<int>(height));
     kernel->setArg(idx++, static_cast<int>(width));
-    kernel->setArg(idx++, stride);
+    kernel->setArg(idx++, stride_h);
+    kernel->setArg(idx++, stride_w);
     kernel->setArg(idx++, padding[0] / 2);
     kernel->setArg(idx++, padding[1] / 2);
     kernel->setArg(idx++, dilations[0]);
