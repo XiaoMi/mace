@@ -24,6 +24,7 @@ from functools import reduce
 
 from python.py_proto import mace_pb2
 from python.utils.util import mace_check
+from python.utils.util import MaceLogger
 from . import base_converter
 from .base_converter import ConverterUtil
 from .base_converter import DeviceType
@@ -120,9 +121,9 @@ class HexagonConverter(base_converter.ConverterInterface):
         # convert op node
         self.convert_ops()
 
-        self.convert_input_output_node()
+        model_inputs = self.convert_input_output_node()
 
-        self.add_node_id()
+        self.add_node_id(model_inputs)
 
         return self._model
 
@@ -234,8 +235,11 @@ class HexagonConverter(base_converter.ConverterInterface):
         for input_node in self._option.input_nodes.values():
             op_name = normalize_name(
                 MaceKeyword.mace_input_node_name + '_' + input_node.name)
-            op = first_quantize_input_op \
-                if op_name == first_quantize_input_op.name else ops[op_name]
+            if op_name == first_quantize_input_op.name:
+                op = first_quantize_input_op
+                quantize_input_op.name = MaceKeyword.mace_input_node_name
+            else:
+                op = ops[op_name]
             mace_check(op.type == HexagonOp.QuantizeINPUT_f_to_8.name,
                        "input node type is: %s" % op.type)
             quantize_input_op.output.extend(op.output)
@@ -275,7 +279,9 @@ class HexagonConverter(base_converter.ConverterInterface):
             dequantize_output_op.type = HexagonOp.OUTPUT.name
             del dequantize_output_op.input[1:]
 
-    def add_node_id(self):
+        return quantize_input_op.output
+
+    def add_node_id(self, model_inputs):
         node_id_counter = 0
         node_id_map = {}
         for tensor in self._model.tensors:
@@ -304,7 +310,11 @@ class HexagonConverter(base_converter.ConverterInterface):
                 node_id = node_id_map[tensor_name]
                 node_input = op.node_input.add()
                 node_input.node_id = node_id
-                node_input.output_port = int(port)
+                if tensor_name in model_inputs:
+                    for i in range(len(model_inputs)):
+                        if model_inputs[i] == tensor_name:
+                            port += i * 3
+                node_input.output_port = port
 
     def convert_ops(self):
         print("Convert mace graph to hexagon.")

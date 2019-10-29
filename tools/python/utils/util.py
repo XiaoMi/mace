@@ -65,8 +65,8 @@ class MaceLogger:
               + CMDColors.ENDC)
 
     @staticmethod
-    def error(message):
-        print(CMDColors.RED + 'ERROR: ' + get_frame_info() + str(message)
+    def error(message, level=2):
+        print(CMDColors.RED + 'ERROR: ' + get_frame_info(level) + str(message)
               + CMDColors.ENDC)
         exit(1)
 
@@ -76,7 +76,7 @@ def mace_check(condition, message):
         for line in traceback.format_stack():
             print(line.strip())
 
-        MaceLogger.error(message)
+        MaceLogger.error(message, level=3)
 
 
 ################################

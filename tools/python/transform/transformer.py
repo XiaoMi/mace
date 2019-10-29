@@ -37,6 +37,7 @@ from .base_converter import ReduceType
 from .base_converter import TransformerRule
 from python.quantize import quantize_util
 from python.utils.util import mace_check
+from python.utils.util import MaceLogger
 
 
 class Transformer(base_converter.ConverterInterface):
@@ -1737,16 +1738,18 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if op.type == 'FakeQuantWithMinMaxVars' or \
                    op.type == 'FakeQuantWithMinMaxArgs':
-                producer_op = self._producer[op.input[0]]
-                minval = ConverterUtil.get_arg(op, 'min').f
-                maxval = ConverterUtil.get_arg(op, 'max').f
-                quantize_info = \
-                    self.add_quantize_info(producer_op, minval, maxval)
-                self._quantize_activation_info[op.input[0]] = quantize_info
-                # for add -> fakequant pattern
-                self._quantize_activation_info[op.output[0]] = quantize_info
+                if op.input[0] not in self._consts:
+                    producer_op = self._producer[op.input[0]]
+                    minval = ConverterUtil.get_arg(op, 'min').f
+                    maxval = ConverterUtil.get_arg(op, 'max').f
+                    quantize_info = \
+                        self.add_quantize_info(producer_op, minval, maxval)
+                    self._quantize_activation_info[op.input[0]] = quantize_info
+                    # for add -> fakequant pattern
+                    self._quantize_activation_info[op.output[0]] = \
+                        quantize_info
 
-                print(op.input[0], op.output[0])
+                    print(op.input[0], op.output[0])
                 op.type = MaceOp.Identity.name
 
         return False
@@ -1853,6 +1856,8 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_info.scale = scale
                 quantize_info.zero_point = zero
                 self._quantize_activation_info[new_input_name] = quantize_info
+                input_op = self._producer[input_node.name]
+                input_op.quantize_info.extend([quantize_info])
 
         print("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
@@ -1907,8 +1912,8 @@ class Transformer(base_converter.ConverterInterface):
             elif (op.type == MaceOp.Eltwise.name
                   and not op.quantize_info
                   and len(op.input) == 2
-                  and len(op.input[0]) not in self._consts
-                  and len(op.input[1]) not in self._consts):
+                  and op.input[0] not in self._consts
+                  and op.input[1] not in self._consts):
                 producer_op0 = self._producer[op.input[0]]
                 producer_op1 = self._producer[op.input[1]]
                 if ConverterUtil.get_arg(
