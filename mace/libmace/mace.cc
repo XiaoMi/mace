@@ -34,7 +34,10 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL
 
-#if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
+#if defined(MACE_ENABLE_HEXAGON)
+#include "mace/core/runtime/hexagon/hexagon_device.h"
+#include "mace/core/runtime/hexagon/hexagon_dsp_wrapper.h"
+#elif defined(MACE_ENABLE_HTA)
 #include "mace/core/runtime/hexagon/hexagon_device.h"
 #endif
 
@@ -189,6 +192,10 @@ class MaceEngineConfig::Impl {
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy);
 
+  MaceStatus SetHexagonPower(HexagonNNCornerType corner,
+                             bool dcvs_enable,
+                             int latency);
+
   inline DeviceType device_type() const {
     return device_type_;
   }
@@ -228,7 +235,13 @@ MaceEngineConfig::Impl::Impl(const DeviceType device_type)
       cpu_affinity_policy_(CPUAffinityPolicy::AFFINITY_NONE),
       gpu_context_(nullptr),
       gpu_priority_hint_(GPUPriorityHint::PRIORITY_LOW),
-      gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {}
+      gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {
+#ifdef MACE_ENABLE_HEXAGON
+  if (!HexagonDSPWrapper::SetPower(HEXAGON_NN_CORNER_TURBO, true, 100)) {
+    LOG(WARNING) << "Hexagon set default clocks failed!";
+  }
+#endif
+}
 
 MaceStatus MaceEngineConfig::Impl::SetGPUContext(
     std::shared_ptr<GPUContext> context) {
@@ -252,6 +265,20 @@ MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
   return MaceStatus::MACE_SUCCESS;
 }
 
+MaceStatus MaceEngineConfig::Impl::SetHexagonPower(
+    HexagonNNCornerType corner,
+    bool dcvs_enable,
+    int latency) {
+  MACE_UNUSED(corner);
+  MACE_UNUSED(dcvs_enable);
+  MACE_UNUSED(latency);
+  bool ret = false;
+#ifdef MACE_ENABLE_HEXAGON
+  ret = HexagonDSPWrapper::SetPower(corner, dcvs_enable, latency);
+#endif
+  return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
+}
+
 MaceEngineConfig::MaceEngineConfig(
     const DeviceType device_type)
     : impl_(new MaceEngineConfig::Impl(device_type)) {}
@@ -273,6 +300,13 @@ MaceStatus MaceEngineConfig::SetCPUThreadPolicy(
     int num_threads_hint,
     CPUAffinityPolicy policy) {
   return impl_->SetCPUThreadPolicy(num_threads_hint, policy);
+}
+
+MaceStatus MaceEngineConfig::SetHexagonPower(
+    HexagonNNCornerType corner,
+    bool dcvs_enable,
+    int latency) {
+  return impl_->SetHexagonPower(corner, dcvs_enable, latency);
 }
 
 // Mace Tensor

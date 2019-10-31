@@ -87,7 +87,34 @@ std::string FloatToString(const FloatType v, const int32_t precision) {
   stream << std::fixed << std::setprecision(precision) << v;
   return stream.str();
 }
+
+hexagon_nn_corner_type TransformCornerType(HexagonNNCornerType corner) {
+  switch (corner) {
+    case HEXAGON_NN_CORNER_RELEASE: return NN_CORNER_RELEASE;
+    case HEXAGON_NN_CORNER_TURBO: return NN_CORNER_TURBO;
+    case HEXAGON_NN_CORNER_NOMPLUS: return NN_CORNER_NOMPLUS;
+    case HEXAGON_NN_CORNER_NOMINAL: return NN_CORNER_NOMINAL;
+    case HEXAGON_NN_CORNER_SVSPLUS: return NN_CORNER_SVSPLUS;
+    case HEXAGON_NN_CORNER_SVS: return NN_CORNER_SVS;
+    case HEXAGON_NN_CORNER_SVS2: return NN_CORNER_SVS2;
+    default:
+      LOG(FATAL) << "Wrong Hexagon NN corner type: " << corner;
+      return NN_CORNER_TURBO;
+  }
+}
+
 }  // namespace
+
+HexagonDSPWrapper::HexagonDSPWrapper() {
+  std::string env_log_execute_time_str;
+  GetEnv("MACE_DSP_LOG_EXECUTE_TIME", &env_log_execute_time_str);
+  if (env_log_execute_time_str.empty()) {
+    log_execute_time_ = false;
+  } else {
+    log_execute_time_ = static_cast<bool>(std::stoi(env_log_execute_time_str));
+  }
+}
+
 
 int HexagonDSPWrapper::GetVersion() {
   int version;
@@ -95,9 +122,18 @@ int HexagonDSPWrapper::GetVersion() {
   return version;
 }
 
+bool HexagonDSPWrapper::SetPower(HexagonNNCornerType corner,
+                                 bool dcvs_enable,
+                                 int latency) {
+  int ret = hexagon_nn_set_clocks(TransformCornerType(corner),
+                                  dcvs_enable ? NN_DCVS_ENABLE
+                                              : NN_DCVS_DISABLE,
+                                  static_cast<uint32_t>(std::max(0, latency)));
+  return ret == 0;
+}
+
 bool HexagonDSPWrapper::Config() {
   LOG(INFO) << "Hexagon config";
-  MACE_CHECK(hexagon_nn_set_powersave_level(0) == 0, "hexagon power error");
   MACE_CHECK(hexagon_nn_config() == 0, "hexagon config error");
   return true;
 }
@@ -111,7 +147,7 @@ bool HexagonDSPWrapper::Init() {
 
 bool HexagonDSPWrapper::Finalize() {
   LOG(INFO) << "Hexagon finalize";
-  return hexagon_nn_set_powersave_level(1) == 0;
+  return hexagon_nn_remove_clocks() == 0;
 }
 
 bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
@@ -432,6 +468,11 @@ bool HexagonDSPWrapper::ExecuteGraph(const Tensor &input_tensor,
   }
   MACE_CHECK(output_bytes == output_tensor->raw_size(),
              "wrong output bytes inferred.");
+
+  if (log_execute_time_) {
+    LOG(INFO) << "dsp cycles: " << GetLastExecuteCycles();
+  }
+
   return true;
 }
 
@@ -439,8 +480,8 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
     const std::map<std::string, Tensor*> &input_tensors,
     std::map<std::string, Tensor*> *output_tensors) {
   VLOG(2) << "Execute graph new: " << nn_id_;
-  uint32_t num_inputs = static_cast<uint32_t>(input_tensors.size());
-  uint32_t num_outputs = static_cast<uint32_t>(output_tensors->size());
+  auto num_inputs = static_cast<uint32_t>(input_tensors.size());
+  auto num_outputs = static_cast<uint32_t>(output_tensors->size());
   MACE_CHECK(num_inputs_ == static_cast<int>(num_inputs), "Wrong inputs num");
   MACE_CHECK(num_outputs_ == static_cast<int>(num_outputs),
              "Wrong outputs num");
@@ -519,7 +560,18 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
                " wrong output bytes inferred.");
   }
 
+  if (log_execute_time_) {
+    LOG(INFO) << "dsp cycles: " << GetLastExecuteCycles();
+  }
+
   return true;
+}
+
+uint64_t HexagonDSPWrapper::GetLastExecuteCycles() {
+  uint32_t cycle_lo;
+  uint32_t cycle_hi;
+  hexagon_nn_last_execution_cycles(nn_id_, &cycle_lo, &cycle_hi);
+  return (static_cast<uint64_t>(cycle_hi) << 32) | cycle_lo;
 }
 
 }  // namespace mace

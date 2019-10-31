@@ -19,7 +19,11 @@ cc_binary(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_opencl_enabled(["-DMACE_ENABLE_OPENCL"]),
+    ] + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
     linkstatic = 1,
     deps = [
         "//external:gflags_nothreads",
@@ -39,7 +43,11 @@ cc_binary(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_opencl_enabled(["-DMACE_ENABLE_OPENCL"]),
+    ] + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
     linkopts = [
         "-lm",
     ] + if_android([

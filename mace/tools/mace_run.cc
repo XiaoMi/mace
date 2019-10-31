@@ -196,7 +196,9 @@ bool RunModel(const std::string &model_name,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
 #endif  // MACE_ENABLE_OPENCL
-
+#ifdef MACE_ENABLE_HEXAGON
+  config.SetHexagonPower(HEXAGON_NN_CORNER_TURBO, true, 100);
+#endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
     make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_file != "") {
