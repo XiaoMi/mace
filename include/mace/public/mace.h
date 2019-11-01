@@ -90,6 +90,18 @@ enum CPUAffinityPolicy {
   AFFINITY_POWER_SAVE = 4,
 };
 
+// Voltage corners for clock frequencies, please refer to
+// docs/Hap_power_set_dcvs_2.html in Hexagon SDK for more detailed information.
+enum HexagonNNCornerType {
+  HEXAGON_NN_CORNER_RELEASE,
+  HEXAGON_NN_CORNER_TURBO,
+  HEXAGON_NN_CORNER_NOMPLUS,
+  HEXAGON_NN_CORNER_NOMINAL,
+  HEXAGON_NN_CORNER_SVSPLUS,
+  HEXAGON_NN_CORNER_SVS,
+  HEXAGON_NN_CORNER_SVS2,
+};
+
 struct CallStats {
   int64_t start_micros;
   int64_t end_micros;
@@ -281,7 +293,7 @@ class MACE_API MaceEngineConfig {
   ///
   /// Just use one GPUContext for multiple models run on GPU.
   /// \param context created use GPUContextBuilder
-  /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
   MaceStatus SetGPUContext(std::shared_ptr<GPUContext> context);
 
   /// \brief Set GPU hints, currently only supports Adreno GPU.
@@ -291,7 +303,7 @@ class MACE_API MaceEngineConfig {
   ///
   /// \param perf_hint  performance hint
   /// \param priority_hint  priority hint
-  /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
   MaceStatus SetGPUHints(GPUPerfHint perf_hint,
                          GPUPriorityHint priority_hint);
 
@@ -312,9 +324,26 @@ class MACE_API MaceEngineConfig {
   /// \param status MACE_SUCCESS for successful, or it can't reliabley
   /// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
   /// suggested to use AFFINITY_NONE to use all cores.
-  /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy);
+
+  /// \brief Set Hexagon DSP power parameters
+  ///
+  /// Caution: this function may hurt performance if improper
+  /// parameters provided. For most performance critical applications, set
+  /// HexagonNNCornerType to HEXAGON_NN_CORNER_TURBO, enable dynamic clock
+  /// voltage scaling(DCVS) and set sleep latency to 100us works just fine.
+  /// If a more balanced scheme between performance and power consumption
+  /// is needed, these three parameters may be tweaked to achieve that.
+  /// \param corner DCVS voltage target corner, can be set even when DCVS
+  /// is disabled.
+  /// \param dcvs_enable enable or disable DCVS.
+  /// \param latency sleep latency, in micro seconds.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
+  MaceStatus SetHexagonPower(HexagonNNCornerType corner,
+                             bool dcvs_enable,
+                             int latency);
 
  private:
   class Impl;

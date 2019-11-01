@@ -37,7 +37,7 @@ endif(MACE_ENABLE_HEXAGON_DSP)
 
 if(MACE_ENABLE_HEXAGON_HTA)
   set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_hta_wrapper.cc)
-  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} hta_controller hta_hexagon_runtime npu)
+  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} hta_hexagon_runtime)
 endif(MACE_ENABLE_HEXAGON_HTA)
 
 if(MACE_ENABLE_MTK_APU)
