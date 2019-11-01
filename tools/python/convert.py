@@ -82,7 +82,8 @@ def convert(conf, output):
         except:  # noqa
             print("Failed to visualize model:", sys.exc_info())
 
-        model, params = merge_params(mace_model)
+        model, params = merge_params(mace_model,
+                                     model_conf[ModelKeys.data_type])
 
         output_model_file = model_output + "/" + model_name + ".pb"
         output_params_file = model_output + "/" + model_name + ".data"
@@ -120,7 +121,7 @@ def convert_model(conf):
         # used by `base_converter`
         option.device = option.device.value
 
-    option.data_type = conf[ModelKeys.data_types]
+    option.data_type = conf[ModelKeys.data_type]
 
     for i in range(len(conf[ModelKeys.input_tensors])):
         input_node = cvt.NodeInfo()
@@ -200,7 +201,7 @@ def convert_model(conf):
     return output_graph_def
 
 
-def merge_params(net_def):
+def merge_params(net_def, data_type):
     def tensor_to_bytes(tensor):
         if tensor.data_type == mace_pb2.DT_HALF:
             data = bytearray(
@@ -230,6 +231,8 @@ def merge_params(net_def):
     model_data = []
     offset = 0
     for tensor in net_def.tensors:
+        if tensor.data_type == mace_pb2.DT_FLOAT:
+            tensor.data_type = data_type
         raw_data = tensor_to_bytes(tensor)
         if tensor.data_type != mace_pb2.DT_UINT8 and offset % 4 != 0:
             padding = 4 - offset % 4

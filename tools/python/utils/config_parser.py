@@ -95,7 +95,7 @@ class ModelKeys(object):
     change_concat_ranges = "change_concat_ranges"
     winograd = "winograd"
     cl_mem_type = "cl_mem_type"
-    data_types = "data_types"
+    data_type = "data_type"
     subgraphs = "subgraphs"
     validation_inputs_data = "validation_inputs_data"
 
@@ -205,13 +205,13 @@ def normalize_model_config(conf):
     conf[ModelKeys.runtime] = parse_device_type(conf[ModelKeys.runtime])
 
     if ModelKeys.quantize in conf:
-        conf[ModelKeys.data_types] = mace_pb2.DT_FLOAT
+        conf[ModelKeys.data_type] = mace_pb2.DT_FLOAT
     else:
-        if ModelKeys.data_types in conf:
-            conf[ModelKeys.data_types] = parse_internal_data_type(
-                conf[ModelKeys.data_types])
+        if ModelKeys.data_type in conf:
+            conf[ModelKeys.data_type] = parse_internal_data_type(
+                conf[ModelKeys.data_type])
         else:
-            conf[ModelKeys.data_types] = mace_pb2.DT_HALF
+            conf[ModelKeys.data_type] = mace_pb2.DT_HALF
 
     # parse input
     conf[ModelKeys.input_tensors] = to_list(conf[ModelKeys.input_tensors])
