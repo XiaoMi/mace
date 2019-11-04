@@ -41,11 +41,12 @@ enum GPUType {
 };
 
 enum OpenCLVersion {
+  CL_VER_UNKNOWN,
   CL_VER_1_0,
   CL_VER_1_1,
   CL_VER_1_2,
   CL_VER_2_0,
-  CL_VER_UNKNOWN,
+  CL_VER_2_1,
 };
 
 
