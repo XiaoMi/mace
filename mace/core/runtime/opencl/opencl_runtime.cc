@@ -331,7 +331,7 @@ OpenCLRuntime::OpenCLRuntime(
 
   cl_int err;
   if (gpu_type_ == GPUType::QUALCOMM_ADRENO
-      && opencl_version_ == OpenCLVersion::CL_VER_2_0) {
+      && opencl_version_ >= OpenCLVersion::CL_VER_2_0) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties,
@@ -769,7 +769,7 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
 
 bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() const {
   return (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
-      opencl_version_ == OpenCLVersion::CL_VER_2_0);
+      opencl_version_ >= OpenCLVersion::CL_VER_2_0);
 }
 
 GPUType OpenCLRuntime::gpu_type() const {
@@ -786,7 +786,9 @@ OpenCLVersion OpenCLRuntime::ParseDeviceVersion(
   // OpenCL<space><major_version.minor_version><space>
   // <vendor-specific information>
   auto words = Split(device_version, ' ');
-  if (words[1] == "2.0") {
+  if (words[1] == "2.1") {
+    return OpenCLVersion::CL_VER_2_1;
+  } else if (words[1] == "2.0") {
     return OpenCLVersion::CL_VER_2_0;
   } else if (words[1] == "1.2") {
     return OpenCLVersion::CL_VER_1_2;
