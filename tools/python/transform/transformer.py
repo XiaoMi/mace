@@ -939,8 +939,11 @@ class Transformer(base_converter.ConverterInterface):
                         # update output shape
                         conv_op.output_shape[0].dims[:] = \
                             b2s_op.output_shape[0].dims[:]
+                        conv_op.output[0] = b2s_op.output[0]
+                        conv_op.name = b2s_op.name
 
                         self.safe_remove_node(op, None)
+                        self.replace_quantize_info(b2s_op, conv_op)
                         self.safe_remove_node(b2s_op, conv_op)
                         return True
         return False
