@@ -134,7 +134,7 @@ void CreateTensors(NetDef *net_def) {
 namespace {{tag}} {
 
 MACE_API const std::shared_ptr<NetDef> CreateNet() {
-  MACE_LATENCY_LOGGER(1, "Create net {{ net.name }}");
+  MACE_LATENCY_LOGGER(1, "Create net ", {{ net.name|default("undefined")|tojson }});
 
   std::shared_ptr<NetDef> net_def(new NetDef());
 

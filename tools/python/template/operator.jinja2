@@ -64,7 +64,8 @@ namespace {{tag}} {
 {% for i in range(start, end) %}
 
 void CreateOperator{{i}}(mace::OperatorDef *op) {
-  MACE_LATENCY_LOGGER(2, "Create operator {{ net.op[i].name }}");
+  MACE_LATENCY_LOGGER(2, "Create operator ",
+    {{ net.op[i].name|default("undefined")|tojson }});
 
   mace::Argument *arg = nullptr;
   op->mutable_arg()->Reserve({{ net.op[i].arg|length }});

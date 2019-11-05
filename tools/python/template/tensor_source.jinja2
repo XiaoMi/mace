@@ -23,7 +23,8 @@ namespace mace {
 namespace {{tag}} {
 
 void CreateTensor{{tensor_id}}(mace::ConstTensor *const_tensor) {
-  MACE_LATENCY_LOGGER(2, "Create tensor {{ tensor.name }}");
+  MACE_LATENCY_LOGGER(2, "Create tensor ",
+    {{ tensor.name|default("undefined")|tojson }});
   const_tensor->set_name({{ tensor.name|tojson }});
   const_tensor->set_offset({{ tensor.offset }});
   const_tensor->set_data_size({{ tensor.data_size }});

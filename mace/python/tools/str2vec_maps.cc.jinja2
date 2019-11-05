@@ -25,10 +25,10 @@ namespace {{tag}} {
 const std::map<std::string, ClProgramInfo> {{variable_name}} = {
 {% for key, encrypted_code in maps.items() %}
   {
-    "{{key}}", {
+    {{key|tojson}}, {
       {
         {%- for header in encrypted_code['headers'] -%}
-        "{{header}}",
+        {{header|tojson}},
         {%- endfor -%}
       },
       {
