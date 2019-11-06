@@ -328,6 +328,18 @@ class MACE_API MaceEngineConfig {
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy);
 
+  /// \brief Set Hexagon NN to run on unsigned PD
+  ///
+  /// Caution: This function must be called before any Hexagon related
+  ///          functions and it should only be called once.
+  /// Starting in the SM8150 family, signature-free dynamic module offload is
+  /// enabled on cDSP in a low-rights process (Unsigned PD). A success from this
+  /// function allows the clients to offload the dynamic shared object to cDSP
+  /// without signing. However, some older cDSP firmware may not work due to
+  /// access limitations.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
+  MaceStatus SetHexagonToUnsignedPD();
+
   /// \brief Set Hexagon DSP power parameters
   ///
   /// Caution: this function may hurt performance if improper

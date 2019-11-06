@@ -20,6 +20,7 @@ cc_library(
     ]),
     hdrs = [
         "hexagon_nn.h",
+        "hexnn_dsp_controller.h",
         "ops.h",
     ],
     visibility = ["//visibility:public"],

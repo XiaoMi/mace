@@ -192,6 +192,8 @@ class MaceEngineConfig::Impl {
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy);
 
+  MaceStatus SetHexagonToUnsignedPD();
+
   MaceStatus SetHexagonPower(HexagonNNCornerType corner,
                              bool dcvs_enable,
                              int latency);
@@ -220,6 +222,18 @@ class MaceEngineConfig::Impl {
     return gpu_perf_hint_;
   }
 
+  inline HexagonNNCornerType hexagon_corner() const {
+    return hexagon_corner_;
+  }
+
+  inline bool hexagon_dcvs_enable() const {
+    return hexagon_dcvs_enable_;
+  }
+
+  inline int hexagon_latency() const {
+    return hexagon_latency_;
+  }
+
  private:
   DeviceType device_type_;
   int num_threads_;
@@ -227,6 +241,9 @@ class MaceEngineConfig::Impl {
   std::shared_ptr<GPUContext> gpu_context_;
   GPUPriorityHint gpu_priority_hint_;
   GPUPerfHint gpu_perf_hint_;
+  HexagonNNCornerType hexagon_corner_;
+  bool hexagon_dcvs_enable_;
+  int hexagon_latency_;
 };
 
 MaceEngineConfig::Impl::Impl(const DeviceType device_type)
@@ -235,13 +252,10 @@ MaceEngineConfig::Impl::Impl(const DeviceType device_type)
       cpu_affinity_policy_(CPUAffinityPolicy::AFFINITY_NONE),
       gpu_context_(nullptr),
       gpu_priority_hint_(GPUPriorityHint::PRIORITY_LOW),
-      gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {
-#ifdef MACE_ENABLE_HEXAGON
-  if (!HexagonDSPWrapper::SetPower(HEXAGON_NN_CORNER_TURBO, true, 100)) {
-    LOG(WARNING) << "Hexagon set default clocks failed!";
-  }
-#endif
-}
+      gpu_perf_hint_(GPUPerfHint::PERF_NORMAL),
+      hexagon_corner_(HexagonNNCornerType::HEXAGON_NN_CORNER_TURBO),
+      hexagon_dcvs_enable_(true),
+      hexagon_latency_(100) {}
 
 MaceStatus MaceEngineConfig::Impl::SetGPUContext(
     std::shared_ptr<GPUContext> context) {
@@ -265,13 +279,21 @@ MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
   return MaceStatus::MACE_SUCCESS;
 }
 
+MaceStatus MaceEngineConfig::Impl::SetHexagonToUnsignedPD() {
+  bool ret = false;
+#ifdef MACE_ENABLE_HEXAGON
+  ret = HexagonDSPWrapper::RequestUnsignedPD();
+#endif
+  return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
+}
+
 MaceStatus MaceEngineConfig::Impl::SetHexagonPower(
     HexagonNNCornerType corner,
     bool dcvs_enable,
     int latency) {
-  MACE_UNUSED(corner);
-  MACE_UNUSED(dcvs_enable);
-  MACE_UNUSED(latency);
+  hexagon_corner_ = corner;
+  hexagon_dcvs_enable_ = dcvs_enable;
+  hexagon_latency_ = latency;
   bool ret = false;
 #ifdef MACE_ENABLE_HEXAGON
   ret = HexagonDSPWrapper::SetPower(corner, dcvs_enable, latency);
@@ -300,6 +322,10 @@ MaceStatus MaceEngineConfig::SetCPUThreadPolicy(
     int num_threads_hint,
     CPUAffinityPolicy policy) {
   return impl_->SetCPUThreadPolicy(num_threads_hint, policy);
+}
+
+MaceStatus MaceEngineConfig::SetHexagonToUnsignedPD() {
+  return impl_->SetHexagonToUnsignedPD();
 }
 
 MaceStatus MaceEngineConfig::SetHexagonPower(
@@ -434,6 +460,11 @@ class MaceEngine::Impl {
   std::map<std::string, mace::InputOutputInfo> input_info_map_;
   std::map<std::string, mace::InputOutputInfo> output_info_map_;
   std::unique_ptr<utils::ThreadPool> thread_pool_;
+#ifdef MACE_ENABLE_HEXAGON
+  HexagonNNCornerType hexagon_corner_;
+  bool hexagon_dcvs_enable_;
+  int hexagon_latency_;
+#endif
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
@@ -454,8 +485,13 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
       is_quantized_model_(false),
       thread_pool_(new utils::ThreadPool(config.impl_->num_threads(),
                                          config.impl_->cpu_affinity_policy()))
+#ifdef MACE_ENABLE_HEXAGON
+      , hexagon_corner_(config.impl_->hexagon_corner())
+      , hexagon_dcvs_enable_(config.impl_->hexagon_dcvs_enable())
+      , hexagon_latency_(config.impl_->hexagon_latency())
+#endif
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-, hexagon_controller_(nullptr)
+      , hexagon_controller_(nullptr)
 #endif
 #ifdef MACE_ENABLE_APU
       , apu_controller_(nullptr)
@@ -554,6 +590,13 @@ MaceStatus MaceEngine::Impl::Init(
     output_tensor->set_data_format(DataFormat::NHWC);
 #endif
   }
+#ifdef MACE_ENABLE_HEXAGON
+  if (device_type_ == HEXAGON) {
+    HexagonDSPWrapper::SetPower(hexagon_corner_,
+                                hexagon_dcvs_enable_,
+                                hexagon_latency_);
+  }
+#endif
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
     hexagon_controller_ = CreateHexagonControlWrapper(device_.get());

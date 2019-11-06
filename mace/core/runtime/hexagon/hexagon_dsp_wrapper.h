@@ -28,6 +28,7 @@ namespace mace {
 class HexagonDSPWrapper : public HexagonControlWrapper {
  public:
   HexagonDSPWrapper();
+  ~HexagonDSPWrapper();
 
   int GetVersion() override;
   bool Config() override;
@@ -49,6 +50,7 @@ class HexagonDSPWrapper : public HexagonControlWrapper {
   static bool SetPower(HexagonNNCornerType corner,
                        bool dcvs_enable,
                        int latency);
+  static bool RequestUnsignedPD();
 
  private:
   uint64_t GetLastExecuteCycles();
