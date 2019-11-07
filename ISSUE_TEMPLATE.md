@@ -33,7 +33,7 @@ A clear and concise description of what the bug is.
 Steps to reproduce the problem:
 ```bash
 1. cd /path/to/mace
-2. python tools/converter.py convert --config_file=/path/to/your/model_deployment_file
+2. python tools/converter.py convert --config_file=/path/to/your/model_deployment_file(graph_format:code)
 ```
 
 ### Error information / logs
