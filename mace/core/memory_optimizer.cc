@@ -90,7 +90,9 @@ MemoryBlock MemoryOptimizer::CreateMemoryBlock(
     if (shape.size() == 2) {
       shape = {shape[0], 1, 1, shape[1]};
     } else {
-      MACE_CHECK(shape.size() == 4) << "GPU only support 2D/4D input";
+      MACE_CHECK(shape.size() == 4) << "GPU only support 2D/4D input, "
+                                    << "op name: " << op_def->name() << ", "
+                                    << MakeString(shape);
     }
     OpenCLUtil::CalImage2DShape(shape, buffer_type, &image_shape);
     block.set_x(image_shape[0]);

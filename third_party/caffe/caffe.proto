@@ -544,6 +544,7 @@ message LayerParameter {
   optional VideoDataParameter video_data_param = 207;
   optional WindowDataParameter window_data_param = 129;
   optional ShuffleChannelParameter shuffle_channel_param = 164;
+  optional L2NormalizationParameter l2normalization_param = 208;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1933,4 +1934,8 @@ message PReLUParameter {
 
 message ShuffleChannelParameter {
   optional uint32 group = 1[default = 1]; // The number of group
+}
+
+message L2NormalizationParameter {
+  optional int32 axis = 1 [default = 1];
 }

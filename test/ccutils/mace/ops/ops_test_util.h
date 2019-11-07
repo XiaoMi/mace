@@ -124,7 +124,8 @@ class OpsTestNet {
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
-    MACE_CHECK(static_cast<size_t>(input->size()) == data.size());
+    MACE_CHECK(static_cast<size_t>(input->size()) == data.size(),
+               input->size(), " VS ", data.size());
     memcpy(input_data, data.data(), data.size() * sizeof(T));
     input->SetScale(scale);
     input->SetZeroPoint(zero_point);

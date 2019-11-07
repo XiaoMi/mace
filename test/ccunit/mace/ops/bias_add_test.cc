@@ -62,11 +62,60 @@ void BiasAddSimple() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+
+template <DeviceType D>
+void BiasAddSimple2D() {
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<D, float>("Input", {2, 3, 1, 2},
+                                  {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
+  net.AddInputFromArray<D, float>("Bias", {2, 2},
+                                  {0.1f, 0.2f, 0.3f, 0.4f}, true);
+  if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+    OpDefBuilder("BiasAdd", "BiasAddTest")
+        .Input("InputNCHW")
+        .Input("Bias")
+        .AddIntArg("has_data_format", 1)
+        .Output("OutputNCHW")
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
+  } else if (D == DeviceType::GPU) {
+    OpDefBuilder("BiasAdd", "BiasAddTest")
+        .Input("Input")
+        .Input("Bias")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  // Check
+  auto expected = net.CreateTensor<float>(
+      {2, 3, 1, 2},
+      {5.1, 5.2, 7.1, 7.2, 9.1, 9.2, 11.3, 11.4, 13.3, 13.4, 15.3, 15.4});
+
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+
 }  // namespace
 
 TEST_F(BiasAddOpTest, BiasAddSimpleCPU) { BiasAddSimple<DeviceType::CPU>(); }
 
-TEST_F(BiasAddOpTest, BiasAddSimpleOPENCL) { BiasAddSimple<DeviceType::GPU>(); }
+TEST_F(BiasAddOpTest, BiasAddSimple2DCPU) {
+  BiasAddSimple2D<DeviceType::CPU>();
+}
+
+TEST_F(BiasAddOpTest, BiasAddSimpleOPENCL) {
+  BiasAddSimple<DeviceType::GPU>();
+}
 
 TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   // generate random input

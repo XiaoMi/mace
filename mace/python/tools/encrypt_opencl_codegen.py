@@ -84,7 +84,7 @@ def encrypt_opencl_codegen(cl_kernel_dir, output_path):
     for file_name in os.listdir(cl_kernel_dir):
         file_path = os.path.join(cl_kernel_dir, file_name)
         module_key = get_module_key(file_name)
-        if len(module_key) > 0:
+        if module_key is not None and len(module_key) > 0:
             with open(file_path, "r") as f:
                 code_str = ""
                 headers = []

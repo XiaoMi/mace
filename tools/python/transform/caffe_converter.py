@@ -191,6 +191,10 @@ class CaffeConverter(base_converter.ConverterInterface):
             'Flatten': self.convert_flatten,
             'PriorBox': self.convert_prior_box,
             'Reshape': self.convert_reshape,
+            'L2Normalization': self.convert_lpnorm,
+            'L1Normalization': self.convert_lpnorm,
+            'MVN': self.convert_MVN,
+            'Bias': self.convert_Bias,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -815,3 +819,57 @@ class CaffeConverter(base_converter.ConverterInterface):
         num_axes_arg.i = -1
         if param.HasField('num_axes'):
             num_axes_arg.i = param.num_axes
+
+    def convert_lpnorm(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.l2normalization_param
+        op.type = MaceOp.LpNorm.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = -1
+        if param.HasField('axis'):
+            axis_arg.i = param.axis
+
+        p_arg = op.arg.add()
+        p_arg.name = MaceKeyword.mace_p_str
+        if caffe_op.type == 'L1Normalization':
+            p_arg.i = 1
+        elif caffe_op.type == 'L2Normalization':
+            p_arg.i = 2
+        else:
+            mace_check(False, "Can not support %s" % caffe_op.type)
+
+    def convert_MVN(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.mvn_param
+        op.type = MaceOp.MVNorm.name
+
+        if param.HasField('normalize_variance'):
+            nv_arg = op.arg.add()
+            nv_arg.name = MaceKeyword.mace_nor_var_str
+            nv_arg.i = param.normalize_variance
+
+        if param.HasField('across_channels'):
+            across_ch_arg = op.arg.add()
+            across_ch_arg.name = MaceKeyword.mace_across_ch_str
+            across_ch_arg.i = param.across_channels
+
+        if param.HasField('eps'):
+            eps_arg = op.arg.add()
+            eps_arg.name = MaceKeyword.mace_epsilon_str
+            eps_arg.f = param.eps
+
+    def convert_Bias(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.BiasAdd.name
+        param = caffe_op.layer.bias_param
+        mace_check(not param.axis or param.axis == 0 or param.axis == 1,
+                   "BiasAdd only support axis with 0 or 1.")
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = 1
+        if param.axis is not None:
+            mace_check(param.axis == 0 or param.axis == 1,
+                       "BiasAdd only support axis with 0 or 1.")
+            axis_arg.i = param.axis

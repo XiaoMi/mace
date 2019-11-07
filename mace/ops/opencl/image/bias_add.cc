@@ -56,6 +56,7 @@ MaceStatus BiasAddKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
+    kernel_.setArg(idx++, static_cast<int>(bias->dim_size() > 1 ? height : 0));
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(bias->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));

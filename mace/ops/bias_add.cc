@@ -49,15 +49,18 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     const Tensor *bias = this->Input(1);
-
-    MACE_CHECK(bias->dim_size() == 1, "bias must be 1-dimensional. ",
-               bias->dim_size());
-
     Tensor *output = this->Output(0);
 
-    if (input->dim_size() == 4 && has_data_format_) {
+    if (input->dim_size() == 4 && (has_data_format_
+        || input->data_format() == DataFormat::NCHW)) {  // NCHW
+      MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
+                 "bias must be 1-dimensional or n*c for caffee.",
+                 MakeString(bias->shape()));
       bias_add_delegator_.Compute(context, input, bias, output);
-    } else {
+    } else {  // NHWC
+      MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
+                 "bias must be 1 or 2 dimensionals for caffee.",
+                 bias->dim_size(), MakeString(bias->shape()));
       // TODO(liyin): remove it and tranform bias to add (eltwise)
       MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
@@ -70,16 +73,40 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
       float *output_ptr = output->mutable_data<float>();
 
       const std::vector<index_t> &shape = input->shape();
-      const index_t fused_batch = std::accumulate(
-          shape.begin(), shape.end() - 1, 1, std::multiplies<index_t>());
       const index_t channels = *shape.rbegin();
-
-      for (index_t n = 0; n < fused_batch; ++n) {
-        index_t pos = n * channels;
-        for (index_t c = 0; c < channels; ++c) {
-          output_ptr[pos] = input_ptr[pos] + bias_ptr[c];
-          ++pos;
-        }
+      utils::ThreadPool
+          &thread_pool = context->device()->cpu_runtime()->thread_pool();
+      if (bias->dim_size() == 1) {
+        const index_t fused_batch = std::accumulate(
+            shape.begin(), shape.end() - 1, 1, std::multiplies<index_t>());
+        thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+          for (index_t n = start; n < end; n += step) {
+            index_t pos = n * channels;
+            for (index_t c = 0; c < channels; ++c) {
+              output_ptr[pos] = input_ptr[pos] + bias_ptr[c];
+              ++pos;
+            }
+          }
+        }, 0, fused_batch, 1);
+      } else {  // bias is 2d
+        const auto n = shape[0];
+        MACE_CHECK(n == bias->shape()[0]);
+        const index_t fused_hw = std::accumulate(
+            shape.begin() + 1, shape.end() - 1, 1, std::multiplies<index_t>());
+        const auto ch_size = bias->shape()[1];
+        thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                  index_t start1, index_t end1, index_t step1) {
+          for (index_t i = start0; i < end0; i += step0) {
+            auto offset = i * fused_hw;
+            auto bias_offset = i * ch_size;
+            for (index_t j = start1; j < end1; j += step1) {
+              index_t pos = (offset + i) * channels;
+              for (index_t c = 0; c < channels; ++c, ++pos) {
+                output_ptr[pos] = input_ptr[pos] + bias_ptr[bias_offset + c];
+              }
+            }
+          }
+        }, 0, n, 1, 0, fused_hw, 1);
       }
     }
 
@@ -109,21 +136,25 @@ class BiasAddOp<DeviceType::GPU, float> : public Operation {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
-    MACE_CHECK(TransformFilter(
-        context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
-                   == MaceStatus::MACE_SUCCESS);
+
+    // for const bias tensor
+    if (context->workspace()->GetTensor(operator_def_->input(1)) != nullptr) {
+      MACE_CHECK(TransformFilter(
+          context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
+                     == MaceStatus::MACE_SUCCESS, "TransformFilter failed");
+    }
   }
+
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
     const Tensor *bias = this->Input(1);
-
-    MACE_CHECK(bias->dim_size() == 1, "bias must be 1-dimensional. ",
-               bias->dim_size());
-
     Tensor *output = this->Output(0);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
     MACE_CHECK(input->dim_size() == 4 && has_data_format_,
                "gpu only support biasadd for 4-dimensional NHWC format tensor");
+    MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
+               "bias must be 1-dimensional or 2-dimensional for caffee. ",
+               MakeString(bias->shape()));
     return kernel_->Compute(context, input, bias, output);
   }
 
@@ -151,6 +182,10 @@ void RegisterBiasAdd(OpRegistryBase *op_registry) {
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
+                  LOG(INFO) << "BiasAdd only support cpu, has_data_format="
+                            << has_data_format
+                            << ", op->output_shape(0).dims_size()="
+                            << op->output_shape(0).dims_size();
                   return {DeviceType::CPU};
                 }
                 return {DeviceType::CPU, DeviceType::GPU};

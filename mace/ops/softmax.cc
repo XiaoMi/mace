@@ -82,12 +82,13 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
     index_t batch_stride = class_size;
     index_t batch_size = batch_stride * input->dim(0);
 
-    Buffer cache_buffer(context->device()->allocator());
-    MACE_RETURN_IF_ERROR(cache_buffer.Allocate(hw_size * sizeof(float)));
+    auto cache_buffer = context->device()->scratch_buffer();
+    cache_buffer->Rewind();
+    MACE_RETURN_IF_ERROR(cache_buffer->GrowSize(hw_size * sizeof(float)));
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
     float std_lowest = std::numeric_limits<float>::lowest();
-    float *cache_ptr = cache_buffer.mutable_data<float>();
+    float *cache_ptr = cache_buffer->mutable_data<float>();
 
     for (index_t b_offset = 0;
          b_offset < batch_size; b_offset += batch_stride) {

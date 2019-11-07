@@ -63,6 +63,8 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/space_to_depth.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/sqrdiff_mean.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/winograd_transform.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/lpnorm.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/mvnorm.cl"))
 
     python_bin_path = repository_ctx.which("python")
 
