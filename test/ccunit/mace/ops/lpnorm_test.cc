@@ -121,6 +121,63 @@ TEST_F(LpNormOpTest, SimpleTestSquareOpenCL2) {
      0.680451, 0.732793, 0.683941, 0.729537});
 }
 
+
+namespace {
+template <DeviceType D, typename T>
+void TestLpNormRandom(const std::vector<index_t> &input_shape,
+                      const int p,
+                      const int axis) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<D, float>("Input", input_shape);
+
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+
+  OpDefBuilder("LpNorm", "LpNormTest")
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntArg("p", p)
+      .AddIntArg("axis", axis)
+      .Finalize(net.NewOperatorDef());
+
+  // run on cpu
+  net.RunOp();
+
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
+
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
+
+  OpDefBuilder("LpNorm", "LpNormTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntArg("p", p)
+      .AddIntArg("axis", axis)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(D);
+
+  if (DataTypeToEnum<T>::value == DT_HALF) {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2, 1e-3);
+  } else {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+  }
+}
+
+}  // namespace
+
+TEST_F(LpNormOpTest, SimpleTestSquareHalfOpenCL) {
+  TestLpNormRandom<DeviceType::GPU, half>({1, 8, 1, 2}, 2, 1);
+}
+
+TEST_F(LpNormOpTest, SimpleTestSquareHalfOpenCL2) {
+  TestLpNormRandom<DeviceType::GPU, half>({1, 8, 1, 2}, 2, 2);
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

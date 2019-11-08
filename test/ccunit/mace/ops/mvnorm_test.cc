@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/types.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -159,6 +160,61 @@ TEST_F(MVNormOpTest, SimpleTestVarianceOpenCL) {
      1.23241, 1.45648, 1.68056, -0.336111, -0.112037,
      0.112037, 0.336111, 0.560185, 0.784259, 1.00833,
      1.23241, 1.45648, 1.68056, 1.90463, 2.1287});
+}
+
+namespace {
+template <DeviceType D, typename T>
+void TestMVNormRandom(const std::vector<index_t> &input_shape,
+                      bool normalize_variance,
+                      bool across_channels) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<D, float>("Input", input_shape);
+
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+
+  OpDefBuilder("MVNorm", "MVNormTest")
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntArg("normalize_variance", normalize_variance)
+      .AddIntArg("across_channels", across_channels)
+      .Finalize(net.NewOperatorDef());
+
+  // run on cpu
+  net.RunOp();
+
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
+
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
+
+  OpDefBuilder("MVNorm", "MVNormTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntArg("normalize_variance", normalize_variance)
+      .AddIntArg("across_channels", across_channels)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(D);
+
+  if (DataTypeToEnum<T>::value == DT_HALF) {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2, 1e-3);
+  } else {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+  }
+}
+}  // namespace
+
+TEST_F(MVNormOpTest, SimpleTestMeanHalfOpenCL) {
+  TestMVNormRandom<DeviceType::GPU, half>({1, 1, 5, 12}, false, true);
+}
+
+TEST_F(MVNormOpTest, SimpleTestVarianceHalfOpenCL) {
+  TestMVNormRandom<DeviceType::GPU, half>({1, 1, 5, 12}, true, true);
 }
 
 }  // namespace test
