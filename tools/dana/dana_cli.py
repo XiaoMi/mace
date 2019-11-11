@@ -179,7 +179,7 @@ class DanaCli:
         except Exception as e:
             print("Http error, url=%s\npost_data=%s\n%s" %
                   (request_url, json_data, e))
-            exit(1)
+            return False
         result = response.decode()
         if len(result) < 30 and "successfull" in result:
             return True
