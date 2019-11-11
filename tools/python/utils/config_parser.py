@@ -215,6 +215,8 @@ def normalize_model_config(conf):
 
     # parse input
     conf[ModelKeys.input_tensors] = to_list(conf[ModelKeys.input_tensors])
+    conf[ModelKeys.input_tensors] = [str(i) for i in
+                                     conf[ModelKeys.input_tensors]]
     input_count = len(conf[ModelKeys.input_tensors])
     conf[ModelKeys.input_shapes] = [parse_int_array(shape) for shape in
                                     to_list(conf[ModelKeys.input_shapes])]
@@ -255,6 +257,8 @@ def normalize_model_config(conf):
 
     # parse output
     conf[ModelKeys.output_tensors] = to_list(conf[ModelKeys.output_tensors])
+    conf[ModelKeys.output_tensors] = [str(i) for i in
+                                      conf[ModelKeys.output_tensors]]
     output_count = len(conf[ModelKeys.output_tensors])
     conf[ModelKeys.output_shapes] = [parse_int_array(shape) for shape in
                                      to_list(conf[ModelKeys.output_shapes])]
