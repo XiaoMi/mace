@@ -65,12 +65,11 @@ __kernel void lpnorm(OUT_OF_RANGE_PARAMS
 
   const int chan_blks = global_size_dim0;
   const int width = global_size_dim1;
-  const int hb = global_size_dim2;
+  const int pos = mad24(chan_blk_idx, width, width_idx);
+  DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(pos, hb_idx));
   const int hb_base = mul24(hb_idx / height, height);
   DATA_TYPE4 total = compute_total(input, hb_base, chan_blks, width, height,
                                    hb_idx, chan_blk_idx);
-  const int pos = mad24(chan_blk_idx, width, width_idx);
-  DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(pos, hb_idx));
 
 #if PARAM_P == 1
     in_data = in_data / (total + eps);

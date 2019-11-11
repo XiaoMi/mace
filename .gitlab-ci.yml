@@ -60,13 +60,6 @@ bazel_build:
   only:
     - triggers
 
-cmake_build:
-  stage: build
-  script:
-    - sh tools/cmake-build-standalone-lib.sh
-  only:
-    - triggers
-
 build_android_demo:
   stage: build
   script:

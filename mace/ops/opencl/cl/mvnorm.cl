@@ -51,12 +51,12 @@ __kernel void mvnorm_mean(OUT_OF_RANGE_PARAMS
   const int chan_blks = global_size_dim0;
   const int width = global_size_dim1;
 
-  DATA_TYPE4 mean = compute_mean_image(input, width_idx,
-                                       hb_idx, chan_blks, height, width);
   const int pos = mad24(chan_blk_idx, width, width_idx);
   DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(pos, hb_idx));
-  in_data -= mean;
 
+  DATA_TYPE4 mean = compute_mean_image(input, width_idx,
+                                       hb_idx, chan_blks, height, width);
+  in_data -= mean;
   WRITE_IMAGET(output, (int2)(pos, hb_idx), in_data);
 }
 
@@ -80,10 +80,10 @@ __kernel void mvnorm_vn_step1(OUT_OF_RANGE_PARAMS
   const int chan_blks = global_size_dim0;
   const int width = global_size_dim1;
 
-  DATA_TYPE4 mean = compute_mean_image(input, width_idx,
-                                       hb_idx, chan_blks, height, width);
   const int pos = mad24(chan_blk_idx, width, width_idx);
   DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(pos, hb_idx));
+  DATA_TYPE4 mean = compute_mean_image(input, width_idx,
+                                       hb_idx, chan_blks, height, width);
   in_data = in_data - mean;
   DATA_TYPE4 pow_data  = in_data * in_data;
   if (hb_idx == 0 && width_idx == 0) {
