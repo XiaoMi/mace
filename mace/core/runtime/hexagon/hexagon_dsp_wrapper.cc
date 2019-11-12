@@ -29,6 +29,7 @@
 #include "mace/port/env.h"
 #include "mace/utils/memory.h"
 #include "third_party/nnlib/hexagon_nn.h"
+#include "third_party/nnlib/hexnn_dsp_controller.h"
 
 namespace mace {
 
@@ -106,6 +107,8 @@ hexagon_nn_corner_type TransformCornerType(HexagonNNCornerType corner) {
 }  // namespace
 
 HexagonDSPWrapper::HexagonDSPWrapper() {
+  hexnn_controller_init();
+
   std::string env_log_execute_time_str;
   GetEnv("MACE_DSP_LOG_EXECUTE_TIME", &env_log_execute_time_str);
   if (env_log_execute_time_str.empty()) {
@@ -115,11 +118,22 @@ HexagonDSPWrapper::HexagonDSPWrapper() {
   }
 }
 
+HexagonDSPWrapper::~HexagonDSPWrapper() {
+  hexnn_controller_deinit();
+}
 
 int HexagonDSPWrapper::GetVersion() {
   int version;
   MACE_CHECK(hexagon_nn_version(&version) == 0, "get version error");
   return version;
+}
+
+bool HexagonDSPWrapper::RequestUnsignedPD() {
+  int ret = hexnn_controller_request_unsigned_pd();
+  if (ret != 0) {
+    LOG(WARNING) << "Request unsigned PD failed: " << ret;
+  }
+  return ret == 0;
 }
 
 bool HexagonDSPWrapper::SetPower(HexagonNNCornerType corner,
@@ -129,6 +143,9 @@ bool HexagonDSPWrapper::SetPower(HexagonNNCornerType corner,
                                   dcvs_enable ? NN_DCVS_ENABLE
                                               : NN_DCVS_DISABLE,
                                   static_cast<uint32_t>(std::max(0, latency)));
+  if (ret != 0) {
+    LOG(WARNING) << "Hexagon set power failed: " << ret;
+  }
   return ret == 0;
 }
 
@@ -157,7 +174,6 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
   int64_t t0 = NowMicros();
 
   // const node
-  std::vector<hexagon_nn_const_node> const_node_list;
   for (const ConstTensor &const_tensor : net_def.tensors()) {
     std::vector<int> tensor_shape(const_tensor.dims().begin(),
                                   const_tensor.dims().end());
@@ -165,48 +181,32 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       tensor_shape.insert(tensor_shape.begin(), 1);
     }
 
-    hexagon_nn_const_node const_node;
-    const_node.node_id = node_id(const_tensor.node_id());
-    const_node.tensor.batches = tensor_shape[0];
-    const_node.tensor.height = tensor_shape[1];
-    const_node.tensor.width = tensor_shape[2];
-    const_node.tensor.depth = tensor_shape[3];
-
+    unsigned char *data;
+    int data_len;
     if (const_tensor.data_type() == DataType::DT_INT32 &&
         const_tensor.data_size() == 0) {
-      const_node.tensor.data = NULL;
-      const_node.tensor.dataLen = 0;
+      data = NULL;
+      data_len = 0;
     } else {
-      const_node.tensor.data =
-          const_cast<unsigned char *>(model_data + const_tensor.offset());
-      const_node.tensor.dataLen = const_tensor.data_size() *
-                                  GetEnumTypeSize(const_tensor.data_type());
+      data = const_cast<unsigned char *>(model_data + const_tensor.offset());
+      data_len =
+          const_tensor.data_size() * GetEnumTypeSize(const_tensor.data_type());
     }
-    const_node_list.push_back(const_node);
-    // 255 is magic number: why fastrpc limits sequence length to that?
-    if (const_node_list.size() >= 250) {
-      MACE_CHECK(
-          hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
-                                            const_node_list.size()) == 0,
-          "append const node error");
-      const_node_list.clear();
-    }
-  }
-
-  if (!const_node_list.empty()) {
     MACE_CHECK(
-        hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
-                                          const_node_list.size()) == 0,
+        hexagon_nn_append_const_node(nn_id_,
+                                     node_id(const_tensor.node_id()),
+                                     tensor_shape[0],
+                                     tensor_shape[1],
+                                     tensor_shape[2],
+                                     tensor_shape[3],
+                                     data,
+                                     data_len) == 0,
         "append const node error");
   }
-  const_node_list.clear();
 
   // op node
   OpMap op_map;
   op_map.Init();
-  std::vector<hexagon_nn_op_node> op_node_list;
-  std::vector<std::vector<hexagon_nn_input>> cached_inputs;
-  std::vector<std::vector<hexagon_nn_output>> cached_outputs;
   std::vector<hexagon_nn_input> inputs;
   std::vector<hexagon_nn_output> outputs;
 
@@ -233,40 +233,18 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       outputs[i].zero_offset = 0;
       outputs[i].stepsize = 0;
     }
-    cached_inputs.push_back(inputs);
-    cached_outputs.push_back(outputs);
+    auto padding_type = static_cast<hexagon_nn_padding_type>(op.padding());
 
-    hexagon_nn_padding_type padding_type =
-        static_cast<hexagon_nn_padding_type>(op.padding());
-
-    hexagon_nn_op_node op_node;
-    op_node.node_id = node_id(op.node_id());
-    op_node.operation = op_id;
-    op_node.padding = padding_type;
-    op_node.inputs = cached_inputs.back().data();
-    op_node.inputsLen = inputs.size();
-    op_node.outputs = cached_outputs.back().data();
-    op_node.outputsLen = outputs.size();
-
-    op_node_list.push_back(op_node);
-    if (op_node_list.size() >= 125) {
-      MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
-                                             op_node_list.size()) == 0,
-                 "append node error");
-      op_node_list.clear();
-      cached_inputs.clear();
-      cached_outputs.clear();
-    }
-  }
-
-  if (!op_node_list.empty()) {
-    MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
-                                           op_node_list.size()) == 0,
+    MACE_CHECK(hexagon_nn_append_node(nn_id_,
+                                      node_id(op.node_id()),
+                                      op_id,
+                                      padding_type,
+                                      inputs.data(),
+                                      inputs.size(),
+                                      outputs.data(),
+                                      outputs.size()) == 0,
                "append node error");
   }
-  op_node_list.clear();
-  cached_inputs.clear();
-  cached_outputs.clear();
 
   // input info
   num_inputs_ = net_def.input_info_size();
@@ -372,7 +350,8 @@ void HexagonDSPWrapper::GetPerfInfo() {
   std::vector<std::vector<std::string>> run_order_data;
   for (unsigned int i = 0; i < n_items; ++i) {
     unsigned int node_id = perf_info[i].node_id;
-    unsigned int node_type_id = perf_info[i].node_type;
+    unsigned int node_type_id = 0;
+    hexagon_nn_get_nodetype(nn_id_, node_id, &node_type_id);
     node_id_counters[node_id] =
         ((static_cast<uint64_t>(perf_info[i].counter_hi) << 32) +
          perf_info[i].counter_lo) *

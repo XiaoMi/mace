@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -87,13 +87,15 @@ struct hexagon_nn_output {
 typedef struct hexagon_nn_perfinfo hexagon_nn_perfinfo;
 struct hexagon_nn_perfinfo {
    unsigned int node_id;
-   unsigned int node_type;
    unsigned int executions;
-   unsigned int unused;
    unsigned int counter_lo;
    unsigned int counter_hi;
 };
 typedef int hexagon_nn_nn_id;
+typedef struct hexagon_nn_initinfo hexagon_nn_initinfo;
+struct hexagon_nn_initinfo {
+  int priority;
+};
 enum hexagon_nn_padding_type {
    NN_PAD_NA,
    NN_PAD_SAME,
@@ -133,7 +135,47 @@ struct hexagon_nn_tensordef {
    unsigned int data_valid_len;
    unsigned int unused;
 };
+enum hexagon_nn_execute_result {
+  NN_EXECUTE_SUCCESS,
+  NN_EXECUTE_ERROR,
+  NN_EXECUTE_BUFFER_SIZE_ERROR,
+  _32BIT_PLACEHOLDER_hexagon_nn_execute_result = 0x7fffffff
+};
+typedef enum hexagon_nn_execute_result hexagon_nn_execute_result;
+typedef struct hexagon_nn_execute_info hexagon_nn_execute_info;
+struct hexagon_nn_execute_info {
+  hexagon_nn_execute_result result;
+  unsigned char* extraInfo;
+  int extraInfoLen;
+  unsigned int extraInfoValidLen;
+};
+enum hexagon_nn_option_type {
+  NN_OPTION_NOSUCHOPTION,
+  NN_OPTION_SCALAR_THREADS,
+  NN_OPTION_HVX_THREADS,
+  NN_OPTION_VTCM_REQ,
+  NN_OPTION_ENABLE_GRAPH_PRINT,
+  NN_OPTION_ENABLE_TENSOR_PRINT,
+  NN_OPTION_TENSOR_PRINT_FILTER,
+  NN_OPTION_HAP_MEM_GROW_SIZE,
+  NN_OPTION_ENABLE_CONST_PRINT,
+  NN_OPTION_LASTPLUSONE,
+  _32BIT_PLACEHOLDER_hexagon_nn_option_type = 0x7fffffff
+};
+typedef enum hexagon_nn_option_type hexagon_nn_option_type;
+typedef struct hexagon_nn_uint_option hexagon_nn_uint_option;
+struct hexagon_nn_uint_option {
+  unsigned int option_id;
+  unsigned int uint_value;
+};
+typedef struct hexagon_nn_string_option hexagon_nn_string_option;
+struct hexagon_nn_string_option {
+  unsigned int option_id;
+  char string_data[256];
+};
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_config)(void) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_config_with_options)(const hexagon_nn_uint_option* uint_options, int uint_optionsLen, const hexagon_nn_string_option* string_options, int string_optionsLen) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_graph_config)(hexagon_nn_nn_id id, const hexagon_nn_uint_option* uint_options, int uint_optionsLen, const hexagon_nn_string_option* string_options, int string_optionsLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_get_dsp_offset)(unsigned int* libhexagon_addr, unsigned int* fastrpc_shell_addr) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(hexagon_nn_nn_id* g) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_debug_level)(hexagon_nn_nn_id id, int level) __QAIC_HEADER_ATTRIBUTE;
@@ -143,26 +185,12 @@ __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_node)(hexagon_nn_nn_id 
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_const_node)(hexagon_nn_nn_id id, unsigned int node_id, unsigned int batches, unsigned int height, unsigned int width, unsigned int depth, const unsigned char* data, int dataLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_empty_const_node)(hexagon_nn_nn_id id, unsigned int node_id, unsigned int batches, unsigned int height, unsigned int width, unsigned int depth, unsigned int size) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_populate_const_node)(hexagon_nn_nn_id id, unsigned int node_id, const unsigned char* data, int dataLen, unsigned int target_offset) __QAIC_HEADER_ATTRIBUTE;
-typedef struct hexagon_nn_op_node hexagon_nn_op_node;
-struct hexagon_nn_op_node {
-   unsigned int node_id;
-   unsigned int operation;
-   hexagon_nn_padding_type padding;
-   hexagon_nn_input* inputs;
-   int inputsLen;
-   hexagon_nn_output* outputs;
-   int outputsLen;
-};
-typedef struct hexagon_nn_const_node hexagon_nn_const_node;
-struct hexagon_nn_const_node {
-   unsigned int node_id;
-   hexagon_nn_tensordef tensor;
-};
-__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_node_list)(hexagon_nn_nn_id id, const hexagon_nn_op_node* ops, int opsLen) __QAIC_HEADER_ATTRIBUTE;
-__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_const_node_list)(hexagon_nn_nn_id id, const hexagon_nn_const_node* consts, int constsLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_prepare)(hexagon_nn_nn_id id) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_execute)(hexagon_nn_nn_id id, unsigned int batches_in, unsigned int height_in, unsigned int width_in, unsigned int depth_in, const unsigned char* data_in, int data_inLen, unsigned int* batches_out, unsigned int* height_out, unsigned int* width_out, unsigned int* depth_out, unsigned char* data_out, int data_outLen, unsigned int* data_len_out) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_teardown)(hexagon_nn_nn_id id) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_variable_read)(hexagon_nn_nn_id id, unsigned int node_id, int output_index, unsigned int* batches_out, unsigned int* height_out, unsigned int* width_out, unsigned int* depth_out, unsigned char* data_out, int data_outLen, unsigned int* data_len_out) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_variable_write)(hexagon_nn_nn_id id, unsigned int node_id, int output_index, unsigned int batches, unsigned int height, unsigned int width, unsigned int depth, const unsigned char* data_in, int data_inLen) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_variable_write_flat)(hexagon_nn_nn_id id, unsigned int node_id, int output_index, const unsigned char* data_in, int data_inLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_powersave_level)(unsigned int level) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_powersave_details)(hexagon_nn_corner_type corner, hexagon_nn_dcvs_type dcvs, unsigned int latency) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_clocks)(hexagon_nn_corner_type corner, hexagon_nn_dcvs_type dcvs, unsigned int latency) __QAIC_HEADER_ATTRIBUTE;
@@ -173,10 +201,19 @@ __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_last_execution_cycles)(hexagon
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_version)(int* ver) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_op_name_to_id)(const char* name, unsigned int* node_id) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_op_id_to_name)(unsigned int node_id, char* name, int nameLen) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_get_num_nodes_in_graph)(hexagon_nn_nn_id id, unsigned int* num_nodes) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_disable_dcvs)(void) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_GetHexagonBinaryVersion)(int* ver) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_PrintLog)(const unsigned char* buf, int bufLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_execute_new)(hexagon_nn_nn_id id, const hexagon_nn_tensordef* inputs, int inputsLen, hexagon_nn_tensordef* outputs, int outputsLen) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_execute_with_info)(hexagon_nn_nn_id id, const hexagon_nn_tensordef* inputs, int inputsLen, hexagon_nn_tensordef* outputs, int outputsLen, hexagon_nn_execute_info* execute_info) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init_with_info)(hexagon_nn_nn_id* g, const hexagon_nn_initinfo* info) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_get_nodetype)(hexagon_nn_nn_id graph_id, hexagon_nn_nn_id node_id, unsigned int* node_type) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_multi_execution_cycles)(hexagon_nn_nn_id id, unsigned int* cycles_lo, unsigned int* cycles_hi) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_get_power)(int type) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_graph_option)(hexagon_nn_nn_id id, const char* name, int value) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_populate_graph)(hexagon_nn_nn_id id, const unsigned char* graph_data, int graph_dataLen) __QAIC_HEADER_ATTRIBUTE;
+
 #ifdef __cplusplus
 }
 #endif

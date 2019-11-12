@@ -197,6 +197,9 @@ bool RunModel(const std::string &model_name,
   }
 #endif  // MACE_ENABLE_OPENCL
 #ifdef MACE_ENABLE_HEXAGON
+  // SetHexagonToUnsignedPD() can be called for 8150 family(with new cDSP
+  // firmware) or 8250 family above to run hexagon nn on unsigned PD.
+  // config.SetHexagonToUnsignedPD();
   config.SetHexagonPower(HEXAGON_NN_CORNER_TURBO, true, 100);
 #endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =

@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
@@ -33,3 +32,22 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+#ifndef THIRD_PARTY_NNLIB_HEXNN_DSP_CONTROLLER_H_
+#define THIRD_PARTY_NNLIB_HEXNN_DSP_CONTROLLER_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int hexnn_controller_request_unsigned_pd();
+
+int hexnn_controller_init();
+
+int hexnn_controller_deinit();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // THIRD_PARTY_NNLIB_HEXNN_DSP_CONTROLLER_H_
