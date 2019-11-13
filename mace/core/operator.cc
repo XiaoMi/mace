@@ -322,7 +322,8 @@ std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
       .TypeConstraint("T", key_dtype)
       .Build();
   if (registry_.at(op_type)->creators.count(key) == 0) {
-    LOG(FATAL) << "Key not registered: " << key;
+    LOG(FATAL) << "Key not registered: " << key
+               << ", op type is: " << operator_def->type();
   }
   return registry_.at(op_type)->creators.at(key)(context);
 }

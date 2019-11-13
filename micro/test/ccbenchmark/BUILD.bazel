@@ -1,0 +1,149 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//micro:micro.bzl",
+    "if_hexagon_enabled",
+    "if_not_hexagon_enabled",
+)
+
+IDL_FILES = [
+    "micro/rpc/benchmark.idl",
+]
+
+IDL_HEADERS = [
+    "codegen/benchmark.h",
+]
+
+IDL_SKELS = [
+    "codegen/benchmark_skel.c",
+]
+
+IDL_STUBS = [
+    "codegen/benchmark_stub.c",
+]
+
+genrule(
+    name = "idl_gen",
+    srcs = IDL_FILES,
+    outs = IDL_HEADERS + IDL_SKELS + IDL_STUBS,
+    cmd = "bash $(location //micro/test/ccutils:qaic) $(@D)/codegen $(SRCS)",
+    tools = ["//micro/test/ccutils:qaic"],
+)
+
+cc_library(
+    name = "benchmark_idl_skel",
+    srcs = IDL_SKELS,
+    hdrs = IDL_HEADERS,
+    deps = [
+        "@hexagon_sdk//:headers_dsp",
+    ],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libbenchmark_skel.so",
+    srcs = glob(["micro/rpc/skel/*.c"]),
+    deps = [
+        ":benchmark_idl_skel",
+        ":benchmark_lib",
+        ":benchmark_utils",
+        "//micro/test/ccutils:rpc_skel",
+        "@hexagon_sdk//:headers_dsp",
+    ],
+    linkshared = True,
+    linkstatic = 0,
+)
+
+cc_library(
+    name = "benchmark_idl_stub",
+    srcs = IDL_STUBS,
+    hdrs = IDL_HEADERS,
+    deps = [
+        "@hexagon_sdk//:sdk_arm",
+    ],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "benchmark_stub",
+    srcs = glob(["micro/rpc/stub/*.cc"]),
+    hdrs = glob(["micro/rpc/stub/*.h"]),
+    strip_include_prefix = "",
+    deps = [
+        ":benchmark_idl_stub",
+        "//micro/test/ccutils:rpc_stub",
+    ],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "benchmark_utils",
+    srcs = glob([
+        "micro/benchmark_utils/*.cc",
+    ]),
+    hdrs = glob([
+        "micro/benchmark_utils/*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    strip_include_prefix = "",
+    deps = [
+        "//micro/base",
+        "//micro/test/ccutils",
+    ],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "benchmark_lib",
+    srcs = glob([
+        "micro/ops/*.cc",
+        "micro/ops/nhwc/*.cc",
+    ]),
+    hdrs = glob([
+        "micro/benchmark_utils/*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    strip_include_prefix = "",
+    deps = [
+        "benchmark_utils",
+        "//micro/ops:ops_for_test",
+        "//micro/test/ccutils",
+    ],
+    alwayslink = True,
+)
+
+cc_test(
+    name = "micro_cc_benchmark",
+    srcs = glob(
+        [
+            "micro/test_benchmark_main.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    linkstatic = 1,
+    deps = if_hexagon_enabled([
+        ":benchmark_stub",
+    ]) + if_not_hexagon_enabled([
+        ":benchmark_lib",
+    ]),
+)

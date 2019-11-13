@@ -96,7 +96,7 @@ def compare_output(output_name, mace_out_value,
                 util.StringFormatter.block("Similarity Test Passed"))
         else:
             util.MaceLogger.error(
-                "", util.StringFormatter.block("Similarity Test Failed"))
+                util.StringFormatter.block("Similarity Test Failed"))
     else:
         util.MaceLogger.error(
             "", util.StringFormatter.block(
@@ -108,6 +108,16 @@ def normalize_tf_tensor_name(name):
         return name + ':0'
     else:
         return name
+
+
+def get_data_type_by_value(value):
+    data_type = value.dtype
+    if data_type == np.float32:
+        return mace_pb2.DT_FLOAT
+    elif data_type == np.int32:
+        return mace_pb2.DT_INT32
+    else:
+        return mace_pb2.DT_FLOAT
 
 
 def validate_with_file(output_names, output_shapes,
@@ -182,7 +192,9 @@ def validate_tf_model(model_file,
                 for i in range(len(output_names)):
                     output_file_name = util.formatted_file_name(
                         mace_out_file, output_names[i])
-                    mace_out_value = load_data(output_file_name)
+                    mace_out_value = load_data(
+                        output_file_name,
+                        get_data_type_by_value(output_values[i]))
                     if output_data_formats[i] == DataFormat.NCHW and \
                             len(output_shapes[i]) == 4:
                         mace_out_value = mace_out_value. \

@@ -48,6 +48,13 @@ The main documentation is organized into the following sections:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Micro Controllers
+   :name: sec-micro
+
+   micro-controllers/basic_usage.rst
+
+.. toctree::
+   :maxdepth: 1
    :caption: FAQ
    :name: sec-faq
 

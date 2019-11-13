@@ -1,0 +1,20 @@
+licenses(["notice"])  # Apache 2.0
+
+cc_binary(
+    name = "micro_run_static",
+    srcs = [
+        "micro_run.cc",
+    ],
+    copts = [
+        "-Werror",
+        "-std=c++11",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkstatic = 1,
+    deps = [
+        "//external:gflags_nothreads",
+        "//micro/codegen:generated_models",
+        "//micro/codegen:micro_engine",
+    ],
+)

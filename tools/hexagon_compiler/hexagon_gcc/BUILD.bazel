@@ -1,0 +1,84 @@
+package(default_visibility = ["//tools/hexagon_compiler:__pkg__"])
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"]),
+)
+
+filegroup(
+    name = "gcc",
+    srcs = [
+        "hexagon-qualcomm-gcc",
+        "@hexagon_tools//:gcc",
+    ],
+)
+
+filegroup(
+    name = "ar",
+    srcs = [
+        "hexagon-qualcomm-ar",
+        "@hexagon_tools//:ar",
+    ],
+)
+
+filegroup(
+    name = "ld",
+    srcs = [
+        "hexagon-qualcomm-ld",
+        "@hexagon_tools//:ld",
+    ],
+)
+
+filegroup(
+    name = "nm",
+    srcs = [
+        "hexagon-qualcomm-nm",
+        "@hexagon_tools//:nm",
+    ],
+)
+
+filegroup(
+    name = "objcopy",
+    srcs = [
+        "hexagon-qualcomm-objcopy",
+        "@hexagon_tools//:objcopy",
+    ],
+)
+
+filegroup(
+    name = "objdump",
+    srcs = [
+        "hexagon-qualcomm-objdump",
+        "@hexagon_tools//:objdump",
+    ],
+)
+
+filegroup(
+    name = "strip",
+    srcs = [
+        "hexagon-qualcomm-strip",
+        "@hexagon_tools//:strip",
+    ],
+)
+
+filegroup(
+    name = "as",
+    srcs = [
+        "hexagon-qualcomm-as",
+        "@hexagon_tools//:as",
+    ],
+)
+
+filegroup(
+    name = "tool-wrappers",
+    srcs = [
+        ":ar",
+        ":as",
+        ":gcc",
+        ":ld",
+        ":nm",
+        ":objcopy",
+        ":objdump",
+        ":strip",
+    ],
+)

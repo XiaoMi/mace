@@ -55,6 +55,8 @@ def execute(cmd, verbose=True):
         buf.append(line)
 
     if p.returncode != 0:
+        if verbose:
+            print(line)
         raise Exception("errorcode: %s" % p.returncode)
 
     return "\n".join(buf)
@@ -95,11 +97,11 @@ class HostDevice(Device):
         if install_dir.strip() and install_dir != os.path.dirname(target.path):
             execute("mkdir -p %s" % install_dir)
             if os.path.isdir(target.path):
-                execute("cp %s/* %s" % (target.path, install_dir))
+                execute("cp -f %s/* %s" % (target.path, install_dir))
             else:
-                execute("cp %s %s" % (target.path, install_dir))
+                execute("cp -f %s %s" % (target.path, install_dir))
             for lib in target.libs:
-                execute("cp %s %s" % (lib, install_dir))
+                execute("cp -f %s %s" % (lib, install_dir))
 
             target.path = "%s/%s" % (install_dir,
                                      os.path.basename(target.path))
@@ -117,7 +119,7 @@ class HostDevice(Device):
         out_dir = os.path.abspath(out_dir)
 
         if out_dir.strip() and out_dir != os.path.dirname(target.path):
-            execute("cp -r %s %s" % (target.path, out_dir))
+            execute("cp -rp %s %s" % (target.path, out_dir))
 
     def mkdir(self, dirname):
         execute("mkdir -p %s" % dirname)

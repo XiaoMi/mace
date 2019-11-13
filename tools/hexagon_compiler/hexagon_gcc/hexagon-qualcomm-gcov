@@ -1,0 +1,5 @@
+#!/bin/bash --norc
+
+exec -a hexagon-qualcomm-gcov \
+    ${HL_HEXAGON_TOOLS}/bin/hexagon-coverage \
+    "$@"
