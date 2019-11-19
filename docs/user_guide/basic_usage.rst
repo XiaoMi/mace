@@ -16,7 +16,7 @@ Here we use the mobilenet-v2 model as an example.
 
     1. Pull `MACE <https://github.com/XiaoMi/mace>`__ project.
 
-    .. code:: sh
+    .. code-block:: sh
 
         git clone https://github.com/XiaoMi/mace.git
         cd mace/
@@ -33,14 +33,14 @@ Here we use the mobilenet-v2 model as an example.
 
     2. Pull `MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__ project.
 
-    .. code:: sh
+    .. code-block:: sh
 
         git clone https://github.com/XiaoMi/mace-models.git
 
 
     3. Build a generic MACE library.
 
-    .. code:: sh
+    .. code-block:: sh
 
         cd path/to/mace
         # Build library
@@ -59,7 +59,7 @@ Here we use the mobilenet-v2 model as an example.
 
     4. Convert the pre-trained mobilenet-v2 model to MACE format model.
 
-    .. code:: sh
+    .. code-block:: sh
 
         cd path/to/mace
         # Build library
@@ -73,7 +73,7 @@ Here we use the mobilenet-v2 model as an example.
         If you want to run on phone, please plug in at least one phone.
         Or if you want to run on embedded device, please give a :doc:`advanced_usage`.
 
-    .. code:: sh
+    .. code-block:: sh
 
         # Run
         python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
@@ -107,7 +107,7 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
 
    If your model is from lower version Caffe, you need to upgrade it by using the Caffe built-in tool before converting.
 
-   .. code:: bash
+   .. code-block:: bash
 
        # Upgrade prototxt
        $CAFFE_ROOT/build/tools/upgrade_net_proto_text MODEL.prototxt MODEL.new.prototxt
@@ -123,7 +123,7 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
    This tool will improve the efficiency of inference like the `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
    in TensorFlow.
 
-   .. code:: bash
+   .. code-block:: bash
 
        # Optimize your model
        $python MACE_ROOT/tools/onnx_optimizer.py model.onnx model_opt.onnx
@@ -165,7 +165,7 @@ More details about model deployment file are in :doc:`advanced_usage`.
 
 When the deployment file is ready, you can use MACE converter tool to convert your model(s).
 
-.. code:: bash
+.. code-block:: bash
 
     python tools/converter.py convert --config=/path/to/your/model_deployment_file.yml
 
@@ -184,7 +184,7 @@ You could Download the prebuilt MACE Library from `Github MACE release page <htt
 
 Or use bazel to build MACE source code into a library.
 
-    .. code:: sh
+    .. code-block:: sh
 
         cd path/to/mace
         # Build library
@@ -213,7 +213,7 @@ to run and validate your model.
 
     run the model.
 
-    .. code:: sh
+    .. code-block:: sh
 
     	# Test model run time
         python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --round=100
@@ -230,7 +230,7 @@ to run and validate your model.
 
     benchmark and profile the model. the details are in :doc:`benchmark`.
 
-    .. code:: sh
+    .. code-block:: sh
 
         # Benchmark model, get detailed statistics of each Op.
         python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --benchmark
@@ -256,7 +256,7 @@ However, there are some differences in different devices.
 
     MACE only supports Qualcomm DSP. And you need to push the hexagon nn library to the device.
 
-    .. code:: sh
+    .. code-block:: sh
 
         # For Android device
         adb root; adb remount
@@ -276,7 +276,7 @@ header files.
 
 -  The generated ``static`` library files are organized as follows,
 
-.. code::
+.. code-block:: none
 
     build
     ├── include
@@ -310,7 +310,7 @@ header files.
 
 Please refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list the key steps.
 
-.. code:: cpp
+.. code-block:: cpp
 
     // Include the headers
     #include "mace/public/mace.h"

@@ -8,7 +8,7 @@
 
 构建前，清空工作目录
 
-    .. code:: sh
+    .. code-block:: sh
 
         tools/clear_workspace.sh
 
@@ -18,7 +18,7 @@
 
 确保 CMake 已安装 
 
-    .. code:: sh
+    .. code-block:: sh
 
         RUNTIME=GPU bash tools/cmake/cmake-build-armeabi-v7a.sh
 
@@ -33,7 +33,7 @@
 
 撰写模型相关的 YAML 配置文件：
 
-    .. code:: yaml
+    .. code-block:: yaml
 
         models:
           mobilenet_v1:
@@ -55,13 +55,13 @@
 
 假设模型配置文件的路径是： ``../mace-models/mobilenet-v1/mobilenet-v1.yml``，执行：
 
-    .. code:: yaml
+    .. code-block:: yaml
 
         python tools/python/convert.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml
 
 将会在 ``build/mobilenet_v1/model/`` 中产生 4 个文件
 
-    .. code:: sh
+    .. code-block:: none
 
         ├── mobilenet_v1.pb                (模型结构文件)
         ├── mobilenet_v1.data              (模型参数文件)
@@ -80,13 +80,13 @@
 
 模型转换后，执行下面命令进行测试：
 
-    .. code:: sh
+    .. code-block:: sh
 
         python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --validate
 
 或下面命令进行性能评测：
 
-    .. code:: sh
+    .. code-block:: sh
 
         python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --benchmark
 
@@ -100,7 +100,7 @@
 
 可以查看源码 \ ``mace/tools/mace_run.cc``\ 了解更多详情。下面简要介绍相关步骤：
 
-.. code:: cpp
+.. code-block:: cpp
 
     // 添加头文件按
     #include "mace/public/mace.h"

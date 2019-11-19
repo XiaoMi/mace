@@ -84,7 +84,7 @@ There are many advanced options supported.
 
     Some command tools:
 
-    .. code:: bash
+    .. code-block:: bash
 
         # Get device's soc info.
         adb shell getprop | grep platform
@@ -107,7 +107,7 @@ Run you model on the embedded device(ARM Linux)
 
 The way to run your model on the ARM Linux is nearly same as with android, except you need specify a device config file.
 
-  .. code:: bash
+  .. code-block:: bash
 
     python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --validate --device_yml=/path/to/devices.yml
 
@@ -117,7 +117,7 @@ There are two steps to do before run:
 
     MACE use ssh to connect embedded device, you should copy your public key to embedded device with the blow command.
 
-    .. code:: bash
+    .. code-block:: bash
 
       cat ~/.ssh/id_rsa.pub | ssh -q {user}@{ip} "cat >> ~/.ssh/authorized_keys"
 
@@ -158,14 +158,14 @@ Model Protection
 
 Model can be encrypted by obfuscation.
 
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/python/encrypt.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml
 
 It will override ``mobilenet_v1.pb`` and ``mobilenet_v1.data``. 
 If you want to compiled the model into a library, you should use options ``--gencode_model --gencode_param`` to generate model code, i.e.,
 
-    .. code:: bash
+    .. code-block:: bash
     
         python tools/python/encrypt.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --gencode_model --gencode_param
 
@@ -173,7 +173,7 @@ It will generate model code into ``mace/codegen/models`` and also generate a hel
 
 After that you can rebuild the engine. 
     
-    .. code:: bash
+    .. code-block:: bash
 
         RUNTIME=GPU RUNMODE=code bash tools/cmake/cmake-build-armeabi-v7a.sh
 
@@ -181,7 +181,7 @@ After that you can rebuild the engine.
 
 When you test the model in code format, you should specify it in the script as follows.
     
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --gencode_model --gencode_param
 
@@ -192,7 +192,7 @@ When you need to integrate the libraries into your applications, you can link `l
 
 Refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list the key steps.
 
-    .. code:: cpp
+    .. code-block:: cpp
 
         // Include the headers
         #include "mace/public/mace.h"
@@ -221,6 +221,67 @@ Refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list the ke
         // ... Same with the code in basic usage
 
 
+Transform models after conversion
+---------------------------------
+
+If ``model_graph_format`` or ``model_data_format`` is specified as `file`, the model or weight file will
+be generated as a `.pb` or `.data` file after model conversion. After that, more transformations can be
+applied to the generated files, such as compression or encryption. To achieve that, the model loading is
+split to two stages: 1) load the file from file system to memory buffer; 2) create the MACE engine from the
+model buffer. So between the two stages, transformations can be inserted to decompress or decrypt the model
+buffer. The transformations are user defined. The following lists the key steps when both ``model_graph_format``
+and ``model_data_format`` are set as `file`.
+
+    .. code-block:: cpp
+
+        // Load model graph from file system
+        std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
+            make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
+        if (FLAGS_model_file != "") {
+          auto fs = GetFileSystem();
+          status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
+              &model_graph_data);
+          if (status != MaceStatus::MACE_SUCCESS) {
+            // Report error or fallback
+          }
+        }
+        // Load model data from file system
+        std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data =
+            make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
+        if (FLAGS_model_data_file != "") {
+          auto fs = GetFileSystem();
+          status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_data_file.c_str(),
+              &model_weights_data);
+          if (status != MaceStatus::MACE_SUCCESS) {
+            // Report error or fallback
+          }
+        }
+        if (model_graph_data == nullptr || model_weights_data == nullptr) {
+          // Report error or fallback
+        }
+
+        // Add transformations here.
+        ...
+
+        // Create the MACE engine from the model buffer
+        std::shared_ptr<mace::MaceEngine> engine;
+        MaceStatus create_engine_status;
+        create_engine_status =
+            CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
+                                        model_graph_data->data()),
+                                      model_graph_data->length(),
+                                      reinterpret_cast<const unsigned char *>(
+                                        model_weights_data->data()),
+                                      model_weights_data->length(),
+                                      input_names,
+                                      output_names,
+                                      config,
+                                      &engine);
+        if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+          // Report error or fallback
+        }
+
+
 Tuning for specific SoC's GPU
 ---------------------------------
 
@@ -228,13 +289,13 @@ If you want to use the GPU of a specific device, you can tune the performance fo
 
 You can specify `--tune` option when you want to run and tune the performance at the same time.
 
-    .. code:: bash
+    .. code-block:: bash
     
         python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --tune
 
 It will generate OpenCL tuned parameter binary file in `build/mobilenet_v1/opencl` directory.
     
-    .. code:: bash
+    .. code-block:: none
 
         └── mobilenet_v1_tuned_opencl_parameter.MIX2S.sdm845.bin
 
@@ -243,7 +304,7 @@ It specifies your test platform model and SoC. You can use it in production to r
 To deploy it, change the names of files generated above for not collision and push them to **your own device's directory**.
 Use like the previous procedure, below lists the key steps differently.
 
-    .. code:: cpp
+    .. code-block:: cpp
 
         // Include the headers
         #include "mace/public/mace.h"
@@ -275,13 +336,13 @@ Multi Model Support (optional)
 If multiple models are configured in config file. After you test it, it will generate more than one tuned parameter files.
 Then you need to merge them together.
 
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/python/gen_opencl.py
 
 After that, it will generate one set of files into `build/opencl` directory.
 
-    .. code:: bash
+    .. code-block:: none
 
         ├── compiled_opencl_kernel.bin
         └── tuned_opencl_parameter.bin
@@ -309,7 +370,7 @@ Reduce Library Size
 Remove the registration of the ops unused for your models in the ``mace/ops/ops_register.cc``,
 which will reduce the library size significantly. the final binary just link the registered ops' code.
 
-.. code:: cpp
+.. code-block:: cpp
 
     #include "mace/ops/ops_register.h"
 

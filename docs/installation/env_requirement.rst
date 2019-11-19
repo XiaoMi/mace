@@ -36,7 +36,7 @@ Required dependencies
 
 For Bazel, install it following installation guide. For python dependencies,
 
-	.. code:: sh
+	.. code-block:: sh
 
 		pip install -U --user -r setup/requirements.txt
 
@@ -78,7 +78,7 @@ Optional dependencies
 
 For python dependencies,
 
-	.. code:: sh
+	.. code-block:: sh
 
 		pip install -U --user -r setup/optionals.txt
 

@@ -8,7 +8,7 @@ Clear Workspace
 
 Before you do anything, clear the workspace used by build and test process.
 
-    .. code:: sh
+    .. code-block:: sh
 
         tools/clear_workspace.sh
 
@@ -18,7 +18,7 @@ Build Engine
 
 Please make sure you have CMake installed.
 
-    .. code:: sh
+    .. code-block:: sh
 
         RUNTIME=GPU bash tools/cmake/cmake-build-armeabi-v7a.sh
 
@@ -33,7 +33,7 @@ Model Conversion
 
 When you have prepared your model, the first thing to do is write a model config in YAML format.
 
-    .. code:: yaml
+    .. code-block:: yaml
 
         models:
           mobilenet_v1:
@@ -56,13 +56,13 @@ When you have prepared your model, the first thing to do is write a model config
 The following steps generate output to ``build`` directory which is the default build and test workspace.
 Suppose you have the model config in ``../mace-models/mobilenet-v1/mobilenet-v1.yml``. Then run
 
-    .. code:: yaml
+    .. code-block:: yaml
 
         python tools/python/convert.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml
 
 which generate 4 files in ``build/mobilenet_v1/model/``
 
-    .. code:: sh
+    .. code-block:: none
 
         ├── mobilenet_v1.pb                (model file)
         ├── mobilenet_v1.data              (param file)
@@ -81,13 +81,13 @@ We provide simple tools to test and benchmark your model.
 
 After model is converted, simply run
 
-    .. code:: sh
+    .. code-block:: sh
 
         python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --validate
 
 Or benchmark the model
 
-    .. code:: sh
+    .. code-block:: sh
 
         python tools/python/run_model.py --config ../mace-models/mobilenet-v1/mobilenet-v1.yml --benchmark
 
@@ -104,7 +104,7 @@ Deploy your model into applications
 
 Please refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list the key steps.
 
-.. code:: cpp
+.. code-block:: cpp
 
     // Include the headers
     #include "mace/public/mace.h"
