@@ -260,19 +260,22 @@ and ``model_data_format`` are set as `file`.
           // Report error or fallback
         }
 
+        std::vector<unsigned char> transformed_model_graph_data;
+        std::vector<unsigned char> transformed_model_weights_data;
         // Add transformations here.
         ...
+        // Release original model data after transformations
+        model_graph_data.reset();
+        model_weights_data.reset();
 
         // Create the MACE engine from the model buffer
         std::shared_ptr<mace::MaceEngine> engine;
         MaceStatus create_engine_status;
         create_engine_status =
-            CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
-                                        model_graph_data->data()),
-                                      model_graph_data->length(),
-                                      reinterpret_cast<const unsigned char *>(
-                                        model_weights_data->data()),
-                                      model_weights_data->length(),
+            CreateMaceEngineFromProto(transformed_model_graph_data.data(),
+                                      transformed_model_graph_data.size(),
+                                      transformed_model_weights_data.data(),
+                                      transformed_model_weights_data.size(),
                                       input_names,
                                       output_names,
                                       config,

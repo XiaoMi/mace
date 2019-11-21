@@ -600,6 +600,9 @@ MaceStatus MaceEngine::Impl::Init(
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
     hexagon_controller_ = CreateHexagonControlWrapper(device_.get());
+    LOG(INFO) << "Hexagon " << (device_type_ == HEXAGON ? "DSP" : "HTA")
+              << " version: 0x" << std::hex
+              << hexagon_controller_->GetVersion();
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(

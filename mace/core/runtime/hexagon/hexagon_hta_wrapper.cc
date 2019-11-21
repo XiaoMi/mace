@@ -73,32 +73,24 @@ bool HexagonHTAWrapper::SetupGraph(const NetDef &net_def,
       tensor_shape.insert(tensor_shape.begin(), 1);
     }
 
-    hexagon_nn_const_node const_node;
-    const_node.node_id = node_id(const_tensor.node_id());
-    const_node.tensor.batches = tensor_shape[0];
-    const_node.tensor.height = tensor_shape[1];
-    const_node.tensor.width = tensor_shape[2];
-    const_node.tensor.depth = tensor_shape[3];
-
-    if (const_tensor.data_type() == DataType::DT_INT32 &&
-        const_tensor.data_size() == 0) {
-      const_node.tensor.data = NULL;
-      const_node.tensor.dataLen = 0;
-    } else {
-      const_node.tensor.data =
+    unsigned char *const_node_data = nullptr;
+    int const_node_data_len = 0;
+    if (!(const_tensor.data_type() == DataType::DT_INT32 &&
+        const_tensor.data_size() == 0)) {
+      const_node_data =
           const_cast<unsigned char *>(model_data + const_tensor.offset());
-      const_node.tensor.dataLen = const_tensor.data_size() *
+      const_node_data_len = const_tensor.data_size() *
           GetEnumTypeSize(const_tensor.data_type());
     }
 
     hexagon_hta_nn_append_const_node(nn_id_,
-                                     const_node.node_id,
-                                     const_node.tensor.batches,
-                                     const_node.tensor.height,
-                                     const_node.tensor.width,
-                                     const_node.tensor.depth,
-                                     const_node.tensor.data,
-                                     const_node.tensor.dataLen);
+                                     node_id(const_tensor.node_id()),
+                                     tensor_shape[0],
+                                     tensor_shape[1],
+                                     tensor_shape[2],
+                                     tensor_shape[3],
+                                     const_node_data,
+                                     const_node_data_len);
   }
 
   // op node
@@ -137,23 +129,14 @@ bool HexagonHTAWrapper::SetupGraph(const NetDef &net_def,
 
     auto padding_type = static_cast<hta_padding_type>(op.padding());
 
-    hexagon_nn_op_node op_node;
-    op_node.node_id = node_id(op.node_id());
-    op_node.operation = op_id;
-    op_node.padding = padding_type;
-    op_node.inputs = cached_inputs.back().data();
-    op_node.inputsLen = inputs.size();
-    op_node.outputs = cached_outputs.back().data();
-    op_node.outputsLen = outputs.size();
-
     hexagon_hta_nn_append_node(nn_id_,
-                               op_node.node_id,
-                               op_node.operation,
-                               op_node.padding,
-                               op_node.inputs,
-                               op_node.inputsLen,
-                               op_node.outputs,
-                               op_node.outputsLen);
+                               node_id(op.node_id()),
+                               op_id,
+                               padding_type,
+                               cached_inputs.back().data(),
+                               inputs.size(),
+                               cached_outputs.back().data(),
+                               outputs.size());
   }
 
   // input info
