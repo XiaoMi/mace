@@ -100,7 +100,6 @@ MaceSupportedOps = [
     'Conv2D',
     'Crop',
     'Deconv2D',
-    'Delay',
     'DepthToSpace',
     'DepthwiseConv2d',
     'DepthwiseDeconv2d',
@@ -112,6 +111,7 @@ MaceSupportedOps = [
     'FullyConnected',
     'Gather',
     'Identity',
+    'IfDefined',
     'InferConv2dShape',
     'KaldiBatchNorm',
     'LocalResponseNorm',
@@ -128,6 +128,7 @@ MaceSupportedOps = [
     'Proposal',
     'Quantize',
     'Reduce',
+    'ReplaceIndex',
     'Reshape',
     'ResizeBicubic',
     'ResizeBilinear',
@@ -147,6 +148,7 @@ MaceSupportedOps = [
     'SpaceToBatchND',
     'SpaceToDepth',
     'SqrDiffMean',
+    'Subsample',
     'SumGroup',
     'TargetRMSNorm',
     'Transpose',
@@ -269,6 +271,8 @@ class MaceKeyword(object):
     mace_reverse_str = 'reverse'
     mace_const_data_num_arg_str = 'const_data_num'
     mace_coeff_str = 'coeff'
+    mace_input_indexes_str = 'input_indexes'
+    mace_output_indexes_str = 'output_indexes'
     mace_p_str = 'p'
     mace_nor_var_str = 'normalize_variance'
     mace_across_ch_str = 'across_channels'

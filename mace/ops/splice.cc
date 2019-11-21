@@ -22,6 +22,9 @@
 // if const_component_dim_ != 0, const_dim_ will be used to determine which
 // row of "in" we copy the last part of each row of "out" from (this part is
 // not subject to splicing, it's assumed constant for each frame of "input".
+// forward_indexes and forward_const_indexes indicate which frames will
+// be used for computation, and they are precomputed in kaldi-onnx converter
+// becase of supporting subsample.
 
 #include <functional>
 #include <memory>
@@ -40,21 +43,45 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit SpliceOp(OpConstructContext *context)
       : Operation(context),
-        context_(Operation::GetRepeatedArgs<int>("context")),
+        context_(Operation::GetRepeatedArgs<index_t>("context")),
         const_dim_(
-            Operation::GetOptionalArg<int>("const_component_dim", 0)) {}
+            Operation::GetOptionalArg<int>("const_component_dim", 0)),
+        forward_indexes_(
+            Operation::GetRepeatedArgs<index_t>("forward_indexes")),
+        forward_const_indexes_(
+            Operation::GetRepeatedArgs<index_t>("forward_const_indexes")) {}
+
+  inline void Validate() {
+    MACE_CHECK(context_.size() > 0)
+        << "The context param should not be empty in Splice Op.";
+    MACE_CHECK(forward_indexes_.size() % context_.size() == 0,
+               "Splice's forward indexes should be multiply of num splice.");
+    const Tensor *input = this->Input(0);
+    const unsigned int rank = static_cast<unsigned int>(input->dim_size());
+    MACE_CHECK(rank >= 2, "Splice's input should have at least 2 dims.");
+    MACE_CHECK(input->dim(rank - 1) > const_dim_,
+               "input dim:", input->dim(rank - 1),
+               "should be greater than const dim:", const_dim_);
+
+    const index_t input_chunk = input->dim(rank - 2);
+    for (size_t i = 0; i < forward_indexes_.size(); ++i) {
+      MACE_CHECK(forward_indexes_[i] < input_chunk && forward_indexes_[i] >= 0)
+          << " forward index:" << forward_indexes_[i] << " input shape:"
+          << input->dim(0) << "," << input->dim(1) << "," << input->dim(2);
+    }
+    for (size_t i = 0; i < forward_const_indexes_.size(); ++i) {
+      MACE_CHECK(forward_const_indexes_[i] < input_chunk &&
+                     forward_const_indexes_[i] >= 0 ,
+                 "index is over range.");
+    }
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
-    MACE_CHECK(context_.size() > 0)
-      << "The context param should not be empty in Splice Op.";
-    MACE_CHECK(input->dim_size() >= 2)
-      << "Splice's input's rank should be greater than 2.";
-
     Tensor *output = this->Output(0);
+    Validate();
     const std::vector<index_t> &input_shape = input->shape();
-
     const index_t batch =
         std::accumulate(input->shape().begin(), input->shape().end() - 2, 1,
                         std::multiplies<index_t>());
@@ -65,14 +92,10 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
 
     const index_t num_splice = static_cast<index_t>(context_.size());
     const index_t dim = input_dim - const_dim_;
-    const index_t left_context = context_[0];
-    const index_t right_context = context_[num_splice -1];
+    utils::ThreadPool
+        &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-    const index_t out_chunk = chunk - (right_context - left_context);
-
-    MACE_CHECK(input_dim > const_dim_,
-               "input dim:", input_dim,
-               "should be greater than const dim:", const_dim_);
+    const index_t out_chunk = forward_indexes_.size() / num_splice;
     const index_t output_dim = dim * num_splice + const_dim_;
     const index_t output_stride = out_chunk * output_dim;
 
@@ -86,38 +109,48 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-    for (int b = 0; b < batch; ++b) {
-      for (index_t i = 0; i < out_chunk; ++i) {
-        for (index_t c = 0; c < num_splice; ++c) {
-          const index_t offset = i + context_[c] - left_context;
-          T *output_base =
-              output_data + b * output_stride + i * output_dim + c * dim;
-          const T *input_base =
-              input_data + b * input_stride + offset * input_dim;
-          memcpy(output_base, input_base, dim * sizeof(T));
+    thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1,
+                              index_t start2, index_t end2, index_t step2) {
+      for (index_t b = start0; b < end0; b += step0) {
+        for (index_t i = start1; i < end1; i += step1) {
+          for (index_t c = start2; c < end2; c += step2) {
+            const index_t pos = forward_indexes_[i * num_splice + c];
+            T *output_base =
+                output_data + b * output_stride + i * output_dim + c * dim;
+            const T *input_base =
+                input_data + b * input_stride + pos * input_dim;
+            memcpy(output_base, input_base, dim * sizeof(T));
+          }
         }
       }
-    }
+    }, 0, batch, 1, 0, out_chunk, 1, 0, num_splice, 1);
 
     if (const_dim_ > 0) {
       const index_t output_offset = output_dim - const_dim_;
-      const index_t input_offset = dim;
-      for (int b = 0; b < batch; ++b) {
-        for (index_t i = 0; i < out_chunk; ++i) {
-          T *output_base = output_data + b * output_stride + i * output_dim;
-          const T *input_base = input_data + b * input_stride + i * input_dim;
-          memcpy(output_base + output_offset,
-                 input_base + input_offset,
-                 const_dim_ * sizeof(T));
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
+            T *output_base = output_data + b * output_stride +
+                i * output_dim + output_offset;
+            const T *input_base =
+                input_data + b * input_stride +
+                forward_const_indexes_[i] * input_dim + dim;
+            memcpy(output_base, input_base,
+                   const_dim_ * sizeof(T));
+          }
         }
-      }
+      }, 0, batch, 1, 0, out_chunk, 1);
     }
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-  std::vector<int> context_;
+  std::vector<index_t> context_;
   int const_dim_;
+  std::vector<index_t> forward_indexes_;
+  std::vector<index_t> forward_const_indexes_;
 };
 
 void RegisterSplice(OpRegistryBase *op_registry) {

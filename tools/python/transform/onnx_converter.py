@@ -152,7 +152,9 @@ OnnxSupportedOps = [
     # 'ReduceSum',
     # 'ReduceSumSquare',
     'Relu',
+    'ReplaceIndex',
     'Reshape',
+    'Round',
     'Scale',
     # 'Scan',
     # 'Selu',
@@ -171,6 +173,7 @@ OnnxSupportedOps = [
     'Sqrt',
     'Squeeze',
     'Sub',
+    'Subsample',
     'Sum',
     'SumGroup',
     # 'Tan',
@@ -363,7 +366,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Mul.name: self.convert_eltwise,
             OnnxOpType.Neg.name: self.convert_eltwise,
             OnnxOpType.Normalize: self.convert_normalize,
-            OnnxOpType.Offset.name: self.convert_identity,
+            OnnxOpType.Offset.name: self.convert_subsample,
             OnnxOpType.Pad.name: self.convert_pad,
             OnnxOpType.PadContext.name: self.convert_pad_context,
             OnnxOpType.PNorm.name: self.convert_pnorm,
@@ -376,6 +379,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.ReduceMean.name: self.convert_reduce,
             OnnxOpType.ReduceMin.name: self.convert_reduce,
             OnnxOpType.ReduceProd.name: self.convert_reduce,
+            OnnxOpType.ReplaceIndex.name: self.convert_replaceindex,
+            OnnxOpType.Round.name: self.convert_replaceindex,
             OnnxOpType.Scale.name: self.convert_eltwise,
             OnnxOpType.Shape.name: self.convert_shape,
             OnnxOpType.Sigmoid.name: self.convert_activation,
@@ -387,6 +392,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Sqrt.name: self.convert_eltwise,
             OnnxOpType.Squeeze.name: self.convert_squeeze,
             OnnxOpType.Sub.name: self.convert_eltwise,
+            OnnxOpType.Subsample.name: self.convert_subsample,
             OnnxOpType.Sum.name: self.convert_eltwise,
             OnnxOpType.SumGroup.name: self.convert_sum_group,
             OnnxOpType.Tanh.name: self.convert_activation,
@@ -839,56 +845,30 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.DynamicLSTM.name
 
-        if 'prev_out_delay' in node.attrs:
-            prev_out_delay = node.attrs['prev_out_delay']
-            mace_check(prev_out_delay < 0,
-                       "dynamic's prev_out_delay should <= 0.")
-            prev_out_delay_arg = op.arg.add()
-            prev_out_delay_arg.name = 'prev_out_delay'
-            prev_out_delay_arg.i = prev_out_delay
-        if 'prev_cell_delay' in node.attrs:
-            prev_cell_delay = node.attrs['prev_cell_delay']
-            mace_check(prev_cell_delay < 0,
-                       "dynamic's prev_cell_delay should < 0.")
-            prev_cell_delay_arg = op.arg.add()
-            prev_cell_delay_arg.name = 'prev_cell_delay'
-            prev_cell_delay_arg.i = prev_cell_delay
-        if 'prev_out_offset' in node.attrs:
-            prev_out_offset = node.attrs['prev_out_offset']
-            mace_check(prev_out_offset >= 0,
-                       "dynamic's prev_out_offset should >= 0.")
-            prev_out_offset_arg = op.arg.add()
-            prev_out_offset_arg.name = 'prev_out_offset'
-            prev_out_offset_arg.i = prev_out_offset
-        if 'prev_out_dim' in node.attrs:
-            prev_out_dim = node.attrs['prev_out_dim']
-            mace_check(prev_out_dim > 0,
-                       "dynamic's prev_out_dim should > 0.")
-            prev_out_dim_arg = op.arg.add()
-            prev_out_dim_arg.name = 'prev_out_dim'
-            prev_out_dim_arg.i = prev_out_dim
-        if 'prev_cell_dim' in node.attrs:
-            prev_cell_dim = node.attrs['prev_cell_dim']
-            mace_check(prev_cell_dim > 0,
-                       "dynamic's prev_cell_dim should > 0.")
-            prev_cell_dim_arg = op.arg.add()
-            prev_cell_dim_arg.name = 'prev_cell_dim'
-            prev_cell_dim_arg.i = prev_cell_dim
-        if 'bias_a' in node.attrs:
-            bias_a = node.attrs['bias_a']
-            bias_a_arg = op.arg.add()
-            bias_a_arg.name = 'bias_a'
-            bias_a_arg.i = bias_a
-        if 'bias_b' in node.attrs:
-            bias_b = node.attrs['bias_b']
-            bias_b_arg = op.arg.add()
-            bias_b_arg.name = 'bias_b'
-            bias_b_arg.i = bias_b
-        if 'scale' in node.attrs:
-            scale = node.attrs['scale']
-            scale_arg = op.arg.add()
-            scale_arg.name = 'scale'
-            scale_arg.f = scale
+        self.copy_node_attr(op, node, 'prev_out_delay',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'prev_cell_delay',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'prev_out_offset',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'prev_out_dim',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'prev_cell_dim',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'bias_a',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'bias_b',
+                            AttributeType.INT)
+        self.copy_node_attr(op, node, 'scale',
+                            AttributeType.FLOAT)
+        self.copy_node_attr(op, node, 'subsample_factor',
+                            AttributeType.INT, default=1)
+        self.copy_node_attr(op, node, 'cell_cache_indexes',
+                            AttributeType.INTS, default=[])
+        self.copy_node_attr(op, node, 'out_cache_indexes',
+                            AttributeType.INTS, default=[])
+        self.copy_node_attr(op, node, 'forward_indexes',
+                            AttributeType.INTS)
 
     def convert_clip(self, node):
         #  If clip's min value is zero,
@@ -1019,73 +999,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         self.copy_node_attr(op, node, 'include_variance', AttributeType.INT)
         self.copy_node_attr(op, node, 'num_log_count', AttributeType.INT)
         self.copy_node_attr(op, node, 'variance_floor', AttributeType.FLOAT)
-        self.copy_node_attr(op, node, 'input_time_range', AttributeType.INTS)
-        self.copy_node_attr(op, node, 'input_indexes', AttributeType.INTS)
-
-        if 'output_time_range' in node.attrs:
-            output_time_range = node.attrs['output_time_range']
-            mace_check(len(output_time_range) == 2,
-                       "output time range should have two values.")
-            out_start_index = output_time_range[0]
-            out_end_index = output_time_range[1]
-        else:
-            mace_check('start_index' in node.attrs and
-                       'end_index' in node.attrs,
-                       "'start_index' and 'end_index'"
-                       " are required in ExtractPooling.")
-            out_start_index = node.attrs['start_index']
-            out_end_index = node.attrs['end_index']
-            output_time_range = [out_start_index, out_end_index]
-
-        output_time_range_arg = op.arg.add()
-        output_time_range_arg.name = 'output_time_range'
-        output_time_range_arg.ints.extend(output_time_range)
-
-        mace_check('modulus' in node.attrs,
-                   "'modulus' is required in ExtractPooling.")
-        mace_check('output_indexes' in node.attrs,
-                   "'output_indexes' is required in ExtractPooling.")
-        mace_check('counts' in node.attrs,
-                   "'counts' is required in ExtractPooling.")
-        mace_check('forward_indexes' in node.attrs,
-                   "'forward_indexes' is required in ExtractPooling.")
-        modulus = node.attrs['modulus']
-        output_indexes = node.attrs['output_indexes']
-        counts = node.attrs['counts']
-        forward_indexes = node.attrs['forward_indexes']
-
-        mace_check(len(counts) == len(output_indexes) and
-                   len(forward_indexes) == 2 * len(output_indexes),
-                   "output_indexes length:%s "
-                   "counts length:%s "
-                   "forward_indexes length:%s"
-                   % (len(output_indexes), len(counts), len(forward_indexes)))
-
-        new_output_indexes = []
-        new_forward_indexes = []
-        new_counts = []
-        for i in range(len(output_indexes)):
-            if output_indexes[i] + modulus > out_start_index and\
-                    output_indexes[i] <= out_end_index:
-                new_output_indexes.append(output_indexes[i])
-                new_counts.append(counts[i])
-                new_forward_indexes.append(forward_indexes[2 * i])
-                new_forward_indexes.append(forward_indexes[2 * i + 1])
-        modulus_arg = op.arg.add()
-        modulus_arg.name = 'modulus'
-        modulus_arg.i = modulus
-
-        counts_arg = op.arg.add()
-        counts_arg.name = 'counts'
-        counts_arg.floats.extend(new_counts)
-
-        forward_indexes_arg = op.arg.add()
-        forward_indexes_arg.name = 'forward_indexes'
-        forward_indexes_arg.ints.extend(new_forward_indexes)
-
-        output_indexes_arg = op.arg.add()
-        output_indexes_arg.name = 'output_indexes'
-        output_indexes_arg.ints.extend(new_output_indexes)
+        self.copy_node_attr(op, node, 'counts', AttributeType.FLOATS)
+        self.copy_node_attr(op, node, 'forward_indexes', AttributeType.INTS)
 
     def convert_flatten(self, node):
         op = self.convert_general_op(node)
@@ -1104,19 +1019,14 @@ class OnnxConverter(base_converter.ConverterInterface):
     def convert_kaldi_batchnorm(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.KaldiBatchNorm.name
-        dim = self.copy_node_attr(op, node,
-                                  'dim', AttributeType.INT, -1)
-        block_dim = self.copy_node_attr(op, node,
-                                        'block_dim',
+        dim = self.copy_node_attr(op, node, 'dim', AttributeType.INT, -1)
+        block_dim = self.copy_node_attr(op, node, 'block_dim',
                                         AttributeType.INT, -1)
-        epsilon = self.copy_node_attr(op, node,
-                                      'epsilon',
+        epsilon = self.copy_node_attr(op, node, 'epsilon',
                                       AttributeType.FLOAT, 1e-3)
-        target_rms = self.copy_node_attr(op, node,
-                                         'target_rms',
+        target_rms = self.copy_node_attr(op, node, 'target_rms',
                                          AttributeType.FLOAT, 1.0)
-        test_mode = self.copy_node_attr(op, node,
-                                        'test_mode',
+        test_mode = self.copy_node_attr(op, node, 'test_mode',
                                         AttributeType.INT, 0)
         mace_check(block_dim > 0 and
                    dim % block_dim == 0 and
@@ -1165,8 +1075,7 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         scale_name = node.name + 'scale'
         offset_name = node.name + 'offset'
-        scale_value = (
-                (1.0 / np.sqrt(
+        scale_value = ((1.0 / np.sqrt(
                     var_value + epsilon_value)) * gamma_value)
         offset_value = (-mean_value * scale_value) + beta_value
         self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
@@ -1267,10 +1176,11 @@ class OnnxConverter(base_converter.ConverterInterface):
         if offset == 0:
             op.type = MaceOp.Identity.name
         else:
-            op.type = MaceOp.Delay.name
-        offset_arg = op.arg.add()
-        offset_arg.name = 'offset'
-        offset_arg.i = node.attrs['offset']
+            op.type = MaceOp.IfDefined.name
+            self.copy_node_attr(op, node, 'forward_indexes',
+                                AttributeType.INTS)
+            self.copy_node_attr(op, node, 'cache_forward_indexes',
+                                AttributeType.INTS)
 
     def convert_imagescaler(self, node):
         op = self.convert_general_op(node)
@@ -1282,10 +1192,10 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         scale_name = node.name + "_scale"
         bias_name = node.name + "_bias"
-        self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
-                        scale_value)
-        self.add_tensor(bias_name, bias_value.shape, mace_pb2.DT_FLOAT,
-                        bias_value)
+        self.add_tensor(scale_name, scale_value.shape,
+                        mace_pb2.DT_FLOAT, scale_value)
+        self.add_tensor(bias_name, bias_value.shape,
+                        mace_pb2.DT_FLOAT, bias_value)
         op.input.extend([scale_name, bias_name])
 
     def convert_lstm(self, node):
@@ -1399,6 +1309,12 @@ class OnnxConverter(base_converter.ConverterInterface):
         keep_dims_arg.name = MaceKeyword.mace_keepdims_str
         keep_dims_arg.i = keep_dims
 
+    def convert_replaceindex(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.ReplaceIndex.name
+        self.copy_node_attr(op, node, 'forward_indexes',
+                            AttributeType.INTS)
+
     def convert_reshape(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Reshape.name
@@ -1460,11 +1376,17 @@ class OnnxConverter(base_converter.ConverterInterface):
         context_arg.ints.extend(context)
         if 'const_component_dim' in node.attrs:
             const_dim = node.attrs['const_component_dim']
-        else:
-            const_dim = 0
-        const_dim_arg = op.arg.add()
-        const_dim_arg.name = 'const_component_dim'
-        const_dim_arg.i = const_dim
+            const_dim_arg = op.arg.add()
+            const_dim_arg.name = 'const_component_dim'
+            const_dim_arg.i = const_dim
+            self.copy_node_attr(op, node,
+                                'forward_const_indexes',
+                                AttributeType.INTS)
+
+        self.copy_node_attr(op, node, 'subsample_factor',
+                            AttributeType.INT, default=1)
+        self.copy_node_attr(op, node, 'forward_indexes',
+                            AttributeType.INTS)
 
     def convert_split(self, node):
         op = self.convert_general_op(node)
@@ -1516,6 +1438,12 @@ class OnnxConverter(base_converter.ConverterInterface):
             axis_arg.name = MaceKeyword.mace_axis_str
             axis_arg.ints.extend(axis_value)
 
+    def convert_subsample(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Subsample.name
+        self.copy_node_attr(op, node, 'forward_indexes',
+                            AttributeType.INTS)
+
     def convert_sum_group(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.SumGroup.name
@@ -1524,11 +1452,12 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.TargetRMSNorm.name
 
-        self.copy_node_attr(op, node, 'target_rms', AttributeType.FLOAT)
-        self.copy_node_attr(op, node, 'add_log_stddev', AttributeType.INT,
-                            default=0)
-        self.copy_node_attr(op, node, 'block_dim', AttributeType.INT,
-                            default=0)
+        self.copy_node_attr(op, node, 'target_rms',
+                            AttributeType.FLOAT)
+        self.copy_node_attr(op, node, 'add_log_stddev',
+                            AttributeType.INT, default=0)
+        self.copy_node_attr(op, node, 'block_dim',
+                            AttributeType.INT, default=0)
 
     def convert_transpose(self, node):
         op = self.convert_general_op(node)
