@@ -10,7 +10,7 @@ Install Bazel
 
 Recommend bazel with version larger than ``0.13.0`` (Refer to `Bazel documentation <https://docs.bazel.build/versions/master/install.html>`__).
 
-.. code:: sh
+.. code-block:: sh
 
     export BAZEL_VERSION=0.13.1
     mkdir /bazel && \
@@ -27,7 +27,7 @@ Install Android NDK
 The recommended Android NDK versions includes r15b, r15c and r16b (Refers to
 `NDK installation guide <https://developer.android.com/ndk/guides/setup#install>`__).
 
-.. code:: sh
+.. code-block:: sh
 
     # Download NDK r15c
     cd /opt/ && \
@@ -45,7 +45,7 @@ The recommended Android NDK versions includes r15b, r15c and r16b (Refers to
 Install extra tools
 --------------------
 
-.. code:: sh
+.. code-block:: sh
 
     apt-get install -y --no-install-recommends \
         cmake \
@@ -63,7 +63,7 @@ Install extra tools
 Install TensorFlow (Optional)
 ------------------------------
 
-.. code:: sh
+.. code-block:: sh
 
     pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.8.0
 

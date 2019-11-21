@@ -39,7 +39,7 @@ You can validate it by specifying `--validate` option while running the model.
 MACE automatically validate these metrics by running models with synthetic inputs.
 If you want to specify input data to use, you can add an option in yaml config under 'subgraphs', e.g.,
 
-.. code:: yaml
+.. code-block:: yaml
 
 	models:
 	  mobilenet_v1:
@@ -82,13 +82,13 @@ For CMake users, modify the cmake configuration located in ``tools/cmake/`` as `
 
 For Bazel users,
 
-  .. code:: sh
+  .. code-block:: sh
 
     python tools/converter.py run --config=/path/to/config.yml --debug_mode
 
 For android, you can use `ndk-stack tools <https://developer.android.com/ndk/guides/ndk-stack?hl=EN>`__ to symbolize stack trace, e.g.,
 
-  .. code:: sh
+  .. code-block:: sh
 
     adb logcat | $ANDROID_NDK_HOME/ndk-stack -sym /path/to/local/binary/directory/
 
@@ -140,7 +140,7 @@ Debug engine using GDB
 GDB can be used as the last resort, as it is powerful that it can trace stacks of your process. If you run models on android,
 things may be a little bit complicated.
 
-	.. code:: sh
+	.. code-block:: sh
 
 		# push gdbserver to your phone
 		adb push $ANDROID_NDK_HOME/prebuilt/android-arm64/gdbserver/gdbserver /data/local/tmp/

@@ -20,7 +20,7 @@ Usage
 
 For CMake users:
 
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/python/run_target.py \
             --target_abi=armeabi-v7a --target_socs=all --target_name=mace_cc_benchmark \
@@ -28,7 +28,7 @@ For CMake users:
 
 or for Bazel users:
 
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" \
             --run_target=True  --args="--filter=.*BM_CONV.*"
@@ -37,7 +37,7 @@ or for Bazel users:
 Output
 ======
 
-    .. code:: bash
+    .. code-block:: python
 
         Benchmark                                                    Time(ns) Iterations Input(MB/s)   GMACPS
         ------------------------------------------------------------------------------------------------------
@@ -79,14 +79,14 @@ Usage
 
 For CMake users:
 
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/python/run_model.py --config=/path/to/your/model_deployment.yml --benchmark
 
 
 or for Bazel users:
 
-    .. code:: bash
+    .. code-block:: bash
 
         python tools/python/converter.py run --config=/path/to/your/model_deployment.yml --benchmark
 
@@ -94,7 +94,7 @@ or for Bazel users:
 Output
 ======
 
-    .. code:: bash
+    .. code-block:: python
 
         I statistics.cc:343 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         I statistics.cc:343                                                                                      Sort by Run Order

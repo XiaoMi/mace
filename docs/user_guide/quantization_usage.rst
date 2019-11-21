@@ -35,7 +35,7 @@ MACE provides tools to do statistics with following steps:
 	2. Log tensor range of each activation layer by inferring several samples on CPU host. Sample inputs should be
 	representative to calculate the ranges of each layer properly.
 
-	.. code:: sh
+	.. code-block:: sh
 
 		# Convert images to input tensors for MACE, see image_to_tensor.py for more arguments.
 		python tools/image/image_to_tensor.py --input /path/to/directory/of/input/images
@@ -60,7 +60,7 @@ MACE provides tools to do statistics with following steps:
 	to try different ranges and see which is better. Experimentation shows that the default `percentile` and `enhance_ratio`
 	works fine for several common models.
 
-	.. code:: sh
+	.. code-block:: sh
 
 		python tools/python/quantize/quantize_stat.py --log_file range_log > overall_range
 

@@ -68,7 +68,7 @@ MACE 需要安装下列依赖：
 
 对于 Python 依赖，可直接执行,
 
-	.. code:: sh
+	.. code-block:: sh
 
 		pip install -U --user -r setup/optionals.txt
 

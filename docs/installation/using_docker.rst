@@ -13,7 +13,7 @@ In most cases, the ``lite edition`` image can satisfy developer's basic needs.
 
 - ``lite edition`` docker image.
 
-.. code:: sh
+.. code-block:: sh
 
     # You can pull lite edition docker image from docker repo (recommended)
     docker pull registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite
@@ -22,7 +22,7 @@ In most cases, the ``lite edition`` image can satisfy developer's basic needs.
 
 - ``full edition`` docker image (which contains multiple NDK versions and other dev tools).
 
-.. code:: sh
+.. code-block:: sh
 
     # You can pull full edition docker image from docker repo (recommended)
     docker pull registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev
@@ -39,7 +39,7 @@ Using the image
 
 Create container with the following command
 
-.. code:: sh
+.. code-block:: sh
 
     # Create a container named `mace-dev`
     docker run -it --privileged -d --name mace-dev \
@@ -58,7 +58,7 @@ Update images to repository
 If you are mace inner developer and need update images in remote repository,
 it can be achieved by `docker/update_images.sh` script.
 
-.. code:: sh
+.. code-block:: sh
 
     cd docker/
     ./update_images.sh
