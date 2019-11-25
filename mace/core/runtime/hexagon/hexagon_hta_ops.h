@@ -26,11 +26,11 @@ namespace mace {
 class OpMap {
  public:
   void Init() {
-#define HTA_DEF_OP(NAME) op_map_[#NAME] = HTA_OP_##NAME;
+#define DEF_OP(NAME) op_map_[#NAME] = HTA_OP_##NAME;
 
 #include "third_party/hta/hta_ops.h"
 
-#undef HTA_DEF_OP
+#undef DEF_OP
   }
 
   hta_op_type GetOpId(const std::string &op_type) {
