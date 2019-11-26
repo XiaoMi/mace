@@ -48,7 +48,7 @@ inline unsigned int GetOpenclQueueWindowSizeFromEnv() {
   GetEnv(kOpenClWindowSize, &str_size);
   unsigned int window_size = 0;
   if (str_size.size() > 0) {
-    window_size = std::stoi(str_size);
+    window_size = atoi(str_size.c_str());
   }
   return window_size;
 }

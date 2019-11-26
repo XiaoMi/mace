@@ -202,7 +202,7 @@ void TestMVNormRandom(const std::vector<index_t> &input_shape,
   net.RunOp(D);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2, 1e-3);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2, 1e-2);
   } else {
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   }
