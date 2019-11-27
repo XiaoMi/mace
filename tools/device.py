@@ -1006,7 +1006,7 @@ class DeviceManager:
             YAMLKeyword.target_abis: [ABIType.host],
             YAMLKeyword.target_socs: '',
             YAMLKeyword.system: SystemType.host,
-            YAMLKeyword.address: None,
+            YAMLKeyword.address: SystemType.host,
 
         }
         devices_list.append(host)

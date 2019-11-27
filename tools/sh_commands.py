@@ -70,7 +70,8 @@ def device_lock_path(serialno):
 
 def device_lock(serialno, timeout=7200):
     import filelock
-    return filelock.FileLock(device_lock_path(serialno.replace("/", "")), timeout=timeout)
+    return filelock.FileLock(device_lock_path(serialno.replace("/", "")),
+                             timeout=timeout)
 
 
 def is_device_locked(serialno):
@@ -100,8 +101,8 @@ def stdout_success(stdout):
 def choose_a_random_device(target_devices, target_abi):
     eligible_devices = [dev for dev in target_devices
                         if target_abi in dev[common.YAMLKeyword.target_abis]]
-    unlocked_devices = \
-        [dev for dev in eligible_devices if not is_device_locked(dev)]
+    unlocked_devices = [dev for dev in eligible_devices if
+                        not is_device_locked(dev[common.YAMLKeyword.address])]
     if len(unlocked_devices) > 0:
         chosen_devices = [random.choice(unlocked_devices)]
     else:
@@ -607,11 +608,12 @@ def push_depended_so_libs(libmace_dynamic_library_path,
     for dep in split_stdout(dep_so_libs):
         if dep == "libgnustl_shared.so":
             src_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
-                "%s/libgnustl_shared.so"\
+                       "%s/libgnustl_shared.so" \
                        % (os.environ["ANDROID_NDK_HOME"], abi)
         elif dep == "libc++_shared.so":
             src_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
-                 "%s/libc++_shared.so" % (os.environ["ANDROID_NDK_HOME"], abi)
+                       "%s/libc++_shared.so"\
+                       % (os.environ["ANDROID_NDK_HOME"], abi)
     print("push %s to %s" % (src_file, phone_data_dir))
     adb_push(src_file, phone_data_dir, serialno)
 

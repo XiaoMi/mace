@@ -1130,6 +1130,19 @@ class Transformer(base_converter.ConverterInterface):
         elif self._option.quantize and \
                 (self._option.device == DeviceType.HEXAGON.value or
                  self._option.device == DeviceType.HTA.value):
+            for op in net.op:
+                # from HWOI to OHWI, deconv is unique
+                if op.type == MaceOp.Deconv2D.name \
+                        and op.input[1] in self._consts \
+                        and op.input[1] not in transposed_deconv_filter:
+                    filter = self._consts[op.input[1]]
+                    filter_data = np.array(filter.float_data).reshape(
+                        filter.dims)
+                    filter_data = filter_data.transpose(2, 0, 1, 3)
+                    filter.float_data[:] = filter_data.flat
+                    filter.dims[:] = filter_data.shape
+                    transposed_deconv_filter.add(op.input[1])
+
             print("Transpose filters to HWIO/HWIM")
             mace_check(filter_format == DataFormat.HWIO,
                        "HEXAGON only support HWIO/HWIM filter format.")
