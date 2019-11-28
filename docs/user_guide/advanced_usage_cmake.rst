@@ -406,12 +406,16 @@ so MACE provides several ways to reduce the model size with no or little perform
 
 **1. Save model weights in half-precision floating point format**
 
-The default data type of a regular model is float (32bit). To reduce the model weights size,
+The data type of a regular model is float (32bit). To reduce the model weights size,
 half (16bit) can be used to reduce it by half with negligible accuracy degradation.
+Therefore, the default storage type for a regular model in MACE is half. However,
+if the model is very sensitive to accuracy, storage type can be changed to float.
 
-For CPU, ``data_type`` can be specified as ``fp16_fp32`` in the deployment file to save the weights in half and actual inference in float.
+In the deployment file, ``data_type`` is ``fp16_fp32`` by default and can be changed to ``fp32_fp32``.
 
-For GPU, ``fp16_fp32`` is default. The ops in GPU take half as inputs and outputs while kernel execution in float.
+For CPU, ``fp16_fp32`` means that the weights are saved in half and actual inference is in float.
+
+For GPU, ``fp16_fp32`` means that the ops in GPU take half as inputs and outputs while kernel execution in float.
 
 **2. Save model weights in quantized fixed point format**
 
