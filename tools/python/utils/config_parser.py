@@ -204,7 +204,7 @@ def normalize_model_config(conf):
     conf[ModelKeys.platform] = parse_platform(conf[ModelKeys.platform])
     conf[ModelKeys.runtime] = parse_device_type(conf[ModelKeys.runtime])
 
-    if ModelKeys.quantize in conf:
+    if ModelKeys.quantize in conf and conf[ModelKeys.quantize] == 1:
         conf[ModelKeys.data_type] = mace_pb2.DT_FLOAT
     else:
         if ModelKeys.data_type in conf:
