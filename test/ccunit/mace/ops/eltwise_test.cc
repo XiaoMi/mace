@@ -243,6 +243,8 @@ TEST_F(EltwiseOpTest, CPUSimpleScalarScalar) {
       ops::EltwiseType::NEG, 1, 2, -1);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
       ops::EltwiseType::ABS, -1, 3, 1);
+  SimpleScalarScalar<DeviceType::CPU, float, float>(
+      ops::EltwiseType::SIGN, -2, 3, -1);
   SimpleScalarScalar<DeviceType::CPU, int32_t, int32_t>(
       ops::EltwiseType::EQUAL, 1, 3, 0);
   SimpleScalarScalar<DeviceType::CPU, int32_t, int32_t>(
@@ -285,6 +287,9 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorScalar) {
   SimpleTensorScalar<DeviceType::CPU, int32_t, int32_t>(
       ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
       {0, 0, 1, 0, 0, 0});
+  SimpleTensorScalar<DeviceType::CPU, float, float>(
+      ops::EltwiseType::SIGN, {1, 1, 2, 3}, {1, 2, -3, 0, -5, -6}, 3,
+      {1, 1, -1, 0, -1, -1});
 }
 
 TEST_F(EltwiseOpTest, GPUSimpleTensorScalar) {
@@ -320,6 +325,9 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorScalar) {
   SimpleTensorScalar<DeviceType::GPU, float, float>(
       ops::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {0, 1, 4, 9, 16, 25});
+  SimpleTensorScalar<DeviceType::GPU, float, float>(
+      ops::EltwiseType::SIGN, {1, 1, 2, 3}, {-1, 2, 3, 0, -5, -6}, 3,
+      {-1, 1, 1, 0, -1, -1});
 }
 
 TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
@@ -845,6 +853,7 @@ TEST_F(EltwiseOpTest, RandomTensorScalarFloat) {
   RandomTensorScalar<float>(ops::EltwiseType::NEG, {1, 32, 32, 32});
   RandomTensorScalar<float>(ops::EltwiseType::ABS, {3, 31, 37, 17});
   RandomTensorScalar<float>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17});
+  RandomTensorScalar<float>(ops::EltwiseType::SIGN, {3, 31, 37, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorScalarHalf) {
@@ -857,6 +866,7 @@ TEST_F(EltwiseOpTest, RandomTensorScalarHalf) {
   RandomTensorScalar<half>(ops::EltwiseType::NEG, {1, 32, 32, 32});
   RandomTensorScalar<half>(ops::EltwiseType::ABS, {3, 31, 37, 17});
   RandomTensorScalar<half>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17});
+  RandomTensorScalar<half>(ops::EltwiseType::SIGN, {3, 31, 37, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorVecFloat) {

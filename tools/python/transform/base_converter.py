@@ -65,6 +65,7 @@ class EltwiseType(Enum):
     EQUAL = 10
     FLOOR_DIV = 11
     CLIP = 12
+    SIGN = 13
 
 
 class ReduceType(Enum):
