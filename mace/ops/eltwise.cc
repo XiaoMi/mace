@@ -385,6 +385,14 @@ inline void TensorBroadcastEltwise(const OpContext *context,
           }
         }
         break;
+      case SIGN:
+        for (index_t d = start0; d < end0; d += step0) {
+          for (index_t i = start1; i < end1; i += step1) {
+            output[i + d * common_size] =
+                Sign(input0[i + d * common_size]);
+          }
+        }
+        break;
       default:LOG(FATAL) << "Eltwise op not support type " << type;
     }
   }, 0, diff_size, 1, 0, common_size, 1);
@@ -410,7 +418,6 @@ inline void TensorEltwise(const OpContext *context,
           for (index_t i = start; i < end; i += step) {
             output[i] = input0[i] + input1[i];
           }
-
         } else {
           std::vector<float> coeff_copy = coeff;
           if (swapped) {
@@ -426,7 +433,6 @@ inline void TensorEltwise(const OpContext *context,
           for (index_t i = start; i < end; i += step) {
             output[i] = input0[i] - input1[i];
           }
-
         } else {
           for (index_t i = start; i < end; i += step) {
             output[i] = input1[i] - input0[i];
@@ -437,7 +443,6 @@ inline void TensorEltwise(const OpContext *context,
         for (index_t i = start; i < end; i += step) {
           output[i] = input0[i] * input1[i];
         }
-
         break;
       case DIV:
         if (!swapped) {
@@ -466,19 +471,16 @@ inline void TensorEltwise(const OpContext *context,
         for (index_t i = start; i < end; i += step) {
           output[i] = std::min(input0[i], input1[i]);
         }
-
         break;
       case MAX:
         for (index_t i = start; i < end; i += step) {
           output[i] = std::max(input0[i], input1[i]);
         }
-
         break;
       case SQR_DIFF:
         for (index_t i = start; i < end; i += step) {
           output[i] = std::pow(input0[i] - input1[i], 2.f);
         }
-
         break;
       case POW:
         if (!swapped) {
@@ -509,6 +511,11 @@ inline void TensorEltwise(const OpContext *context,
       case CLIP:
         for (index_t i = start; i < end; i += step) {
           output[i] = std::fmaxf(coeff[0], std::fminf(coeff[1], input0[i]));
+        }
+        break;
+      case SIGN:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = Sign(input0[i]);
         }
         break;
       default:LOG(FATAL) << "Eltwise op not support type " << type;
@@ -563,7 +570,6 @@ inline void TensorScalarEltwise(const OpContext *context,
         for (index_t i = start; i < end; i += step) {
           output[i] = input0[i] * input1;
         }
-
         break;
       case DIV:
         if (!swapped) {
@@ -635,6 +641,11 @@ inline void TensorScalarEltwise(const OpContext *context,
       case CLIP:
         for (index_t i = start; i < end; i += step) {
           output[i] = std::fmaxf(coeff[0], std::fminf(coeff[1], input0[i]));
+        }
+        break;
+      case SIGN:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = Sign(input0[i]);
         }
         break;
       default:LOG(FATAL) << "Eltwise op not support type " << type;
@@ -865,6 +876,15 @@ inline void TensorEltwisePerChannel(const OpContext *context,
             DstType *out_ptr = output + ((b * channel) + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = in0_ptr[i] == in1_ptr[c];
+            }
+          }
+        }
+        break;
+      case SIGN:
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            for (index_t i = 0; i < image_size; ++i) {
+              output[i] = Sign(input0[i]);
             }
           }
         }
