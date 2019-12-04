@@ -289,7 +289,7 @@ void OpRegistryBase::GetInOutMemoryTypes(
     const std::string &op_type,
     OpConditionContext *context) const {
   MACE_CHECK(registry_.count(op_type) != 0,
-             op_type, " operation is not registered.");
+             op_type, " operation is not registered. op_type=", op_type);
   return registry_.at(op_type)->memory_type_setter(context);
 }
 

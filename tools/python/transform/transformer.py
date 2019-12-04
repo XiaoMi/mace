@@ -48,7 +48,7 @@ class Transformer(base_converter.ConverterInterface):
         self._registered_transformers = {
             TransformerRule.TRANSFORM_FAKE_QUANTIZE:
                 self.transform_fake_quantize,
-            TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
+            TransformerRule.REMOVE_USELESS_OP: self.remove_useless_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
             TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE:
@@ -347,15 +347,15 @@ class Transformer(base_converter.ConverterInterface):
 
         return False
 
-    def remove_identity_op(self):
+    def remove_useless_op(self):
         net = self._model
         for op in net.op:
             if op.type == 'Identity':
-                print("Remove identity: %s(%s)" % (op.name, op.type))
+                print("Remove useless op: %s(%s)" % (op.name, op.type))
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
                 return True
-            if op.type == 'Reshape' and \
+            elif op.type == 'Reshape' and \
                     op.output_shape[0].dims == \
                     self.get_tensor_shape(op.input[0]):
                 print("Remove useless reshape: %s(%s)" % (op.name, op.type))

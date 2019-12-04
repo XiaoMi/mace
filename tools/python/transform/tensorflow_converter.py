@@ -57,6 +57,7 @@ TFSupportedOps = [
     'ArgMax',
     'AvgPool',
     'BatchMatMul',
+    'BatchMatMulV2',
     'BatchToSpaceND',
     'BiasAdd',
     'Cast',
@@ -105,6 +106,7 @@ TFSupportedOps = [
     'ResizeNearestNeighbor',
     'ReverseV2',
     'Rsqrt',
+    'Select',
     'Shape',
     'Sigmoid',
     'Sign',
@@ -134,7 +136,7 @@ TFSupportedOps = [six.b(op) for op in TFSupportedOps]
 
 TFTransformGraphOptions = [
     'strip_unused_nodes',
-    'remove_nodes(op=Identity, op=CheckNumerics)',
+    'remove_nodes(op=Identity, op=CheckNumerics, op=StopGradient)',
     'fold_constants(ignore_errors=true)',
     'fold_batch_norms',
     'fold_old_batch_norms',
@@ -211,6 +213,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.AvgPool.name: self.convert_pooling,
             TFOpType.BatchMatMul.name: self.convert_matmul,
+            TFOpType.BatchMatMulV2.name: self.convert_matmul,
             TFOpType.BatchToSpaceND.name: self.convert_space_batch,
             TFOpType.BiasAdd.name: self.convert_biasadd,
             TFOpType.Cast.name: self.convert_cast,
@@ -263,6 +266,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
             TFOpType.ResizeNearestNeighbor.name: self.convert_resize_nearest_neighbor,  # noqa
             TFOpType.ReverseV2.name: self.convert_reverse,
+            TFOpType.Select.name: self.convert_select,
             TFOpType.Shape.name: self.convert_shape,
             TFOpType.Sigmoid.name: self.convert_activation,
             TFOpType.Sign.name: self.convert_elementwise,
@@ -992,6 +996,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_reverse(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Reverse.name
+
+    def convert_select(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Select.name
 
     def convert_stack(self, tf_op):
         op = self.convert_general_op(tf_op)

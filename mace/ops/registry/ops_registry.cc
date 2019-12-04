@@ -64,6 +64,7 @@ extern void RegisterResizeBilinear(OpRegistryBase *op_registry);
 extern void RegisterResizeNearestNeighbor(OpRegistryBase *op_registry);
 extern void RegisterReverse(OpRegistryBase *op_registry);
 extern void RegisterScalarMath(OpRegistryBase *op_registry);
+extern void RegisterSelect(OpRegistryBase *op_registry);
 extern void RegisterShape(OpRegistryBase *op_registry);
 extern void RegisterSlice(OpRegistryBase *op_registry);
 extern void RegisterSoftmax(OpRegistryBase *op_registry);
@@ -143,6 +144,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterResizeNearestNeighbor(this);
   ops::RegisterReverse(this);
   ops::RegisterScalarMath(this);
+  ops::RegisterSelect(this);
   ops::RegisterShape(this);
   ops::RegisterSlice(this);
   ops::RegisterSoftmax(this);
