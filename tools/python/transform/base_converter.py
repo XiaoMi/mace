@@ -136,6 +136,7 @@ MaceSupportedOps = [
     'ResizeNearestNeighbor',
     'Reverse',
     'ScalarMath',
+    'Select',
     'Slice',
     'Splice',
     'Split',
@@ -280,7 +281,7 @@ class MaceKeyword(object):
 
 
 class TransformerRule(Enum):
-    REMOVE_IDENTITY_OP = 1
+    REMOVE_USELESS_OP = 1
     TRANSFORM_GLOBAL_POOLING = 2
     FOLD_RESHAPE = 3
     TRANSFORM_MATMUL_TO_FC = 4
@@ -526,9 +527,9 @@ class ConverterOption(object):
         else:
             self._transformer_option = [
                 # Model structure related transformation
-                TransformerRule.REMOVE_IDENTITY_OP,
+                TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_FAKE_QUANTIZE,
-                TransformerRule.REMOVE_IDENTITY_OP,
+                TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
                 TransformerRule.TRANSFORM_BASIC_LSTMCELL,
