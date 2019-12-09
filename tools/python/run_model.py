@@ -73,7 +73,7 @@ def run_models(flags, args):
     MaceLogger.info("Run on devices: %s" % run_devices)
 
     for device_id in run_devices:
-        dev = device.crete_device(flags.target_abi, device_id)
+        dev = device.create_device(flags.target_abi, device_id)
         run_models_for_device(flags, args, dev)
 
 

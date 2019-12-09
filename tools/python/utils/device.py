@@ -94,7 +94,10 @@ class HostDevice(Device):
 
         if install_dir.strip() and install_dir != os.path.dirname(target.path):
             execute("mkdir -p %s" % install_dir)
-            execute("cp %s %s" % (target.path, install_dir))
+            if os.path.isdir(target.path):
+                execute("cp %s/* %s" % (target.path, install_dir))
+            else:
+                execute("cp %s %s" % (target.path, install_dir))
             for lib in target.libs:
                 execute("cp %s %s" % (lib, install_dir))
 
@@ -285,7 +288,7 @@ def device_class(target_abi):
     return globals()[device_dispatch[target_abi]]
 
 
-def crete_device(target_abi, device_id=None):
+def create_device(target_abi, device_id=None):
     return device_class(target_abi)(device_id, target_abi)
 
 

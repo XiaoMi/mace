@@ -44,7 +44,7 @@ def run_target(target_abi, install_dir, target_obj, device_ids="all"):
 
     for device_id in run_devices:
         # initiate device
-        dev = device.crete_device(target_abi, device_id)
+        dev = device.create_device(target_abi, device_id)
 
         # reinstall target
         print("Install target from %s to %s" % (target_obj.path, install_dir))
