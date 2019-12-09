@@ -24,11 +24,16 @@ cwd = os.path.dirname(__file__)
 
 # TODO: Remove bazel deps
 try:
-    device.execute("bazel build //mace/proto:mace_py")
-    device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
-
-    device.execute("bazel build //third_party/caffe:caffe_py")
-    device.execute(
-        "cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)
+    device.execute("bazel version")
 except:  # noqa
     MaceLogger.warning("No bazel, use cmake.")
+else:
+    try:
+        device.execute("bazel build //mace/proto:mace_py")
+        device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
+
+        device.execute("bazel build //third_party/caffe:caffe_py")
+        device.execute(
+            "cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)
+    except:  # noqa
+        MaceLogger.error("Failed in proto files' building")
