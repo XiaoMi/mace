@@ -208,8 +208,9 @@ def abi_to_internal(abi):
 # lock
 ################################
 def device_lock(device_id, timeout=7200):
-    return filelock.FileLock("/tmp/device-lock-%s" % device_id,
-                             timeout=timeout)
+    return filelock.FileLock(
+            "/tmp/device-lock-%s" % device_id.replace("/", ""),
+            timeout=timeout)
 
 
 def is_device_locked(device_id):

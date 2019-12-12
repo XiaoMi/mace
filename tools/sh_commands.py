@@ -70,7 +70,7 @@ def device_lock_path(serialno):
 
 def device_lock(serialno, timeout=7200):
     import filelock
-    return filelock.FileLock(device_lock_path(serialno), timeout=timeout)
+    return filelock.FileLock(device_lock_path(serialno.replace("/", "")), timeout=timeout)
 
 
 def is_device_locked(serialno):
