@@ -878,10 +878,6 @@ MaceStatus MaceEngine::Impl::Run(
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == HEXAGON || device_type_ == HTA) {
-    if (device_type_ == HTA) {
-      MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
-                 "HTA not support multiple inputs and outputs yet.");
-    }
     hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif
