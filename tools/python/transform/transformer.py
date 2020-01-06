@@ -99,6 +99,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.UPDATE_DATA_FORMAT: self.update_data_format,
             TransformerRule.TRANSPOSE_RESHAPE_AND_FLATTEN:
                 self.transform_reshape_and_flatten,
+            TransformerRule.TRANSPOSE_SHAPE_TENSOR_TO_PARAM:
+                self.transform_shape_tensor_to_param,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.CHECK_QUANTIZE_INFO:
                 self.check_quantize_info,
@@ -2119,9 +2121,21 @@ class Transformer(base_converter.ConverterInterface):
                     mace_check(False, "Only support reshape and flatten")
                 shape_tensor.int32_data.extend(dims)
                 op.input.append(shape_tensor.name)
-            if len(op.input) == 2 and dim_arg is None:
-                if shape_tensor is None and op.input[1] in self._consts:
-                    shape_tensor = self._consts[op.input[1]]
+
+    def transform_shape_tensor_to_param(self):
+        kOpTypeInputIdxMap = {
+            MaceOp.ResizeNearestNeighbor.name: 1,
+            MaceOp.Deconv2D.name: 2,
+            MaceOp.Reshape.name: 1,
+        }
+        net = self._model
+        for op in net.op:
+            if op.type not in kOpTypeInputIdxMap:
+                continue
+            shape_idx = kOpTypeInputIdxMap[op.type]
+            dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
+            if len(op.input) > shape_idx and dim_arg is None:
+                shape_tensor = self._consts[op.input[shape_idx]]
                 if shape_tensor is not None:
                     dim_arg = op.arg.add()
                     dim_arg.name = MaceKeyword.mace_dim_str

@@ -73,6 +73,7 @@ class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
       OpContext *context,
       const Tensor *input,
       const Tensor *size,
+      const std::vector<index_t> &dims,
       Tensor *output) override;
 
  private:

@@ -74,8 +74,8 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                                      const DataType dt,
                                      void **result) const {
   MACE_CHECK(image_shape.size() == 2, "Image shape's size must equal 2");
-  VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", "
-          << image_shape[1];
+  MACE_LATENCY_LOGGER(1, "Allocate OpenCL image: ",
+                      image_shape[0], ", ", image_shape[1]);
 
   if (ShouldMockRuntimeFailure()) {
     return MaceStatus::MACE_OUT_OF_RESOURCES;
@@ -109,7 +109,7 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
 }
 
 void OpenCLAllocator::Delete(void *buffer) const {
-  VLOG(3) << "Free OpenCL buffer";
+  MACE_LATENCY_LOGGER(1, "Free OpenCL buffer");
   if (buffer != nullptr) {
     cl::Buffer *cl_buffer = static_cast<cl::Buffer *>(buffer);
     delete cl_buffer;
@@ -117,7 +117,7 @@ void OpenCLAllocator::Delete(void *buffer) const {
 }
 
 void OpenCLAllocator::DeleteImage(void *buffer) const {
-  VLOG(3) << "Free OpenCL image";
+  MACE_LATENCY_LOGGER(1, "Free OpenCL image");
   if (buffer != nullptr) {
     cl::Image2D *cl_image = static_cast<cl::Image2D *>(buffer);
     delete cl_image;
@@ -125,7 +125,7 @@ void OpenCLAllocator::DeleteImage(void *buffer) const {
 }
 
 void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
-  VLOG(3) << "Map OpenCL buffer";
+  MACE_LATENCY_LOGGER(1, "Map OpenCL buffer");
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
   auto queue = opencl_runtime_->command_queue();
   // TODO(heliangliang) Non-blocking call
@@ -144,7 +144,7 @@ void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
 void *OpenCLAllocator::MapImage(void *buffer,
                                 const std::vector<size_t> &image_shape,
                                 std::vector<size_t> *mapped_image_pitch) const {
-  VLOG(3) << "Map OpenCL Image";
+  MACE_LATENCY_LOGGER(1, "Map OpenCL Image");
   MACE_CHECK(image_shape.size() == 2) << "Just support map 2d image";
   auto cl_image = static_cast<cl::Image2D *>(buffer);
   std::array<size_t, 3> origin = {{0, 0, 0}};
@@ -164,7 +164,7 @@ void *OpenCLAllocator::MapImage(void *buffer,
 }
 
 void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) const {
-  VLOG(3) << "Unmap OpenCL buffer/Image";
+  MACE_LATENCY_LOGGER(1, "Unmap OpenCL buffer/Image");
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
   auto queue = opencl_runtime_->command_queue();
   cl_int error = queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr,

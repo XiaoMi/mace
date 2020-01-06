@@ -324,6 +324,7 @@ class TransformerRule(Enum):
     FP16_MATMUL_WEIGHT = 41
     FP16_GATHER_WEIGHT = 42
     QUANTIZE_LARGE_WEIGHTS = 43
+    TRANSPOSE_SHAPE_TENSOR_TO_PARAM = 44
 
 
 class ConverterInterface(object):
@@ -534,6 +535,7 @@ class ConverterOption(object):
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
                 TransformerRule.TRANSFORM_BASIC_LSTMCELL,
                 TransformerRule.TRANSPOSE_RESHAPE_AND_FLATTEN,
+                TransformerRule.TRANSPOSE_SHAPE_TENSOR_TO_PARAM,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
                 # For StoB -> conv -> BtoS -> BN pattern

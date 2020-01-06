@@ -25,14 +25,22 @@ MaceStatus ResizeNearestNeighborKernel::Compute(
     OpContext *context,
     const Tensor *input,
     const Tensor *size,
+    const std::vector<index_t> &dims,
     Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
   const index_t in_width = input->dim(2);
   const index_t channels = input->dim(3);
-  Tensor::MappingGuard size_mapper(size);
-  const index_t out_height = size->data<int32_t>()[0];
-  const index_t out_width = size->data<int32_t>()[1];
+  index_t out_height = 0;
+  index_t out_width = 0;
+  if (dims.size() < 2) {
+    Tensor::MappingGuard size_mapper(size);
+    out_height = size->data<int32_t>()[0];
+    out_width = size->data<int32_t>()[1];
+  } else {
+    out_height = dims[0];
+    out_width = dims[1];
+  }
   const index_t channel_blocks = RoundUpDiv4(channels);
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

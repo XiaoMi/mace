@@ -144,8 +144,9 @@ def convert(model_file, output_dir, layers):
             output_info.data_format = data_format
             output_info.dims.extend(op.output_shape[i].dims)
             output_info.data_type = mace_pb2.DT_FLOAT
-            output_info.scale = op.quantize_info[0].scale
-            output_info.zero_point = op.quantize_info[0].zero_point
+            if is_quantize:
+                output_info.scale = op.quantize_info[0].scale
+                output_info.zero_point = op.quantize_info[0].zero_point
             # modify output op
             if is_quantize:
                 output_name = op.output[i]

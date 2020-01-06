@@ -114,7 +114,8 @@ HexagonDSPWrapper::HexagonDSPWrapper() {
   if (env_log_execute_time_str.empty()) {
     log_execute_time_ = false;
   } else {
-    log_execute_time_ = static_cast<bool>(std::stoi(env_log_execute_time_str));
+    log_execute_time_ = static_cast<bool>(
+        std::atoi(env_log_execute_time_str.c_str()));
   }
 }
 

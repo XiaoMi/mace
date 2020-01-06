@@ -15,6 +15,8 @@
 #ifndef MACE_OPS_OPENCL_RESIZE_NEAREST_NEIGHBOR_H_
 #define MACE_OPS_OPENCL_RESIZE_NEAREST_NEIGHBOR_H_
 
+#include <vector>
+
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
 #include "mace/utils/math.h"
@@ -31,6 +33,7 @@ class OpenCLResizeNearestNeighborKernel {
       OpContext *context,
       const Tensor *input,
       const Tensor *size,
+      const std::vector<index_t> &dims,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLResizeNearestNeighborKernel);
 };
