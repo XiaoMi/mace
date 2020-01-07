@@ -626,7 +626,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             else:
                 alpha_value = 0
         alpha_arg = op.arg.add()
-        alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
+        alpha_arg.name = MaceKeyword.mace_activation_leakyrelu_coefficient_str
         alpha_arg.f = alpha_value
 
     def convert_affine(self, node):
