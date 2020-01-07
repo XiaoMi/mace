@@ -170,8 +170,8 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
 template<>
 class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
  public:
-  explicit Deconv2dOp(OpConstructContext *context)
-      : Deconv2dOpBase(context) {
+  explicit Deconv2dOp(OpConstructContext *context) : Deconv2dOpBase(context),
+      dim_(Operation::GetRepeatedArgs<index_t>("dim")) {
     MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::Deconv2dKernel>();
@@ -219,12 +219,16 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 
     std::vector<index_t> out_shape;
     if (output_shape_tensor) {
-      Tensor::MappingGuard out_shape_guard(output_shape_tensor);
-      MACE_CHECK(output_shape_tensor->size() == 4,
-                 "output shape should be 4-dims");
-      out_shape =
-          std::vector<index_t>(output_shape_tensor->data<int32_t>(),
-                               output_shape_tensor->data<int32_t>() + 4);
+      if (dim_.size() < 2) {
+        Tensor::MappingGuard out_shape_guard(output_shape_tensor);
+        MACE_CHECK(output_shape_tensor->size() == 4,
+                   "output shape should be 4-dims");
+        out_shape =
+            std::vector<index_t>(output_shape_tensor->data<int32_t>(),
+                                 output_shape_tensor->data<int32_t>() + 4);
+      } else {
+        out_shape = dim_;
+      }
     }
     std::vector<int> in_paddings;
     std::vector<int> out_paddings;
@@ -249,6 +253,7 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
   }
 
  private:
+  std::vector<index_t> dim_;
   std::unique_ptr<OpenCLDeconv2dKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
