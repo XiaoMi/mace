@@ -195,10 +195,11 @@ def main(unused_args):
                     address_sanitizer=FLAGS.address_sanitizer,
                     simpleperf=FLAGS.simpleperf)
                 globals()[FLAGS.stdout_processor](stdouts, dev, target_abi)
-                report_run_statistics(stdouts=stdouts,
-                                      device=dev['device_name'],
-                                      soc=dev['target_socs'],
-                                      abi=target_abi, dana_util=dana_util)
+                if dana_util.service_available():
+                    report_run_statistics(stdouts=stdouts,
+                                          device=dev['device_name'],
+                                          soc=dev['target_socs'],
+                                          abi=target_abi, dana_util=dana_util)
 
 
 if __name__ == "__main__":
