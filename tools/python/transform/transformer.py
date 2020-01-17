@@ -2134,12 +2134,12 @@ class Transformer(base_converter.ConverterInterface):
                 continue
             shape_idx = kOpTypeInputIdxMap[op.type]
             dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
-            if len(op.input) > shape_idx and dim_arg is None:
+            if len(op.input) > shape_idx and dim_arg is None and \
+                    op.input[shape_idx] in self._consts:
                 shape_tensor = self._consts[op.input[shape_idx]]
-                if shape_tensor is not None:
-                    dim_arg = op.arg.add()
-                    dim_arg.name = MaceKeyword.mace_dim_str
-                    dim_arg.ints.extend(shape_tensor.int32_data)
+                dim_arg = op.arg.add()
+                dim_arg.name = MaceKeyword.mace_dim_str
+                dim_arg.ints.extend(shape_tensor.int32_data)
 
     def fold_fc_reshape(self):
         net = self._model
