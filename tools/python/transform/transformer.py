@@ -1395,7 +1395,8 @@ class Transformer(base_converter.ConverterInterface):
         if op.type == MaceOp.Reshape:
             input_op = self._producer[op.input[0]]
             out_dims_len = len(op.output_shape[0].dims)
-            if len(input_op.output_shape[0].dims) != 4 \
+            if len(input_op.output_shape) != 1 or \
+                len(input_op.output_shape[0].dims) != 4 \
                     or (out_dims_len != 4 and out_dims_len != 2):
                 print("In this model, reshape is not transposable op.")
                 return False

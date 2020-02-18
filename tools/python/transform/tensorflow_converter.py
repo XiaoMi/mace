@@ -142,7 +142,6 @@ TFTransformGraphOptions = [
     'fold_old_batch_norms',
     'remove_control_dependencies',
     'strip_unused_nodes',
-    'merge_duplicate_nodes',
     'sort_by_execution_order'
 ]
 
