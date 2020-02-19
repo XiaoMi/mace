@@ -96,6 +96,11 @@ def parse_args():
         default=True,
         help="Whether to use quantization ops")
     parser.add_argument(
+        "--enable_rpcmem",
+        type=str2bool,
+        default=True,
+        help="Whether to use rpcmem")
+    parser.add_argument(
         '--address_sanitizer',
         action="store_true",
         help="Whether to enable AddressSanitizer")
@@ -164,6 +169,7 @@ def main(unused_args):
             toolchain=toolchain,
             enable_neon=FLAGS.enable_neon,
             enable_quantize=FLAGS.enable_quantize,
+            enable_rpcmem=FLAGS.enable_rpcmem,
             address_sanitizer=FLAGS.address_sanitizer,
             debug_mode=FLAGS.debug_mode)
         if FLAGS.run_target:

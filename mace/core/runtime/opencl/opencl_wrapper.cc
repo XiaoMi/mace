@@ -216,6 +216,15 @@ class OpenCLLibrary final {
   using clGetImageInfoFunc =
       cl_int (*)(cl_mem, cl_image_info, size_t, void *, size_t *);
 
+  using clGetDeviceImageInfoQCOMFunc = cl_int (*)(cl_device_id,
+                                                  size_t,
+                                                  size_t,
+                                                  const cl_image_format *,
+                                                  cl_image_pitch_info_qcom,
+                                                  size_t,
+                                                  void *,
+                                                  size_t *);
+
 #define MACE_CL_DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
   MACE_CL_DEFINE_FUNC_PTR(clGetPlatformIDs);
@@ -265,6 +274,7 @@ class OpenCLLibrary final {
   MACE_CL_DEFINE_FUNC_PTR(clGetEventInfo);
   MACE_CL_DEFINE_FUNC_PTR(clGetEventProfilingInfo);
   MACE_CL_DEFINE_FUNC_PTR(clGetImageInfo);
+  MACE_CL_DEFINE_FUNC_PTR(clGetDeviceImageInfoQCOM);
 
 #undef MACE_CL_DEFINE_FUNC_PTR
 
@@ -400,6 +410,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clGetEventInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetImageInfo);
+  MACE_CL_ASSIGN_FROM_DLSYM(clGetDeviceImageInfoQCOM);
 
 #undef MACE_CL_ASSIGN_FROM_DLSYM
 
@@ -797,6 +808,26 @@ CL_API_ENTRY cl_int clGetImageInfo(cl_mem image,
     MACE_LATENCY_LOGGER(3, "clGetImageInfo");
     return func(image, param_name, param_value_size, param_value,
                 param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
+}
+
+CL_API_ENTRY cl_int clGetDeviceImageInfoQCOM(
+    cl_device_id device,
+    size_t image_width,
+    size_t image_height,
+    const cl_image_format *image_format,
+    cl_image_pitch_info_qcom param_name,
+    size_t param_value_size,
+    void *param_value,
+    size_t *param_value_size_ret)
+    CL_EXT_SUFFIX__VERSION_1_1 {
+  auto func = mace::runtime::OpenCLLibrary::Get()->clGetDeviceImageInfoQCOM;
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetDeviceImageInfoQCOM");
+    return func(device, image_width, image_height, image_format, param_name,
+                param_value_size, param_value, param_value_size_ret);
   } else {
     return CL_INVALID_PLATFORM;
   }

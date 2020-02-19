@@ -230,6 +230,37 @@ GPUType ParseGPUType(const std::string &device_name) {
   }
 }
 
+#ifdef MACE_ENABLE_RPCMEM
+IONType ParseIONType(const std::string &device_extensions) {
+  constexpr const char *kQualcommIONStr = "cl_qcom_ion_host_ptr";
+
+  if (device_extensions.find(kQualcommIONStr) != std::string::npos) {
+    return IONType::QUALCOMM_ION;
+  } else {
+    return IONType::NONE_ION;
+  }
+}
+
+uint32_t ParseQcomHostCachePolicy(const std::string &device_extensions) {
+  constexpr const char *kQualcommIocoherentStr =
+      "cl_qcom_ext_host_ptr_iocoherent";
+
+  if (device_extensions.find(kQualcommIocoherentStr) != std::string::npos) {
+    return CL_MEM_HOST_IOCOHERENT_QCOM;
+  } else {
+    return CL_MEM_HOST_WRITEBACK_QCOM;
+  }
+}
+
+std::string QcomHostCachePolicyToString(uint32_t policy) {
+  switch (policy) {
+    case CL_MEM_HOST_IOCOHERENT_QCOM: return "CL_MEM_HOST_IOCOHERENT_QCOM";
+    case CL_MEM_HOST_WRITEBACK_QCOM: return "CL_MEM_HOST_WRITEBACK_QCOM";
+    default: return MakeString("UNKNOWN: ", policy);
+  }
+}
+#endif  // MACE_ENABLE_RPCMEM
+
 const char *kOpenCLPlatformInfoKey =
     "mace_opencl_precompiled_platform_info_key";
 }  // namespace
@@ -310,6 +341,35 @@ OpenCLRuntime::OpenCLRuntime(
       if (opencl_version_ == OpenCLVersion::CL_VER_UNKNOWN) {
         return;
       }
+
+#ifdef MACE_ENABLE_RPCMEM
+      const std::string device_extensions =
+          device.getInfo<CL_DEVICE_EXTENSIONS>();
+      ion_type_ = ParseIONType(device_extensions);
+      if (ion_type_ == IONType::QUALCOMM_ION) {
+        qcom_ext_mem_padding_ = 0;
+        cl_int err = device.getInfo(CL_DEVICE_EXT_MEM_PADDING_IN_BYTES_QCOM,
+                                    &qcom_ext_mem_padding_);
+        if (err != CL_SUCCESS) {
+          LOG(ERROR) << "Failed to get CL_DEVICE_EXT_MEM_PADDING_IN_BYTES_QCOM "
+                     << OpenCLErrorToString(err);
+        }
+
+        qcom_page_size_ = 4096;
+        err = device.getInfo(CL_DEVICE_PAGE_SIZE_QCOM, &qcom_page_size_);
+        if (err != CL_SUCCESS) {
+          LOG(ERROR) << "Failed to get CL_DEVICE_PAGE_SIZE_QCOM: "
+                     << OpenCLErrorToString(err);
+        }
+
+        qcom_host_cache_policy_ = ParseQcomHostCachePolicy(device_extensions);
+
+        VLOG(1) << "Using QUALCOMM ION buffer with padding size: "
+                << qcom_ext_mem_padding_ << ", page size: " << qcom_page_size_
+                << ", with host cache policy: "
+                << QcomHostCachePolicyToString(qcom_host_cache_policy_);
+      }
+#endif  // MACE_ENABLE_RPCMEM
 
       VLOG(1) << "Using device: " << device_name;
       break;
@@ -775,6 +835,24 @@ bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() const {
 GPUType OpenCLRuntime::gpu_type() const {
   return gpu_type_;
 }
+
+#ifdef MACE_ENABLE_RPCMEM
+IONType OpenCLRuntime::ion_type() const {
+  return ion_type_;
+}
+
+uint32_t OpenCLRuntime::qcom_ext_mem_padding() const {
+  return qcom_ext_mem_padding_;
+}
+
+uint32_t OpenCLRuntime::qcom_page_size() const {
+  return qcom_page_size_;
+}
+
+uint32_t OpenCLRuntime::qcom_host_cache_policy() const {
+  return qcom_host_cache_policy_;
+}
+#endif  // MACE_ENABLE_RPCMEM
 
 const std::string OpenCLRuntime::platform_info() const {
   return platform_info_;

@@ -134,14 +134,16 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .AddFloatArg("leakyrelu_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(DeviceType::GPU);
+
   // Tuning
   setenv("MACE_TUNING", "1", 1);
-  net.RunOp(DeviceType::GPU);
+  net.Run();
   unsetenv("MACE_TUNING");
 
   // Run on opencl
-  net.RunOp(DeviceType::GPU);
-  net.Sync();
+  net.Run();
+
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-5, 1e-4);
 }
@@ -200,14 +202,15 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(DeviceType::GPU);
+
   // Tuning
   setenv("MACE_TUNING", "1", 1);
-  net.RunOp(DeviceType::GPU);
+  net.Run();
   unsetenv("MACE_TUNING");
 
   // Run on opencl
-  net.RunOp(DeviceType::GPU);
-  net.Sync();
+  net.Run();
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-1, 1e-2);
@@ -266,14 +269,15 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(DeviceType::GPU);
+
   // tuning
   setenv("MACE_TUNING", "1", 1);
-  net.RunOp(DeviceType::GPU);
+  net.Run();
   unsetenv("MACE_TUNING");
 
   // Run on opencl
-  net.RunOp(DeviceType::GPU);
-  net.Sync();
+  net.Run();
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-5, 1e-4);
@@ -333,14 +337,15 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(DeviceType::GPU);
+
   // tuning
   setenv("MACE_TUNING", "1", 1);
-  net.RunOp(DeviceType::GPU);
+  net.Run();
   unsetenv("MACE_TUNING");
 
   // Run on opencl
-  net.RunOp(DeviceType::GPU);
-  net.Sync();
+  net.Run();
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-1, 1e-2);

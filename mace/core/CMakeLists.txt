@@ -45,6 +45,10 @@ if(MACE_ENABLE_MTK_APU)
   set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} apu-frontend)
 endif(MACE_ENABLE_MTK_APU)
 
+if(MACE_ENABLE_RPCMEM)
+    set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} rpcmem)
+endif(MACE_ENABLE_RPCMEM)
+
 add_library(core STATIC ${CORE_SRCS})
 target_link_libraries(core PRIVATE
   proto

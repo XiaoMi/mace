@@ -426,10 +426,11 @@ class Tensor {
 
   class MappingGuard {
    public:
-    explicit MappingGuard(const Tensor *tensor) : tensor_(tensor) {
+    explicit MappingGuard(const Tensor *tensor, bool finish_cmd_queue = true) :
+        tensor_(tensor) {
       if (tensor_ != nullptr) {
         MACE_CHECK_NOTNULL(tensor_->buffer_);
-        tensor_->buffer_->Map(&mapped_image_pitch_);
+        tensor_->buffer_->Map(&mapped_image_pitch_, finish_cmd_queue);
       }
     }
 

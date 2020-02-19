@@ -18,6 +18,7 @@ load(
     "if_opencl_enabled",
     "if_openmp_enabled",
     "if_quantize_enabled",
+    "if_rpcmem_enabled",
 )
 
 cc_library(
@@ -75,6 +76,8 @@ cc_library(
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
+    ]) + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
     ]),
     linkopts = ["-ldl"],
     deps = [
@@ -94,6 +97,8 @@ cc_library(
         "//third_party/hta",
     ]) + if_apu_enabled([
         "//third_party/apu:libapu-frontend",
+    ]) + if_rpcmem_enabled([
+        "//third_party/rpcmem",
     ]),
 )
 

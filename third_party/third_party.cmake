@@ -51,6 +51,7 @@ include(${PROJECT_SOURCE_DIR}/third_party/opencl-headers/opencl-headers.cmake)
 include(${PROJECT_SOURCE_DIR}/third_party/protobuf/protobuf.cmake)
 include(${PROJECT_SOURCE_DIR}/third_party/tflite/tflite.cmake)
 include(${PROJECT_SOURCE_DIR}/third_party/caffe/caffe.cmake)
+include(${PROJECT_SOURCE_DIR}/third_party/rpcmem/rpcmem.cmake)
 
 if(MACE_ENABLE_HEXAGON_DSP)
   include(${PROJECT_SOURCE_DIR}/third_party/nnlib/nnlib.cmake)
