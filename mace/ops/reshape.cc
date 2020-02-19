@@ -74,7 +74,7 @@ template <DeviceType D, class T>
 class ReshapeOp : public Operation {
  public:
   explicit ReshapeOp(OpConstructContext *context)
-      : Operation(context),
+      : Operation(context), dim_(Operation::GetRepeatedArgs<int>("dim")),
         has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -85,17 +85,20 @@ class ReshapeOp : public Operation {
     const int32_t *shape_data = shape->data<int32_t>();
     const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
     std::vector<index_t> out_shape;
-    MACE_RETURN_IF_ERROR(
-        GetOutputShape(input, shape_data, num_dims, &out_shape));
 
     // NHWC -> NCHW
-    if (has_df_ && D == DeviceType::CPU && out_shape.size() == 4 &&
-        shape->is_weight()) {
+    std::vector<int32_t> trans_shape_data(shape_data,
+                                          shape_data + shape->size());
+    if (has_df_ && D == DeviceType::CPU && shape->dim_size() == 4 &&
+        out_shape.size() == 4 && dim_.size() == 4) {
       std::vector<int> dst_dims = {0, 3, 1, 2};
-      std::vector<index_t> trans_shape =
-          TransposeShape<index_t, index_t>(out_shape, dst_dims);
-      out_shape = trans_shape;
+      std::vector<int32_t> tmp_shape =
+          TransposeShape<int32_t , int32_t>(trans_shape_data, dst_dims);
+      trans_shape_data = tmp_shape;
     }
+
+    MACE_RETURN_IF_ERROR(
+        GetOutputShape(input, trans_shape_data.data(), num_dims, &out_shape));
 
     Tensor *output = this->Output(OUTPUT);
     output->ReuseTensorBuffer(*input);
@@ -105,6 +108,7 @@ class ReshapeOp : public Operation {
   }
 
  private:
+  std::vector<int> dim_;
   bool has_df_;
 
  private:

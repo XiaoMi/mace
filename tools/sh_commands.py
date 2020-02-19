@@ -774,15 +774,7 @@ def packaging_lib(libmace_output_dir, project_name):
     six.print_("Start packaging '%s' libs into %s" % (project_name,
                                                       tar_package_path))
     which_sys = platform.system()
-    if which_sys == "Linux":
-        sh.tar(
-            "cvzf",
-            "%s" % tar_package_path,
-            glob.glob("%s/*" % project_dir),
-            "--exclude",
-            "%s/_tmp" % project_dir,
-            _fg=True)
-    elif which_sys == "Darwin":
+    if which_sys == "Linux" or which_sys == "Darwin":
         sh.tar(
             "--exclude",
             "%s/_tmp" % project_dir,

@@ -1035,6 +1035,8 @@ class ReduceOp<DeviceType::GPU, float> : public ReduceOpBase {
 void RegisterReduce(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
+                   DeviceType::CPU, int);
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, uint8_t);
