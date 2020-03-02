@@ -963,7 +963,7 @@ class Transformer(base_converter.ConverterInterface):
                 if consumer_op.type == MaceOp.Activation.name \
                         and ConverterUtil.get_arg(
                             consumer_op,
-                            MaceKeyword.mace_activation_type_str).s != 'PRELU':
+                            MaceKeyword.mace_activation_type_str).s != b'PRELU':  # noqa
                     print("Fold activation: %s(%s)" % (op.name, op.type))
                     op.name = consumer_op.name
                     op.output[0] = consumer_op.output[0]

@@ -64,7 +64,16 @@ def calculate_similarity(u, v, data_type=np.float64):
         u = u.astype(data_type)
     if v.dtype is not data_type:
         v = v.astype(data_type)
-    return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
+    u_norm = np.linalg.norm(u)
+    v_norm = np.linalg.norm(v)
+    norm = u_norm * v_norm
+    if norm == 0:
+        if u_norm == 0 and v_norm == 0:
+            return 1
+        else:
+            return 0
+    else:
+        return np.dot(u, v) / norm
 
 
 def calculate_pixel_accuracy(out_value, mace_out_value):
