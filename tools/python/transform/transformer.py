@@ -20,6 +20,7 @@ import six
 
 from py_proto import mace_pb2
 from transform import base_converter
+from transform.base_converter import ActivationType
 from transform.base_converter import ConverterUtil
 from transform.base_converter import DataFormat
 from transform.base_converter import DeviceType
@@ -960,10 +961,17 @@ class Transformer(base_converter.ConverterInterface):
                 or op.type == MaceOp.BatchNorm.name) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
-                if consumer_op.type == MaceOp.Activation.name \
-                        and ConverterUtil.get_arg(
-                            consumer_op,
-                            MaceKeyword.mace_activation_type_str).s != b'PRELU':  # noqa
+                if consumer_op.type == MaceOp.Activation.name:
+                    act_type_arg = ConverterUtil.get_arg(
+                        consumer_op, MaceKeyword.mace_activation_type_str)
+                    act_type = act_type_arg.s.decode()
+                    if act_type == ActivationType.PRELU.name:
+                        continue
+                    # during quantization, only fold relu/relux
+                    if (self._option.quantize_stat or self._option.quantize) \
+                            and act_type not in [ActivationType.RELU.name,
+                                                 ActivationType.RELUX.name]:
+                        continue
                     print("Fold activation: %s(%s)" % (op.name, op.type))
                     op.name = consumer_op.name
                     op.output[0] = consumer_op.output[0]
@@ -1886,11 +1894,14 @@ class Transformer(base_converter.ConverterInterface):
 
         print("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
-            if op.type in [MaceOp.Pooling.name,
+            if op.type in [MaceOp.ExpandDims.name,
+                           MaceOp.Pad.name,
+                           MaceOp.Pooling.name,
                            MaceOp.Reduce.name,
-                           MaceOp.Squeeze.name,
                            MaceOp.Reshape.name,
                            MaceOp.ResizeBilinear.name,
+                           MaceOp.Squeeze.name,
+                           MaceOp.StridedSlice.name,
                            MaceOp.BatchToSpaceND.name,
                            MaceOp.SpaceToBatchND.name,
                            MaceOp.SpaceToDepth.name,
@@ -1929,6 +1940,18 @@ class Transformer(base_converter.ConverterInterface):
                         self.copy_quantize_info(producer_op, quantize_info)
                         self._quantize_activation_info[producer_op.output[0]] \
                             = producer_op.quantize_info[0]
+            elif op.type == MaceOp.Activation.name:
+                act_type = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_activation_type_str).s.decode()
+                if act_type not in [ActivationType.TANH.name,
+                                    ActivationType.SIGMOID.name]:
+                    continue
+                del op.quantize_info[:]
+                if act_type == ActivationType.TANH.name:
+                    quantize_info = self.add_quantize_info(op, -1.0, 1.0)
+                else:
+                    quantize_info = self.add_quantize_info(op, 0.0, 1.0)
+                self._quantize_activation_info[op.output[0]] = quantize_info
             elif op.type == MaceOp.Softmax.name:
                 del op.quantize_info[:]
                 quantize_info = \

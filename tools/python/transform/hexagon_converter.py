@@ -25,12 +25,14 @@ from functools import reduce
 
 from py_proto import mace_pb2
 from transform import base_converter
+from transform.base_converter import ActivationType
 from transform.base_converter import ConverterUtil
 from transform.base_converter import DeviceType
 from transform.base_converter import EltwiseType
 from transform.base_converter import MaceKeyword
 from transform.base_converter import MaceOp
 from transform.base_converter import PaddingMode
+from transform.base_converter import PadType
 from transform.base_converter import PoolingType
 from transform.base_converter import ReduceType
 from utils.util import mace_check
@@ -47,10 +49,19 @@ HexagonSupportedOps = [
     'QuantizedAvgPool_8',
     'QuantizedConcat_8',
     'QuantizedMaxPool_8',
+    'QuantizedMaximum_8',
+    'QuantizedMinimum_8',
     'QuantizedMul_8x8to8',
+    'QuantizedPad_8',
+    'QuantizedRelu_8',
+    'QuantizedReluX_8',
+    'QuantizedReshape',
     'QuantizedResizeBilinear_8',
+    'QuantizedSigmoid_8',
     'QuantizedSoftmax_8',
+    'QuantizedStridedSlice_8',
     'QuantizedSub_8p8to8',
+    'QuantizedTanh_8',
     'QuantizedTransposeConv2d_8x8p32to8',
     'QuantizeINPUT_f_to_8',
     'SpaceToBatchND_8',
@@ -88,12 +99,28 @@ def normalize_name(name):
 
 
 class HexagonConverter(base_converter.ConverterInterface):
+    activation_type = {
+        ActivationType.RELU.name: HexagonOp.QuantizedRelu_8.name,
+        ActivationType.RELUX.name: HexagonOp.QuantizedReluX_8.name,
+        ActivationType.TANH.name: HexagonOp.QuantizedTanh_8.name,
+        ActivationType.SIGMOID.name: HexagonOp.QuantizedSigmoid_8.name,
+    }
+
+    eltwise_type = {
+        EltwiseType.SUM.value: HexagonOp.QuantizedAdd_8p8to8.name,
+        EltwiseType.SUB.value: HexagonOp.QuantizedSub_8p8to8.name,
+        EltwiseType.PROD.value: HexagonOp.QuantizedMul_8x8to8.name,
+        EltwiseType.MIN.value: HexagonOp.QuantizedMinimum_8.name,
+        EltwiseType.MAX.value: HexagonOp.QuantizedMaximum_8.name,
+    }
+
     def __init__(self, option, model, quantize_activation_info):
         self._option = option
         self._model = model
         self._consts = {}
         self._quantize_activation_info = quantize_activation_info
         self._op_converters = {
+            MaceOp.Activation.name: self.convert_activation,
             MaceOp.BatchToSpaceND.name: self.convert_batchspace,
             MaceOp.Concat.name: self.convert_concat,
             MaceOp.Conv2D.name: self.convert_conv2d,
@@ -102,11 +129,14 @@ class HexagonConverter(base_converter.ConverterInterface):
             MaceOp.DepthwiseConv2d.name: self.convert_conv2d,
             MaceOp.Dequantize.name: self.convert_dequantize,
             MaceOp.Eltwise.name: self.convert_elementwise,
+            MaceOp.ExpandDims.name: self.convert_expanddims,
+            MaceOp.Pad.name: self.convert_pad,
             MaceOp.Pooling.name: self.convert_pooling,
             MaceOp.Quantize.name: self.convert_quantize,
             MaceOp.Reduce.name: self.convert_reduce,
             MaceOp.ResizeBilinear.name: self.convert_resizebilinear,
             MaceOp.Softmax.name: self.convert_softmax,
+            MaceOp.StridedSlice.name: self.convert_stridedslice,
             MaceOp.SpaceToBatchND.name: self.convert_batchspace,
             MaceOp.SpaceToDepth.name: self.convert_depthspace,
         }
@@ -133,7 +163,10 @@ class HexagonConverter(base_converter.ConverterInterface):
                     self._quantize_activation_info[tensors[i]] = \
                         self._quantize_activation_info[node_name]
 
-    def add_scalar_const_node(self, name, val):
+    def add_scalar_const_node(self, name, val, op=None):
+        if op is not None:
+            name = op.name + name
+            op.input.append(name)
         if name not in self._consts:
             tensor = self._model.tensors.add()
             self._consts[name] = tensor
@@ -332,6 +365,21 @@ class HexagonConverter(base_converter.ConverterInterface):
         if arg is not None:
             op.padding = padding_mode[PaddingMode(arg.i)]
 
+    def convert_activation(self, op):
+        self.add_min_max_const_node(op, op.input[0])
+
+        act_type = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_activation_type_str).s.decode()
+        if act_type == ActivationType.RELUX.name:
+            x = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_activation_max_limit_str).f
+            self.add_scalar_const_node("/x:0", x, op)
+        try:
+            op.type = self.activation_type[act_type]
+        except KeyError:
+            mace_check(False,
+                       "Hexagon does not support activation %s" % act_type)
+
     def convert_batchspace(self, op):
         strides_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_space_batch_block_shape_str)
@@ -484,26 +532,52 @@ class HexagonConverter(base_converter.ConverterInterface):
         op.type = HexagonOp.DequantizeOUTPUT_8tof.name
 
     def convert_elementwise(self, op):
+        if len(op.input) == 1:
+            scalar_input_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_scalar_input_str)
+            self.add_scalar_const_node("/b:0", scalar_input_arg.i, op)
         self.add_min_max_const_node(op, op.input[0])
         self.add_min_max_const_node(op, op.input[1])
 
-        element_type = \
-            ConverterUtil.get_arg(op,
-                                  MaceKeyword.mace_element_type_str).i
-        if element_type == EltwiseType.SUM.value:
+        element_type = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_element_type_str).i
+        if element_type in [EltwiseType.SUM.value,
+                            EltwiseType.SUB.value,
+                            EltwiseType.MIN.value,
+                            EltwiseType.MAX.value]:
             self.add_min_max_const_node(
                 op, op.output[0], True, True, False)
-            op.type = HexagonOp.QuantizedAdd_8p8to8.name
-        elif element_type == EltwiseType.SUB.value:
-            self.add_min_max_const_node(
-                op, op.output[0], True, True, False)
-            op.type = HexagonOp.QuantizedSub_8p8to8.name
-        elif element_type == EltwiseType.PROD.value:
-            op.type = HexagonOp.QuantizedMul_8x8to8.name
-        else:
+        try:
+            op.type = self.eltwise_type[element_type]
+        except KeyError:
             mace_check(False,
                        "Hexagon does not support elementwise %s"
                        % EltwiseType(element_type).name)
+
+    def convert_expanddims(self, op):
+        shape = op.output_shape[0].dims
+        self.add_arg_const_node(op, '/shape:0', [len(shape)], shape)
+
+        self.add_min_max_const_node(op, op.input[0])
+        # Convert to reshape as hexagon does not support quantized expanddims
+        op.type = HexagonOp.QuantizedReshape.name
+
+    def convert_pad(self, op):
+        self.add_min_max_const_node(op, op.input[0])
+
+        paddings = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_paddings_str).ints
+        self.add_arg_const_node(
+            op, '/paddings:0', [1, 1, len(paddings) // 2, 2], paddings)
+
+        pad_type = ConverterUtil.get_arg(op, MaceKeyword.mace_pad_type_str).i
+        mace_check(pad_type == PadType.CONSTANT.value,
+                   "Hexagon only supports constant pad")
+        constant_value = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_constant_value_str).f
+        self.add_scalar_const_node('/constant_value:0', constant_value, op)
+
+        op.type = HexagonOp.QuantizedPad_8.name
 
     def convert_pooling(self, op):
         self.add_min_max_const_node(op, op.input[0])
@@ -579,3 +653,17 @@ class HexagonConverter(base_converter.ConverterInterface):
         self.add_min_max_const_node(op, op.input[0])
 
         op.type = HexagonOp.QuantizedSoftmax_8.name
+
+    def convert_stridedslice(self, op):
+        beigin_mask = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_begin_mask_str).i
+        end_mask = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_end_mask_str).i
+        shrink_mask = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_shrink_axis_mask_str).i
+        self.add_scalar_const_node("/begin_mask:0", beigin_mask, op)
+        self.add_scalar_const_node("/end_mask:0", end_mask, op)
+        self.add_scalar_const_node("/shrink_mask:0", shrink_mask, op)
+        self.add_min_max_const_node(op, op.input[0])
+
+        op.type = HexagonOp.QuantizedStridedSlice_8.name

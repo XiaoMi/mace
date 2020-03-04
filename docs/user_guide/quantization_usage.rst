@@ -32,10 +32,20 @@ Post training quantization
 ---------------------------
 MACE supports post-training quantization if you want to take a chance to quantize model directly without fine tuning.
 This method requires developer to calculate tensor range of each activation layer statistically using sample inputs.
-MACE provides tools to do statistics with following steps:
+MACE provides tools to do statistics with following steps(using `inception-v3` from `MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__ as an example):
 
   1. Convert original model to run on CPU host without obfuscation (by setting `target_abis` to `host`, `runtime` to `cpu`,
-  and `obfuscate` to `0`, appending `:0` to `output_tensors` if missing in yaml config). 
+  and `obfuscate` to `0`, appending `:0` to `output_tensors` if missing in yaml config).
+
+  .. code-block:: sh
+
+    # For CMake users:
+    python tools/python/convert.py --config ../mace-models/inception-v3/inception-v3.yml
+      --quantize_stat
+
+    # For Bazel users:
+    python tools/converter.py convert --config ../mace-models/inception-v3/inception-v3.yml
+      --quantize_stat
 
   2. Log tensor range of each activation layer by inferring several samples on CPU host. Sample inputs should be
   representative to calculate the ranges of each layer properly.

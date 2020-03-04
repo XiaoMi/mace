@@ -793,6 +793,9 @@ def convert_func(flags):
     if os.path.exists(ENGINE_CODEGEN_DIR):
         sh.rm("-rf", ENGINE_CODEGEN_DIR)
 
+    if flags.quantize_stat:
+        configs[YAMLKeyword.quantize_stat] = flags.quantize_stat
+
     if flags.model_data_format:
         model_data_format = flags.model_data_format
     else:
@@ -1017,6 +1020,10 @@ def parse_args():
         '--address_sanitizer',
         action="store_true",
         help="Whether to use address sanitizer to check memory error")
+    convert_run_parent_parser.add_argument(
+        "--quantize_stat",
+        action="store_true",
+        help="whether to stat quantization range.")
 
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -1121,10 +1128,6 @@ def parse_args():
         type=float,
         default=0.0,
         help="[mock runtime failure ratio].")
-    run.add_argument(
-        "--quantize_stat",
-        action="store_true",
-        help="whether to stat quantization range.")
     run.add_argument(
         "--input_dir",
         type=str,

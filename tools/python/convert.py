@@ -46,6 +46,10 @@ def transpose_shape(shape, dst_order):
 
 
 def convert(conf, output):
+    if ModelKeys.quantize_stat in conf:
+        quantize_stat = conf[ModelKeys.quantize_stat]
+    else:
+        quantize_stat = False
     for model_name, model_conf in conf["models"].items():
         model_output = output + "/" + model_name + "/model"
         org_model_dir = output + "/" + model_name + "/org_model"
@@ -72,7 +76,7 @@ def convert(conf, output):
                 "", model_output)
             model_conf[ModelKeys.quantize_range_file] = range_file
 
-        mace_model = convert_model(model_conf)
+        mace_model = convert_model(model_conf, quantize_stat)
 
         try:
             visualizer = visualize_model.ModelVisualizer(model_name,
@@ -95,9 +99,10 @@ def convert(conf, output):
             f.write(str(model))
 
 
-def convert_model(conf):
+def convert_model(conf, quantize_stat):
     option = cvt.ConverterOption()
 
+    option.quantize_stat = quantize_stat
     if ModelKeys.graph_optimize_options in conf:
         option.transformer_option = conf[ModelKeys.graph_optimize_options]
     if ModelKeys.winograd in conf:
