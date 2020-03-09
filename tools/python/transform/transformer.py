@@ -1758,20 +1758,14 @@ class Transformer(base_converter.ConverterInterface):
         quantize_info.zero_point = info.zero_point
 
     def transform_fake_quantize(self):
-        if not self._option.quantize:
-            return False
-
         # Quantize info from fixpoint fine tune
         print("Transform fake quantize")
-        range_file = self._option.quantize_range_file
-        if range_file:
-            return
 
         net = self._model
         for op in net.op:
             if op.type == 'FakeQuantWithMinMaxVars' or \
                    op.type == 'FakeQuantWithMinMaxArgs':
-                if op.input[0] not in self._consts:
+                if self._option.quantize and op.input[0] not in self._consts:
                     producer_op = self._producer[op.input[0]]
                     minval = ConverterUtil.get_arg(op, 'min').f
                     maxval = ConverterUtil.get_arg(op, 'max').f
@@ -1842,6 +1836,7 @@ class Transformer(base_converter.ConverterInterface):
         range_file = self._option.quantize_range_file
         if range_file:
             print("Add quantize tensor range")
+            post_quantize_info = {}
             with open(range_file) as f:
                 for line in f:
                     tensor_name, minmax = line.split("@@")[:2]
@@ -1856,17 +1851,21 @@ class Transformer(base_converter.ConverterInterface):
                     activation_info.maxval = max_val
                     activation_info.scale = scale
                     activation_info.zero_point = zero
-                    self._quantize_activation_info[tensor_name] = activation_info  # noqa
+                    if tensor_name not in self._quantize_activation_info:
+                        post_quantize_info[tensor_name] = activation_info
 
             for op in self._model.op:
                 if op.name.find(MaceKeyword.mace_output_node_name) >= 0:
                     continue
                 for output in op.output:
-                    mace_check(output in self._quantize_activation_info,
-                               "%s does not have quantize activation info"
-                               % op)
-                    op.quantize_info.extend([
-                        self._quantize_activation_info[output]])
+                    # Prefer quantize info from quantization-aware training
+                    if output not in self._quantize_activation_info:
+                        mace_check(output in post_quantize_info,
+                                   "%s does not have quantize activation info"
+                                   % op)
+                        op.quantize_info.extend([post_quantize_info[output]])
+                        self._quantize_activation_info[output] = \
+                            post_quantize_info[output]
 
         if not self._option.quantize:
             return False
@@ -1979,6 +1978,7 @@ class Transformer(base_converter.ConverterInterface):
                     maxval = producer_op0.quantize_info[0].maxval \
                         - producer_op1.quantize_info[0].minval
                 else:
+                    print(op)
                     mace_check(False, "Quantized Elementwise only support:"
                                       " SUM and SUB without ranges now.")
                 quantize_info = \
