@@ -404,6 +404,7 @@ class ConverterOption(object):
         self._change_concat_ranges = False
         self._transformer_option = None
         self._cl_mem_type = "image"
+        self._quantize_stat = False
 
     @property
     def input_nodes(self):
@@ -452,6 +453,10 @@ class ConverterOption(object):
     @property
     def cl_mem_type(self):
         return self._cl_mem_type
+
+    @property
+    def quantize_stat(self):
+        return self._quantize_stat
 
     @input_nodes.setter
     def input_nodes(self, input_nodes):
@@ -512,6 +517,10 @@ class ConverterOption(object):
     @cl_mem_type.setter
     def cl_mem_type(self, cl_mem_type):
         self._cl_mem_type = cl_mem_type
+
+    @quantize_stat.setter
+    def quantize_stat(self, quantize_stat):
+        self._quantize_stat = quantize_stat
 
     def disable_transpose_filters(self):
         if TransformerRule.TRANSPOSE_FILTERS in self._transformer_option:

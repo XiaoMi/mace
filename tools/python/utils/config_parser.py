@@ -92,6 +92,7 @@ class ModelKeys(object):
     quantize_range_file = "quantize_range_file"
     quantize = "quantize"
     quantize_large_weights = "quantize_large_weights"
+    quantize_stat = "quantize_stat"
     change_concat_ranges = "change_concat_ranges"
     winograd = "winograd"
     cl_mem_type = "cl_mem_type"
