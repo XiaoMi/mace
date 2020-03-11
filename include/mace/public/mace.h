@@ -102,6 +102,17 @@ enum HexagonNNCornerType {
   HEXAGON_NN_CORNER_SVS2,
 };
 
+// APU Initial Cache Policy:
+// NONE: Compile model using the information from net_def and model_data.
+// STORE: Compile model using the information from net_def and model_data and
+// store the compiled model.
+// LOAD: Get input/output information from net_def and load pre-compiled model.
+enum APUCachePolicy {
+  APU_CACHE_NONE = 0,
+  APU_CACHE_STORE = 1,
+  APU_CACHE_LOAD = 2,
+};
+
 struct CallStats {
   int64_t start_micros;
   int64_t end_micros;
@@ -354,6 +365,21 @@ class MACE_API MaceEngineConfig {
   MaceStatus SetHexagonPower(HexagonNNCornerType corner,
                              bool dcvs_enable,
                              int latency);
+
+  /// \brief Set MTK APU initial cache
+  ///
+  /// \param policy is a policy for loading or storing apu initial cache.
+  /// \param binary_file will load cache file from this path.
+  /// \param storage_file will store cache file to this path.
+  ///
+  /// Now the path is used to store the cache to file,
+  /// which could speed up the APU initialization.
+  /// If do not call this API, the initialization maybe slow for APU.
+  ///
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
+  MaceStatus SetAPUCache(APUCachePolicy policy,
+                         const std::string &binary_file,
+                         const std::string &storage_file);
 
  private:
   class Impl;

@@ -415,6 +415,7 @@ class YAMLKeyword(object):
     quantize_large_weights = 'quantize_large_weights'
     quantize_range_file = 'quantize_range_file'
     quantize_stat = 'quantize_stat'
+    quantize_schema = 'quantize_schema'
     change_concat_ranges = 'change_concat_ranges'
     validation_inputs_data = 'validation_inputs_data'
     validation_threshold = 'validation_threshold'

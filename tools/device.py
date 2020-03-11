@@ -177,6 +177,9 @@ class DeviceWrapper:
                    cpu_affinity_policy=1,
                    gpu_perf_hint=3,
                    gpu_priority_hint=3,
+                   apu_cache_policy=0,
+                   apu_binary_file="",
+                   apu_storage_file="",
                    input_file_name='model_input',
                    output_file_name='model_out',
                    input_dir="",
@@ -282,7 +285,20 @@ class DeviceWrapper:
                     "third_party/nnlib/%s/libhexagon_controller.so" % abi,
                     self.data_dir)
 
+            apu_storage_cpy = False
             if device_type == common.DeviceType.APU:
+                if apu_cache_policy == 1:
+                    if not apu_storage_file:
+                        apu_storage_cpy = True
+                        apu_src_file = model_tag + ".bin"
+                        apu_storage_file = os.path.join(self.data_dir,
+                                                        apu_src_file)
+                elif apu_cache_policy == 2:
+                    if os.path.exists(apu_binary_file):
+                        self.push(apu_binary_file, self.data_dir)
+                        apu_binary_file = os.path.join(self.data_dir,
+                                                       os.path.basename(
+                                                           apu_binary_file))
                 self.push("third_party/apu/libapu-frontend.so",
                           self.data_dir)
 
@@ -345,6 +361,9 @@ class DeviceWrapper:
                 (self.data_dir, os.path.basename(opencl_binary_file)),
                 "--opencl_parameter_file=%s/%s" %
                 (self.data_dir, os.path.basename(opencl_parameter_file)),
+                "--apu_cache_policy=%s" % apu_cache_policy,
+                "--apu_binary_file=%s" % apu_binary_file,
+                "--apu_storage_file=%s" % apu_storage_file,
             ])
             if benchmark:
                 cmd.append("--benchmark=%s" % benchmark)
@@ -364,6 +383,11 @@ class DeviceWrapper:
                               _out=process_output,
                               _err_to_out=True)
             self.stdout = "".join(stdout_buff)
+
+            if apu_storage_cpy:
+                self.pull_from_data_dir(
+                    apu_src_file, '{}/apu_init_cache/'.format(mace_model_dir))
+
             if not sh_commands.stdout_success(self.stdout):
                 common.MaceLogger.error("Mace Run", "Mace run failed.")
 
@@ -545,6 +569,9 @@ class DeviceWrapper:
             cpu_affinity_policy=flags.cpu_affinity_policy,
             gpu_perf_hint=flags.gpu_perf_hint,
             gpu_priority_hint=flags.gpu_priority_hint,
+            apu_cache_policy=flags.apu_cache_policy,
+            apu_binary_file=flags.apu_binary_file,
+            apu_storage_file=flags.apu_storage_file,
             runtime_failure_ratio=flags.runtime_failure_ratio,
             address_sanitizer=flags.address_sanitizer,
             opencl_binary_file=model_opencl_output_bin_path,
