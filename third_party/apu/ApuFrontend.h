@@ -29,6 +29,7 @@ enum apu_data_type {
     APU_DATA_TYPE_UINT8 = 2,
     APU_DATA_TYPE_HALF = 3,
     APU_DATA_TYPE_INT32 = 4,
+    APU_DATA_TYPE_INT16 = 5,
 };
 
 enum apu_tensor_type {
@@ -37,6 +38,7 @@ enum apu_tensor_type {
     APU_TENSOR_CONST_ARGUMENT = 2,
     APU_TENSOR_MODEL_INPUT = 3,
     APU_TENSOR_OP_OUTPUT = 4,
+    APU_TENSOR_MODEL_OUTPUT = 5,
 };
 
 #define APU_TENSOR_MAX_DIMS 4
@@ -70,10 +72,10 @@ class ApuFrontend {
 
     bool InitGraph(int const_tensor_size, const apu_tensor* const_tensors,
                    int input_tensor_size, const apu_tensor* input_tensors,
-                   int output_tensor_size, const int* output_tensor_ids,
-                   void** output_buffers,
+                   int output_tensor_size, const apu_tensor* output_tensors,
                    int operator_size, const apu_operator* operators,
-                   bool print_model);
+                   bool print_model, const char *file_name,
+                   bool load, bool store);
     bool RunGraph();
     bool UninitGraph();
 

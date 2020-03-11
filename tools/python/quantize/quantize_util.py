@@ -171,6 +171,24 @@ def quantize(data, device, non_zero):
     return quantized_data
 
 
+# only support int16 symmetric quantization.
+def quantize_int16(data):
+    np_data = np.array(data).astype(float)
+    max_val = max(abs(np_data.min()), abs(np_data.max()))
+    scale = max_val / 2**15
+    zero = 0
+    output = np.clip((np.round(zero + data / scale).astype(np.int32)),
+                     -2**15, 2**15 - 1)
+
+    quantized_data = QuantizedData()
+    quantized_data.data = output
+    quantized_data.scale = scale
+    quantized_data.zero = zero
+    quantized_data.minval = -max_val
+    quantized_data.maxval = max_val
+    return quantized_data
+
+
 def quantize_bias_for_hexagon(data):
     np_data = np.array(data).astype(float)
     max_val = max(abs(np_data.min()), abs(np_data.max()))

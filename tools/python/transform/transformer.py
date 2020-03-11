@@ -115,6 +115,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.fp16_gather_weight,
             TransformerRule.QUANTIZE_LARGE_WEIGHTS:
                 self.quantize_large_weights,
+            TransformerRule.TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV:
+                self.transform_single_bn_to_depthwise_conv,
         }
 
         self._option = option
@@ -1099,9 +1101,9 @@ class Transformer(base_converter.ConverterInterface):
         transposed_filter = set()
         transposed_deconv_filter = set()
 
-        if self._option.quantize and \
-                (self._option.device == DeviceType.CPU.value or
-                 self._option.device == DeviceType.APU.value):
+        if ((self._option.quantize and
+                self._option.device == DeviceType.CPU.value) or
+                self._option.device == DeviceType.APU.value):
             print("Transpose filters to OHWI")
             if filter_format == DataFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
@@ -1613,11 +1615,22 @@ class Transformer(base_converter.ConverterInterface):
             mace_check(data_type_arg, "Data type does not exist for %s(%s)"
                        % (op.name, op.type))
             if data_type_arg.i == mace_pb2.DT_FLOAT:
-                data_type_arg.i = mace_pb2.DT_UINT8
+                if self._option.quantize_schema == \
+                        MaceKeyword.mace_apu_16bit_per_tensor:
+                    data_type_arg.i = mace_pb2.DT_INT16
+                else:
+                    data_type_arg.i = mace_pb2.DT_UINT8
             elif data_type_arg.i == mace_pb2.DT_UINT8:
                 mace_check(op.type == MaceOp.Quantize.name
                            or op.type == MaceOp.Dequantize.name,
                            "Only Quantization ops support uint8, "
+                           "but got %s(%s)" % (op.name, op.type))
+            elif data_type_arg.i == mace_pb2.DT_INT16 \
+                and self._option.quantize_schema == \
+                    MaceKeyword.mace_apu_16bit_per_tensor:
+                mace_check(op.type == MaceOp.Quantize.name
+                           or op.type == MaceOp.Dequantize.name,
+                           "Only Quantization ops support int16, "
                            "but got %s(%s)" % (op.name, op.type))
             else:
                 mace_check(op.type == MaceOp.Quantize.name,
@@ -1640,7 +1653,11 @@ class Transformer(base_converter.ConverterInterface):
             self._model.input_info[i].scale = quantize_info.scale
             self._model.input_info[i].zero_point = quantize_info.zero_point
 
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
+            if self._option.quantize_schema == \
+                    MaceKeyword.mace_apu_16bit_per_tensor:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT16)
+            else:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, input_node.data_format)
             # use actual ranges for model input quantize
             find_range_every_time_arg = op_def.arg.add()
@@ -1663,7 +1680,11 @@ class Transformer(base_converter.ConverterInterface):
             self._model.output_info[i].scale = quantize_info.scale
             self._model.output_info[i].zero_point = quantize_info.zero_point
 
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
+            if self._option.quantize_schema == \
+                    MaceKeyword.mace_apu_16bit_per_tensor:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT16)
+            else:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, output_node.data_format)
 
         quantize_flag_arg = self._model.arg.add()
@@ -1718,6 +1739,11 @@ class Transformer(base_converter.ConverterInterface):
                 else:
                     mace_check(False, "wrong device.")
                 tensor.data_type = mace_pb2.DT_INT32
+            elif self._option.quantize_schema == \
+                    MaceKeyword.mace_apu_16bit_per_tensor:
+                quantized_tensor = \
+                    quantize_util.quantize_int16(tensor.float_data)
+                tensor.data_type = mace_pb2.DT_INT16
             else:
                 non_zero = self._option.device == DeviceType.CPU.value
                 quantized_tensor = quantize_util.quantize(tensor.float_data,
@@ -1774,9 +1800,16 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def add_quantize_info(self, op, minval, maxval):
-        scale, zero, minval, maxval = \
-            quantize_util.adjust_range(minval, maxval, self._option.device,
-                                       non_zero=False)
+        quantize_schema = self._option.quantize_schema
+        if quantize_schema == MaceKeyword.mace_apu_16bit_per_tensor:
+            maxval = max(abs(minval), abs(maxval))
+            minval = -maxval
+            scale = maxval / 2**15
+            zero = 0
+        else:
+            scale, zero, minval, maxval = \
+                quantize_util.adjust_range(minval, maxval, self._option.device,
+                                           non_zero=False)
         quantize_info = op.quantize_info.add()
         quantize_info.minval = minval
         quantize_info.maxval = maxval
@@ -1869,6 +1902,7 @@ class Transformer(base_converter.ConverterInterface):
     def add_quantize_tensor_range(self):
         # Quantize info from range statistics
         range_file = self._option.quantize_range_file
+        quantize_schema = self._option.quantize_schema
         if range_file:
             print("Add quantize tensor range")
             post_quantize_info = {}
@@ -1877,10 +1911,17 @@ class Transformer(base_converter.ConverterInterface):
                     tensor_name, minmax = line.split("@@")[:2]
                     min_val, max_val = [float(i) for i in
                                         minmax.strip().split(",")]
-                    scale, zero, min_val, max_val = \
-                        quantize_util.adjust_range(min_val, max_val,
-                                                   self._option.device,
-                                                   non_zero=False)
+                    if (quantize_schema ==
+                            MaceKeyword.mace_apu_16bit_per_tensor):
+                        max_val = max(abs(min_val), abs(max_val))
+                        min_val = -max_val
+                        scale = max_val / 2**15
+                        zero = 0
+                    else:
+                        scale, zero, min_val, max_val = \
+                            quantize_util.adjust_range(min_val, max_val,
+                                                       self._option.device,
+                                                       non_zero=False)
                     activation_info = mace_pb2.QuantizeActivationInfo()
                     activation_info.minval = min_val
                     activation_info.maxval = max_val
@@ -1911,11 +1952,18 @@ class Transformer(base_converter.ConverterInterface):
                 print("Input range %s: %s" % (input_node.name,
                                               str(input_node.range)))
                 new_input_name = self.input_name_map[input_node.name]
-                scale, zero, minval, maxval = \
-                    quantize_util.adjust_range(input_node.range[0],
-                                               input_node.range[1],
-                                               self._option.device,
-                                               non_zero=False)
+                if quantize_schema == MaceKeyword.mace_apu_16bit_per_tensor:
+                    maxval = max(abs(input_node.range[0]),
+                                 abs(input_node.range[0]))
+                    minval = -maxval
+                    scale = maxval / 2**15
+                    zero = 0
+                else:
+                    scale, zero, minval, maxval = \
+                        quantize_util.adjust_range(input_node.range[0],
+                                                   input_node.range[1],
+                                                   self._option.device,
+                                                   non_zero=False)
                 quantize_info = \
                     mace_pb2.QuantizeActivationInfo()
                 quantize_info.minval = minval
@@ -2386,6 +2434,40 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_flag_arg.name = MaceKeyword.mace_quantize_flag_arg_str
                 quantize_flag_arg.i = 1
 
+            return True
+
+        return False
+
+    def transform_single_bn_to_depthwise_conv(self):
+        for op in self._model.op:
+            if op.type != MaceOp.BatchNorm.name:
+                continue
+
+            if len(op.input) != 3:
+                continue
+
+            producer = self._producer[op.input[0]]
+            if producer.type in [MaceOp.Conv2D.name,
+                                 MaceOp.Deconv2D.name,
+                                 MaceOp.DepthwiseDeconv2d.name,
+                                 MaceOp.DepthwiseConv2d.name,
+                                 MaceOp.BatchToSpaceND.name]:
+                continue
+
+            op.type = MaceOp.DepthwiseConv2d.name
+            padding_arg = op.arg.add()
+            padding_arg.name = MaceKeyword.mace_padding_str
+            padding_arg.i = PaddingMode.VALID.value
+            strides_arg = op.arg.add()
+            strides_arg.name = MaceKeyword.mace_strides_str
+            strides_arg.ints.extend([1, 1])
+            dilation_arg = op.arg.add()
+            dilation_arg.name = MaceKeyword.mace_dilations_str
+            dilation_arg.ints.extend([1, 1])
+            for tensor in self._model.tensors:
+                if tensor.name == op.input[1]:
+                    tensor.dims[:] = [1, 1, 1, tensor.dims[0]]
+                    break
             return True
 
         return False

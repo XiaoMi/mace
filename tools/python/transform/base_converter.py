@@ -288,6 +288,8 @@ class MaceKeyword(object):
     mace_p_str = 'p'
     mace_nor_var_str = 'normalize_variance'
     mace_across_ch_str = 'across_channels'
+    mace_apu_16bit_per_tensor = 'mace_apu_16bit_per_tensor'
+    mace_apu_data_type_arg_str = 'apu_data_type'
 
 
 class TransformerRule(Enum):
@@ -335,6 +337,7 @@ class TransformerRule(Enum):
     FP16_GATHER_WEIGHT = 42
     QUANTIZE_LARGE_WEIGHTS = 43
     TRANSPOSE_SHAPE_TENSOR_TO_PARAM = 44
+    TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV = 45
 
 
 class ConverterInterface(object):
@@ -409,6 +412,7 @@ class ConverterOption(object):
         self._device = DeviceType.CPU.value
         self._winograd = 0
         self._quantize = False
+        self._quantize_schema = ""
         self._quantize_large_weights = False
         self._quantize_range_file = ""
         self._change_concat_ranges = False
@@ -443,6 +447,10 @@ class ConverterOption(object):
     @property
     def quantize(self):
         return self._quantize
+
+    @property
+    def quantize_schema(self):
+        return self._quantize_schema
 
     @property
     def quantize_large_weights(self):
@@ -507,6 +515,10 @@ class ConverterOption(object):
     @quantize.setter
     def quantize(self, quantize):
         self._quantize = quantize
+
+    @quantize_schema.setter
+    def quantize_schema(self, quantize_schema):
+        self._quantize_schema = quantize_schema
 
     @quantize_large_weights.setter
     def quantize_large_weights(self, quantize_large_weights):
@@ -593,6 +605,10 @@ class ConverterOption(object):
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
             ]
+            if self._device == DeviceType.APU.value:
+                self._transformer_option = self._transformer_option + [
+                    TransformerRule.TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV,
+                ]
             if self.quantize_large_weights:
                 self._transformer_option = self._transformer_option + [
                     TransformerRule.QUANTIZE_LARGE_WEIGHTS
