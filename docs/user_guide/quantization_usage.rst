@@ -6,9 +6,9 @@ MACE supports two kinds of quantization mechanisms, i.e.,
 * **Quantization-aware training (Recommend)**
 
 After pre-training model using float point, insert simulated quantization operations into the model. Fine tune the new model.
-Refer to `Tensorflow quantization-aware training <https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/quantize>`__.
+Refer to `Tensorflow quantization-aware training <https://github.com/tensorflow/tensorflow/tree/r1.15/tensorflow/contrib/quantize>`__.
 
-* **Post training quantization**
+* **Post-training quantization**
 
 After pre-training model using float point, estimate output range of each activation layer using sample inputs.
 
@@ -28,7 +28,7 @@ models, e.g., MobileNet. The only thing you need to make it run using MACE is to
   2. `quantize`: set `quantize` to be 1.
 
 
-Post training quantization
+Post-training quantization
 ---------------------------
 MACE supports post-training quantization if you want to take a chance to quantize model directly without fine tuning.
 This method requires developer to calculate tensor range of each activation layer statistically using sample inputs.
@@ -82,6 +82,16 @@ MACE provides tools to do statistics with following steps(using `inception-v3` f
 
   4. Convert quantized model (by setting `target_abis` to the final target abis, e.g., `armeabi-v7a`,
   `quantize` to `1` and `quantize_range_file` to the overall_range file path in yaml config).
+
+
+Mixing usage
+---------------------------
+As `quantization-aware training` is still evolving, there are some operations that are not supported,
+which leaves some activation layers without tensor range. In this case, `post-training quantization`
+can be used to calculate these missing ranges. To mix the usage, just get a `quantization-aware training`
+model and then go through all the steps of `post-training quantization`. MACE will use the tensor ranges
+from the `overall_range` file of `post-training quantization` if the ranges are missing from the
+`quantization-aware training` model.
 
 
 Supported devices
