@@ -270,7 +270,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
               "Wrong outputs num");
   // prepare input
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
-    Tensor *tensor = input_tensors.at(input_infos[i].name);
+    Tensor* tensor = input_tensors.at(input_infos[i].name);
 
     // check size
     int element_size = input_infos[i].size;
@@ -304,8 +304,8 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
   MACE_CHECK(ret == true, "neuron run model failed");
 
   // process output
-  for (int i = 0; i < static_cast<int>(output_tensors->size()); i++) {
-    Tensor *tensor = output_tensors->at(output_infos[i].name);
+  for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
+    Tensor* tensor = output_tensors->at(output_infos[i].name);
 
     // prepare out buffer
     tensor->SetDtype(DT_FLOAT);
@@ -340,11 +340,11 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 }
 
 bool ApuWrapper::Uninit() {
-  bool ret = frontend->UninitGraph();
-  frontend = nullptr;
-  input_infos.clear();
-  output_infos.clear();
-  return ret;
+    bool ret = frontend->UninitGraph();
+    frontend = nullptr;
+    input_infos.clear();
+    output_infos.clear();
+    return ret;
 }
 
 int ApuWrapper::GetByteNum(apu_data_type data_type) {
