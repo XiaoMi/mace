@@ -348,7 +348,7 @@ class ApuConverter(base_converter.ConverterInterface):
         for axis in sorted(axes, reverse=True):
             del shape_tensor.int32_data[axis]
         op.input.extend([shape_tensor.name])
-        list_value_arg = ConverterUtil.del_arg(op, MaceKeyword.mace_axis_str)
+        ConverterUtil.del_arg(op, MaceKeyword.mace_axis_str)
 
     def add_tensorflow_padding_value(self):
         for op in self._model.op:
