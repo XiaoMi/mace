@@ -15,6 +15,13 @@
 #ifndef MACE_OPS_ARM_FP16_GEMV_H_
 #define MACE_OPS_ARM_FP16_GEMV_H_
 
+#if defined(MACE_ENABLE_NEON) && \
+    defined(__ARM_FP16_FORMAT_IEEE) && (__ARM_FP & 2)
+// TODO(lichao): replace it with global macro
+#define MACE_ENABLE_FP16_NEON
+#endif
+
+
 #include "mace/core/types.h"
 
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
@@ -37,7 +44,7 @@ void FP16Gemv(const INPUT_TYPE_LEFT *m_ptr,
               const index_t width,
               OUTPUT_TYPE *result);
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_FP16_NEON) && defined(__ANDROID__)
 template<>
 void FP16Gemv<float16_t, float, float>(const float16_t *m_ptr,
                                        const float *v_ptr,
@@ -112,7 +119,7 @@ void FP16Gemv<float16_t, float, float>(const float16_t *m_ptr,
     *out_ptr0++ = sum0;
   }
 }
-#endif
+#endif  // MACE_ENABLE_FP16_NEON && __ANDROID__
 
 }  // namespace ops
 }  // namespace mace

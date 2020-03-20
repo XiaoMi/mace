@@ -513,7 +513,7 @@ class MatMulOp<DeviceType::GPU, float> : public MatMulOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_FP16_NEON) && defined(__ANDROID__)
 template <>
 class MatMulOp<CPU, float16_t> : public MatMulOpBase {
  public:
@@ -590,7 +590,7 @@ class MatMulOp<CPU, float16_t> : public MatMulOpBase {
 
  private:
 };
-#endif  // MACE_ENABLE_NEON
+#endif  // MACE_ENABLE_FP16_NEON
 
 void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
@@ -601,10 +601,10 @@ void RegisterMatMul(OpRegistryBase *op_registry) {
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_FP16_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, float16_t);
-#endif  // MACE_ENABLE_NEON
+#endif  // MACE_ENABLE_FP16_NEON && __ANDROID__
 }
 
 }  // namespace ops
