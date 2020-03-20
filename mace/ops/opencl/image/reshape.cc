@@ -43,10 +43,52 @@ MaceStatus ReshapeKernel::Compute(OpContext *context,
                                         0, inter_buffer_.get());
   MACE_RETURN_IF_ERROR(succ);
 
-  succ = inter_buffer_->Resize(new_shape);
+  auto in_shape = inter_buffer_->shape();
+  Tensor *tmp = new Tensor(context->device()->allocator(), inter_buffer_->dtype());
+  Tensor *tmp2 = new Tensor(context->device()->allocator(), inter_buffer_->dtype());
+
+  std::vector<index_t> tmp_shape = {in_shape[0], in_shape[3], in_shape[1], in_shape[2]};
+  tmp->Resize(tmp_shape);
+  tmp->Reshape(tmp_shape);
+
+  std::vector<index_t> tmp2_shape = {new_shape[0], new_shape[3], new_shape[1], new_shape[2]};
+  tmp2->Resize(new_shape);
+  tmp2->Reshape(new_shape);
+
+  Tensor::MappingGuard input_guard(inter_buffer_.get());
+  Tensor::MappingGuard tmp_guard(tmp);
+  Tensor::MappingGuard tmp2_guard(tmp2);
+
+  auto input_data = inter_buffer_.get()->data<float>();
+  auto tmp_data = tmp->mutable_data<float>();
+  auto tmp2_data = tmp2->mutable_data<float>();
+
+  const float *input_ptr;
+  // NHWC->NCHW
+  for (index_t i = 0; i < in_shape[3]; i++) {
+    for (index_t j = 0; j < in_shape[1]; j++) {
+      for (index_t k = 0; k < in_shape[2]; k++) {
+        input_ptr = input_data + j*in_shape[2]*in_shape[3] + k*in_shape[3] + i;
+        tmp_data[i*in_shape[2]*in_shape[1] + j*in_shape[2] + k] = *input_ptr;
+      }
+    }
+  }
+
+  succ = tmp->Resize(tmp2_shape);
   MACE_RETURN_IF_ERROR(succ);
 
-  succ = b2ikernel_->Compute(context, inter_buffer_.get(),
+  const float *tmp_ptr;
+  // NCHW->NHWC
+  for (index_t i = 0; i < new_shape[3]; i++) {
+    for (index_t j = 0; j < new_shape[1]; j++) {
+      for (index_t k = 0; k < new_shape[2]; k++) {
+        tmp_ptr = tmp_data + i*new_shape[2]*new_shape[1] + j*new_shape[2] + k;
+        tmp2_data[j*new_shape[2]*new_shape[3] + k*new_shape[3] + i] = *tmp_ptr;
+      }
+    }
+  }
+
+  succ = b2ikernel_->Compute(context, tmp2,
                              OpenCLBufferType::IN_OUT_CHANNEL,
                              0, output);
   MACE_RETURN_IF_ERROR(succ);
