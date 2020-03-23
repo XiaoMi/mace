@@ -16,9 +16,11 @@
 
 #include "mace/core/runtime/opencl/opencl_allocator.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
+#ifdef MACE_ENABLE_RPCMEM
+#include "third_party/rpcmem/rpcmem.h"
+#endif  // MACE_ENABLE_RPCMEM
 
 namespace mace {
-
 namespace {
 
 static cl_channel_type DataTypeToCLChannelType(const DataType t) {
@@ -36,14 +38,29 @@ static cl_channel_type DataTypeToCLChannelType(const DataType t) {
       return 0;
   }
 }
+
+#ifdef MACE_ENABLE_RPCMEM
+std::once_flag ion_prepared;
+void PrepareQualcommION() {
+  rpcmem_init();
+  std::atexit(rpcmem_deinit);
+}
+#endif  // MACE_ENABLE_RPCMEM
+
 }  // namespace
 
 OpenCLAllocator::OpenCLAllocator(
-    OpenCLRuntime *opencl_runtime):
-    opencl_runtime_(opencl_runtime) {}
+    OpenCLRuntime *opencl_runtime): opencl_runtime_(opencl_runtime) {
+#ifdef MACE_ENABLE_RPCMEM
+  if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+    std::call_once(ion_prepared, PrepareQualcommION);
+  }
+#endif  // MACE_ENABLE_RPCMEM
+}
 
 OpenCLAllocator::~OpenCLAllocator() {}
-MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
+
+MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) {
   if (nbytes == 0) {
     return MaceStatus::MACE_SUCCESS;
   }
@@ -53,10 +70,27 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   }
 
-  cl_int error;
-  cl::Buffer *buffer = new cl::Buffer(opencl_runtime_->context(),
-                                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
-                                      nbytes, nullptr, &error);
+  cl_int error = CL_SUCCESS;
+  cl::Buffer *buffer = nullptr;
+#ifdef MACE_ENABLE_RPCMEM
+  if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+    cl_mem_ion_host_ptr ion_host;
+    CreateQualcommBufferIONHostPtr(nbytes, &ion_host);
+
+    buffer = new cl::Buffer(
+        opencl_runtime_->context(),
+        CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
+        nbytes, &ion_host, &error);
+
+    cl_to_host_map_[static_cast<void *>(buffer)] = ion_host.ion_hostptr;
+  } else {
+#endif  // MACE_ENABLE_RPCMEM
+    buffer = new cl::Buffer(opencl_runtime_->context(),
+                            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+                            nbytes, nullptr, &error);
+#ifdef MACE_ENABLE_RPCMEM
+  }
+#endif  // MACE_ENABLE_RPCMEM
   if (error != CL_SUCCESS) {
     LOG(WARNING) << "Allocate OpenCL Buffer with "
                  << nbytes << " bytes failed because of "
@@ -72,7 +106,7 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
 
 MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                                      const DataType dt,
-                                     void **result) const {
+                                     void **result) {
   MACE_CHECK(image_shape.size() == 2, "Image shape's size must equal 2");
   MACE_LATENCY_LOGGER(1, "Allocate OpenCL image: ",
                       image_shape[0], ", ", image_shape[1]);
@@ -82,12 +116,29 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
   }
 
   cl::ImageFormat img_format(CL_RGBA, DataTypeToCLChannelType(dt));
+  cl_int error = CL_SUCCESS;
+  cl::Image2D *cl_image = nullptr;
+#ifdef MACE_ENABLE_RPCMEM
+  if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+    cl_mem_ion_host_ptr ion_host;
+    size_t pitch;
+    CreateQualcommImageIONHostPtr(image_shape, img_format, &pitch, &ion_host);
 
-  cl_int error;
-  cl::Image2D *cl_image =
-      new cl::Image2D(opencl_runtime_->context(),
-                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
-                      image_shape[0], image_shape[1], 0, nullptr, &error);
+    cl_image = new cl::Image2D(
+        opencl_runtime_->context(),
+        CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
+        img_format, image_shape[0], image_shape[1], pitch, &ion_host, &error);
+
+    cl_to_host_map_[static_cast<void *>(cl_image)] = ion_host.ion_hostptr;
+  } else {
+#endif  // MACE_ENABLE_RPCMEM
+    cl_image =
+        new cl::Image2D(opencl_runtime_->context(),
+                        CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
+                        image_shape[0], image_shape[1], 0, nullptr, &error);
+#ifdef MACE_ENABLE_RPCMEM
+  }
+#endif  // MACE_ENABLE_RPCMEM
   if (error != CL_SUCCESS) {
     LOG(WARNING) << "Allocate OpenCL image with shape: ["
                  << image_shape[0] << ", " << image_shape[1]
@@ -108,72 +159,180 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
   }
 }
 
-void OpenCLAllocator::Delete(void *buffer) const {
+void OpenCLAllocator::Delete(void *buffer) {
   MACE_LATENCY_LOGGER(1, "Free OpenCL buffer");
   if (buffer != nullptr) {
     cl::Buffer *cl_buffer = static_cast<cl::Buffer *>(buffer);
     delete cl_buffer;
+#ifdef MACE_ENABLE_RPCMEM
+    if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+      auto it = cl_to_host_map_.find(buffer);
+      MACE_CHECK(it != cl_to_host_map_.end(), "OpenCL buffer not found!");
+      rpcmem_free(it->second);
+      cl_to_host_map_.erase(buffer);
+    }
+#endif  // MACE_ENABLE_RPCMEM
   }
 }
 
-void OpenCLAllocator::DeleteImage(void *buffer) const {
+void OpenCLAllocator::DeleteImage(void *buffer) {
   MACE_LATENCY_LOGGER(1, "Free OpenCL image");
   if (buffer != nullptr) {
     cl::Image2D *cl_image = static_cast<cl::Image2D *>(buffer);
     delete cl_image;
+#ifdef MACE_ENABLE_RPCMEM
+    if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+      auto it = cl_to_host_map_.find(buffer);
+      MACE_CHECK(it != cl_to_host_map_.end(), "OpenCL image not found!");
+      rpcmem_free(it->second);
+      cl_to_host_map_.erase(buffer);
+    }
+#endif  // MACE_ENABLE_RPCMEM
   }
 }
 
-void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
+void *OpenCLAllocator::Map(void *buffer,
+                           size_t offset,
+                           size_t nbytes,
+                           bool finish_cmd_queue) const {
   MACE_LATENCY_LOGGER(1, "Map OpenCL buffer");
-  auto cl_buffer = static_cast<cl::Buffer *>(buffer);
-  auto queue = opencl_runtime_->command_queue();
-  // TODO(heliangliang) Non-blocking call
-  cl_int error;
-  void *mapped_ptr =
-      queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-                             offset, nbytes, nullptr, nullptr, &error);
-  if (error != CL_SUCCESS) {
-    LOG(ERROR) << "Map buffer failed, error: " << OpenCLErrorToString(error);
-    mapped_ptr = nullptr;
+  void *mapped_ptr = nullptr;
+#ifdef MACE_ENABLE_RPCMEM
+  if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+    auto it = cl_to_host_map_.find(buffer);
+    MACE_CHECK(it != cl_to_host_map_.end(), "Try to map unallocated Buffer!");
+    mapped_ptr = it->second;
+
+    if (finish_cmd_queue) {
+      opencl_runtime_->command_queue().finish();
+    }
+
+    if (opencl_runtime_->qcom_host_cache_policy() ==
+        CL_MEM_HOST_WRITEBACK_QCOM) {
+      MACE_CHECK(rpcmem_sync_cache(mapped_ptr, RPCMEM_SYNC_START) == 0);
+    }
+  } else {
+#endif  // MACE_ENABLE_RPCMEM
+    MACE_UNUSED(finish_cmd_queue);
+    auto cl_buffer = static_cast<cl::Buffer *>(buffer);
+    auto queue = opencl_runtime_->command_queue();
+    // TODO(heliangliang) Non-blocking call
+    cl_int error;
+    mapped_ptr =
+        queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                               offset, nbytes, nullptr, nullptr, &error);
+    if (error != CL_SUCCESS) {
+      LOG(ERROR) << "Map buffer failed, error: " << OpenCLErrorToString(error);
+    }
+#ifdef MACE_ENABLE_RPCMEM
   }
+#endif  // MACE_ENABLE_RPCMEM
   return mapped_ptr;
 }
 
 // TODO(liuqi) there is something wrong with half type.
 void *OpenCLAllocator::MapImage(void *buffer,
                                 const std::vector<size_t> &image_shape,
-                                std::vector<size_t> *mapped_image_pitch) const {
+                                std::vector<size_t> *mapped_image_pitch,
+                                bool finish_cmd_queue) const {
   MACE_LATENCY_LOGGER(1, "Map OpenCL Image");
   MACE_CHECK(image_shape.size() == 2) << "Just support map 2d image";
-  auto cl_image = static_cast<cl::Image2D *>(buffer);
-  std::array<size_t, 3> origin = {{0, 0, 0}};
-  std::array<size_t, 3> region = {{image_shape[0], image_shape[1], 1}};
+  void *mapped_ptr = nullptr;
+#ifdef MACE_ENABLE_RPCMEM
+  if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+    // TODO(libin): Set mapped_image_pitch if needed
+    auto it = cl_to_host_map_.find(buffer);
+    MACE_CHECK(it != cl_to_host_map_.end(), "Try to map unallocated Image!");
+    mapped_ptr = it->second;
 
-  mapped_image_pitch->resize(2);
-  cl_int error;
-  void *mapped_ptr = opencl_runtime_->command_queue().enqueueMapImage(
-      *cl_image, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
-      mapped_image_pitch->data(), mapped_image_pitch->data() + 1, nullptr,
-      nullptr, &error);
-  if (error != CL_SUCCESS) {
-    LOG(ERROR) << "Map Image failed, error: " << OpenCLErrorToString(error);
-    mapped_ptr = nullptr;
+    if (finish_cmd_queue) {
+      opencl_runtime_->command_queue().finish();
+    }
+
+    if (opencl_runtime_->qcom_host_cache_policy() ==
+        CL_MEM_HOST_WRITEBACK_QCOM) {
+      MACE_CHECK(rpcmem_sync_cache(mapped_ptr, RPCMEM_SYNC_START) == 0);
+    }
+  } else {
+#endif  // MACE_ENABLE_RPCMEM
+    MACE_UNUSED(finish_cmd_queue);
+    auto cl_image = static_cast<cl::Image2D *>(buffer);
+    std::array<size_t, 3> origin = {{0, 0, 0}};
+    std::array<size_t, 3> region = {{image_shape[0], image_shape[1], 1}};
+
+    mapped_image_pitch->resize(2);
+    cl_int error;
+    mapped_ptr = opencl_runtime_->command_queue().enqueueMapImage(
+        *cl_image, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
+        mapped_image_pitch->data(), mapped_image_pitch->data() + 1, nullptr,
+        nullptr, &error);
+    if (error != CL_SUCCESS) {
+      LOG(ERROR) << "Map Image failed, error: " << OpenCLErrorToString(error);
+    }
+#ifdef MACE_ENABLE_RPCMEM
   }
+#endif  // MACE_ENABLE_RPCMEM
   return mapped_ptr;
 }
 
 void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) const {
   MACE_LATENCY_LOGGER(1, "Unmap OpenCL buffer/Image");
-  auto cl_buffer = static_cast<cl::Buffer *>(buffer);
-  auto queue = opencl_runtime_->command_queue();
-  cl_int error = queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr,
-                                             nullptr, nullptr);
-  if (error != CL_SUCCESS) {
-    LOG(ERROR) << "Unmap buffer failed, error: " << OpenCLErrorToString(error);
+#ifdef MACE_ENABLE_RPCMEM
+  if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
+    if (opencl_runtime_->qcom_host_cache_policy() ==
+        CL_MEM_HOST_WRITEBACK_QCOM) {
+      MACE_CHECK(rpcmem_sync_cache(mapped_ptr, RPCMEM_SYNC_END) == 0);
+    }
+  } else {
+#endif  // MACE_ENABLE_RPCMEM
+    auto cl_buffer = static_cast<cl::Buffer *>(buffer);
+    auto queue = opencl_runtime_->command_queue();
+    cl_int error = queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr,
+                                              nullptr, nullptr);
+    if (error != CL_SUCCESS) {
+      LOG(ERROR) << "Unmap buffer failed, error: "
+                 << OpenCLErrorToString(error);
+    }
+#ifdef MACE_ENABLE_RPCMEM
   }
+#endif  // MACE_ENABLE_RPCMEM
 }
 
 bool OpenCLAllocator::OnHost() const { return false; }
 
+#ifdef MACE_ENABLE_RPCMEM
+void OpenCLAllocator::CreateQualcommBufferIONHostPtr(
+    const size_t nbytes,
+    cl_mem_ion_host_ptr *ion_host) {
+  void *host = rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_FLAG_CACHED,
+                            nbytes + opencl_runtime_->qcom_ext_mem_padding());
+  MACE_CHECK_NOTNULL(host);
+  auto host_addr = reinterpret_cast<std::uintptr_t>(host);
+  auto page_size = opencl_runtime_->qcom_page_size();
+  MACE_CHECK(host_addr % page_size == 0, "ION memory address: ", host_addr,
+             " must be aligned to page size: ", page_size);
+  int fd = rpcmem_to_fd(host);
+  MACE_CHECK(fd >= 0, "Invalid rpcmem file descriptor: ", fd);
+
+  ion_host->ext_host_ptr.allocation_type = CL_MEM_ION_HOST_PTR_QCOM;
+  ion_host->ext_host_ptr.host_cache_policy =
+      opencl_runtime_->qcom_host_cache_policy();
+  ion_host->ion_filedesc = fd;
+  ion_host->ion_hostptr = host;
+}
+
+void OpenCLAllocator::CreateQualcommImageIONHostPtr(
+    const std::vector<size_t> &shape,
+    const cl::ImageFormat &format,
+    size_t *pitch,
+    cl_mem_ion_host_ptr *ion_host) {
+  cl_int error = clGetDeviceImageInfoQCOM(
+      opencl_runtime_->device().get(), shape[0], shape[1], &format,
+      CL_IMAGE_ROW_PITCH, sizeof(*pitch), pitch, nullptr);
+  MACE_CHECK(error == CL_SUCCESS, "clGetDeviceImageInfoQCOM failed, error: ",
+             OpenCLErrorToString(error));
+
+  CreateQualcommBufferIONHostPtr(*pitch * shape[1], ion_host);
+}
+#endif  // MACE_ENABLE_RPCMEM
 }  // namespace mace

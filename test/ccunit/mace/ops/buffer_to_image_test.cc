@@ -46,6 +46,9 @@ void TestBidirectionTransform(const OpenCLBufferType type,
       .Transform(&context, b2i_output,
                  type, MemoryType::GPU_BUFFER, 0, i2b_output);
 
+  net.Setup(DeviceType::GPU);
+  net.Sync();
+
   // Check
   ExpectTensorNear<T>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
                       1e-5);
@@ -187,6 +190,9 @@ void TestDiffTypeBidirectionTransform(const OpenCLBufferType type,
       .Transform(&context, b2i_output,
                  type, MemoryType::GPU_BUFFER, 0, i2b_output);
 
+  net.Setup(DeviceType::GPU);
+  net.Sync();
+
   // Check
   ExpectTensorNear<float>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
                           1e-3, 1e-6);
@@ -226,6 +232,9 @@ void TestStringHalfBidirectionTransform(const OpenCLBufferType type,
   OpenCLBufferTransformer(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
       .Transform(&context, b2i_output,
                  type, MemoryType::GPU_BUFFER, 0, i2b_output);
+
+  net.Setup(DeviceType::GPU);
+  net.Sync();
 
   // Check
   ExpectTensorNear<half>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),

@@ -1,0 +1,24 @@
+# These files are generated fron rpcmem project
+
+licenses(["notice"])
+
+exports_files(["license.txt"])
+
+load(
+    "//mace:mace.bzl",
+    "if_android_arm64",
+    "if_android_armv7",
+)
+
+cc_library(
+    name = "rpcmem",
+    srcs = if_android_armv7([
+        "armeabi-v7a/rpcmem.a",
+    ]) + if_android_arm64([
+        "arm64-v8a/rpcmem.a",
+    ]),
+    hdrs = [
+        "rpcmem.h",
+    ],
+    visibility = ["//visibility:public"],
+)

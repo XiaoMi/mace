@@ -110,7 +110,7 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
   bool is_out_of_range = false;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     oorc_flag->Map(nullptr);
-    is_out_of_range = *(oorc_flag->mutable_data<char>()) == 1 ? true : false;
+    is_out_of_range = *(oorc_flag->mutable_data<int>()) == 1 ? true : false;
     oorc_flag->UnMap();
   }
   return is_out_of_range ? MaceStatus::MACE_OUT_OF_RESOURCES

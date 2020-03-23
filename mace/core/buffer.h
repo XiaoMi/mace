@@ -54,11 +54,13 @@ class BufferBase {
 
   virtual void *Map(index_t offset,
                     index_t length,
-                    std::vector<size_t> *pitch) const = 0;
+                    std::vector<size_t> *pitch,
+                    bool finish_cmd_queue) const = 0;
 
   virtual void UnMap(void *mapped_ptr) const = 0;
 
-  virtual void Map(std::vector<size_t> *pitch) = 0;
+  virtual void Map(std::vector<size_t> *pitch,
+                   bool finish_cmd_queue = true) = 0;
 
   virtual void UnMap() = 0;
 
@@ -171,10 +173,13 @@ class Buffer : public BufferBase {
     return this->Allocate(nbytes);
   }
 
-  void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
+  void *Map(index_t offset,
+            index_t length,
+            std::vector<size_t> *pitch,
+            bool finish_cmd_queue) const {
     MACE_CHECK_NOTNULL(buf_);
     MACE_UNUSED(pitch);
-    return allocator_->Map(buf_, offset, length);
+    return allocator_->Map(buf_, offset, length, finish_cmd_queue);
   }
 
   void UnMap(void *mapped_ptr) const {
@@ -183,9 +188,9 @@ class Buffer : public BufferBase {
     allocator_->Unmap(buf_, mapped_ptr);
   }
 
-  void Map(std::vector<size_t> *pitch) {
+  void Map(std::vector<size_t> *pitch, bool finish_cmd_queue = true) {
     MACE_CHECK(mapped_buf_ == nullptr, "buf has been already mapped");
-    mapped_buf_ = Map(0, size_, pitch);
+    mapped_buf_ = Map(0, size_, pitch, finish_cmd_queue);
   }
 
   void UnMap() {
@@ -300,10 +305,14 @@ class Image : public BufferBase {
     return allocator_->NewImage(shape, data_type, &buf_);
   }
 
-  void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
+  void *Map(index_t offset,
+            index_t length,
+            std::vector<size_t> *pitch,
+            bool finish_cmd_queue) const {
     MACE_UNUSED(offset);
     MACE_UNUSED(length);
     MACE_UNUSED(pitch);
+    MACE_UNUSED(finish_cmd_queue);
     MACE_NOT_IMPLEMENTED;
     return nullptr;
   }
@@ -314,11 +323,11 @@ class Image : public BufferBase {
     allocator_->Unmap(buf_, mapped_ptr);
   }
 
-  void Map(std::vector<size_t> *pitch) {
+  void Map(std::vector<size_t> *pitch, bool finish_cmd_queue = true) {
     MACE_CHECK_NOTNULL(buf_);
     MACE_CHECK(mapped_buf_ == nullptr, "buf has been already mapped");
     MACE_CHECK_NOTNULL(pitch);
-    mapped_buf_ = allocator_->MapImage(buf_, shape_, pitch);
+    mapped_buf_ = allocator_->MapImage(buf_, shape_, pitch, finish_cmd_queue);
   }
 
   void UnMap() {
@@ -434,18 +443,21 @@ class BufferSlice : public BufferBase {
     return MaceStatus::MACE_SUCCESS;
   }
 
-  void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
-    return buffer_->Map(offset_ + offset, length, pitch);
+  void *Map(index_t offset,
+            index_t length,
+            std::vector<size_t> *pitch,
+            bool finish_cmd_queue) const {
+    return buffer_->Map(offset_ + offset, length, pitch, finish_cmd_queue);
   }
 
   void UnMap(void *mapped_ptr) const {
     buffer_->UnMap(mapped_ptr);
   }
 
-  void Map(std::vector<size_t> *pitch) {
+  void Map(std::vector<size_t> *pitch, bool finish_cmd_queue = true) {
     MACE_CHECK_NOTNULL(buffer_);
     MACE_CHECK(mapped_buf_ == nullptr, "mapped buf is not null");
-    mapped_buf_ = buffer_->Map(offset_, size_, pitch);
+    mapped_buf_ = buffer_->Map(offset_, size_, pitch, finish_cmd_queue);
   }
 
   void UnMap() {

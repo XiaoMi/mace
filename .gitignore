@@ -3,7 +3,6 @@ build/*
 cmake-build/
 cmake-build-debug/
 docs/_build/
-*.a
 
 .idea/
 .vscode/

@@ -45,6 +45,7 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DMACE_ENABLE_TESTS=ON                                 \
       -DMACE_ENABLE_BENCHMARKS=ON                            \
       -DMACE_ENABLE_CODE_MODE=${MACE_ENABLE_CODE_MODE}       \
+      -DMACE_ENABLE_RPCMEM=ON                                \
       -DCMAKE_INSTALL_PREFIX=install                         \
       ../../..
 make -j6 VERBOSE=1 && make install

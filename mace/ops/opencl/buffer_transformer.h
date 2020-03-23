@@ -66,7 +66,9 @@ class OpenCLBufferTransformer {
                 << " with data type " << dt;
         internal_tensor->Resize(input->shape());
         const uint8_t *input_ptr = input->data<uint8_t>();
-        Tensor::MappingGuard guard(internal_tensor);
+        // No need to finish the opencl command queue to write to the tensor
+        // from CPU, this can accelerate the mapping if using ION buffer.
+        Tensor::MappingGuard guard(internal_tensor, false);
         uint8_t *internal_ptr = internal_tensor->mutable_data<uint8_t>();
         memcpy(internal_ptr, input_ptr, input->raw_size());
         // 2. convert the internal GPU Buffer to output.

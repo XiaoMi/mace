@@ -59,6 +59,9 @@ void TestBidirectionTransform(const OpenCLBufferType type,
       .Transform(&context, bt_output,
                  type, MemoryType::GPU_BUFFER, 0, output);
 
+  net.Setup(DeviceType::GPU);
+  net.Sync();
+
   if (DataTypeToEnum<OrgType>::value == DataTypeToEnum<DstType>::value) {
     EXPECT_EQ(net.GetOutput("Input")->UnderlyingBuffer(),
               net.GetOutput("Output")->UnderlyingBuffer());
@@ -95,6 +98,9 @@ void TestArgumentTransform(const index_t input_size) {
       .Transform(&context, net.ws()->GetTensor("Input"),
                  OpenCLBufferType::ARGUMENT, MemoryType::GPU_BUFFER,
                  0, output);
+
+  net.Setup(DeviceType::GPU);
+  net.Sync();
 
   index_t expected_size = RoundUp<index_t>(input_size, 4);
   EXPECT_EQ(expected_size, output->buffer_shape()[0]);

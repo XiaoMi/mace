@@ -16,6 +16,7 @@
 #define MACE_CORE_RUNTIME_OPENCL_OPENCL_ALLOCATOR_H_
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "mace/core/allocator.h"
@@ -29,7 +30,7 @@ class OpenCLAllocator : public Allocator {
 
   ~OpenCLAllocator() override;
 
-  MaceStatus New(size_t nbytes, void **result) const override;
+  MaceStatus New(size_t nbytes, void **result) override;
 
   /*
    * Use Image2D with RGBA (128-bit) format to represent the image.
@@ -38,23 +39,37 @@ class OpenCLAllocator : public Allocator {
    */
   MaceStatus NewImage(const std::vector<size_t> &image_shape,
                       const DataType dt,
-                      void **result) const override;
+                      void **result) override;
 
-  void Delete(void *buffer) const override;
+  void Delete(void *buffer) override;
 
-  void DeleteImage(void *buffer) const override;
+  void DeleteImage(void *buffer) override;
 
-  void *Map(void *buffer, size_t offset, size_t nbytes) const override;
+  void *Map(void *buffer,
+            size_t offset,
+            size_t nbytes,
+            bool finish_cmd_queue) const override;
 
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,
-                 std::vector<size_t> *mapped_image_pitch) const override;
+                 std::vector<size_t> *mapped_image_pitch,
+                 bool finish_cmd_queue) const override;
 
   void Unmap(void *buffer, void *mapped_ptr) const override;
 
   bool OnHost() const override;
 
  private:
+#ifdef MACE_ENABLE_RPCMEM
+  void CreateQualcommBufferIONHostPtr(const size_t nbytes,
+                                      cl_mem_ion_host_ptr *ion_host);
+  void CreateQualcommImageIONHostPtr(const std::vector<size_t> &shape,
+                                     const cl::ImageFormat &format,
+                                     size_t *pitch,
+                                     cl_mem_ion_host_ptr *ion_host);
+
+  std::unordered_map<void *, void *> cl_to_host_map_;
+#endif  // MACE_ENABLE_RPCMEM
   OpenCLRuntime *opencl_runtime_;
 };
 

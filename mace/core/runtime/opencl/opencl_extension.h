@@ -37,4 +37,8 @@ typedef cl_uint cl_priority_hint;
 
 /* Accepted by clGetKernelWorkGroupInfo */
 #define CL_KERNEL_WAVE_SIZE_QCOM 0xAA02
+
+// Cache policy specifying io-coherence
+#define CL_MEM_HOST_IOCOHERENT_QCOM 0x40A9
+
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_EXTENSION_H_

@@ -34,12 +34,12 @@ mkdir -p $LIB_DIR/aarch64_linux_gnu/cpu_gpu
 
 # build shared libraries
 echo "build shared lib for armeabi-v7a + cpu_gpu_dsp"
-bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=armeabi-v7a
+bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
 cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
 cp third_party/nnlib/armeabi-v7a/*so $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
 
 echo "build shared lib for arm64-v8a + cpu_gpu_dsp"
-bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=arm64-v8a
+bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=arm64-v8a --define rpcmem=true
 cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/arm64-v8a/cpu_gpu_dsp/
 cp third_party/nnlib/arm64-v8a/*so $LIB_DIR/arm64-v8a/cpu_gpu_dsp/
 
@@ -49,11 +49,11 @@ cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/arm64-v8a/cpu_gpu_apu/
 cp third_party/apu/*so $LIB_DIR/arm64-v8a/cpu_gpu_apu/
 
 echo "build shared lib for armeabi-v7a + cpu_gpu"
-bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define quantize=true --cpu=armeabi-v7a
+bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
 cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/armeabi-v7a/cpu_gpu/
 
 echo "build shared lib for arm64-v8a + cpu_gpu"
-bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define quantize=true --cpu=arm64-v8a
+bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define quantize=true --cpu=arm64-v8a --define rpcmem=true
 cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/arm64-v8a/cpu_gpu/
 
 echo "build shared lib for arm_linux_gnueabihf + cpu_gpu"
@@ -72,12 +72,12 @@ fi
 
 # build static libraries
 echo "build static lib for armeabi-v7a + cpu_gpu_dsp"
-bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=armeabi-v7a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
 cp third_party/nnlib/armeabi-v7a/*so $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
 
 echo "build static lib for arm64-v8a + cpu_gpu_dsp"
-bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=arm64-v8a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=arm64-v8a --define rpcmem=true
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/arm64-v8a/cpu_gpu_dsp/
 cp third_party/nnlib/arm64-v8a/*so $LIB_DIR/arm64-v8a/cpu_gpu_dsp/
 
@@ -87,11 +87,11 @@ cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/arm64-v8a/cpu_gpu_apu/
 cp third_party/apu/*so $LIB_DIR/arm64-v8a/cpu_gpu_apu/
 
 echo "build static lib for armeabi-v7a + cpu_gpu"
-bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define quantize=true --cpu=armeabi-v7a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/armeabi-v7a/cpu_gpu/
 
 echo "build static lib for arm64-v8a + cpu_gpu"
-bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define quantize=true --cpu=arm64-v8a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define quantize=true --cpu=arm64-v8a --define rpcmem=true
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/arm64-v8a/cpu_gpu/
 
 echo "build static lib for arm_linux_gnueabihf + cpu_gpu"
