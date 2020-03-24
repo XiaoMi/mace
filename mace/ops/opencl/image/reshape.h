@@ -36,7 +36,8 @@ class ReshapeKernel : public OpenCLReshapeKernel {
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,
                      const std::vector<index_t> &new_shape,
-                     Tensor *output) override;
+                     Tensor *output,
+                     const DataFormat op_data_format) override;
 
  private:
   std::unique_ptr<Tensor> inter_buffer_;

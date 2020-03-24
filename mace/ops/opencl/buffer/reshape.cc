@@ -26,8 +26,10 @@ namespace buffer {
 MaceStatus ReshapeKernel::Compute(OpContext *context,
                                   const Tensor *input,
                                   const std::vector<index_t> &new_shape,
-                                  Tensor *output) {
+                                  Tensor *output,
+                                  const DataFormat op_data_format) {
   MACE_UNUSED(context);
+  MACE_UNUSED(op_data_format);
   output->ReuseTensorBuffer(*input);
   output->Reshape(new_shape);
 

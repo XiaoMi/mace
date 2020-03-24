@@ -35,7 +35,8 @@ class OpenCLReshapeKernel {
   virtual MaceStatus Compute(OpContext *context,
                              const Tensor *input,
                              const std::vector<index_t> &new_shape,
-                             Tensor *output) = 0;
+                             Tensor *output,
+                             const DataFormat op_data_format) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLReshapeKernel);
 };
 
