@@ -137,8 +137,9 @@ class ReshapeOp<GPU, float> : public Operation {
     MACE_RETURN_IF_ERROR(
         GetOutputShape(input, shape_data, num_dims, &out_shape));
 
+    DataFormat op_data_format = static_cast<DataFormat>(Operation::GetOptionalArg("data_format", static_cast<int>(DataFormat::NONE)));
     Tensor *output = this->Output(OUTPUT);
-    return kernel_->Compute(context, input, out_shape, output);
+    return kernel_->Compute(context, input, out_shape, output, op_data_format);
   }
 
  private:
