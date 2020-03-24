@@ -1394,12 +1394,21 @@ class Transformer(base_converter.ConverterInterface):
     def is_transposable_data_format_ops(self, op):
         if op.type == MaceOp.Reshape:
             input_op = self._producer[op.input[0]]
-            out_dims_len = len(op.output_shape[0].dims)
+            input_dims = input_op.output_shape[0].dims
+            output_dims = op.output_shape[0].dims
+            tranposable = True
             if len(input_op.output_shape) != 1 or \
-                len(input_op.output_shape[0].dims) != 4 \
-                    or (out_dims_len != 4 and out_dims_len != 2):
+                len(input_dims) != 4 or len(output_dims) != 4:
+                tranposable = False
+            else:
+                in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
+                    input_dims, ConverterUtil.data_format(input_op))
+                ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
+                    output_dims, ConverterUtil.data_format(op))
+                tranposable = (in_b == ou_b and in_c == ou_c)
+            if not tranposable:
                 print("In this model, reshape is not transposable op.")
-                return False
+                return tranposable
         return op.type in MaceTransposableDataFormatOps
 
     def update_data_format(self):
