@@ -953,14 +953,12 @@ class DeviceWrapper:
 class DeviceManager:
     @classmethod
     def list_adb_device(cls):
-        adb_list = sh.adb('devices').stdout.decode('utf-8'). \
-                       strip().split('\n')[1:]
-        adb_list = [tuple(pair.split('\t')) for pair in adb_list]
         devices = []
+        adb_list = sh_commands.adb_devices()
         for adb in adb_list:
             if adb[1].startswith("no permissions"):
                 continue
-            prop = sh_commands.adb_getprop_by_serialno(adb[0])
+            prop = sh_commands.adb_getprop_by_serialno(adb)
             android = {
                 YAMLKeyword.device_name:
                     prop['ro.product.model'].replace(' ', ''),
@@ -968,7 +966,7 @@ class DeviceManager:
                     prop['ro.product.cpu.abilist'].split(','),
                 YAMLKeyword.target_socs: prop['ro.board.platform'],
                 YAMLKeyword.system: SystemType.android,
-                YAMLKeyword.address: adb[0],
+                YAMLKeyword.address: adb,
                 YAMLKeyword.username: '',
             }
             if android not in devices:
