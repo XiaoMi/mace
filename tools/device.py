@@ -956,8 +956,6 @@ class DeviceManager:
         devices = []
         adb_list = sh_commands.adb_devices()
         for adb in adb_list:
-            if adb[1].startswith("no permissions"):
-                continue
             prop = sh_commands.adb_getprop_by_serialno(adb)
             android = {
                 YAMLKeyword.device_name:
