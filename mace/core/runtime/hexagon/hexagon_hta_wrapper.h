@@ -16,17 +16,39 @@
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_HTA_WRAPPER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
-#include "mace/utils/thread_pool.h"
-#include "mace/core/quantize.h"
-#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
-#include "mace/core/tensor.h"
 #include "mace/core/device.h"
+#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#include "mace/core/runtime/hexagon/hexagon_hta_transformer.h"
+#include "mace/core/tensor.h"
 #include "mace/public/mace.h"
+#include "third_party/hta/hta_hexagon_api.h"
 
 namespace mace {
+
+struct HTAInOutInfo : public InOutInfo {
+  HTAInOutInfo(const std::string &name,
+               const std::vector<index_t> &shape,
+               const DataType data_type,
+               const float scale,
+               const int32_t zero_point,
+               std::unique_ptr<Tensor> quantized_tensor,
+               std::unique_ptr<Tensor> hta_tensor)
+      :  InOutInfo(name, shape, data_type),
+         scale(scale),
+         zero_point(zero_point),
+         quantized_tensor(std::move(quantized_tensor)),
+         hta_tensor(std::move(hta_tensor)) {}
+
+  float scale;
+  int32_t zero_point;
+  std::unique_ptr<Tensor> quantized_tensor;
+  std::unique_ptr<Tensor> hta_tensor;
+};
 
 class HexagonHTAWrapper : public HexagonControlWrapper {
  public:
@@ -50,7 +72,12 @@ class HexagonHTAWrapper : public HexagonControlWrapper {
   void SetDebugLevel(int level) override;
 
  private:
-  QuantizeUtil<float, uint8_t> quantize_util_;
+  Allocator *allocator_;
+  std::vector<HTAInOutInfo> input_info_;
+  std::vector<HTAInOutInfo> output_info_;
+  std::vector<hexagon_hta_nn_hw_tensordef> input_tensordef_;
+  std::vector<hexagon_hta_nn_hw_tensordef> output_tensordef_;
+  std::unique_ptr<HexagonHTATranformerBase> transformer_;
   MACE_DISABLE_COPY_AND_ASSIGN(HexagonHTAWrapper);
 };
 }  // namespace mace

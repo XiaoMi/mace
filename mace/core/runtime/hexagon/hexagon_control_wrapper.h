@@ -25,27 +25,15 @@
 #include "mace/public/mace.h"
 
 namespace mace {
-
 struct InOutInfo {
   InOutInfo(const std::string &name,
             const std::vector<index_t> &shape,
-            const DataType data_type,
-            const float scale,
-            const int32_t zero_point,
-            std::unique_ptr<Tensor> tensor_u8)
-      :  name(name),
-         shape(shape),
-         data_type(data_type),
-         scale(scale),
-         zero_point(zero_point),
-         tensor_u8(std::move(tensor_u8)) {}
+            const DataType data_type)
+      :  name(name), shape(shape), data_type(data_type) {}
 
   std::string name;
   std::vector<index_t> shape;
   DataType data_type;
-  float scale;
-  int32_t zero_point;
-  std::unique_ptr<Tensor> tensor_u8;
 };
 
 class HexagonControlWrapper {
@@ -79,8 +67,6 @@ class HexagonControlWrapper {
 
   int nn_id_;
 
-  std::vector<InOutInfo> input_info_;
-  std::vector<InOutInfo> output_info_;
   int num_inputs_;
   int num_outputs_;
 

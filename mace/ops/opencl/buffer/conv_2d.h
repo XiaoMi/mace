@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "mace/ops/opencl/buffer/utils.h"
-#include "mace/ops/opencl/helper.h"
+#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/utils/memory.h"
 
 namespace mace {

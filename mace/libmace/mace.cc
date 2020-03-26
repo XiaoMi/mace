@@ -520,9 +520,23 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   if (device_type_ == DeviceType::HEXAGON
       || device_type_ == DeviceType::HTA) {
+#ifdef MACE_ENABLE_OPENCL
+    device_.reset(new HexagonDevice(
+        device_type_, thread_pool_.get(),
+        make_unique<GPUDevice>(
+            config.impl_->gpu_context()->opencl_tuner(),
+            config.impl_->gpu_context()->opencl_cache_storage(),
+            config.impl_->gpu_priority_hint(),
+            config.impl_->gpu_perf_hint(),
+            config.impl_->gpu_context()->opencl_binary_storage(),
+            config.impl_->num_threads(),
+            config.impl_->cpu_affinity_policy(),
+            thread_pool_.get())));
+#else
     device_.reset(new HexagonDevice(device_type_, thread_pool_.get()));
+#endif  // MACE_ENABLE_OPENCL
   }
-#endif
+#endif  // defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
 #ifdef MACE_ENABLE_APU
   if (device_type_ == DeviceType::APU) {
     device_.reset(new ApuDevice(thread_pool_.get()));
@@ -579,15 +593,19 @@ MaceStatus MaceEngine::Impl::Init(
                  << MakeString(MapKeys(output_info_map_));
     }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-    DataType output_dt = output_info_map_[output_name].data_type();
-    Tensor *output_tensor =
-        ws_->CreateTensor(output_name, device_->allocator(), output_dt);
-    output_tensor->set_data_format(DataFormat::NHWC);
+    if (device_type_ == HEXAGON || device_type_ == HTA) {
+      DataType output_dt = output_info_map_[output_name].data_type();
+      Tensor *output_tensor =
+          ws_->CreateTensor(output_name, device_->allocator(), output_dt);
+      output_tensor->set_data_format(DataFormat::NHWC);
+    }
 #endif
 #if defined(MACE_ENABLE_APU)
-    Tensor *output_tensor =
-        ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
-    output_tensor->set_data_format(DataFormat::NHWC);
+    if (device_type_ == DeviceType::APU) {
+      Tensor *output_tensor =
+          ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
+      output_tensor->set_data_format(DataFormat::NHWC);
+    }
 #endif
   }
 #ifdef MACE_ENABLE_HEXAGON

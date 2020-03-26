@@ -7,6 +7,10 @@ file(GLOB MACE_CC_TEST_SRCS
   mace/libmace/*.cc
 )
 
+if(MACE_ENABLE_HTA)
+  set(MACE_CC_TEST_SRCS ${MACE_CC_TEST_SRCS} mace/core/runtime/hexagon/hta_transform_test.cc)
+endif(MACE_ENABLE_HTA)
+
 add_executable(mace_cc_test ${MACE_CC_TEST_SRCS})
 target_link_libraries(mace_cc_test PUBLIC
   mace_cc_test_utils

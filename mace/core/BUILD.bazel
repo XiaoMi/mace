@@ -28,21 +28,37 @@ cc_library(
             "*.cc",
             "runtime/cpu/*.cc",
         ],
+        exclude = [
+            "rpcmem.cc",
+        ],
     ) + if_opencl_enabled(glob(
         [
             "runtime/opencl/*.cc",
         ],
-    )) + if_hexagon_enabled([
+    )) + if_hexagon_or_hta_enabled([
+        "runtime/hexagon/hexagon_allocator.h",
+        "runtime/hexagon/hexagon_allocator.cc",
+        "runtime/hexagon/hexagon_device.cc",
+    ]) + if_hexagon_enabled([
         "runtime/hexagon/hexagon_dsp_wrapper.cc",
     ]) + if_hta_enabled([
+        "runtime/hexagon/hexagon_hta_transformer.h",
+        "runtime/hexagon/hexagon_hta_transformer.cc",
         "runtime/hexagon/hexagon_hta_wrapper.cc",
     ]) + if_apu_enabled(glob([
         "runtime/apu/*.cc",
-    ])),
-    hdrs = glob([
-        "*.h",
-        "runtime/cpu/*.h",
-    ]) + if_opencl_enabled(glob([
+    ])) + if_rpcmem_enabled([
+        "rpcmem.cc",
+    ]),
+    hdrs = glob(
+        [
+            "*.h",
+            "runtime/cpu/*.h",
+        ],
+        exclude = [
+            "rpcmem.h",
+        ],
+    ) + if_opencl_enabled(glob([
         "runtime/opencl/*.h",
     ])) + if_hexagon_or_hta_enabled(glob([
         "runtime/hexagon/hexagon_control_wrapper.h",
@@ -53,7 +69,9 @@ cc_library(
         "runtime/hexagon/*hta*.h",
     ])) + if_apu_enabled(glob([
         "runtime/apu/*.h"
-    ])),
+    ])) + if_rpcmem_enabled([
+        "rpcmem.h",
+    ]),
     copts = [
         "-Werror",
         "-Wextra",

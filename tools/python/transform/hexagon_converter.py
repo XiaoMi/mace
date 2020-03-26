@@ -295,6 +295,20 @@ class HexagonConverter(base_converter.ConverterInterface):
             else:
                 index += 1
 
+        if self._option.device == DeviceType.HTA.value:
+            # replace QuantizeINPUT_f_to_8 with INPUT
+            quantize_input_op.type = HexagonOp.INPUT.name
+            del quantize_input_op.output_shape[1:]
+            del quantize_input_op.output_type[1:]
+            del quantize_input_op.out_max_byte_size[1:]
+
+            # replace first op's input min max with constant
+            self.add_constant_min_max_for_first_op(self._model.op[1])
+
+            # replace DequantizeOUTPUT_8tof with OUTPUT
+            dequantize_output_op.type = HexagonOp.OUTPUT.name
+            del dequantize_output_op.input[1:]
+
         return quantize_input_op.output
 
     def add_node_id(self, model_inputs):

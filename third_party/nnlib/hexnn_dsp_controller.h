@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -41,10 +41,6 @@ extern "C" {
 #endif
 
 int hexnn_controller_request_unsigned_pd();
-
-int hexnn_controller_init();
-
-int hexnn_controller_deinit();
 
 #ifdef __cplusplus
 }

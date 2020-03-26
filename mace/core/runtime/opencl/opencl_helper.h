@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_HELPER_H_
-#define MACE_OPS_OPENCL_HELPER_H_
+#ifndef MACE_CORE_RUNTIME_OPENCL_OPENCL_HELPER_H_
+#define MACE_CORE_RUNTIME_OPENCL_OPENCL_HELPER_H_
 
 #include <memory>
 #include <string>
@@ -30,7 +30,6 @@
 #include "mace/utils/math.h"
 
 namespace mace {
-namespace ops {
 // oorc for 'Out Of Range Check'
 #define MACE_OUT_OF_RANGE_DEFINITION           \
   std::shared_ptr<BufferBase> oorc_flag;
@@ -161,6 +160,5 @@ std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
                                        const uint32_t *gws,
                                        const uint32_t kwg_size);
 
-}  // namespace ops
 }  // namespace mace
-#endif  // MACE_OPS_OPENCL_HELPER_H_
+#endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_HELPER_H_

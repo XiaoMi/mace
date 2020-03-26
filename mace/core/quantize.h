@@ -117,8 +117,11 @@ inline void GetOutputMultiplierAndShift(
 template<typename F, typename Q>
 class QuantizeUtil {
  public:
+  QuantizeUtil() = default;
   explicit QuantizeUtil(utils::ThreadPool *thread_pool)
       : thread_pool_(thread_pool) {}
+
+  void Init(utils::ThreadPool *thread_pool) { thread_pool_ = thread_pool; }
 
   void QuantizeWithScaleAndZeropoint(const float *input,
                                      const index_t size,

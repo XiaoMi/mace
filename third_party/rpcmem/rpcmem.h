@@ -6,6 +6,8 @@
 #ifndef RPCMEM_H
 #define RPCMEM_H
 
+#include <stdint.h>
+
 /**
  * RPCMEM_DEFAULT_HEAP
  * Dynamicaly select the heap to use.  This should be ok for most usecases.
@@ -77,16 +79,25 @@
 extern "C" {
 #endif
 
+typedef struct rpcmem rpcmem;
+struct rpcmem {
+  void *lst;  // QList*
+  void *mt;   // pthread_mutex_t*
+  int ionfd;
+  int flag;
+  int ionversion;
+};
+
 /**
  * call once to initialize the library
- * NOTE: rpcmem_init is not thread safe
+ * NOTE: rpcmem_init is now thread safe
  */
-void rpcmem_init(void);
+void rpcmem_init(rpcmem *rm);
 /**
  * call once for cleanup
- * NOTE: rpcmem_deinit is not thread safe
+ * NOTE: rpcmem_deinit is now thread safe
  */
-void rpcmem_deinit(void);
+void rpcmem_deinit(rpcmem *rm);
 
 /**
  * Allocate via ION a buffer of size
@@ -96,10 +107,10 @@ void rpcmem_deinit(void);
  * @retval, 0 on failure, pointer to buffer on success
  *
  * For example:
- *    buf = rpcmem_alloc(RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
+ *    buf = rpcmem_alloc(rm, RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
  */
 
-void* rpcmem_alloc(int heapid, unsigned int flags, int size);
+void* rpcmem_alloc(rpcmem *rm, int heapid, uint32_t flags, int size);
 
 /**
  * allocate with default settings
@@ -107,24 +118,24 @@ void* rpcmem_alloc(int heapid, unsigned int flags, int size);
  #if !defined(WINNT) && !defined (_WIN32_WINNT)
 __attribute__((unused))
 #endif
-static __inline void* rpcmem_alloc_def(int size) {
-   return rpcmem_alloc(RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
+static __inline void* rpcmem_alloc_def(rpcmem *rm, int size) {
+  return rpcmem_alloc(rm, RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
 }
 
 /**
  * free buffer, ignores invalid buffers
  */
-void rpcmem_free(void* po);
+void rpcmem_free(rpcmem *rm, void* po);
 
 /**
  * returns associated fd
  */
-int rpcmem_to_fd(void* po);
+int rpcmem_to_fd(rpcmem *rm, void* po);
 
 /**
  * cache coherency management
  */
-int rpcmem_sync_cache(void* po, unsigned int flags);
+int rpcmem_sync_cache(rpcmem *rm, void* po, uint32_t flags);
 
 #ifdef __cplusplus
 }

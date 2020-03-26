@@ -56,7 +56,8 @@ class HexagonDSPWrapper : public HexagonControlWrapper {
   uint64_t GetLastExecuteCycles();
 
   bool log_execute_time_;
-
+  std::vector<InOutInfo> input_info_;
+  std::vector<InOutInfo> output_info_;
   MACE_DISABLE_COPY_AND_ASSIGN(HexagonDSPWrapper);
 };
 }  // namespace mace

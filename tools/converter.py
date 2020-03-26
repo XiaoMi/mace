@@ -218,7 +218,8 @@ def get_opencl_mode(configs):
                 YAMLKeyword.runtime, "")
         runtime_list.append(model_runtime.lower())
 
-    if RuntimeType.gpu in runtime_list or RuntimeType.cpu_gpu in runtime_list:
+    if RuntimeType.gpu in runtime_list or RuntimeType.cpu_gpu in runtime_list \
+            or RuntimeType.hta in runtime_list:
         return True
     return False
 

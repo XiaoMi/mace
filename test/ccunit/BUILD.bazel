@@ -9,6 +9,7 @@ load(
     "if_android",
     "if_android_armv7",
     "if_hexagon_enabled",
+    "if_hta_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
     "if_openmp_enabled",
@@ -41,7 +42,9 @@ cc_test(
         [
             "mace/ops/opencl/*.cc",
         ]
-    )),
+    )) + if_hta_enabled([
+        "mace/core/runtime/hexagon/hta_transform_test.cc",
+    ]),
     copts = [
         "-Werror",
         "-Wextra",
@@ -59,6 +62,8 @@ cc_test(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_hta_enabled([
+        "-DMACE_ENABLE_HTA",
     ]),
     linkopts = if_openmp_enabled([
         "-fopenmp",

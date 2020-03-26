@@ -23,7 +23,7 @@
 
 #include "mace/core/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/opencl/helper.h"
+#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/ops/common/reduce_type.h"
 
 namespace mace {

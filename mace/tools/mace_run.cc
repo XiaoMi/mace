@@ -175,9 +175,9 @@ bool RunModel(const std::string &model_name,
   if (status != MaceStatus::MACE_SUCCESS) {
     LOG(WARNING) << "Set openmp or cpu affinity failed.";
   }
-#ifdef MACE_ENABLE_OPENCL
+#if defined(MACE_ENABLE_OPENCL) || defined(MACE_ENABLE_HTA)
   std::shared_ptr<GPUContext> gpu_context;
-  if (device_type == DeviceType::GPU) {
+  if (device_type == DeviceType::GPU || device_type == DeviceType::HTA) {
     const char *storage_path_ptr = getenv("MACE_INTERNAL_STORAGE_PATH");
     const std::string storage_path =
         std::string(storage_path_ptr == nullptr ?

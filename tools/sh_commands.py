@@ -605,18 +605,20 @@ def create_internal_storage_dir(serialno, phone_data_dir):
 
 def push_depended_so_libs(libmace_dynamic_library_path,
                           abi, phone_data_dir, serialno):
-    dep_so_libs = sh.bash(os.environ["ANDROID_NDK_HOME"] + "/ndk-depends",
-                          libmace_dynamic_library_path)
-    src_file = ""
-    for dep in split_stdout(dep_so_libs):
-        if dep == "libgnustl_shared.so":
-            src_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
-                       "%s/libgnustl_shared.so" \
-                       % (os.environ["ANDROID_NDK_HOME"], abi)
-        elif dep == "libc++_shared.so":
-            src_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
-                       "%s/libc++_shared.so"\
-                       % (os.environ["ANDROID_NDK_HOME"], abi)
+    src_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
+               "%s/libc++_shared.so" \
+               % (os.environ["ANDROID_NDK_HOME"], abi)
+    try:
+        dep_so_libs = sh.bash(os.environ["ANDROID_NDK_HOME"] + "/ndk-depends",
+                              libmace_dynamic_library_path)
+    except sh.ErrorReturnCode_127:
+        print("Find no ndk-depends, use default libc++_shared.so")
+    else:
+        for dep in split_stdout(dep_so_libs):
+            if dep == "libgnustl_shared.so":
+                src_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
+                           "%s/libgnustl_shared.so" \
+                           % (os.environ["ANDROID_NDK_HOME"], abi)
     print("push %s to %s" % (src_file, phone_data_dir))
     adb_push(src_file, phone_data_dir, serialno)
 

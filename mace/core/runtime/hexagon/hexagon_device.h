@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "mace/core/device.h"
+#include "mace/core/runtime/hexagon/hexagon_allocator.h"
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #ifdef MACE_ENABLE_HEXAGON
 #include "mace/core/runtime/hexagon/hexagon_dsp_wrapper.h"
@@ -26,44 +27,39 @@
 #ifdef MACE_ENABLE_HTA
 #include "mace/core/runtime/hexagon/hexagon_hta_wrapper.h"
 #endif
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/gpu_device.h"
+#include "mace/core/runtime/opencl/gpu_runtime.h"
+#endif
 
 namespace mace {
 
 class HexagonDevice : public CPUDevice {
  public:
-  explicit HexagonDevice(DeviceType device_type,
-                         utils::ThreadPool *thread_pool)
-      : CPUDevice(0, AFFINITY_NONE, thread_pool),
-        device_type_(device_type) {}
+  HexagonDevice(DeviceType device_type,
+#ifdef MACE_ENABLE_OPENCL
+                utils::ThreadPool *thread_pool,
+                std::unique_ptr<GPUDevice> gpu_device);
+#else
+                utils::ThreadPool *thread_pool);
+#endif  // MACE_ENABLE_OPENCL
 
-  DeviceType device_type() const override {
-    return device_type_;
-  };
+#ifdef MACE_ENABLE_OPENCL
+  GPURuntime *gpu_runtime() override;
+#endif  // MACE_ENABLE_OPENCL
+  Allocator *allocator() override;
+  DeviceType device_type() const override;
 
  private:
+  std::unique_ptr<HexagonAllocator> allocator_;
   DeviceType device_type_;
+#ifdef MACE_ENABLE_OPENCL
+  std::unique_ptr<GPUDevice> gpu_device_;
+#endif  // MACE_ENABLE_OPENCL
 };
 
 std::unique_ptr<HexagonControlWrapper> CreateHexagonControlWrapper(
-    Device *device) {
-  std::unique_ptr<HexagonControlWrapper> hexagon_controller;
-  auto device_type = device->device_type();
-  switch (device_type) {
-#ifdef MACE_ENABLE_HEXAGON
-    case HEXAGON:
-      hexagon_controller = make_unique<HexagonDSPWrapper>();
-      break;
-#endif
-#ifdef MACE_ENABLE_HTA
-    case HTA:
-      hexagon_controller = make_unique<HexagonHTAWrapper>(device);
-      break;
-#endif
-    default:LOG(FATAL) << "Not supported Hexagon device type: " << device_type;
-  }
-
-  return hexagon_controller;
-}
+    Device *device);
 
 }  // namespace mace
 #endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_DEVICE_H_

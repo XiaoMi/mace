@@ -107,8 +107,6 @@ hexagon_nn_corner_type TransformCornerType(HexagonNNCornerType corner) {
 }  // namespace
 
 HexagonDSPWrapper::HexagonDSPWrapper() {
-  hexnn_controller_init();
-
   std::string env_log_execute_time_str;
   GetEnv("MACE_DSP_LOG_EXECUTE_TIME", &env_log_execute_time_str);
   if (env_log_execute_time_str.empty()) {
@@ -119,9 +117,7 @@ HexagonDSPWrapper::HexagonDSPWrapper() {
   }
 }
 
-HexagonDSPWrapper::~HexagonDSPWrapper() {
-  hexnn_controller_deinit();
-}
+HexagonDSPWrapper::~HexagonDSPWrapper() {}
 
 int HexagonDSPWrapper::GetVersion() {
   int version;
@@ -258,10 +254,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     }
     input_info_.emplace_back(input_info.name(),
                              input_shape,
-                             input_info.data_type(),
-                             input_info.scale(),
-                             input_info.zero_point(),
-                             make_unique<Tensor>());
+                             input_info.data_type());
   }
 
   // output info
@@ -275,10 +268,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     }
     output_info_.emplace_back(output_info.name(),
                               output_shape,
-                              output_info.data_type(),
-                              output_info.scale(),
-                              output_info.zero_point(),
-                              make_unique<Tensor>());
+                              output_info.data_type());
     VLOG(1) << "OutputInfo: "
             << "\n\t shape: " << output_shape[0] << " " << output_shape[1]
             << " " << output_shape[2] << " " << output_shape[3]

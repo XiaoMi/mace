@@ -48,16 +48,20 @@ class OpenCLAllocator : public Allocator {
   void *Map(void *buffer,
             size_t offset,
             size_t nbytes,
-            bool finish_cmd_queue) const override;
+            bool finish_cmd_queue) override;
 
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,
                  std::vector<size_t> *mapped_image_pitch,
-                 bool finish_cmd_queue) const override;
+                 bool finish_cmd_queue) override;
 
-  void Unmap(void *buffer, void *mapped_ptr) const override;
+  void Unmap(void *buffer, void *mapped_ptr) override;
 
   bool OnHost() const override;
+
+#ifdef MACE_ENABLE_RPCMEM
+  Rpcmem *rpcmem() override;
+#endif  // MACE_ENABLE_RPCMEM
 
  private:
 #ifdef MACE_ENABLE_RPCMEM
@@ -69,6 +73,7 @@ class OpenCLAllocator : public Allocator {
                                      cl_mem_ion_host_ptr *ion_host);
 
   std::unordered_map<void *, void *> cl_to_host_map_;
+  Rpcmem rpcmem_;
 #endif  // MACE_ENABLE_RPCMEM
   OpenCLRuntime *opencl_runtime_;
 };

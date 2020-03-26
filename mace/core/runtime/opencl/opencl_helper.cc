@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/opencl/helper.h"
+#include "mace/core/runtime/opencl/opencl_helper.h"
 
 #include <algorithm>
 #include <string>
@@ -22,7 +22,6 @@
 #include "mace/utils/math.h"
 
 namespace mace {
-namespace ops {
 
 std::vector<index_t> FormatBufferShape(
     const std::vector<index_t> &buffer_shape,
@@ -59,8 +58,10 @@ std::string DtToCLDt(const DataType dt) {
       return "float";
     case DT_HALF:
       return "half";
+    case DT_UINT8:
+      return "uchar";
     default:
-      LOG(FATAL) << "Unsupported data type";
+      LOG(FATAL) << "Unsupported data type: " << dt;
       return "";
   }
 }
@@ -365,5 +366,4 @@ MaceStatus TuningOrRun2DKernel(OpenCLRuntime *runtime,
   return MaceStatus::MACE_SUCCESS;
 }
 
-}  // namespace ops
 }  // namespace mace

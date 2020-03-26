@@ -17,7 +17,7 @@
 #include "mace/core/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/opencl/helper.h"
+#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/ops/opencl/lpnorm.h"
 
 namespace mace {

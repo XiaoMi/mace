@@ -16,6 +16,54 @@
 
 namespace mace {
 
+MaceStatus Allocator::NewImage(const std::vector<size_t> &image_shape,
+                               const DataType dt,
+                               void **result) {
+  MACE_UNUSED(image_shape);
+  MACE_UNUSED(dt);
+  MACE_UNUSED(result);
+  MACE_NOT_IMPLEMENTED;
+  return MaceStatus::MACE_SUCCESS;
+}
+
+void Allocator::DeleteImage(void *data) {
+  MACE_UNUSED(data);
+  MACE_NOT_IMPLEMENTED;
+}
+
+void *Allocator::Map(void *buffer,
+                     size_t offset,
+                     size_t nbytes,
+                     bool finish_cmd_queue) {
+  MACE_UNUSED(nbytes);
+  MACE_UNUSED(finish_cmd_queue);
+  return reinterpret_cast<char*>(buffer) + offset;
+}
+
+void *Allocator::MapImage(void *buffer,
+                          const std::vector<size_t> &image_shape,
+                          std::vector<size_t> *mapped_image_pitch,
+                          bool finish_cmd_queue) {
+  MACE_UNUSED(buffer);
+  MACE_UNUSED(image_shape);
+  MACE_UNUSED(mapped_image_pitch);
+  MACE_UNUSED(finish_cmd_queue);
+  MACE_NOT_IMPLEMENTED;
+  return nullptr;
+}
+
+void Allocator::Unmap(void *buffer, void *mapper_ptr) {
+  MACE_UNUSED(buffer);
+  MACE_UNUSED(mapper_ptr);
+}
+
+#ifdef MACE_ENABLE_RPCMEM
+Rpcmem *Allocator::rpcmem() {
+  MACE_NOT_IMPLEMENTED;
+  return nullptr;
+}
+#endif  // MACE_ENABLE_RPCMEM
+
 Allocator *GetCPUAllocator() {
   static CPUAllocator allocator;
   return &allocator;

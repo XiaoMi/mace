@@ -21,6 +21,11 @@ mkdir -p $LIB_DIR/arm64-v8a/cpu_gpu_dsp
 mkdir -p $LIB_DIR/arm64-v8a/cpu_gpu
 mkdir -p $LIB_DIR/arm64-v8a/cpu_gpu_apu
 
+if [[ "$BUILD_HTA" == "1" ]]; then
+    mkdir -p $LIB_DIR/armeabi-v7a/cpu_gpu_hta
+    mkdir -p $LIB_DIR/arm64-v8a/cpu_gpu_hta
+fi
+
 rm -rf $LIB_DIR/linux-x86-64
 mkdir -p $LIB_DIR/linux-x86-64
 
@@ -33,6 +38,18 @@ mkdir -p $LIB_DIR/aarch64_linux_gnu/cpu_gpu
 
 
 # build shared libraries
+if [[ "$BUILD_HTA" == "1" ]]; then
+	echo "build shared lib for armeabi-v7a + cpu_gpu_hta"
+	bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hta=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
+	cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/armeabi-v7a/cpu_gpu_hta/
+	cp third_party/hta/armeabi-v7a/*so $LIB_DIR/armeabi-v7a/cpu_gpu_hta/
+
+	echo "build shared lib for arm64-v8a + cpu_gpu_hta"
+	bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hta=true --define quantize=true --cpu=arm64-v8a --define rpcmem=true
+	cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/arm64-v8a/cpu_gpu_hta/
+	cp third_party/hta/arm64-v8a/*so $LIB_DIR/arm64-v8a/cpu_gpu_hta/
+fi
+
 echo "build shared lib for armeabi-v7a + cpu_gpu_dsp"
 bazel build --config android --config optimization mace/libmace:libmace_dynamic --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
 cp bazel-bin/mace/libmace/libmace.so $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
@@ -71,6 +88,18 @@ if [[ "$OSTYPE" != "darwin"* ]];then
 fi
 
 # build static libraries
+if [[ "$BUILD_HTA" == "1" ]]; then
+	echo "build static lib for armeabi-v7a + cpu_gpu_hta"
+	bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hta=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
+	cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/armeabi-v7a/cpu_gpu_hta/
+	cp third_party/hta/armeabi-v7a/*so $LIB_DIR/armeabi-v7a/cpu_gpu_hta/
+
+	echo "build static lib for arm64-v8a + cpu_gpu_hta"
+	bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hta=true --define quantize=true --cpu=arm64-v8a --define rpcmem=true
+	cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/arm64-v8a/cpu_gpu_hta/
+	cp third_party/hta/arm64-v8a/*so $LIB_DIR/arm64-v8a/cpu_gpu_hta/
+fi
+
 echo "build static lib for armeabi-v7a + cpu_gpu_dsp"
 bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define opencl=true --define hexagon=true --define quantize=true --cpu=armeabi-v7a --define rpcmem=true
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/

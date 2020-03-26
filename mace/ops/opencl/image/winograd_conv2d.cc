@@ -16,7 +16,7 @@
 #include "mace/core/op_context.h"
 #include "mace/ops/common/activation_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
-#include "mace/ops/opencl/helper.h"
+#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
 
