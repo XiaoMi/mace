@@ -30,49 +30,48 @@ from utils import config_parser
 from utils.config_parser import CPP_KEYWORDS
 from utils.config_parser import ModelKeys
 
-GENERATED_NAME = set()
 
-
-def generate_obfuscated_name(namespace, name):
+def generate_obfuscated_name(namespace, name, model_names_set):
     md5 = hashlib.md5()
     md5.update(namespace)
     md5.update(name)
     md5_digest = md5.hexdigest()
 
     name = md5_digest[:8]
-    while name in GENERATED_NAME:
+    while name in model_names_set:
         name = md5_digest
-        assert name not in GENERATED_NAME
-    GENERATED_NAME.add(name)
+        assert name not in model_names_set
+    model_names_set.add(name)
     return name
 
 
-def generate_tensor_map(tensors):
+def generate_tensor_map(tensors, model_names_set):
     tensor_map = {}
     for t in tensors:
         if t.name not in tensor_map:
-            tensor_map[t.name] = generate_obfuscated_name("tensor", t.name)
+            tensor_map[t.name] = \
+                generate_obfuscated_name("tensor", t.name, model_names_set)
     return tensor_map
 
 
-def generate_in_out_map(ops, tensor_map):
+def generate_in_out_map(ops, tensor_map, model_names_set):
     in_out_map = {}
     for op in ops:
-        op.name = generate_obfuscated_name("op", op.name)
+        op.name = generate_obfuscated_name("op", op.name, model_names_set)
         for input_name in op.input:
             if input_name not in in_out_map:
                 if input_name in tensor_map:
                     in_out_map[input_name] = tensor_map[input_name]
                 else:
                     in_out_map[input_name] = generate_obfuscated_name(
-                        "in", input_name)
+                        "in", input_name, model_names_set)
         for output_name in op.output:
             if output_name not in in_out_map:
                 if output_name in tensor_map:
                     in_out_map[output_name] = tensor_map[output_name]
                 else:
                     in_out_map[output_name] = generate_obfuscated_name(
-                        "out", output_name)
+                        "out", output_name, model_names_set)
     return in_out_map
 
 
@@ -87,8 +86,9 @@ def obfuscate_name(model):
     output_nodes = set()
     for output_node in model.output_info:
         output_nodes.add(output_node.name)
-    tensor_map = generate_tensor_map(model.tensors)
-    in_out_map = generate_in_out_map(model.op, tensor_map)
+    model_names_set = set()
+    tensor_map = generate_tensor_map(model.tensors, model_names_set)
+    in_out_map = generate_in_out_map(model.op, tensor_map, model_names_set)
     for t in model.tensors:
         if t.name not in input_nodes and t.name not in output_nodes:
             t.name = tensor_map[t.name]

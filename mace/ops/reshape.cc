@@ -161,14 +161,30 @@ void RegisterReshape(OpRegistryBase *op_registry) {
                            return {DeviceType::CPU, DeviceType::GPU};
                          }
 
+                         // When transforming a model, has_data_format is set
+                         // to true only when the data dimension conforms to
+                         // specific rules, such as dimension == 4
+                         int has_data_format =
+                             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                                 *op, "has_data_format", 0);
+                         if (has_data_format) {
+                           return {DeviceType::CPU, DeviceType::GPU};
+                         }
+
+                         DataFormat op_data_format = static_cast<DataFormat>(
+                             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                                 *context->operator_def(), "data_format",
+                                 static_cast<int>(DataFormat::NONE)));
                          auto tensor_shape_info = context->tensor_shape_info();
                          const std::string &input_0 = op->input(0);
                          const auto out_dims_size =
                              op->output_shape(0).dims_size();
-                         if (4 == tensor_shape_info->at(input_0).size()
-                             && (out_dims_size == 4 || out_dims_size == 2)) {
+                         if (op_data_format == DataFormat::NHWC &&
+                             4 == tensor_shape_info->at(input_0).size() &&
+                             (out_dims_size == 4 || out_dims_size == 2)) {
                            return {DeviceType::CPU, DeviceType::GPU};
                          }
+
                          return {DeviceType::CPU};
                        }));
 }
