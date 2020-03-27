@@ -35,8 +35,8 @@ GENERATED_NAME = set()
 
 def generate_obfuscated_name(namespace, name):
     md5 = hashlib.md5()
-    md5.update(namespace)
-    md5.update(name)
+    md5.update(namespace.encode('utf-8'))
+    md5.update(name.encode('utf-8'))
     md5_digest = md5.hexdigest()
 
     name = md5_digest[:8]

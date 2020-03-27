@@ -51,7 +51,7 @@ def tensors_to_images(input_files, image_shape, add_softmax):
         writer = tf.write_file(output, image_data, name='output_writer')
 
         with tf.Session() as sess:
-            for i in xrange(len(input_files)):
+            for i in range(len(input_files)):
                 input_data = np.fromfile(input_files[i], dtype=np.float32) \
                     .reshape(image_shape)
                 output_file = os.path.join(FLAGS.output_dir, os.path.splitext(

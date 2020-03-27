@@ -10,7 +10,7 @@ Before you do anything, clear the workspace used by build and test process.
 
     .. code-block:: sh
 
-        tools/clear_workspace.sh
+        tools/clear_workspace.sh [--expunge]
 
 
 Build Engine
