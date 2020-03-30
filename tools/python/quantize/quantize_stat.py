@@ -67,7 +67,7 @@ class QuantizeStat(object):
                 cur_max_idx = 0
                 cur_min = tensor_min
                 cur_max = tensor_max
-                for i in xrange(samples):
+                for i in range(samples):
                     if tensor_mins[i] + 0.1 > cur_max:
                         break
 

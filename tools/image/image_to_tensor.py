@@ -58,7 +58,7 @@ def images_to_tensors(input_files, image_shape, mean_values=None):
                                               align_corners=False)
 
         with tf.Session() as sess:
-            for i in xrange(len(input_files)):
+            for i in range(len(input_files)):
                 with tf.gfile.FastGFile(input_files[i], 'rb') as f:
                     src_image = f.read()
                     dst_image = sess.run(image_data,
