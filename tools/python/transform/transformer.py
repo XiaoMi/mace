@@ -1124,6 +1124,17 @@ class Transformer(base_converter.ConverterInterface):
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
                     transposed_filter.add(op.input[1])
+                elif op.type == MaceOp.DepthwiseConv2d.name and\
+                        filter_format == DataFormat.OIHW and\
+                        self._option.device == DeviceType.CPU.value and\
+                        op.input[1] not in transposed_filter:
+                    filter = self._consts[op.input[1]]
+                    filter_data = np.array(filter.float_data).reshape(
+                        filter.dims)
+                    filter_data = filter_data.transpose(2, 3, 1, 0)
+                    filter.float_data[:] = filter_data.flat
+                    filter.dims[:] = filter_data.shape
+                    transposed_filter.add(op.input[1])
             # deconv's filter's output channel and input channel is reversed
             for op in net.op:
                 if op.type == MaceOp.Deconv2D.name and \
