@@ -1,0 +1,40 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_library(
+    name = "framework",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//micro/base",
+        "//micro/include",
+        "//micro/model",
+    ],
+)
+
+cc_library(
+    name = "framework_for_optest",
+    srcs = glob(
+        ["*.cc"],
+        exclude = ["operator.cc"],
+    ),
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//micro/base",
+        "//micro/include",
+        "//micro/model",
+    ],
+)

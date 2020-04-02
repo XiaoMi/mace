@@ -1,0 +1,38 @@
+// Copyright 2020 The MACE Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This is a generated file. DO NOT EDIT!
+
+{% for op_src_path in op_src_path_list %}
+{{ "#include \"%s\"" % op_src_path }}
+{%endfor%}
+
+namespace micro {
+namespace {{model_tag}} {
+
+namespace {
+{% for i in range(0, op_class_name_list_size) %}
+  {{ "ops::%s op%s;" % (op_class_name_list[i], i) }}
+{%endfor%}
+}  // namespace
+
+framework::Operator *kOpsArray[{{ data_size }}] = {
+{% for i in range(0, op_class_name_list_size) %}
+  {{ "&op%s," % i }}
+{%endfor%}
+};
+
+}  // namespace {{model_tag}}
+}  // namespace micro
+

@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package micro;
+
+message OutputShape {
+  repeated int64 dims = 1;
+}
+
+message OpContext {
+  optional int32 op_idx = 1;
+  // The input info of downstream operator is the output info of upstream
+  // operator, so there is no output info defined here
+  repeated uint32 input_infos = 2;
+  repeated OutputShape output_resize_shapes = 3;
+}
+
+message Graph {
+  repeated OpContext op_contexts = 1;
+  repeated uint32 input_op_idxs = 2;
+  // The output info of the last operator, which is not recorded in opcontext,
+  // is the output of graph
+  repeated uint32 output_infos = 3;
+}

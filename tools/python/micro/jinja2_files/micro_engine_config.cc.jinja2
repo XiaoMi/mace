@@ -1,0 +1,58 @@
+// Copyright 2020 The MACE Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This is a generated file. DO NOT EDIT!
+
+#include <stdint.h>
+
+#include "micro/framework/graph.h"
+#include "micro/include/public/micro.h"
+#include "micro/model/net_def.h"
+
+#include "micro/codegen/models/{{model_tag}}/micro_graph_data.h"
+#include "micro/codegen/models/{{model_tag}}/micro_model_data.h"
+#include "micro/codegen/models/{{model_tag}}/micro_net_def_data.h"
+#include "micro/codegen/models/{{model_tag}}/micro_ops_list.h"
+
+
+
+namespace micro {
+namespace {{model_tag}} {
+
+namespace {
+  uint8_t kTensorMem[{{ embed_data.tensor_mem_size }}] = {0};
+  uint8_t kScratchBuffer[{{ embed_data.scratch_buffer_size }}] = {0};
+  const void *kInputBuffers[{{ embed_data.input_size }}] = {NULL};
+  const int32_t *kInputShapes[{{ embed_data.input_size }}] = {NULL};
+
+  MaceMicroEngineConfig kMicroEngineConfig = {
+    reinterpret_cast<model::NetDef *>(kNetDef),
+    kModelData,
+    reinterpret_cast<framework::Graph *>(kGraphData),
+    kOpsArray,
+    kTensorMem,
+    kInputBuffers,
+    kInputShapes,
+    kScratchBuffer,
+    {{ embed_data.scratch_buffer_size }}
+  };
+}
+
+MaceMicroEngineConfig *GetMicroEngineConfig() {
+  return &kMicroEngineConfig;
+}
+
+}  // namespace {{model_tag}}
+}  // namespace micro
+

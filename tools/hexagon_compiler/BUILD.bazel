@@ -1,0 +1,53 @@
+cc_toolchain_suite(
+    name = "toolchain",
+    toolchains = {
+        "hexagon|gcc": "cc-compiler-hexagon",
+    },
+)
+
+filegroup(
+    name = "hexagon_all_files",
+    srcs = [
+        "//tools/hexagon_compiler/hexagon_gcc:tool-wrappers",
+        "@hexagon_tools//:compiler_pieces",
+    ],
+)
+
+filegroup(
+    name = "hexagon_linker_files",
+    srcs = [
+        "//tools/hexagon_compiler/hexagon_gcc:ar",
+        "//tools/hexagon_compiler/hexagon_gcc:gcc",
+        "//tools/hexagon_compiler/hexagon_gcc:ld",
+        "@hexagon_tools//:compiler_pieces",
+    ],
+)
+
+filegroup(
+    name = "hexagon_compiler_files",
+    srcs = [
+        "//tools/hexagon_compiler/hexagon_gcc:as",
+        "//tools/hexagon_compiler/hexagon_gcc:gcc",
+        "//tools/hexagon_compiler/hexagon_gcc:ld",
+    ],
+)
+
+filegroup(
+    name = "empty",
+    srcs = [],
+)
+
+cc_toolchain(
+    name = "cc-compiler-hexagon",
+    all_files = ":hexagon_all_files",
+    compiler_files = ":hexagon_compiler_files",
+    cpu = "hexagon",
+    dwp_files = ":empty",
+    dynamic_runtime_libs = [":empty"],
+    linker_files = ":hexagon_linker_files",
+    objcopy_files = "//tools/hexagon_compiler/hexagon_gcc:objcopy",
+    static_runtime_libs = [":empty"],
+    strip_files = "//tools/hexagon_compiler/hexagon_gcc:strip",
+    supports_param_files = 1,
+    visibility = ["//visibility:public"],
+)

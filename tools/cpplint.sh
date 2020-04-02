@@ -7,3 +7,5 @@ cpplint --linelength=80 --counting=detailed --root=include $(find include -name 
 cpplint --linelength=80 --counting=detailed --root=test/ccutils $(find test/ccutils -name "*.h" -or -name "*.cc")
 cpplint --linelength=80 --counting=detailed --root=test/ccunit $(find test/ccunit -name "*.h" -or -name "*.cc")
 cpplint --linelength=80 --counting=detailed --root=test/ccbenchmark $(find test/ccbenchmark -name "*.h" -or -name "*.cc")
+
+cpplint --linelength=80 --counting=detailed $(find ./micro -path ./micro/codegen -prune -o -name "*.h" -or -name "*.cc")

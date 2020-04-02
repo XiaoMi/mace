@@ -1,0 +1,27 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+load(
+    "//micro:micro.bzl",
+    "if_hexagon_enabled",
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_library(
+    name = "port",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+    ] + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    deps = if_hexagon_enabled([
+        "@hexagon_sdk//:headers_incs",
+        "@hexagon_sdk//:headers_incs_stddef",
+        "@hexagon_tools//:headers_tools_target",
+    ]),
+)

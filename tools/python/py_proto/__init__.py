@@ -32,6 +32,10 @@ else:
         device.execute("bazel build //mace/proto:mace_py")
         device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
 
+        device.execute("bazel build //mace/proto:micro_mem_py")
+        device.execute(
+            "cp -f bazel-genfiles/mace/proto/micro_mem_pb2.py %s" % cwd)
+
         device.execute("bazel build //third_party/caffe:caffe_py")
         device.execute(
             "cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)

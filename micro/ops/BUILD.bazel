@@ -1,0 +1,36 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_library(
+    name = "ops",
+    srcs = glob(["**/*.cc"]),
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//micro/base",
+        "//micro/framework",
+    ],
+)
+
+cc_library(
+    name = "ops_for_test",
+    srcs = glob(["**/*.cc"]),
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//micro/base",
+        "//micro/framework:framework_for_optest",
+    ],
+    alwayslink = 1,
+)

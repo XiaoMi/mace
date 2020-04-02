@@ -20,7 +20,7 @@ namespace mace {
 
 const unsigned char *{{ load_func_name }}() {
 {% if data_size == 0 %}
-  return nullptr;
+  return NULL;
 {% else %}
   static const unsigned char kData[{{ data_size }}] = {
   {% for d in data %}{{"0x%02X, " % d }}{%endfor%}

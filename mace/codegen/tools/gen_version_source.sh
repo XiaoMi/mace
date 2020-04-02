@@ -53,10 +53,14 @@ cat <<EOF > ${OUTPUT_FILENAME}
 // This is a generated file. DO NOT EDIT!
 
 namespace mace {
+namespace {
 #ifndef _MSC_VER
 __attribute__((visibility("default")))
 #endif
-const char *MaceVersion() { return "MACEVER-${GIT_VERSION}" + 8; }
+  const char *kMaceVersion = "MACEVER-${GIT_VERSION}";
+}  // namespace
+
+const char *MaceVersion() { return kMaceVersion + 8; }
 }  // namespace mace
 EOF
 

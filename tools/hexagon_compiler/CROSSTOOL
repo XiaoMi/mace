@@ -1,0 +1,95 @@
+major_version: "local"
+minor_version: ""
+default_target_cpu: "hexagon"
+
+default_toolchain {
+  cpu: "hexagon"
+  toolchain_identifier: "hexagon-qualcomm"
+}
+
+toolchain {
+  abi_version: "gcc"
+  abi_libc_version: ""
+  builtin_sysroot: ""
+  compiler: "gcc"
+  host_system_name: "hexagon"
+  needsPic: true
+  supports_incremental_linker: false
+  supports_fission: false
+  supports_interface_shared_objects: false
+  #supports_normalizing_ar: true
+  supports_start_end_lib: false
+  supports_thin_archives: true
+  target_libc: ""
+  target_cpu: "hexagon"
+  target_system_name: ""
+  toolchain_identifier: "hexagon-qualcomm"
+
+  tool_path { name: "ar" path: "hexagon_gcc/hexagon-qualcomm-ar" }
+  tool_path { name: "compat-ld" path: "hexagon_gcc/hexagon-qualcomm-ld" }
+  tool_path { name: "cpp" path: "hexagon_gcc/hexagon-qualcomm-gcc" }
+  tool_path { name: "dwp" path: "hexagon_gcc/hexagon-qualcomm-dwp" }
+  tool_path { name: "gcc" path: "hexagon_gcc/hexagon-qualcomm-gcc" }
+  tool_path { name: "gcov" path: "hexagon_gcc/hexagon-qualcomm-gcov" }
+  # C(++) compiles invoke the compiler (as that is the one knowing where
+  # to find libraries), but we provide LD so other rules can invoke the linker.
+  tool_path { name: "ld" path: "hexagon_gcc/hexagon-qualcomm-ld" }
+  tool_path { name: "nm" path: "hexagon_gcc/hexagon-qualcomm-nm" }
+  tool_path { name: "objcopy" path: "hexagon_gcc/hexagon-qualcomm-objcopy" }
+  objcopy_embed_flag: "-I"
+  objcopy_embed_flag: "binary"
+  tool_path { name: "objdump" path: "hexagon_gcc/hexagon-qualcomm-objdump" }
+  tool_path { name: "strip" path: "hexagon_gcc/hexagon-qualcomm-strip" }
+
+  linker_flag: "-Wl"
+  linker_flag: "-lm"
+
+  # Anticipated future default.
+  # This makes GCC and Clang do what we want when called through symlinks.
+  unfiltered_cxx_flag: "-no-canonical-prefixes"
+  linker_flag: "-no-canonical-prefixes"
+
+
+  # Security hardening on by default.
+  # Conservative choice; -D_FORTIFY_SOURCE=2 may be unsafe in some cases.
+  # We need to undef it before redefining it as some distributions now have
+  # it enabled by default.
+  compiler_flag: "-fstack-protector"
+  compiler_flag: "-fPIE"
+  linker_flag: "-v"
+  linker_flag: "-pie"
+
+  # for hexagon
+  linker_flag: "-march=hexagon"
+  linker_flag: "-mcpu=hexagonv60"
+  linker_flag: "-shared"
+  linker_flag: "-G0"
+  linker_flag: "-fPIC"
+
+
+
+  # Enable coloring even if there's no attached terminal. Bazel removes the
+  # escape sequences if --nocolor is specified.
+  compiler_flag: "-fdiagnostics-color=always"
+
+  # All warnings are enabled. Maybe enable -Werror as well?
+  compiler_flag: "-Wall"
+
+
+  compilation_mode_flags {
+    mode: OPT
+    # No debug symbols.
+    # Maybe we should enable https://gcc.gnu.org/wiki/DebugFission for opt or
+    # even generally? However, that can't happen here, as it requires special
+    # handling in Bazel.
+    compiler_flag: "-g0"
+
+    # Conservative choice for -O
+    # -O3 can increase binary size and even slow down the resulting binaries.
+    # Profile first and / or use FDO if you need better performance than this.
+    compiler_flag: "-O2"
+
+    compiler_flag: "-ffunction-sections"
+    linker_flag: "-Wl"
+  }
+}

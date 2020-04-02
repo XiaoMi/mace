@@ -1,0 +1,109 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//micro:micro.bzl",
+    "if_hexagon_enabled",
+    "if_not_hexagon_enabled",
+)
+
+MACEMC_IDL_FILES = [
+    "macemc/rpc/macemc.idl",
+]
+
+MACEMC_IDL_HEADERS = [
+    "codegen/macemc.h",
+]
+
+MACEMC_IDL_SKELS = [
+    "codegen/macemc_skel.c",
+]
+
+MACEMC_IDL_STUBS = [
+    "codegen/macemc_stub.c",
+]
+
+genrule(
+    name = "macemc_idl_gen",
+    srcs = MACEMC_IDL_FILES,
+    outs = MACEMC_IDL_HEADERS + MACEMC_IDL_SKELS + MACEMC_IDL_STUBS,
+    cmd = "bash $(location //micro/test/ccutils:qaic) $(@D)/codegen $(SRCS)",
+    tools = ["//micro/test/ccutils:qaic"],
+)
+
+cc_library(
+    name = "macemc_idl_skel",
+    srcs = MACEMC_IDL_SKELS,
+    hdrs = MACEMC_IDL_HEADERS,
+    copts = [
+        "-Werror",
+        "-std=c99",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "@hexagon_sdk//:headers_dsp",
+    ],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libmacemc_skel.so",
+    srcs = glob(["macemc/rpc/skel/*.cc"]),
+    linkshared = True,
+    deps = [
+        ":macemc_idl_skel",
+        "//micro/codegen:micro_engine",
+        "//micro/include",
+        "//micro/test/ccutils:rpc_skel",
+        "@hexagon_sdk//:headers_dsp",
+    ],
+)
+
+cc_library(
+    name = "macemc_idl_stub",
+    srcs = MACEMC_IDL_STUBS,
+    hdrs = MACEMC_IDL_HEADERS,
+    copts = [
+        "-Werror",
+        "-std=c99",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "@hexagon_sdk//:sdk_arm",
+    ],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "macemc_stub",
+    srcs = glob(["macemc/rpc/stub/*.cc"]),
+    hdrs = glob(["macemc/rpc/stub/*.h"]),
+    strip_include_prefix = "",
+    deps = [
+        ":macemc_idl_stub",
+        "//micro/test/ccutils:rpc_stub",
+    ],
+    alwayslink = True,
+)
+
+cc_test(
+    name = "micro_cc_baseline",
+    srcs = glob([
+        "test_baseline_main.cc",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+        "-DMACE_ENABLE_HEXAGON",
+    ],
+    linkstatic = 1,
+    deps = [
+        ":macemc_stub",
+    ],
+)

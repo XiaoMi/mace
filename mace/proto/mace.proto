@@ -14,6 +14,7 @@ enum DataType {
   DT_HALF = 3;
   DT_INT32 = 4;
   DT_FLOAT16 = 5;
+  DT_BFLOAT16 = 6;
 }
 
 enum MemoryType {
@@ -76,6 +77,7 @@ message OperatorDef {
   repeated DataType output_type = 8;
   repeated QuantizeActivationInfo quantize_info = 9;
 
+  // for mace it is mem_id, for micro, it is mem_offset
   repeated int32 mem_id = 10;
 
   // for hexagon mace-nnlib

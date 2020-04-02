@@ -1,0 +1,101 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+filegroup(
+    name = "qaic",
+    srcs = ["rpc/qaic.sh"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "rpc_stub",
+    srcs = glob([
+        "rpc/stub/*.cc",
+    ]),
+    hdrs = glob([
+        "rpc/stub/*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    strip_include_prefix = "",
+    deps = [
+        "@hexagon_sdk//:headers_arm",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "rpc_skel",
+    srcs = glob([
+        "rpc/skel/*.cc",
+    ]),
+    hdrs = glob([
+        "rpc/skel/*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    strip_include_prefix = "",
+    deps = [
+        "@hexagon_sdk//:headers_dsp",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "ccutils",
+    srcs = glob([
+        "micro/common/*.cc",
+        "micro/ops/*.cc",
+    ]),
+    hdrs = glob(
+        [
+            "micro/common/*.h",
+            "micro/ops/*.h",
+        ],
+        exclude = ["micro/ops/gtest_utils.h"],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    strip_include_prefix = "",
+    deps = [
+        "//micro/base",
+        "//micro/framework:framework_for_optest",
+        "//micro/include",
+    ],
+)
+
+cc_library(
+    name = "ccutils_with_gtest",
+    srcs = glob([
+        "micro/common/*.cc",
+        "micro/ops/*.cc",
+    ]),
+    hdrs = glob([
+        "micro/common/*.h",
+        "micro/ops/*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    strip_include_prefix = "",
+    deps = [
+        "//micro/base",
+        "//micro/framework:framework_for_optest",
+        "//micro/include",
+        "@gtest",
+    ],
+)

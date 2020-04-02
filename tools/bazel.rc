@@ -128,3 +128,22 @@ build:ubsan --copt -O0
 build:ubsan --copt -fno-omit-frame-pointer
 build:ubsan --linkopt -fsanitize=undefined
 build:ubsan --linkopt -lubsan
+
+# Usage example: bazel build --config hexagon_qualcomm
+build:hexagon_qualcomm --crosstool_top=//tools/hexagon_compiler:toolchain
+build:hexagon_qualcomm --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:hexagon_qualcomm --cpu=hexagon
+build:hexagon_qualcomm --copt=-std=c++98
+build:hexagon_qualcomm --copt -Wno-ignored-attributes
+build:hexagon_qualcomm --copt -Wno-unused-function
+build:hexagon_qualcomm --copt -Wno-sequence-point
+build:hexagon_qualcomm --copt -Wno-implicit-fallthrough
+build:hexagon_qualcomm --copt -Wno-missing-braces
+build:hexagon_qualcomm --copt -mv60
+build:hexagon_qualcomm --copt -Wno-cast-align
+build:hexagon_qualcomm --copt -Wpointer-arith
+build:hexagon_qualcomm --copt -Wnested-externs
+build:hexagon_qualcomm --copt -Wno-pointer-to-int-cast
+build:hexagon_qualcomm --copt -Wno-int-to-pointer-cast
+build:hexagon_qualcomm --copt -fno-rtti
+build:hexagon_qualcomm --copt -fno-exceptions

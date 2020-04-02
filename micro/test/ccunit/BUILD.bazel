@@ -1,0 +1,53 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_test(
+    name = "micro_cc_test",
+    testonly = 1,
+    srcs = glob(
+        [
+            "micro/model/*.cc",
+            "micro/framework/*.cc",
+            "micro/codegen/*.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkstatic = 1,
+    deps = [
+        "//micro/base",
+        "//micro/codegen:generated_models",
+        "//micro/codegen:micro_engine",
+        "//micro/framework",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "micro_ops_test",
+    testonly = 1,
+    srcs = glob(
+        [
+            "micro/ops/*.cc",
+            "micro/ops/nhwc/*.cc",
+        ],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkstatic = 1,
+    deps = [
+        "//micro/base",
+        "//micro/ops:ops_for_test",
+        "//micro/test/ccutils:ccutils_with_gtest",
+        "@gtest//:gtest_main",
+    ],
+)

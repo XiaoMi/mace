@@ -85,6 +85,7 @@ InOutDataType = Enum('InputDataType',
 FPDataTypeStrs = [
     "fp16_fp32",
     "fp32_fp32",
+    "bf16_fp32",
 ]
 
 FPDataType = Enum('GPUDataType', [(ele, ele) for ele in FPDataTypeStrs],
@@ -278,8 +279,10 @@ def get_model_files(model_config, model_output_dir):
     model_file_path = model_config[YAMLKeyword.model_file_path]
     model_sha256_checksum = model_config[YAMLKeyword.model_sha256_checksum]
     weight_file_path = model_config.get(YAMLKeyword.weight_file_path, "")
-    weight_sha256_checksum = model_config.get(YAMLKeyword.weight_sha256_checksum, "")  # noqa
-    quantize_range_file_path = model_config.get(YAMLKeyword.quantize_range_file, "")  # noqa
+    weight_sha256_checksum = \
+        model_config.get(YAMLKeyword.weight_sha256_checksum, "")
+    quantize_range_file_path = \
+        model_config.get(YAMLKeyword.quantize_range_file, "")
     model_file = model_file_path
     weight_file = weight_file_path
     quantize_range_file = quantize_range_file_path
@@ -808,7 +811,12 @@ def convert_func(flags):
     else:
         model_graph_format = configs.get(YAMLKeyword.model_graph_format,
                                          "file")
-    if model_graph_format == ModelFormat.code:
+    embed_graph_def = model_graph_format == ModelFormat.code
+    if flags.enable_micro:
+        mace_check((not embed_model_data) and (not embed_graph_def),
+                   ModuleName.YAML_CONFIG,
+                   "You should specify file mode to convert micro model.")
+    if embed_graph_def:
         os.makedirs(model_header_dir)
         sh_commands.gen_mace_engine_factory_source(
             configs[YAMLKeyword.models].keys(),
@@ -816,9 +824,16 @@ def convert_func(flags):
         sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
               model_header_dir)
 
-    convert.convert(configs, MODEL_CODEGEN_DIR)
+    convert.convert(configs, MODEL_CODEGEN_DIR, flags.enable_micro)
 
     for model_name, model_config in configs[YAMLKeyword.models].items():
+        if flags.enable_micro:
+            data_type = model_config.get(YAMLKeyword.data_type, "")
+            mace_check(data_type == FPDataType.fp32_fp32.value or
+                       data_type == FPDataType.bf16_fp32.value,
+                       ModuleName.YAML_CONFIG,
+                       "You should specify fp32_fp32 or bf16_fp32 data type "
+                       "to convert micro model.")
         model_codegen_dir = "%s/%s" % (MODEL_CODEGEN_DIR, model_name)
         encrypt.encrypt(model_name,
                         "%s/model/%s.pb" % (model_codegen_dir, model_name),
@@ -837,6 +852,9 @@ def convert_func(flags):
             sh.mv("-f",
                   '%s/model/%s.data' % (model_codegen_dir, model_name),
                   model_output_dir)
+            if flags.enable_micro:
+                sh.mv("-f", '%s/model/%s_micro.tar.gz' %
+                      (model_codegen_dir, model_name), model_output_dir)
         else:
             if not embed_model_data:
                 sh.mv("-f",
@@ -1031,6 +1049,10 @@ def parse_args():
         'convert',
         parents=[all_type_parent_parser, convert_run_parent_parser],
         help='convert to mace model (file or code)')
+    convert.add_argument(
+        "--enable_micro",
+        action="store_true",
+        help="enable convert micro.")
     convert.set_defaults(func=convert_func)
 
     run = subparsers.add_parser(

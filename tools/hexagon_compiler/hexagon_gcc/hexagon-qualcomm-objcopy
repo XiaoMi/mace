@@ -1,0 +1,5 @@
+#!/bin/bash --norc
+
+exec -a hexagon-qualcomm-objcopy \
+    ${HL_HEXAGON_TOOLS}/bin/hexagon-elfcopy \
+    "$@"

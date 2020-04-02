@@ -1,0 +1,82 @@
+# Description:
+# Generated model and runtime code.
+#
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "generated_models",
+    srcs = glob(["models/**/*.cc"]),
+    hdrs = glob(["models/**/*.h"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "//micro/framework",
+        "//micro/include",
+        "//micro/model",
+        "//micro/ops",
+    ],
+)
+
+cc_library(
+    name = "micro_engine_c",
+    srcs = glob(["micro/codegen/engines/**/micro_engine_c_interface.cc"]),
+    hdrs = glob(["micro/codegen/engines/**/micro_engine_c_interface.cc"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        ":micro_engine",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "micro_engine",
+    srcs = glob(
+        ["engines/**/*.cc"],
+        exclude = ["micro/codegen/engines/**/micro_engine_c_interface.cc"],
+    ),
+    hdrs = glob(
+        [
+            "engines/**/*.h",
+        ],
+        exclude = ["micro/codegen/engines/**/micro_engine_c_interface.cc"],
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        "generated_models",
+        "//micro/framework",
+        "//micro/model",
+        "//micro/ops",
+    ],
+    alwayslink = 1,
+)
+
+cc_binary(
+    name = "libmicro.so",
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        ":micro_engine",
+    ],
+)
+
+cc_binary(
+    name = "libmicro.lo",
+    linkshared = False,
+    linkstatic = True,
+    deps = [
+        ":micro_engine",
+    ],
+)

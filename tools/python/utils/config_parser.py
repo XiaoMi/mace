@@ -73,6 +73,7 @@ def parse_device_info(path):
 class ModelKeys(object):
     platform = "platform"
     runtime = "runtime"
+    models = 'models'
     graph_optimize_options = "graph_optimize_options"
     input_tensors = "input_tensors"
     input_shapes = "input_shapes"
@@ -175,6 +176,8 @@ def parse_data_type(str):
 def parse_internal_data_type(str):
     if str == 'fp32_fp32':
         return mace_pb2.DT_FLOAT
+    elif str == 'bf16_fp32':
+        return mace_pb2.DT_BFLOAT16
     else:
         return mace_pb2.DT_HALF
 
@@ -187,6 +190,8 @@ def to_list(x):
 
 
 def parse_int_array(xs):
+    if len(xs) is 0:
+        return [1]
     return [int(x) for x in xs.split(",")]
 
 
@@ -201,7 +206,6 @@ def normalize_model_config(conf):
         del conf[ModelKeys.subgraphs]
         conf.update(subgraph)
 
-    print(conf)
     conf[ModelKeys.platform] = parse_platform(conf[ModelKeys.platform])
     conf[ModelKeys.runtime] = parse_device_type(conf[ModelKeys.runtime])
 

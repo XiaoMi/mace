@@ -80,12 +80,14 @@ mace_cc_test:
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
     - python tools/bazel_adb_run.py --target="//test/ccunit:mace_cc_test" --device_yml=${DEVICE_CONF_FILE} --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a,arm64 --target_socs=$TARGET_SOCS
+    - python tools/bazel_adb_run.py --target="//micro/test/ccunit:micro_ops_test" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=arm64-v8a
 
 mace_cc_benchmark:
   stage: test
   script:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS --args="--filter=.*SIGMOID.*"
+    - python tools/bazel_adb_run.py --target="//micro/test/ccbenchmark:micro_cc_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=arm64-v8a
   only:
     - triggers
 
@@ -112,6 +114,13 @@ model_tests:
     - python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=code --model_data_format=file
     - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=1 --validate --model_graph_format=code --model_data_format=file
     - python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --round=5 --model_graph_format=code --model_data_format=file --benchmark
+    - CONF_FILE=mace-models/micro-models/har-cnn/har-cnn.yml
+    - python tools/converter.py convert --config=${CONF_FILE} --enable_micro
+    - python tools/python/run_micro.py --config $CONF_FILE --build --validate --model_name har_cnn
+    - python tools/python/run_micro.py --config $CONF_FILE --model_name har_cnn --build --benchmark
+    - CONF_FILE=mace-models/micro-models/har-cnn/har-cnn-bf16.yml
+    - python tools/converter.py convert --config=${CONF_FILE} --enable_micro
+    - python tools/python/run_micro.py --config $CONF_FILE --build --validate --model_name har_cnn
     - rm -rf mace-models
 
 quantization_tests:

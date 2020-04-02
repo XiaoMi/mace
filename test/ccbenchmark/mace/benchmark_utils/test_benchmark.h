@@ -29,7 +29,7 @@ namespace testing {
 
 class Benchmark {
  public:
-  Benchmark(const char *name, void (*benchmark_func)(int));
+  Benchmark(const char *name, void (*benchmark_func)(int32_t));
 
   static void Run(const char *pattern);
 

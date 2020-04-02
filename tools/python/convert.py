@@ -20,10 +20,9 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import copy
 import sys
-import numpy as np
-import shutil
-import tempfile
+from micro_converter import MicroConverter
 from utils import config_parser
 from utils.config_parser import DataFormat
 from utils.config_parser import DeviceType
@@ -32,7 +31,7 @@ from utils import util
 from utils.util import mace_check
 from utils.config_parser import normalize_model_config
 from utils.config_parser import ModelKeys
-from py_proto import mace_pb2
+from utils.convert_util import merge_params
 from transform import base_converter as cvt
 from transform import transformer
 from visualize import visualize_model
@@ -45,7 +44,7 @@ def transpose_shape(shape, dst_order):
     return t_shape
 
 
-def convert(conf, output):
+def convert(conf, output, enable_micro=False):
     if ModelKeys.quantize_stat in conf:
         quantize_stat = conf[ModelKeys.quantize_stat]
     else:
@@ -88,7 +87,12 @@ def convert(conf, output):
 
         model, params = merge_params(mace_model,
                                      model_conf[ModelKeys.data_type])
-
+        if enable_micro:
+            micro_converter = MicroConverter(model_conf, copy.deepcopy(model),
+                                             copy.deepcopy(params), model_name)
+            micro_converter.gen_code()
+            micro_converter.package(model_output + "/" +
+                                    model_name + "_micro.tar.gz")
         output_model_file = model_output + "/" + model_name + ".pb"
         output_params_file = model_output + "/" + model_name + ".data"
         with open(output_model_file, "wb") as f:
@@ -204,61 +208,6 @@ def convert_model(conf, quantize_stat):
         output_graph_def = converter.run()
 
     return output_graph_def
-
-
-def merge_params(net_def, data_type):
-    def tensor_to_bytes(tensor):
-        if tensor.data_type == mace_pb2.DT_HALF:
-            data = bytearray(
-                np.array(tensor.float_data).astype(np.float16).tobytes())
-            tensor.data_size = len(tensor.float_data)
-        elif tensor.data_type == mace_pb2.DT_FLOAT:
-            data = bytearray(
-                np.array(tensor.float_data).astype(np.float32).tobytes())
-            tensor.data_size = len(tensor.float_data)
-        elif tensor.data_type == mace_pb2.DT_INT32:
-            data = bytearray(
-                np.array(tensor.int32_data).astype(np.int32).tobytes())
-            tensor.data_size = len(tensor.int32_data)
-        elif tensor.data_type == mace_pb2.DT_UINT8:
-            data = bytearray(
-                np.array(tensor.int32_data).astype(np.uint8).tolist())
-            tensor.data_size = len(tensor.int32_data)
-        elif tensor.data_type == mace_pb2.DT_FLOAT16:
-            data = bytearray(
-                np.array(tensor.float_data).astype(np.float16).tobytes())
-            tensor.data_size = len(tensor.float_data)
-        else:
-            raise Exception('Tensor data type %s not supported' %
-                            tensor.data_type)
-        return data
-
-    model_data = []
-    offset = 0
-    for tensor in net_def.tensors:
-        if tensor.data_type == mace_pb2.DT_FLOAT:
-            tensor.data_type = data_type
-        raw_data = tensor_to_bytes(tensor)
-        if tensor.data_type != mace_pb2.DT_UINT8 and offset % 4 != 0:
-            padding = 4 - offset % 4
-            model_data.extend(bytearray([0] * padding))
-            offset += padding
-
-        tensor.offset = offset
-        model_data.extend(raw_data)
-        offset += len(raw_data)
-
-    for tensor in net_def.tensors:
-        if tensor.data_type == mace_pb2.DT_FLOAT \
-                or tensor.data_type == mace_pb2.DT_HALF \
-                or tensor.data_type == mace_pb2.DT_FLOAT16:
-            del tensor.float_data[:]
-        elif tensor.data_type == mace_pb2.DT_INT32:
-            del tensor.int32_data[:]
-        elif tensor.data_type == mace_pb2.DT_UINT8:
-            del tensor.int32_data[:]
-
-    return net_def, model_data
 
 
 def parse_args():
