@@ -354,12 +354,12 @@ def get_build_model_dirs(library_name,
 
 
 def abi_to_internal(abi):
-    if abi in [ABIType.armeabi_v7a, ABIType.arm64_v8a]:
+    if abi in [ABIType.armeabi_v7a, ABIType.arm64_v8a, ABIType.armhf]:
         return abi
     if abi == ABIType.arm64:
         return ABIType.aarch64
-    if abi == ABIType.armhf:
-        return ABIType.armeabi_v7a
+    else:
+        mace_check(False, "abi not supported")
 
 
 def infer_toolchain(abi):
