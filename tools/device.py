@@ -271,7 +271,7 @@ class DeviceWrapper:
 
             if device_type == common.DeviceType.GPU:
                 if os.path.exists(opencl_binary_file):
-                    self.push(opencl_binary_file, self.data_dir)
+                    self.push(opencl_binary_file, self.interior_dir)
                 if os.path.exists(opencl_parameter_file):
                     self.push(opencl_parameter_file, self.data_dir)
 
