@@ -18,63 +18,37 @@
 
 #include <vector>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/delegator/depthwise_deconv_2d.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
 template<typename OUTPUT_TYPE>
-class GroupDeconv2d {
+class GroupDeconv2d : public delegator::GroupDeconv2d {
  public:
-  GroupDeconv2d(const std::vector<int> &strides,
-                const std::vector<int> &dilations,
-                const std::vector<int> &paddings,
-                const Padding padding_type,
-                const index_t group,
-                const FrameworkType framework_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type),
-        group_(group),
-        framework_type_(framework_type) {}
+  explicit GroupDeconv2d(const delegator::GroupDeconv2dParam &param)
+      : delegator::GroupDeconv2d(param) {}
 
   virtual ~GroupDeconv2d() = default;
 
-  virtual MaceStatus Compute(
+  MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *output_shape,
-      Tensor *output);
-
- private:
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
-  const index_t group_;
-  const FrameworkType framework_type_;
+      Tensor *output) override;
 };
 
 template<typename OUTPUT_TYPE>
 class DepthwiseDeconv2d : public GroupDeconv2d<OUTPUT_TYPE> {
  public:
-  DepthwiseDeconv2d(const std::vector<int> &strides,
-                    const std::vector<int> &dilations,
-                    const std::vector<int> &paddings,
-                    const Padding padding_type,
-                    const FrameworkType framework_type)
-      : GroupDeconv2d<OUTPUT_TYPE>(strides,
-                                   dilations,
-                                   paddings,
-                                   padding_type,
-                                   0,
-                                   framework_type) {}
+  explicit DepthwiseDeconv2d(const delegator::DepthwiseDeconv2d &param)
+      : GroupDeconv2d<OUTPUT_TYPE>(param) {}
 
   ~DepthwiseDeconv2d() = default;
 
@@ -83,57 +57,30 @@ class DepthwiseDeconv2d : public GroupDeconv2d<OUTPUT_TYPE> {
       const Tensor *input,
       const Tensor *filter,
       const Tensor *output_shape,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 template<>
-class GroupDeconv2d<float> {
+class GroupDeconv2d<float> : public delegator::GroupDeconv2d {
  public:
-  GroupDeconv2d(const std::vector<int> &strides,
-                const std::vector<int> &dilations,
-                const std::vector<int> &paddings,
-                const Padding padding_type,
-                const index_t group,
-                const FrameworkType framework_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type),
-        group_(group),
-        framework_type_(framework_type) {}
+  explicit GroupDeconv2d(const delegator::GroupDeconv2dParam &param)
+      : delegator::GroupDeconv2d(param) {}
 
   virtual ~GroupDeconv2d() = default;
 
-  virtual MaceStatus Compute(
+  MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *output_shape,
-      Tensor *output);
-
- protected:
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
-  const index_t group_;
-  const FrameworkType framework_type_;
+      Tensor *output) override;
 };
 
 template<>
 class DepthwiseDeconv2d<float> : public GroupDeconv2d<float> {
  public:
-  DepthwiseDeconv2d(const std::vector<int> &strides,
-                    const std::vector<int> &dilations,
-                    const std::vector<int> &paddings,
-                    const Padding padding_type,
-                    const FrameworkType framework_type)
-      : GroupDeconv2d<float>(strides,
-                             dilations,
-                             paddings,
-                             padding_type,
-                             0,
-                             framework_type) {}
+  explicit DepthwiseDeconv2d(const delegator::DepthwiseDeconv2dParam &param)
+      : GroupDeconv2d(param) {}
 
   ~DepthwiseDeconv2d() = default;
 
@@ -142,7 +89,7 @@ class DepthwiseDeconv2d<float> : public GroupDeconv2d<float> {
       const Tensor *input,
       const Tensor *filter,
       const Tensor *output_shape,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 }  // namespace ref

@@ -19,8 +19,10 @@
 #include "mace/core/device_context.h"
 #include "mace/core/memory_optimizer.h"
 #include "mace/core/net.h"
-#include "mace/ops/registry/ops_registry.h"
+#include "mace/core/registry/ops_registry.h"
+#include "mace/core/registry/op_delegator_registry.h"
 #include "mace/ops/common/transpose.h"
+#include "mace/ops/registry/registry.h"
 #include "mace/utils/math.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/stl_util.h"
@@ -451,7 +453,8 @@ class MaceEngine::Impl {
 
  private:
   std::unique_ptr<port::ReadOnlyMemoryRegion> model_data_;
-  std::unique_ptr<OpRegistryBase> op_registry_;
+  std::unique_ptr<OpRegistry> op_registry_;
+  std::unique_ptr<OpDelegatorRegistry> op_delegator_registry_;
   DeviceType device_type_;
   std::unique_ptr<Device> device_;
   std::unique_ptr<Workspace> ws_;
@@ -478,9 +481,10 @@ class MaceEngine::Impl {
 MaceEngine::Impl::Impl(const MaceEngineConfig &config)
     : model_data_(nullptr),
       op_registry_(new OpRegistry),
+      op_delegator_registry_(new OpDelegatorRegistry),
       device_type_(config.impl_->device_type()),
       device_(nullptr),
-      ws_(new Workspace()),
+      ws_(new Workspace(op_delegator_registry_.get())),
       net_(nullptr),
       is_quantized_model_(false),
       thread_pool_(new utils::ThreadPool(config.impl_->num_threads(),
@@ -498,6 +502,8 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 #endif
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
+  ops::RegisterAllOps(op_registry_.get());
+  ops::RegisterAllOpDelegators(op_delegator_registry_.get());
   thread_pool_->Init();
   if (device_type_ == DeviceType::CPU) {
     device_.reset(new CPUDevice(config.impl_->num_threads(),

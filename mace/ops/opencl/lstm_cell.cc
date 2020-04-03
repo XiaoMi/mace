@@ -17,7 +17,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/lstm_cell.h"
 #include "mace/utils/memory.h"
@@ -89,7 +90,7 @@ class LSTMCellOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterLSTMCell(OpRegistryBase *op_registry) {
+void RegisterLSTMCell(OpRegistry *op_registry) {
   MACE_REGISTER_GPU_OP(op_registry, "LSTMCell", LSTMCellOp);
 }
 

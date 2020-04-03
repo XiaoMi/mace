@@ -15,10 +15,11 @@
 #ifndef MACE_OPS_ARM_FP32_GEMM_H_
 #define MACE_OPS_ARM_FP32_GEMM_H_
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/common/matrix.h"
+#include "mace/ops/delegator/gemm.h"
+#include "mace/public/mace.h"
 #include "mace/utils/math.h"
 
 // This implements matrix-matrix multiplication.
@@ -29,13 +30,12 @@ namespace ops {
 namespace arm {
 namespace fp32 {
 
-class Gemm {
+class Gemm : public delegator::Gemm {
  public:
-  explicit Gemm(const bool should_cache_pack)
-      : pack_cache_(GetCPUAllocator()),
-        should_cache_pack_(should_cache_pack),
+  explicit Gemm(const delegator::GemmParam &param)
+      : delegator::Gemm(param), pack_cache_(GetCPUAllocator()),
+        should_cache_pack_(param.should_cache_pack_),
         cached_(0) {}
-  Gemm() : Gemm(false) {}
   ~Gemm() {}
 
   MaceStatus Compute(
@@ -51,7 +51,7 @@ class Gemm {
       const MatrixMajor output_major,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output);
+      Tensor *output) override;
 
   // Original matrix before transpose has row-major
   MaceStatus Compute(
@@ -68,7 +68,7 @@ class Gemm {
       const bool transpose_out,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output);
+      Tensor *output) override;
 
  private:
   void ComputeBlock(const float *packed_lhs_data,

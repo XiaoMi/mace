@@ -13,18 +13,26 @@
 // limitations under the License.
 
 #include <algorithm>
-#include "mace/ops/ref/activation.h"
+
+#include "mace/ops/delegator/activation.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
-Activation::Activation(ActivationType type,
-                       const float limit,
-                       const float leakyrelu_coefficient)
-    : type_(type),
-      limit_(limit),
-      leakyrelu_coefficient_(leakyrelu_coefficient) {}
+class Activation : public delegator::Activation {
+ public:
+  explicit Activation(const delegator::ActivationParam &param)
+      : delegator::Activation(param) {}
+  ~Activation() = default;
+
+  MaceStatus Compute(const OpContext *context, const Tensor *input,
+                     Tensor *output) override;
+
+ private:
+  void DoActivation(const OpContext *context, const Tensor *input,
+                    Tensor *output);
+};
 
 MaceStatus Activation::Compute(const OpContext *context,
                                const Tensor *input,
@@ -98,6 +106,9 @@ void Activation::DoActivation(const OpContext *context,
     default:MACE_NOT_IMPLEMENTED;
   }
 }
+
+MACE_REGISTER_DELEGATOR(registry, Activation, delegator::ActivationParam,
+                        MACE_DELEGATOR_KEY(Activation, CPU, float, REF))
 
 }  // namespace ref
 }  // namespace ops

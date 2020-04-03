@@ -14,7 +14,8 @@
 
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/channel_shuffle.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -98,7 +99,7 @@ class ChannelShuffleOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterChannelShuffle(OpRegistryBase *op_registry) {
+void RegisterChannelShuffle(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ChannelShuffle",
                    ChannelShuffleOp, DeviceType::CPU, float);
 

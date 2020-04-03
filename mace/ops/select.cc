@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -204,7 +205,7 @@ class SelectOp<DeviceType::CPU, float> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterSelect(OpRegistryBase *op_registry) {
+void RegisterSelect(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Select", SelectOp,
                    DeviceType::CPU, float);
 }

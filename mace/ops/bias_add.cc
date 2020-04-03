@@ -16,14 +16,10 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/activation.h"
-
-#ifdef MACE_ENABLE_NEON
-#include "mace/ops/arm/fp32/bias_add.h"
-#else
-#include "mace/ops/ref/bias_add.h"
-#endif  // MACE_ENABLE_NEON
+#include "mace/ops/delegator/bias_add.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -42,8 +38,11 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
  public:
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
-        has_data_format_(Operation::GetOptionalArg<int>("has_data_format",
-                                                        0)) {}
+        has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 0)),
+        bias_add_delegator_(delegator::BiasAdd::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -56,7 +55,7 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
       MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
                  "bias must be 1-dimensional or n*c for caffee.",
                  MakeString(bias->shape()));
-      bias_add_delegator_.Compute(context, input, bias, output);
+      bias_add_delegator_->Compute(context, input, bias, output);
     } else {  // NHWC
       MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
                  "bias must be 1 or 2 dimensionals for caffee.",
@@ -115,11 +114,7 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
 
  private:
   int has_data_format_;
-#ifdef MACE_ENABLE_NEON
-  arm::fp32::BiasAdd bias_add_delegator_;
-#else
-  ref::BiasAdd bias_add_delegator_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::BiasAdd> bias_add_delegator_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -164,7 +159,7 @@ class BiasAddOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterBiasAdd(OpRegistryBase *op_registry) {
+void RegisterBiasAdd(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_GPU_OP(op_registry, "BiasAdd", BiasAddOp);

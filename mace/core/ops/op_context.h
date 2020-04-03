@@ -12,19 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_REGISTRY_OPS_REGISTRY_H_
-#define MACE_OPS_REGISTRY_OPS_REGISTRY_H_
+#ifndef MACE_CORE_OPS_OP_CONTEXT_H_
+#define MACE_CORE_OPS_OP_CONTEXT_H_
 
-#include "mace/core/operator.h"
+#include "mace/core/device.h"
+#include "mace/core/workspace.h"
+#include "mace/core/future.h"
 
 namespace mace {
 
-class OpRegistry : public OpRegistryBase {
+class OpContext {
  public:
-  OpRegistry();
-  ~OpRegistry() = default;
+  OpContext(Workspace *ws, Device *device);
+  ~OpContext();
+  void set_device(Device *device);
+  Device *device() const;
+  Workspace *workspace() const;
+
+  void set_future(StatsFuture *future);
+  StatsFuture *future() const;
+ private:
+  Device *device_;
+  Workspace *ws_;
+  StatsFuture *future_;
 };
 
 }  // namespace mace
-
-#endif  // MACE_OPS_REGISTRY_OPS_REGISTRY_H_
+#endif  // MACE_CORE_OPS_OP_CONTEXT_H_

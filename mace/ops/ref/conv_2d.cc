@@ -109,6 +109,10 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
+typedef Conv2d<float> Conv2dRef;
+MACE_REGISTER_DELEGATOR(registry, Conv2dRef, delegator::Conv2dParam,
+                        MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, REF, General))
+
 }  // namespace ref
 }  // namespace ops
 }  // namespace mace

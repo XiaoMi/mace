@@ -18,7 +18,8 @@
 #include <utility>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -144,7 +145,7 @@ class PriorBoxOp : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterPriorBox(OpRegistryBase *op_registry) {
+void RegisterPriorBox(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PriorBox", PriorBoxOp,
                    DeviceType::CPU, float);
 }

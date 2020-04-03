@@ -181,6 +181,14 @@ class Gemv<uint8_t>;
 template
 class Gemv<int32_t>;
 
+typedef Gemv<uint8_t> GemvUint8;
+MACE_REGISTER_DELEGATOR(registry, GemvUint8, DelegatorParam,
+                        MACE_DELEGATOR_KEY(Gemv, CPU, uint8_t, NEON))
+
+typedef Gemv<int32_t> GemvInt32;
+MACE_REGISTER_DELEGATOR(registry, GemvInt32, DelegatorParam,
+                        MACE_DELEGATOR_KEY(Gemv, CPU, int32_t, NEON))
+
 }  // namespace q8
 }  // namespace arm
 }  // namespace ops

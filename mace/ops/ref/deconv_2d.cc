@@ -162,6 +162,11 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
+typedef Deconv2d<float> Deconv2dRef;
+MACE_REGISTER_DELEGATOR(
+    registry, Deconv2dRef, delegator::Deconv2dParam,
+    MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float, REF, General))
+
 }  // namespace ref
 }  // namespace ops
 }  // namespace mace

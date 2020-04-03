@@ -27,13 +27,14 @@
 
 namespace mace {
 
+class OpDelegatorRegistry;
 class MemoryOptimizer;
 
 class Workspace {
  public:
   typedef std::map<std::string, std::unique_ptr<Tensor>> TensorMap;
 
-  Workspace();
+  explicit Workspace(const OpDelegatorRegistry *registry);
   ~Workspace() {}
 
   Tensor *CreateTensor(const std::string &name,
@@ -71,14 +72,15 @@ class Workspace {
 
   void RemoveTensor(const std::string &name);
 
+  const OpDelegatorRegistry *GetDelegatorRegistry() const;
+
  private:
   TensorMap tensor_map_;
-
   std::unique_ptr<BufferBase> tensor_buffer_;
-
   PreallocatedPooledAllocator preallocated_allocator_;
-
   bool diffused_buffer_;
+
+  const OpDelegatorRegistry *op_delegator_registry_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Workspace);
 };

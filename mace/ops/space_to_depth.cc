@@ -15,7 +15,8 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/space_to_depth.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -180,7 +181,7 @@ class SpaceToDepthOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterSpaceToDepth(OpRegistryBase *op_registry) {
+void RegisterSpaceToDepth(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SpaceToDepth",
                    SpaceToDepthOp, DeviceType::CPU, float);
 

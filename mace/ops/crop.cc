@@ -14,7 +14,8 @@
 
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 #include "mace/utils/memory.h"
 #ifdef MACE_ENABLE_OPENCL
@@ -132,7 +133,7 @@ class CropOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterCrop(OpRegistryBase *op_registry) {
+void RegisterCrop(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Crop", CropOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_GPU_OP(op_registry, "Crop", CropOp);

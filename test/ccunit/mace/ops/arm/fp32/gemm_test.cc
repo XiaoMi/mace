@@ -15,8 +15,8 @@
 
 #include <gtest/gtest.h>
 
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/arm/fp32/gemm.h"
 #include "mace/ops/ref/gemm.h"
 #include "mace/ops/testing/test_utils.h"
@@ -50,7 +50,7 @@ void TestGemmFloat32(const index_t batch,
     GenerateRandomRealTypeData<float>(rhs.shape(), rhs_data);
     GenerateRandomRealTypeData<float>(output.shape(), output_data);
   }
-  ::mace::ops::arm::fp32::Gemm gemm;
+  ::mace::ops::arm::fp32::Gemm gemm((delegator::GemmParam()));
   utils::ThreadPool thread_pool(1, AFFINITY_NONE);
   thread_pool.Init();
   CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
@@ -71,7 +71,7 @@ void TestGemmFloat32(const index_t batch,
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_FLOAT);
   expected_output.Resize({batch, rows, cols});
-  ::mace::ops::ref::Gemm<float> gemm_ref;
+  ::mace::ops::ref::Gemm<float> gemm_ref((delegator::GemmParam()));
   gemm_ref.Compute(nullptr,
                    &lhs,
                    &rhs,

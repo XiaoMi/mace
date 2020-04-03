@@ -17,7 +17,9 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/ops/op_condition_context.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_util.h"
@@ -82,7 +84,7 @@ void BuildTransposeOpDef(
 
 }  // namespace
 
-NetDefAdapter::NetDefAdapter(const OpRegistryBase *op_registry,
+NetDefAdapter::NetDefAdapter(const OpRegistry *op_registry,
                              const Workspace *ws)
     : op_registry_(op_registry), ws_(ws) {}
 

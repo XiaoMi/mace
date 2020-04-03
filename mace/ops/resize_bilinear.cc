@@ -16,7 +16,8 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/memory.h"
 #include "mace/core/quantize.h"
 #include "mace/ops/common/utils.h"
@@ -366,7 +367,7 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterResizeBilinear(OpRegistryBase *op_registry) {
+void RegisterResizeBilinear(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
                    DeviceType::CPU, float);
 

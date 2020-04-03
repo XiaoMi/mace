@@ -19,7 +19,8 @@
 
 #include "mace/ops/common/reduce_type.h"
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/core/tensor.h"
 #ifdef MACE_ENABLE_OPENCL
@@ -1032,7 +1033,7 @@ class ReduceOp<DeviceType::GPU, float> : public ReduceOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterReduce(OpRegistryBase *op_registry) {
+void RegisterReduce(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,

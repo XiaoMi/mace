@@ -14,7 +14,7 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 #include "mace/benchmark_utils/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 

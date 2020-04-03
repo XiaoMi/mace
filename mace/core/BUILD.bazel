@@ -26,6 +26,8 @@ cc_library(
     srcs = glob(
         [
             "*.cc",
+            "ops/*.cc",
+            "registry/*.cc",
             "runtime/cpu/*.cc",
         ],
         exclude = [
@@ -53,6 +55,8 @@ cc_library(
     hdrs = glob(
         [
             "*.h",
+            "ops/*.h",
+            "registry/*.h",
             "runtime/cpu/*.h",
         ],
         exclude = [
@@ -68,7 +72,7 @@ cc_library(
     ])) + if_hta_enabled(glob([
         "runtime/hexagon/*hta*.h",
     ])) + if_apu_enabled(glob([
-        "runtime/apu/*.h"
+        "runtime/apu/*.h",
     ])) + if_rpcmem_enabled([
         "rpcmem.h",
     ]),

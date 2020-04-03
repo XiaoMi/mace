@@ -18,7 +18,8 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/fixpoint.h"
@@ -520,7 +521,7 @@ class SoftmaxOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterSoftmax(OpRegistryBase *op_registry) {
+void RegisterSoftmax(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
                    DeviceType::CPU, float);
 

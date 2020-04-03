@@ -13,7 +13,8 @@
 // limitations under the License.
 
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 
 namespace mace {
@@ -101,7 +102,7 @@ class InferConv2dShapeOp : public Operation {
   }
 };
 
-void RegisterInferConv2dShape(OpRegistryBase *op_registry) {
+void RegisterInferConv2dShape(OpRegistry *op_registry) {
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
                             InferConv2dShapeOp, DeviceType::CPU, float);
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",

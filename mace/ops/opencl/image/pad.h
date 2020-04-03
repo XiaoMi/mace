@@ -21,7 +21,7 @@
 #include <set>
 #include <string>
 
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/common/pad_type.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/activation.h"
+#include "mace/ops/delegator/activation.h"
 
 #include <arm_neon.h>
 #include <algorithm>
@@ -22,16 +22,22 @@ namespace ops {
 namespace arm {
 namespace fp32 {
 
-Activation::Activation(ActivationType type,
-                       const float limit,
-                       const float leakyrelu_coefficient)
-    : type_(type),
-      limit_(limit),
-      leakyrelu_coefficient_(leakyrelu_coefficient) {}
+class Activation : public delegator::Activation {
+ public:
+  explicit Activation(const delegator::ActivationParam &param)
+      : delegator::Activation(param) {}
+  ~Activation() = default;
+
+  MaceStatus Compute(const OpContext *context,
+                     const Tensor *input, Tensor *output) override;
+
+ private:
+  void DoActivation(const OpContext *context,
+                    const Tensor *input, Tensor *output);
+};
 
 MaceStatus Activation::Compute(const OpContext *context,
-                               const Tensor *input,
-                               Tensor *output) {
+                               const Tensor *input, Tensor *output) {
   Tensor::MappingGuard input_guard(input);
   if (input != output) {
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
@@ -139,7 +145,7 @@ void Activation::DoActivation(const OpContext *context,
       // remain
       for (index_t i = block_count * 4; i < size; ++i) {
         output_data[i] = std::max(input_data[i], 0.f) +
-                         std::min(input_data[i], 0.f) * leakyrelu_coefficient_;
+            std::min(input_data[i], 0.f) * leakyrelu_coefficient_;
       }
 
       break;
@@ -169,13 +175,18 @@ void Activation::DoActivation(const OpContext *context,
       break;
     }
 
-    case NOOP:
+    case NOOP: {
       break;
+    }
 
-    default:
+    default: {
       MACE_NOT_IMPLEMENTED;
+    }
   }
 }
+
+MACE_REGISTER_DELEGATOR(registry, Activation, delegator::ActivationParam,
+                        MACE_DELEGATOR_KEY(Activation, CPU, float, NEON))
 
 }  // namespace fp32
 }  // namespace arm

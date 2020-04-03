@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 #include "mace/core/types.h"
 #include "mace/ops/activation.h"
 #include "mace/ops/common/conv_pool_2d_util.h"

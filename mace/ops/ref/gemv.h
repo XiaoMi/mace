@@ -16,18 +16,19 @@
 #ifndef MACE_OPS_REF_GEMV_H_
 #define MACE_OPS_REF_GEMV_H_
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
+#include "mace/ops/delegator/gemv.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
 template<typename OUTPUT_TYPE>
-class Gemv {
+class Gemv : public delegator::Gemv {
  public:
-  Gemv() {}
+  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
   ~Gemv() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -40,13 +41,13 @@ class Gemv {
     const index_t lhs_width,
     const bool lhs_batched,
     const bool rhs_batched,
-    Tensor *output);
+    Tensor *output) override;
 };
 
 template<>
-class Gemv<float> {
+class Gemv<float> : public delegator::Gemv {
  public:
-  Gemv() {}
+  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
   ~Gemv() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -59,14 +60,14 @@ class Gemv<float> {
     const index_t lhs_width,
     const bool lhs_batched,
     const bool rhs_batched,
-    Tensor *output);
+    Tensor *output) override;
 };
 
 #if defined(MACE_ENABLE_QUANTIZE)
 template<>
-class Gemv<uint8_t> {
+class Gemv<uint8_t> : public delegator::Gemv {
  public:
-  Gemv() {}
+  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
   ~Gemv() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -79,13 +80,13 @@ class Gemv<uint8_t> {
       const index_t lhs_width,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 template<>
-class Gemv<int32_t> {
+class Gemv<int32_t> : public delegator::Gemv {
  public:
-  Gemv() {}
+  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
   ~Gemv() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -98,7 +99,7 @@ class Gemv<int32_t> {
       const index_t lhs_width,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output);
+      Tensor *output) override;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 

@@ -14,7 +14,7 @@
 #ifndef MACE_OPS_OPENCL_IMAGE_LPNORM_H_
 #define MACE_OPS_OPENCL_IMAGE_LPNORM_H_
 
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"

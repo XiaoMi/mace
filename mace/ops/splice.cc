@@ -29,7 +29,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 
 namespace mace {
@@ -153,7 +154,7 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> forward_const_indexes_;
 };
 
-void RegisterSplice(OpRegistryBase *op_registry) {
+void RegisterSplice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Splice", SpliceOp,
                    DeviceType::CPU, float);
 }

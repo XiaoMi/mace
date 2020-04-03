@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 
 namespace mace {
 namespace ops {

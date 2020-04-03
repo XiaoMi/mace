@@ -20,7 +20,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -94,7 +95,7 @@ class ReplaceIndexOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> forward_indexes_;
 };
 
-void RegisterReplaceIndex(OpRegistryBase *op_registry) {
+void RegisterReplaceIndex(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ReplaceIndex", ReplaceIndexOp,
                    DeviceType::CPU, float);
 }

@@ -15,8 +15,8 @@
 #ifndef MACE_OPS_COMMON_LSTM_H_
 #define MACE_OPS_COMMON_LSTM_H_
 
+#include "mace/core/ops/op_context.h"
 #include "mace/core/types.h"
-#include "mace/core/op_context.h"
 
 namespace mace {
 namespace ops {

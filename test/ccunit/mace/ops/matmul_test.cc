@@ -14,6 +14,7 @@
 
 #include <fstream>
 
+#include "mace/ops/delegator/gemm.h"
 #include "mace/ops/ops_test_util.h"
 #include "mace/ops/ref/gemm.h"
 
@@ -111,7 +112,7 @@ void Complex(const std::vector<index_t> &batch,
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
 
-  ref::Gemm<float> gemm;
+  ref::Gemm<float> gemm = ref::Gemm<float>(delegator::GemmParam());
   Tensor expected_output_tensor;
   std::vector<index_t> expected_output_shape({rows, cols});
   expected_output_shape.insert(expected_output_shape.begin(),

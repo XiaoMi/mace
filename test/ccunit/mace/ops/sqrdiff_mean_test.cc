@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

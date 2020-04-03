@@ -23,14 +23,17 @@
 #include "mace/core/types.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/port/port.h"
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 #include "mace/core/net_optimizer.h"
 
 namespace mace {
 
-class OpRegistryBase;
-class Workspace;
 class Device;
+class OpConditionContext;
+class OperatorDef;
+class OpRegistry;
+class Workspace;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 ///                               Conventions
@@ -49,7 +52,7 @@ class Device;
 ///////////////////////////////////////////////////////////////////////////////
 class NetDefAdapter {
  public:
-  NetDefAdapter(const OpRegistryBase *op_registry,
+  NetDefAdapter(const OpRegistry *op_registry,
                 const Workspace *ws);
   // Adapt original net_def to a better net.
   // 1. Adapt device: choose best device for every op in the net.
@@ -122,7 +125,7 @@ class NetDefAdapter {
   std::string DebugString(const NetDef *net_def);
 
  private:
-  const OpRegistryBase *op_registry_;
+  const OpRegistry *op_registry_;
   const Workspace *ws_;
   NetOptimizer net_optimizer_;
 };

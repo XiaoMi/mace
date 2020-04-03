@@ -17,6 +17,8 @@
 #include <arm_neon.h>
 #include <memory>
 
+#include "mace/ops/delegator/conv_2d.h"
+
 namespace mace {
 namespace ops {
 namespace arm {
@@ -719,6 +721,13 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
   UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
+
+MACE_REGISTER_DELEGATOR(registry, Conv2dK7x7S1, delegator::Conv2dParam,
+                        MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, NEON, K7x7S1))
+MACE_REGISTER_DELEGATOR(registry, Conv2dK7x7S2, delegator::Conv2dParam,
+                        MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, NEON, K7x7S2))
+MACE_REGISTER_DELEGATOR(registry, Conv2dK7x7S3, delegator::Conv2dParam,
+                        MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, NEON, K7x7S3))
 
 }  // namespace fp32
 }  // namespace arm

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -72,7 +73,7 @@ class ReverseOp<DeviceType::CPU, T> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterReverse(OpRegistryBase *op_registry) {
+void RegisterReverse(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reverse", ReverseOp,
                    DeviceType::CPU, float);
 }

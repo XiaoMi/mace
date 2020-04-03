@@ -14,7 +14,8 @@
 
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/opencl/buffer_transformer.h"
 
 namespace mace {
@@ -51,7 +52,7 @@ class BufferTransformOp<DeviceType::GPU, float> : public Operation {
   MemoryType out_mem_type_;
 };
 
-void RegisterBufferTransform(OpRegistryBase *op_registry) {
+void RegisterBufferTransform(OpRegistry *op_registry) {
   MACE_REGISTER_GPU_OP(op_registry, "BufferTransform", BufferTransformOp);
 }
 

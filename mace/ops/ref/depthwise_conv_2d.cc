@@ -115,6 +115,11 @@ MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
+typedef DepthwiseConv2d<float> DepthwiseConv2dRef;
+MACE_REGISTER_DELEGATOR(
+    registry, DepthwiseConv2dRef, delegator::DepthwiseConv2dParam,
+    MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float, REF, General))
+
 }  // namespace ref
 }  // namespace ops
 }  // namespace mace

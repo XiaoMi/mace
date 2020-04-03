@@ -370,12 +370,13 @@ the sample code show how to calculate the Top-1 accuracy with imagenet validatio
 Reduce Library Size
 -------------------
 
-Remove the registration of the ops unused for your models in the ``mace/ops/ops_register.cc``,
-which will reduce the library size significantly. the final binary just link the registered ops' code.
+Remove the registration of the ops and delegators unused for your models in the
+``mace/ops/registry/ops_registry.cc`` and ``mace/ops/registry/op_delegators_registry.cc``,
+which will reduce the library size significantly. the final binary just link the registered ops and delegators' code.
 
 .. code-block:: cpp
 
-    #include "mace/ops/ops_register.h"
+    #include "mace/ops/registry/registry.h"
 
     namespace mace {
     namespace ops {
@@ -386,12 +387,38 @@ which will reduce the library size significantly. the final binary just link the
     }  // namespace ops
 
 
-    OpRegistry::OpRegistry() : OpRegistryBase() {
+    void RegisterAllOps(OpRegistry *registry) {
     // Just leave the ops used in your models
 
       ...
 
-      ops::RegisterMyCustomOp(this);
+      ops::RegisterMyCustomOp(registry);
+
+      ...
+
+    }
+
+    }  // namespace mace
+
+.. code-block:: cpp
+
+    #include "mace/ops/registry/registry.h"
+
+    namespace mace {
+    namespace ops {
+    // Just leave the delegators used in your ops
+
+    ...
+
+    }  // namespace ops
+
+
+    void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
+    // Just leave the delegators used in your ops
+
+      ...
+
+      ops::RegisterMyCustomDelegator(registry);
 
       ...
 

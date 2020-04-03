@@ -26,7 +26,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -132,7 +133,7 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
   int output_dim_;
 };
 
-void RegisterPNorm(OpRegistryBase *op_registry) {
+void RegisterPNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PNorm", PNormOp,
                    DeviceType::CPU, float);
 }

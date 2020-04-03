@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,33 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_init_context.h"
 
 namespace mace {
 
-OpContext::OpContext(Workspace *ws, Device *device)
-    : device_(device), ws_(ws), future_(nullptr) {}
-
-OpContext::~OpContext() = default;
-
-void OpContext::set_device(Device *device) {
-  device_ = device;
-}
-
-Device* OpContext::device() const {
-  return device_;
-}
-
-Workspace* OpContext::workspace() const {
-  return ws_;
-}
-
-void OpContext::set_future(StatsFuture *future) {
-  future_ = future;
-}
-
-StatsFuture *OpContext::future() const {
-  return future_;
-}
+OpInitContext::OpInitContext(Workspace *ws, Device *device)
+    : ws_(ws), device_(device) {}
 
 }  // namespace mace

@@ -16,7 +16,7 @@
 #define MACE_OPS_OPENCL_BUFFER_UTILS_H_
 
 #include "mace/core/future.h"
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
 

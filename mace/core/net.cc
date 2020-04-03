@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/net.h"
+
 #include <algorithm>
 #include <limits>
 #include <set>
@@ -20,8 +22,9 @@
 
 #include "mace/core/future.h"
 #include "mace/core/memory_optimizer.h"
-#include "mace/core/net.h"
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_init_context.h"
+#include "mace/core/ops/op_context.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
 #include "mace/utils/conf_util.h"
@@ -33,7 +36,7 @@
 
 namespace mace {
 
-SerialNet::SerialNet(const OpRegistryBase *op_registry,
+SerialNet::SerialNet(const OpRegistry *op_registry,
                      const NetDef *net_def,
                      Workspace *ws,
                      Device *target_device,

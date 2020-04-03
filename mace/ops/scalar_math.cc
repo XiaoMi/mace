@@ -16,7 +16,8 @@
 #include <cmath>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/eltwise.h"
 
 namespace mace {
@@ -154,7 +155,7 @@ class ScalarMathOp : public Operation {
   int32_t scalar_input_index_;
 };
 
-void RegisterScalarMath(OpRegistryBase *op_registry) {
+void RegisterScalarMath(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,

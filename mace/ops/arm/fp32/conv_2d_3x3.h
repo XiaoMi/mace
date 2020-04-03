@@ -16,10 +16,11 @@
 #define MACE_OPS_ARM_FP32_CONV_2D_3X3_H_
 
 #include <vector>
-#include "mace/public/mace.h"
+
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/arm/fp32/conv_2d.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
@@ -28,8 +29,8 @@ namespace fp32 {
 
 class Conv2dK3x3S1 : public Conv2dBase {
  public:
-  Conv2dK3x3S1(const std::vector<int> &paddings, const Padding padding_type)
-      : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
+  explicit Conv2dK3x3S1(const delegator::Conv2dParam &param)
+      : Conv2dBase(param) {}
   virtual ~Conv2dK3x3S1() {}
 
   MaceStatus Compute(
@@ -41,8 +42,8 @@ class Conv2dK3x3S1 : public Conv2dBase {
 
 class Conv2dK3x3S2 : public Conv2dBase {
  public:
-  Conv2dK3x3S2(const std::vector<int> &paddings, const Padding padding_type)
-      : Conv2dBase({2, 2}, {1, 1}, paddings, padding_type) {}
+  explicit Conv2dK3x3S2(const delegator::Conv2dParam &param)
+      : Conv2dBase(param) {}
   virtual ~Conv2dK3x3S2() {}
 
   MaceStatus Compute(

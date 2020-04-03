@@ -15,7 +15,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -59,7 +60,7 @@ class UnsqueezeOp : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterUnsqueeze(OpRegistryBase *op_registry) {
+void RegisterUnsqueeze(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Unsqueeze", UnsqueezeOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Unsqueeze", UnsqueezeOp,

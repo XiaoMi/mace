@@ -16,7 +16,8 @@
 #include <cmath>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 
 namespace mace {
@@ -350,7 +351,7 @@ class StridedSliceOp : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterStridedSlice(OpRegistryBase *op_registry) {
+void RegisterStridedSlice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,

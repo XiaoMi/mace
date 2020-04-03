@@ -18,7 +18,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/lstm.h"
 
 namespace mace {
@@ -100,7 +101,7 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterLSTMNonlinear(OpRegistryBase *op_registry) {
+void RegisterLSTMNonlinear(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LSTMNonlinear", LSTMNonlinearOp,
                    DeviceType::CPU, float);
 }

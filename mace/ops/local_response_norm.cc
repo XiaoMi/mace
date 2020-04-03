@@ -15,7 +15,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -91,7 +92,7 @@ class LocalResponseNormOp<DeviceType::CPU, float> : public Operation {
   float beta_;
 };
 
-void RegisterLocalResponseNorm(OpRegistryBase *op_registry) {
+void RegisterLocalResponseNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LocalResponseNorm",
                    LocalResponseNormOp, DeviceType::CPU, float);
 }

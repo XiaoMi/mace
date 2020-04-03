@@ -14,7 +14,8 @@
 
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/quantize.h"
 #include "mace/utils/memory.h"
 
@@ -221,7 +222,7 @@ class ConcatOp<DeviceType::GPU, float> : public ConcatOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterConcat(OpRegistryBase *op_registry) {
+void RegisterConcat(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
                    DeviceType::CPU, float);
 

@@ -21,13 +21,14 @@
 #include <unordered_map>
 #include <sstream>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 
 namespace mace {
 
 class RunMetadata;
 class Workspace;
 class MemoryOptimizer;
+class OpRegistry;
 
 class NetBase {
  public:
@@ -44,7 +45,7 @@ class NetBase {
 
 class SerialNet : public NetBase {
  public:
-  SerialNet(const OpRegistryBase *op_registry,
+  SerialNet(const OpRegistry *op_registry,
             const NetDef *net_def,
             Workspace *ws,
             Device *target_device,

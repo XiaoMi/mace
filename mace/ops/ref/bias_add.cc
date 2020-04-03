@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/ref/bias_add.h"
+#include "mace/ops/delegator/bias_add.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
+
+class BiasAdd : public delegator::BiasAdd {
+ public:
+  explicit BiasAdd(const DelegatorParam &param) : delegator::BiasAdd(param) {}
+  ~BiasAdd() = default;
+
+  MaceStatus Compute(const OpContext *context, const Tensor *input,
+                     const Tensor *bias, Tensor *output) override;
+
+ private:
+  void AddBias(const OpContext *context, const Tensor *input,
+               const Tensor *bias, Tensor *output);
+};
 
 MaceStatus BiasAdd::Compute(const OpContext *context,
                             const Tensor *input,
@@ -70,6 +83,9 @@ void BiasAdd::AddBias(const OpContext *context,
     }
   }
 }
+
+MACE_REGISTER_DELEGATOR(registry, BiasAdd, DelegatorParam,
+                        MACE_DELEGATOR_KEY(BiasAdd, CPU, float, REF))
 
 }  // namespace ref
 }  // namespace ops

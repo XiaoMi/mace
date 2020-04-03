@@ -15,7 +15,8 @@
 #include <vector>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/pad_type.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/pad.h"
@@ -198,7 +199,7 @@ class PadOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterPad(OpRegistryBase *op_registry) {
+void RegisterPad(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pad", PadOp,
                    DeviceType::CPU, float);
 

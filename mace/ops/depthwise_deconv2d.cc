@@ -12,33 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/deconv_2d.h"
-
-#if defined(MACE_ENABLE_NEON)
-#include <arm_neon.h>
-#include "mace/ops/arm/fp32/depthwise_deconv_2d_general.h"
-#include "mace/ops/arm/fp32/depthwise_deconv_2d_3x3.h"
-#include "mace/ops/arm/fp32/depthwise_deconv_2d_4x4.h"
-#include "mace/ops/arm/fp32/bias_add.h"
-#include "mace/ops/arm/fp32/activation.h"
-
-#else
-#include "mace/ops/ref/depthwise_deconv_2d.h"
-#include "mace/ops/ref/bias_add.h"
-#include "mace/ops/ref/activation.h"
-#endif
-
 #include <algorithm>
 #include <functional>
 #include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
-#include "mace/utils/math.h"
-#include "mace/public/mace.h"
-#include "mace/utils/memory.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/deconv_2d.h"
+#include "mace/ops/delegator/activation.h"
+#include "mace/ops/delegator/bias_add.h"
+#include "mace/ops/delegator/depthwise_deconv_2d.h"
+#include "mace/public/mace.h"
+#include "mace/utils/math.h"
+#include "mace/utils/memory.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -47,6 +36,10 @@
 
 namespace mace {
 namespace ops {
+
+namespace {
+const std::vector<int> kDepthwiseStrides = {1, 1};
+}
 
 template<DeviceType D, class T>
 class DepthwiseDeconv2dOp;
@@ -57,9 +50,16 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context),
-        activation_delegator_(activation_,
-                              relux_max_limit_,
-                              leakyrelu_coefficient_) {}
+        activation_delegator_(
+            delegator::Activation::Create(
+                context->workspace(),
+                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                delegator::ActivationParam(activation_, relux_max_limit_,
+                                           leakyrelu_coefficient_))),
+        bias_add_delegator_(delegator::BiasAdd::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
@@ -74,113 +74,77 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
     const index_t in_channels = input->dim(1);
     bool is_depthwise = group_ == in_channels;
 
-#ifdef MACE_ENABLE_NEON
-    const index_t kernel_h = filter->dim(2);
-    const index_t kernel_w = filter->dim(3);
-    bool use_neon_3x3_s1 = kernel_h == kernel_w && kernel_h == 3 &&
-        strides_[0] == strides_[1] && strides_[0] == 1;
-    bool use_neon_3x3_s2 = kernel_h == kernel_w && kernel_h == 3 &&
-        strides_[0] == strides_[1] && strides_[0] == 2;
-    bool use_neon_4x4_s1 = kernel_h == kernel_w && kernel_h == 4 &&
-        strides_[0] == strides_[1] && strides_[0] == 1;
-    bool use_neon_4x4_s2 = kernel_h == kernel_w && kernel_h == 4 &&
-        strides_[0] == strides_[1] && strides_[0] == 2;
+    if (depthwise_deconv2d_delegator_ == nullptr) {
+      if (MACE_CPU_IMPL_TYPE == NEON) {
+        const index_t kernel_h = filter->dim(2);
+        const index_t kernel_w = filter->dim(3);
+        bool use_neon_3x3_s1 = kernel_h == kernel_w && kernel_h == 3 &&
+            strides_[0] == strides_[1] && strides_[0] == 1;
+        bool use_neon_3x3_s2 = kernel_h == kernel_w && kernel_h == 3 &&
+            strides_[0] == strides_[1] && strides_[0] == 2;
+        bool use_neon_4x4_s1 = kernel_h == kernel_w && kernel_h == 4 &&
+            strides_[0] == strides_[1] && strides_[0] == 1;
+        bool use_neon_4x4_s2 = kernel_h == kernel_w && kernel_h == 4 &&
+            strides_[0] == strides_[1] && strides_[0] == 2;
 
-    if (deconv2d_delegator_ == nullptr) {
-      if (is_depthwise) {
-        if (use_neon_3x3_s1) {
-          deconv2d_delegator_ = make_unique<arm::fp32::DepthwiseDeconv2dK3x3S1>(
-              paddings_, padding_type_, CAFFE);
-        } else if (use_neon_3x3_s2) {
-          deconv2d_delegator_ = make_unique<arm::fp32::DepthwiseDeconv2dK3x3S2>(
-              paddings_, padding_type_, CAFFE);
-        } else if (use_neon_4x4_s1) {
-          deconv2d_delegator_ = make_unique<arm::fp32::DepthwiseDeconv2dK4x4S1>(
-              paddings_, padding_type_, CAFFE);
-        } else if (use_neon_4x4_s2) {
-          deconv2d_delegator_ = make_unique<arm::fp32::DepthwiseDeconv2dK4x4S2>(
-              paddings_, padding_type_, CAFFE);
+        if (is_depthwise) {
+          std::string tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
+                                                  MACE_CPU_IMPL_TYPE, General);
+          if (use_neon_3x3_s1) {
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K3x3S1);
+          } else if (use_neon_3x3_s2) {
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K3x3S2);
+          } else if (use_neon_4x4_s1) {
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K4x4S1);
+          } else if (use_neon_4x4_s2) {
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K4x4S2);
+          }
+          delegator::DepthwiseDeconv2dParam param(strides_, kDepthwiseStrides,
+                                                  paddings_, padding_type_,
+                                                  CAFFE, group_);
+          depthwise_deconv2d_delegator_ = delegator::DepthwiseDeconv2d::Create(
+              context->workspace(), tag, param);
         } else {
-          deconv2d_delegator_ =
-              make_unique<arm::fp32::DepthwiseDeconv2dGeneral>(
-                  strides_,
-                  std::vector<int>{1, 1},
-                  paddings_,
-                  padding_type_,
-                  CAFFE);
-        }
-      } else {
-        if (use_neon_3x3_s1) {
-          deconv2d_delegator_ = make_unique<arm::fp32::GroupDeconv2dK3x3S1>(
-              paddings_, padding_type_, group_, CAFFE);
-        } else if (use_neon_3x3_s2) {
-          deconv2d_delegator_ = make_unique<arm::fp32::GroupDeconv2dK3x3S2>(
-              paddings_, padding_type_, group_, CAFFE);
-        } else if (use_neon_4x4_s1) {
-          deconv2d_delegator_ = make_unique<arm::fp32::GroupDeconv2dK4x4S1>(
-              paddings_, padding_type_, group_, CAFFE);
-        } else if (use_neon_4x4_s2) {
-          deconv2d_delegator_ = make_unique<arm::fp32::GroupDeconv2dK4x4S2>(
-              paddings_, padding_type_, group_, CAFFE);
-        } else {
-          deconv2d_delegator_ = make_unique<arm::fp32::GroupDeconv2dGeneral>(
-              strides_,
-              std::vector<int>{1, 1},
-              paddings_,
-              padding_type_,
-              group_,
-              CAFFE);
+          std::string tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
+                                                  MACE_CPU_IMPL_TYPE, General);
+          if (use_neon_3x3_s1) {
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K3x3S1);
+          } else if (use_neon_3x3_s2) {
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K3x3S2);
+          } else if (use_neon_4x4_s1) {
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K4x4S1);
+          } else if (use_neon_4x4_s2) {
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K4x4S2);
+          }
+          delegator::GroupDeconv2dParam param(strides_, kDepthwiseStrides,
+                                              paddings_, padding_type_,
+                                              CAFFE, group_);
+          depthwise_deconv2d_delegator_ = delegator::GroupDeconv2d::Create(
+              context->workspace(), tag, param);
         }
       }
     }
 
-    deconv2d_delegator_->Compute(context,
-                                 input,
-                                 filter,
-                                 nullptr,
-                                 output);
-#else
-    if (deconv2d_delegator_ == nullptr) {
-      if (is_depthwise) {
-        deconv2d_delegator_ = make_unique<ref::DepthwiseDeconv2d<float>>(
-            strides_,
-            std::vector<int>{1, 1},
-            paddings_,
-            padding_type_,
-            CAFFE);
-      } else {
-        deconv2d_delegator_ = make_unique<ref::GroupDeconv2d<float>>(
-            strides_,
-            std::vector<int>{1, 1},
-            paddings_,
-            padding_type_,
-            group_,
-            CAFFE);
-      }
-    }
-    deconv2d_delegator_->Compute(context,
-                                 input,
-                                 filter,
-                                 nullptr,
-                                 output);
-#endif
-
-    bias_add_delegator_.Compute(context, output, bias, output);
-    activation_delegator_.Compute(context, output, output);
+    depthwise_deconv2d_delegator_->Compute(context, input, filter,
+                                           nullptr, output);
+    bias_add_delegator_->Compute(context, output, bias, output);
+    activation_delegator_->Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-#ifdef MACE_ENABLE_NEON
-  std::unique_ptr<arm::fp32::Deconv2dBase> deconv2d_delegator_;
-  arm::fp32::BiasAdd bias_add_delegator_;
-  arm::fp32::Activation activation_delegator_;
-#else
-  std::unique_ptr<ref::GroupDeconv2d<float>> deconv2d_delegator_;
-  ref::BiasAdd bias_add_delegator_;
-  ref::Activation activation_delegator_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::Activation> activation_delegator_;
+  std::unique_ptr<delegator::BiasAdd> bias_add_delegator_;
+  std::unique_ptr<delegator::DepthwiseDeconv2d> depthwise_deconv2d_delegator_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -251,7 +215,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterDepthwiseDeconv2d(OpRegistryBase *op_registry) {
+void RegisterDepthwiseDeconv2d(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseDeconv2d",
                    DepthwiseDeconv2dOp, DeviceType::CPU, float);
 

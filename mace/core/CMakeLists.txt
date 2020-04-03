@@ -8,9 +8,16 @@ set(CORE_SRCS
   net.cc
   net_def_adapter.cc
   net_optimizer.cc
-  op_context.cc
-  operator.cc
+  ops/op_condition_builder.cc
+  ops/op_condition_context.cc
+  ops/op_construct_context.cc
+  ops/op_context.cc
+  ops/operator.cc
+  ops/op_init_context.cc
   quantize.cc
+  registry/op_delegator_registry.cc
+  registry/op_registration_info.cc
+  registry/ops_registry.cc
   runtime_failure_mock.cc
   types.cc
   workspace.cc

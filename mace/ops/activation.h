@@ -20,7 +20,7 @@
 #include <string>
 
 #include "mace/core/types.h"
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/ops/common/activation_type.h"
 #include "mace/utils/logging.h"
 

@@ -15,7 +15,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -77,7 +78,7 @@ class StackOp : public Operation {
   int axis_;
 };
 
-void RegisterStack(OpRegistryBase *op_registry) {
+void RegisterStack(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, int32_t);
 }

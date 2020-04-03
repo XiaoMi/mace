@@ -18,12 +18,13 @@
 #include <vector>
 #include <memory>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/arm/fp32/deconv_2d.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/delegator/depthwise_deconv_2d.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
@@ -32,14 +33,9 @@ namespace fp32 {
 
 class DepthwiseDeconv2dK3x3S1 : public Deconv2dBase {
  public:
-  DepthwiseDeconv2dK3x3S1(const std::vector<int> &paddings,
-                          const Padding padding_type,
-                          const FrameworkType framework_type)
-      : Deconv2dBase({1, 1},
-                     {1, 1},
-                     paddings,
-                     padding_type,
-                     framework_type) {}
+  explicit DepthwiseDeconv2dK3x3S1(
+      const delegator::DepthwiseDeconv2dParam &param)
+      : Deconv2dBase(param) {}
   virtual ~DepthwiseDeconv2dK3x3S1() {}
 
   MaceStatus Compute(
@@ -52,14 +48,9 @@ class DepthwiseDeconv2dK3x3S1 : public Deconv2dBase {
 
 class DepthwiseDeconv2dK3x3S2 : public Deconv2dBase {
  public:
-  DepthwiseDeconv2dK3x3S2(const std::vector<int> &paddings,
-                          const Padding padding_type,
-                          const FrameworkType framework_type)
-      : Deconv2dBase({2, 2},
-                     {1, 1},
-                     paddings,
-                     padding_type,
-                     framework_type) {}
+  explicit DepthwiseDeconv2dK3x3S2(
+      const delegator::DepthwiseDeconv2dParam &param)
+      : Deconv2dBase(param) {}
   virtual ~DepthwiseDeconv2dK3x3S2() {}
 
   MaceStatus Compute(
@@ -72,16 +63,9 @@ class DepthwiseDeconv2dK3x3S2 : public Deconv2dBase {
 
 class GroupDeconv2dK3x3S1 : public Deconv2dBase {
  public:
-  GroupDeconv2dK3x3S1(const std::vector<int> &paddings,
-                      const Padding padding_type,
-                      const int group,
-                      const FrameworkType framework_type)
-      : Deconv2dBase({1, 1},
-                     {1, 1},
-                     paddings,
-                     padding_type,
-                     group,
-                     framework_type) {}
+  explicit GroupDeconv2dK3x3S1(
+      const delegator::GroupDeconv2dParam &param)
+      : Deconv2dBase(param) {}
   virtual ~GroupDeconv2dK3x3S1() {}
 
   MaceStatus Compute(
@@ -94,16 +78,8 @@ class GroupDeconv2dK3x3S1 : public Deconv2dBase {
 
 class GroupDeconv2dK3x3S2 : public Deconv2dBase {
  public:
-  GroupDeconv2dK3x3S2(const std::vector<int> &paddings,
-                      const Padding padding_type,
-                      const int group,
-                      const FrameworkType framework_type)
-      : Deconv2dBase({2, 2},
-                     {1, 1},
-                     paddings,
-                     padding_type,
-                     group,
-                     framework_type) {}
+  explicit GroupDeconv2dK3x3S2(const delegator::GroupDeconv2dParam &param)
+      : Deconv2dBase(param) {}
   virtual ~GroupDeconv2dK3x3S2() {}
 
   MaceStatus Compute(

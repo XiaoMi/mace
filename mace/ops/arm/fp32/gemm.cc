@@ -1224,6 +1224,9 @@ MaceStatus Gemm::Compute(const OpContext *context,
                  output);
 }
 
+MACE_REGISTER_DELEGATOR(registry, Gemm, delegator::GemmParam,
+                        MACE_DELEGATOR_KEY(Gemm, CPU, float, NEON))
+
 }  // namespace fp32
 }  // namespace arm
 }  // namespace ops

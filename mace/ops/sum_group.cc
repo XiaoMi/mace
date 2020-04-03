@@ -20,7 +20,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -101,7 +102,7 @@ class SumGroupOp<DeviceType::CPU, T> : public Operation {
   }
 };
 
-void RegisterSumGroup(OpRegistryBase *op_registry) {
+void RegisterSumGroup(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SumGroup", SumGroupOp,
                    DeviceType::CPU, float);
 }

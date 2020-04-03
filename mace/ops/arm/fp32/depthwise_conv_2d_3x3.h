@@ -16,10 +16,12 @@
 #define MACE_OPS_ARM_FP32_DEPTHWISE_CONV_2D_3X3_H_
 
 #include <vector>
-#include "mace/public/mace.h"
+
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/arm/fp32/conv_2d.h"
+#include "mace/ops/delegator/depthwise_conv_2d.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
@@ -28,9 +30,8 @@ namespace fp32 {
 
 class DepthwiseConv2dK3x3S1 : public Conv2dBase {
  public:
-  DepthwiseConv2dK3x3S1(const std::vector<int> &paddings,
-                        const Padding padding_type)
-      : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type) {}
+  explicit DepthwiseConv2dK3x3S1(const delegator::DepthwiseConv2dParam &param)
+      : Conv2dBase(param) {}
   virtual ~DepthwiseConv2dK3x3S1() {}
 
   MaceStatus Compute(
@@ -42,9 +43,8 @@ class DepthwiseConv2dK3x3S1 : public Conv2dBase {
 
 class DepthwiseConv2dK3x3S2 : public Conv2dBase {
  public:
-  DepthwiseConv2dK3x3S2(const std::vector<int> &paddings,
-                        const Padding padding_type)
-      : Conv2dBase({2, 2}, {1, 1}, paddings, padding_type) {}
+  explicit DepthwiseConv2dK3x3S2(const delegator::DepthwiseConv2dParam &param)
+      : Conv2dBase(param) {}
   virtual ~DepthwiseConv2dK3x3S2() {}
 
   MaceStatus Compute(

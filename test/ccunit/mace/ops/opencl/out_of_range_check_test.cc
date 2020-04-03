@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/runtime/opencl/gpu_device.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
@@ -134,7 +134,7 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   std::unique_ptr<Device> device = make_unique<GPUDevice>(
       gpu_context.opencl_tuner());
 
-  Workspace ws;
+  Workspace ws(nullptr);
   OpContext context(&ws, device.get());
 
   std::vector<index_t> buffer_shape = {batch, height, width, channels};

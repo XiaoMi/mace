@@ -18,64 +18,41 @@
 
 #include <vector>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/delegator/depthwise_conv_2d.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
 template<typename OUTPUT_TYPE>
-class DepthwiseConv2d {
+class DepthwiseConv2d : public delegator::DepthwiseConv2d {
  public:
-  DepthwiseConv2d(const std::vector<int> &strides,
-                  const std::vector<int> &dilations,
-                  const std::vector<int> &paddings,
-                  const Padding padding_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type) {}
+  explicit DepthwiseConv2d(const delegator::DepthwiseConv2dParam &param)
+      : delegator::DepthwiseConv2d(param) {}
   ~DepthwiseConv2d() {}
   MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
-
- private:
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
+      Tensor *output) override;
 };
 
 template<>
-class DepthwiseConv2d<float> {
+class DepthwiseConv2d<float> : public delegator::DepthwiseConv2d {
  public:
-  DepthwiseConv2d(const std::vector<int> &strides,
-                  const std::vector<int> &dilations,
-                  const std::vector<int> &paddings,
-                  const Padding padding_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type) {}
+  explicit DepthwiseConv2d(const delegator::DepthwiseConv2dParam &param)
+      : delegator::DepthwiseConv2d(param) {}
   ~DepthwiseConv2d() {}
 
   MaceStatus Compute(
       const OpContext *context,
       const Tensor *input,
       const Tensor *filter,
-      Tensor *output);
-
- private:
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
+      Tensor *output) override;
 };
 
 }  // namespace ref

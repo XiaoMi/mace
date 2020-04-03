@@ -12,18 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/q8/eltwise.h"
-
 #include <arm_neon.h>
 #include <algorithm>
 
 #include "mace/ops/common/gemmlowp_util.h"
+#include "mace/ops/delegator/eltwise.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
 namespace q8 {
+
+class Eltwise : public delegator::Eltwise {
+ public:
+  explicit Eltwise(const delegator::EltwiseParam &param)
+      : delegator::Eltwise(param) {}
+  ~Eltwise() = default;
+
+  MaceStatus Compute(const OpContext *context, const Tensor *input0,
+                     const Tensor *input1, Tensor *output) override;
+};
 
 MaceStatus Eltwise::Compute(const OpContext *context,
                             const Tensor *input0,
@@ -144,7 +153,7 @@ MaceStatus Eltwise::Compute(const OpContext *context,
                   gemmlowp::SaturatingRoundingDoublingHighMul(
                       res, output_multiplier),
                   -output_shift) +
-              output->zero_point();
+                  output->zero_point();
           output_ptr[i] = Saturate<uint8_t>(output_val);
         }
       },
@@ -152,6 +161,9 @@ MaceStatus Eltwise::Compute(const OpContext *context,
 
   return MaceStatus::MACE_SUCCESS;
 }
+
+MACE_REGISTER_DELEGATOR(registry, Eltwise, delegator::EltwiseParam,
+                        MACE_DELEGATOR_KEY(Eltwise, CPU, uint8_t, NEON))
 
 }  // namespace q8
 }  // namespace arm

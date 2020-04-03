@@ -19,7 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/opencl/image/buffer_to_image.h"
 #include "mace/ops/opencl/image/image_to_buffer.h"
 #include "mace/ops/opencl/buffer/buffer_transform.h"

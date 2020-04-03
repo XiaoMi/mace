@@ -35,14 +35,13 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/lstm.h"
+#include "mace/ops/delegator/gemv.h"
 
 #ifdef MACE_ENABLE_NEON
 #include <arm_neon.h>
-#include "mace/ops/arm/fp32/gemv.h"
-#else
-#include "mace/ops/ref/gemv.h"
 #endif  // MACE_ENABLE_NEON
 
 namespace mace {
@@ -73,7 +72,11 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         cell_cache_indexes_(
             Operation::GetRepeatedArgs<index_t>("cell_cache_indexes")),
         out_cache_indexes_(
-            Operation::GetRepeatedArgs<index_t>("out_cache_indexes")) {}
+            Operation::GetRepeatedArgs<index_t>("out_cache_indexes")),
+        gemv_(delegator::Gemv::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(Gemv, CPU, T, MACE_CPU_IMPL_TYPE),
+            DelegatorParam())) {}
 
   inline void Validate() {
     const Tensor *input = this->Input(0);
@@ -93,7 +96,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                ") and prev_out_delay(", prev_out_delay_,
                ") should be less than zero.");
     MACE_CHECK(prev_cell_delay_ % subsample_factor_ == 0 &&
-               prev_out_delay_ % subsample_factor_ == 0,
+        prev_out_delay_ % subsample_factor_ == 0,
                "prev_cell_delay(", prev_cell_delay_,
                ") and prev_out_delay(", prev_out_delay_,
                ") should be multiples of subsample_factor(",
@@ -190,8 +193,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     const index_t affine_a_out_dim = weights_a->dim(0);
     const index_t affine_a_depth = weights_a->dim(1);
     MACE_CHECK(affine_a_in_dim == affine_a_depth)
-      << "affine_a's input_dim:" << affine_a_in_dim
-      << "!=" << "affine_a's weights' depth:" << affine_a_depth << std::endl;
+        << "affine_a's input_dim:" << affine_a_in_dim
+        << "!=" << "affine_a's weights' depth:" << affine_a_depth << std::endl;
 
     const index_t lstm_input_dim = affine_a_out_dim + prev_cell_dim_;
     const index_t lstm_cell_dim = lstm_input_dim / 5;
@@ -202,15 +205,15 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                lstm_cell_dim, ").");
     MACE_CHECK(lstm_params->dim(0) == 3 &&
         params_stride == lstm_cell_dim && lstm_cell_dim == prev_cell_dim_)
-      << " lstm params rows: " << lstm_params->dim(0)
-      << " params_stride: " << params_stride
-      << " != " << " cell_dim: " << lstm_cell_dim << std::endl;
+        << " lstm params rows: " << lstm_params->dim(0)
+        << " params_stride: " << params_stride
+        << " != " << " cell_dim: " << lstm_cell_dim << std::endl;
     const index_t affine_b_out_dim = weights_b->dim(0);
     const index_t affine_b_depth = weights_b->dim(1);
     const index_t affine_b_in_dim = lstm_cell_dim;
     MACE_CHECK(affine_b_in_dim == affine_b_depth)
-      << "affine_b's input_dim:" << affine_b_in_dim
-      << "!=" << "affine_b's weights' depth:" << affine_b_depth << std::endl;
+        << "affine_b's input_dim:" << affine_b_in_dim
+        << "!=" << "affine_b's weights' depth:" << affine_b_depth << std::endl;
 
     const index_t output_dim = affine_b_out_dim;
     MACE_CHECK(prev_out_offset_ + prev_out_dim_ <= output_dim)
@@ -316,16 +319,16 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                prev_out_buf_data + i % out_buf_chunk * prev_out_dim_,
                prev_out_dim_ * sizeof(float));
         // Affine
-        gemv_.Compute(context,
-                      weights_a,
-                      &affine_a_in,
-                      bias_a,
-                      1,
-                      affine_a_out_dim,
-                      affine_a_depth,
-                      false,
-                      false,
-                      &affine_a_out);
+        gemv_->Compute(context,
+                       weights_a,
+                       &affine_a_in,
+                       bias_a,
+                       1,
+                       affine_a_out_dim,
+                       affine_a_depth,
+                       false,
+                       false,
+                       &affine_a_out);
         // Prepare LSTMNonlinear input and output pointer
         float *lstm_cell_ptr =
             prev_cell_buf_data + i % cell_buf_chunk * prev_cell_dim_;
@@ -343,16 +346,16 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                             affine_b_in_data);
         UpdateCell(curr_cell_ptr, prev_cell_dim_, scale_);
         // Affine
-        gemv_.Compute(context,
-                      weights_b,
-                      &affine_b_in,
-                      bias_b,
-                      1,
-                      affine_b_out_dim,
-                      affine_b_depth,
-                      false,
-                      false,
-                      &affine_b_out);
+        gemv_->Compute(context,
+                       weights_b,
+                       &affine_b_in,
+                       bias_b,
+                       1,
+                       affine_b_out_dim,
+                       affine_b_depth,
+                       false,
+                       false,
+                       &affine_b_out);
         // Output
         memcpy(output_ptr,
                affine_b_out_data,
@@ -404,18 +407,13 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> forward_indexes_;
   std::vector<index_t> cell_cache_indexes_;
   std::vector<index_t> out_cache_indexes_;
-
-#ifdef MACE_ENABLE_NEON
-  arm::fp32::Gemv gemv_;
-#else
-  ref::Gemv<float> gemv_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::Gemv> gemv_;
 
   MACE_OP_INPUT_TAGS(INPUT, PREV_OUT, PREV_CELL, WEIGHTS_A, PARAMS, WEIGHTS_B);
   MACE_OP_OUTPUT_TAGS(OUTPUT, OUT_CACHE, CELL_CACHE);
 };
 
-void RegisterDynamicLSTM(OpRegistryBase *op_registry) {
+void RegisterDynamicLSTM(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DynamicLSTM", DynamicLSTMOp,
                    DeviceType::CPU, float);
 }

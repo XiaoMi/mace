@@ -18,12 +18,12 @@
 #include <vector>
 #include <memory>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/arm/fp32/deconv_2d.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
@@ -32,10 +32,8 @@ namespace fp32 {
 
 class Deconv2dK4x4S1 : public Deconv2dBase {
  public:
-  Deconv2dK4x4S1(const std::vector<int> &paddings,
-                 const Padding padding_type,
-                 const FrameworkType framework_type)
-      : Deconv2dBase({1, 1}, {1, 1}, paddings, padding_type, framework_type) {}
+  explicit Deconv2dK4x4S1(const delegator::Deconv2dParam &param)
+      : Deconv2dBase(param) {}
   virtual ~Deconv2dK4x4S1() {}
 
   MaceStatus Compute(
@@ -48,10 +46,8 @@ class Deconv2dK4x4S1 : public Deconv2dBase {
 
 class Deconv2dK4x4S2 : public Deconv2dBase {
  public:
-  Deconv2dK4x4S2(const std::vector<int> &paddings,
-                 const Padding padding_type,
-                 const FrameworkType framework_type)
-      : Deconv2dBase({2, 2}, {1, 1}, paddings, padding_type, framework_type) {}
+  explicit Deconv2dK4x4S2(const delegator::Deconv2dParam &param)
+      : Deconv2dBase(param) {}
   virtual ~Deconv2dK4x4S2() {}
 
   MaceStatus Compute(

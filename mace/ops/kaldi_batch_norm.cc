@@ -19,7 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -167,7 +168,7 @@ class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterKaldiBatchNorm(OpRegistryBase *op_registry) {
+void RegisterKaldiBatchNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "KaldiBatchNorm", KaldiBatchNormOp,
                    DeviceType::CPU, float);
 }

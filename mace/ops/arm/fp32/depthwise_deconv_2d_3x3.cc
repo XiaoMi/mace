@@ -776,6 +776,20 @@ MaceStatus GroupDeconv2dK3x3S2::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
+MACE_REGISTER_DELEGATOR(
+    registry, DepthwiseDeconv2dK3x3S1, delegator::DepthwiseDeconv2dParam,
+    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, NEON, K3x3S1))
+MACE_REGISTER_DELEGATOR(
+    registry, DepthwiseDeconv2dK3x3S2, delegator::DepthwiseDeconv2dParam,
+    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, NEON, K3x3S2))
+
+MACE_REGISTER_DELEGATOR(
+    registry, GroupDeconv2dK3x3S1, delegator::GroupDeconv2dParam,
+    MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float, NEON, K3x3S1))
+MACE_REGISTER_DELEGATOR(
+    registry, GroupDeconv2dK3x3S2, delegator::GroupDeconv2dParam,
+    MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float, NEON, K3x3S2))
+
 }  // namespace fp32
 }  // namespace arm
 }  // namespace ops

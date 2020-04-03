@@ -16,7 +16,8 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -110,7 +111,7 @@ class TileOp : public Operation {
   int has_data_format_;
 };
 
-void RegisterTile(OpRegistryBase *op_registry) {
+void RegisterTile(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Tile", TileOp, DeviceType::CPU, float);
   MACE_REGISTER_OP_CONDITION(
       op_registry, OpConditionBuilder("Tile").SetDevicePlacerFunc(

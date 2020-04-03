@@ -17,7 +17,8 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bicubic.h"
@@ -232,7 +233,7 @@ class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterResizeBicubic(OpRegistryBase *op_registry) {
+void RegisterResizeBicubic(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBicubic", ResizeBicubicOp,
                    DeviceType::CPU, float);
 

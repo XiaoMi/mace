@@ -15,8 +15,8 @@
 
 #include <gtest/gtest.h>
 
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/arm/fp32/gemv.h"
 #include "mace/ops/ref/gemv.h"
 #include "mace/ops/testing/test_utils.h"
@@ -53,7 +53,8 @@ void TestGemvFloat32(const index_t batch,
   thread_pool.Init();
   CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
   OpContext context(nullptr, &cpu_device);
-  ::mace::ops::arm::fp32::Gemv gemv;
+  ::mace::ops::arm::fp32::Gemv gemv =
+      ::mace::ops::arm::fp32::Gemv(DelegatorParam());
   gemv.Compute(&context,
                &lhs,
                &rhs,
@@ -67,7 +68,8 @@ void TestGemvFloat32(const index_t batch,
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_FLOAT);
   expected_output.Resize({batch, height});
-  ::mace::ops::ref::Gemv<float> gemv_ref;
+  ::mace::ops::ref::Gemv<float> gemv_ref =
+      ::mace::ops::ref::Gemv<float>(DelegatorParam());
   gemv_ref.Compute(nullptr,
                    &lhs,
                    &rhs,

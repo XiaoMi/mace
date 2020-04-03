@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef MACE_ENABLE_NEON
 #ifdef MACE_ENABLE_QUANTIZE
-#include "mace/ops/arm/q8/eltwise.h"
+#include "mace/ops/delegator/eltwise.h"
 #endif  // MACE_ENABLE_QUANTIZE
-#endif  // MACE_ENABLE_NEON
 
 #include "mace/ops/eltwise.h"
 
@@ -28,7 +26,8 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
 #include "mace/utils/memory.h"
 #include "mace/core/quantize.h"
@@ -1061,7 +1060,7 @@ class EltwiseOp : public Operation {
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
-template <>
+template<>
 class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
   explicit EltwiseOp(OpConstructContext *context)
@@ -1071,12 +1070,15 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
         coeff_(Operation::GetRepeatedArgs<float>("coeff")),
         scalar_input_(Operation::GetOptionalArg<float>("scalar_input", 1.0)),
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
-            "scalar_input_index", 1))
-#ifdef MACE_ENABLE_NEON
-        , eltwise_(static_cast<ops::EltwiseType>(Operation::GetOptionalArg<int>(
-            "type", static_cast<int>(ops::EltwiseType::NONE))))
-#endif
-  {}
+            "scalar_input_index", 1)),
+        eltwise_delegator_(delegator::Eltwise::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(Eltwise, CPU, uint8_t, MACE_CPU_IMPL_TYPE),
+            delegator::EltwiseParam(
+                static_cast<ops::EltwiseType>(
+                    Operation::GetOptionalArg<int>(
+                        "type",
+                        static_cast<int>(ops::EltwiseType::NONE)))))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -1092,77 +1094,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
     MACE_CHECK(output->scale() != 0);
     MACE_RETURN_IF_ERROR(output->Resize(input0->shape()));
 
-#ifdef MACE_ENABLE_NEON
-    eltwise_.Compute(context, input0, input1, output);
-#else
-    constexpr int left_shift = 20;
-    const double doubled_scale = 2 * std::max(input0->scale(), input1->scale());
-    const double adjusted_input0_scale = input0->scale() / doubled_scale;
-    const double adjusted_input1_scale = input1->scale() / doubled_scale;
-    const double adjusted_output_scale =
-        doubled_scale / ((1 << left_shift) * output->scale());
-
-    int32_t input0_multiplier;
-    int32_t input1_multiplier;
-    int32_t output_multiplier;
-    int32_t input0_shift;
-    int32_t input1_shift;
-    int32_t output_shift;
-    QuantizeMultiplier(adjusted_input0_scale,
-                       &input0_multiplier,
-                       &input0_shift);
-    QuantizeMultiplier(adjusted_input1_scale,
-                       &input1_multiplier,
-                       &input1_shift);
-    QuantizeMultiplier(adjusted_output_scale,
-                       &output_multiplier,
-                       &output_shift);
-
-    Tensor::MappingGuard input0_guard(input0);
-    Tensor::MappingGuard input1_guard(input1);
-    Tensor::MappingGuard output_guard(output);
-
-    auto input0_ptr = input0->data<uint8_t>();
-    auto input1_ptr = input1->data<uint8_t>();
-    auto output_ptr = output->mutable_data<uint8_t>();
-
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
-    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
-      for (index_t i = start; i < end; i += step) {
-        const int32_t offset_input0 = input0_ptr[i] - input0->zero_point();
-        const int32_t offset_input1 = input1_ptr[i] - input1->zero_point();
-        const int32_t shifted_input0 = offset_input0 * (1 << left_shift);
-        const int32_t shifted_input1 = offset_input1 * (1 << left_shift);
-        const int32_t multiplied_input0 =
-            gemmlowp::RoundingDivideByPOT(
-                gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input0,
-                                                            input0_multiplier),
-                -input0_shift);
-        const int32_t multiplied_input1 =
-            gemmlowp::RoundingDivideByPOT(
-                gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input1,
-                                                            input1_multiplier),
-                -input1_shift);
-
-        int32_t res;
-        if (type_ == SUM) {
-          res = multiplied_input0 + multiplied_input1;
-        } else {
-          res = multiplied_input0 - multiplied_input1;
-        }
-
-        const int32_t output_val =
-            gemmlowp::RoundingDivideByPOT(
-                gemmlowp::SaturatingRoundingDoublingHighMul(res,
-                                                            output_multiplier),
-                -output_shift) + output->zero_point();
-        output_ptr[i] = Saturate<uint8_t>(output_val);
-      }
-    }, 0, output->size(), 1);
-#endif  // NEON
-
-    return MaceStatus::MACE_SUCCESS;
+    return eltwise_delegator_->Compute(context, input0, input1, output);
   }
 
  private:
@@ -1171,9 +1103,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
   float scalar_input_;
   int32_t scalar_input_index_;
   Tensor scalar_tensor_;
-#ifdef MACE_ENABLE_NEON
-  arm::q8::Eltwise eltwise_;
-#endif
+  std::unique_ptr<delegator::Eltwise> eltwise_delegator_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -1244,7 +1174,7 @@ class EltwiseOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterEltwise(OpRegistryBase *op_registry) {
+void RegisterEltwise(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
                    DeviceType::CPU, float);
 

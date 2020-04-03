@@ -13,7 +13,8 @@
 // limitations under the License.
 
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -61,7 +62,7 @@ class FillOp<DeviceType::CPU, float> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterFill(OpRegistryBase *op_registry) {
+void RegisterFill(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Fill", FillOp,
                    DeviceType::CPU, float);
 }

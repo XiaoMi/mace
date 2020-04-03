@@ -22,7 +22,8 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
@@ -510,7 +511,7 @@ class PoolingOp<DeviceType::GPU, float> : public PoolingOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterPooling(OpRegistryBase *op_registry) {
+void RegisterPooling(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
                    DeviceType::CPU, float);
 

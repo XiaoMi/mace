@@ -16,14 +16,10 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/activation.h"
-
-#if defined(MACE_ENABLE_NEON)
-#include "mace/ops/arm/fp32/activation.h"
-#else
-#include "mace/ops/ref/activation.h"
-#endif
+#include "mace/ops/delegator/activation.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -45,11 +41,16 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
         epsilon_(Operation::GetOptionalArg<float>("epsilon",
                                                   static_cast<float>(1e-4))),
         activation_delegator_(
-            ops::StringToActivationType(
-                Operation::GetOptionalArg<std::string>("activation", "NOOP")),
-            Operation::GetOptionalArg<float>("max_limit", 0.0f),
-            Operation::GetOptionalArg<float>(
-                "leakyrelu_coefficient", 0.0f)) {}
+            delegator::Activation::Create(
+                context->workspace(),
+                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                delegator::ActivationParam(
+                    ops::StringToActivationType(
+                        Operation::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                    Operation::GetOptionalArg<float>("max_limit", 0.0f),
+                    Operation::GetOptionalArg<float>("leakyrelu_coefficient",
+                                                     0.0f)))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -142,18 +143,14 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
       }, 0, batch, 1, 0, channels, 1);
     }
 
-    activation_delegator_.Compute(context, output, output);
+    activation_delegator_->Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
   float epsilon_;
-#ifdef MACE_ENABLE_NEON
-  arm::fp32::Activation activation_delegator_;
-#else
-  ref::Activation activation_delegator_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::Activation> activation_delegator_;
 
  protected:
   MACE_OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR);
@@ -232,7 +229,7 @@ class BatchNormOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterBatchNorm(OpRegistryBase *op_registry) {
+void RegisterBatchNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_GPU_OP(op_registry, "BatchNorm", BatchNormOp);

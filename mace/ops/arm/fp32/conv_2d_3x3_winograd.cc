@@ -17,6 +17,7 @@
 #include <algorithm>
 
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/delegator/conv_2d.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
 
@@ -799,6 +800,10 @@ void Conv2dK3x3Winograd::TransformOutput8x8(const OpContext *context,
     }
   }, 0, batch, 1, 0, out_channels, 1);
 }
+
+MACE_REGISTER_DELEGATOR(registry, Conv2dK3x3Winograd, delegator::Conv2dParam,
+                        MACE_DELEGATOR_KEY_EX(
+                            Conv2d, CPU, float, NEON, K3x3Winograd))
 
 }  // namespace fp32
 }  // namespace arm

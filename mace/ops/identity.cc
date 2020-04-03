@@ -13,7 +13,8 @@
 // limitations under the License.
 
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -32,7 +33,7 @@ class IdentityOp : public Operation {
   }
 };
 
-void RegisterIdentity(OpRegistryBase *op_registry) {
+void RegisterIdentity(OpRegistry *op_registry) {
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
                             DeviceType::CPU, float);
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,

@@ -46,7 +46,7 @@ bool HasHalfTensor(const NetDef &net_def) {
   return false;
 }
 
-template <typename T>
+template<typename T>
 void DequantizeTensor(Device *device,
                       const unsigned char *model_data,
                       const ConstTensor &const_tensor,
@@ -66,7 +66,8 @@ void DequantizeTensor(Device *device,
 
 }  // namespace
 
-Workspace::Workspace() = default;
+Workspace::Workspace(const OpDelegatorRegistry *registry) :
+    op_delegator_registry_(registry) {}
 
 Tensor *Workspace::CreateTensor(const std::string &name,
                                 Allocator *alloc,
@@ -144,7 +145,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 
         DataType dst_data_type = const_tensor.data_type();
         if (device_type == DeviceType::CPU &&
-             const_tensor.data_type() == DataType::DT_HALF) {
+            const_tensor.data_type() == DataType::DT_HALF) {
           dst_data_type = DataType::DT_FLOAT;
         } else if (!is_quantize_model && const_tensor.quantized()) {
           if (device_type == GPU && net_def.data_type() != DataType::DT_FLOAT) {
@@ -173,13 +174,13 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 
         if (device_type == DeviceType::CPU &&
             const_tensor.data_type() == DataType::DT_HALF) {
-            // uncompress the weights of fp16
-            auto org_data = reinterpret_cast<const half *>(
-                model_data + const_tensor.offset());
-            float *dst_data = tensor->mutable_data<float>();
-            for (int i = 0; i < const_tensor.data_size(); ++i) {
-              dst_data[i] = half_float::half_cast<float>(org_data[i]);
-            }
+          // uncompress the weights of fp16
+          auto org_data = reinterpret_cast<const half *>(
+              model_data + const_tensor.offset());
+          float *dst_data = tensor->mutable_data<float>();
+          for (int i = 0; i < const_tensor.data_size(); ++i) {
+            dst_data[i] = half_float::half_cast<float>(org_data[i]);
+          }
         } else if (!is_quantize_model && const_tensor.quantized()) {
           // uncompress the weights of uint8
           if (dst_data_type != DT_FLOAT) {
@@ -399,6 +400,10 @@ void Workspace::RemoveTensor(const std::string &name) {
   if (iter != tensor_map_.end()) {
     tensor_map_.erase(iter);
   }
+}
+
+const OpDelegatorRegistry *Workspace::GetDelegatorRegistry() const {
+  return op_delegator_registry_;
 }
 
 }  // namespace mace

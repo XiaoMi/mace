@@ -18,28 +18,21 @@
 
 #include <vector>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/delegator/deconv_2d.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
 template<typename OUTPUT_TYPE>
-class Deconv2d {
+class Deconv2d : public delegator::Deconv2d {
  public:
-  Deconv2d(const std::vector<int> &strides,
-           const std::vector<int> &dilations,
-           const std::vector<int> &paddings,
-           const Padding padding_type,
-           const FrameworkType framework_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type),
-        framework_type_(framework_type) {}
+  explicit Deconv2d(const delegator::Deconv2dParam &param)
+      : delegator::Deconv2d(param) {}
 
   ~Deconv2d() = default;
 
@@ -48,29 +41,14 @@ class Deconv2d {
       const Tensor *input,
       const Tensor *filter,
       const Tensor *output_shape,
-      Tensor *output);
-
- private:
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
-  const FrameworkType framework_type_;
+      Tensor *output) override;
 };
 
 template<>
-class Deconv2d<float> {
+class Deconv2d<float> : public delegator::Deconv2d {
  public:
-  Deconv2d(const std::vector<int> &strides,
-           const std::vector<int> &dilations,
-           const std::vector<int> &paddings,
-           const Padding padding_type,
-           const FrameworkType framework_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type),
-        framework_type_(framework_type) {}
+  explicit Deconv2d(const delegator::Deconv2dParam &param)
+      : delegator::Deconv2d(param) {}
 
   ~Deconv2d() = default;
 
@@ -79,14 +57,7 @@ class Deconv2d<float> {
       const Tensor *input,
       const Tensor *filter,
       const Tensor *output_shape,
-      Tensor *output);
-
- private:
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
-  const FrameworkType framework_type_;
+      Tensor *output) override;
 };
 
 }  // namespace ref

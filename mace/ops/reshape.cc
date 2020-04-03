@@ -14,7 +14,8 @@
 
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -149,7 +150,7 @@ class ReshapeOp<GPU, float> : public Operation {
 };
 #endif
 
-void RegisterReshape(OpRegistryBase *op_registry) {
+void RegisterReshape(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp, DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp, DeviceType::CPU, int32_t);
   MACE_REGISTER_GPU_OP(op_registry, "Reshape", ReshapeOp);

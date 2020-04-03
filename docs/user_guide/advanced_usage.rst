@@ -557,7 +557,7 @@ which will reduce the library size significantly. the final binary just link the
     }  // namespace ops
 
 
-    OpRegistry::OpRegistry() : OpRegistryBase() {
+    OpRegistry::OpRegistry() {
     // Just leave the ops used in your models
 
       ...

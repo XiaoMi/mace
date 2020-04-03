@@ -18,7 +18,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 
 namespace mace {
@@ -83,7 +84,7 @@ class PadContextOp<DeviceType::CPU, T> : public Operation {
   int right_context_;
 };
 
-void RegisterPadContext(OpRegistryBase *op_registry) {
+void RegisterPadContext(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PadContext", PadContextOp,
                    DeviceType::CPU, float);
 }

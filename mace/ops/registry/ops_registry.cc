@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,167 +12,167 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/registry/ops_registry.h"
+#include "mace/ops/registry/registry.h"
 
 namespace mace {
 
 namespace ops {
 // Keep in lexicographical order
-extern void RegisterActivation(OpRegistryBase *op_registry);
-extern void RegisterAddN(OpRegistryBase *op_registry);
-extern void RegisterArgMax(OpRegistryBase *op_registry);
-extern void RegisterBatchNorm(OpRegistryBase *op_registry);
-extern void RegisterBatchToSpaceND(OpRegistryBase *op_registry);
-extern void RegisterBiasAdd(OpRegistryBase *op_registry);
-extern void RegisterCast(OpRegistryBase *op_registry);
-extern void RegisterChannelShuffle(OpRegistryBase *op_registry);
-extern void RegisterConcat(OpRegistryBase *op_registry);
-extern void RegisterConv2D(OpRegistryBase *op_registry);
-extern void RegisterCrop(OpRegistryBase *op_registry);
-extern void RegisterCumsum(OpRegistryBase *op_registry);
-extern void RegisterDeconv2D(OpRegistryBase *op_registry);
-extern void RegisterDepthToSpace(OpRegistryBase *op_registry);
-extern void RegisterDepthwiseConv2d(OpRegistryBase *op_registry);
-extern void RegisterDepthwiseDeconv2d(OpRegistryBase *op_registry);
-extern void RegisterDynamicLSTM(OpRegistryBase *op_registry);
-extern void RegisterEltwise(OpRegistryBase *op_registry);
-extern void RegisterExpandDims(OpRegistryBase *op_registry);
-extern void RegisterExtractPooling(OpRegistryBase *op_registry);
-extern void RegisterFill(OpRegistryBase *op_registry);
-extern void RegisterFullyConnected(OpRegistryBase *op_registry);
-extern void RegisterGather(OpRegistryBase *op_registry);
-extern void RegisterIdentity(OpRegistryBase *op_registry);
-extern void RegisterIfDefined(OpRegistryBase *op_registry);
-extern void RegisterInferConv2dShape(OpRegistryBase *op_registry);
-extern void RegisterKaldiBatchNorm(OpRegistryBase *op_registry);
-extern void RegisterLocalResponseNorm(OpRegistryBase *op_registry);
-extern void RegisterLpNorm(OpRegistryBase *op_registry);
-extern void RegisterLSTMNonlinear(OpRegistryBase *op_registry);
-extern void RegisterMatMul(OpRegistryBase *op_registry);
-extern void RegisterMVNorm(OpRegistryBase *op_registry);
-extern void RegisterOneHot(OpRegistryBase *op_registry);
-extern void RegisterPad(OpRegistryBase *op_registry);
-extern void RegisterPadContext(OpRegistryBase *op_registry);
-extern void RegisterPNorm(OpRegistryBase *op_registry);
-extern void RegisterPooling(OpRegistryBase *op_registry);
-extern void RegisterReduce(OpRegistryBase *op_registry);
-extern void RegisterReplaceIndex(OpRegistryBase *op_registry);
-extern void RegisterPriorBox(OpRegistryBase *op_registry);
-extern void RegisterReshape(OpRegistryBase *op_registry);
-extern void RegisterResizeBicubic(OpRegistryBase *op_registry);
-extern void RegisterResizeBilinear(OpRegistryBase *op_registry);
-extern void RegisterResizeNearestNeighbor(OpRegistryBase *op_registry);
-extern void RegisterReverse(OpRegistryBase *op_registry);
-extern void RegisterScalarMath(OpRegistryBase *op_registry);
-extern void RegisterSelect(OpRegistryBase *op_registry);
-extern void RegisterShape(OpRegistryBase *op_registry);
-extern void RegisterSlice(OpRegistryBase *op_registry);
-extern void RegisterSoftmax(OpRegistryBase *op_registry);
-extern void RegisterSpaceToBatchND(OpRegistryBase *op_registry);
-extern void RegisterSpaceToDepth(OpRegistryBase *op_registry);
-extern void RegisterSplice(OpRegistryBase *op_registry);
-extern void RegisterSplit(OpRegistryBase *op_registry);
-extern void RegisterSqrDiffMean(OpRegistryBase *op_registry);
-extern void RegisterSqueeze(OpRegistryBase *op_registry);
-extern void RegisterStack(OpRegistryBase *op_registry);
-extern void RegisterStridedSlice(OpRegistryBase *op_registry);
-extern void RegisterSubsample(OpRegistryBase *op_registry);
-extern void RegisterSumGroup(OpRegistryBase *op_registry);
-extern void RegisterTargetRMSNorm(OpRegistryBase *op_registry);
-extern void RegisterTile(OpRegistryBase *op_registry);
-extern void RegisterTranspose(OpRegistryBase *op_registry);
-extern void RegisterUnstack(OpRegistryBase *op_registry);
-extern void RegisterUnsqueeze(OpRegistryBase *op_registry);
+extern void RegisterActivation(OpRegistry *op_registry);
+extern void RegisterAddN(OpRegistry *op_registry);
+extern void RegisterArgMax(OpRegistry *op_registry);
+extern void RegisterBatchNorm(OpRegistry *op_registry);
+extern void RegisterBatchToSpaceND(OpRegistry *op_registry);
+extern void RegisterBiasAdd(OpRegistry *op_registry);
+extern void RegisterCast(OpRegistry *op_registry);
+extern void RegisterChannelShuffle(OpRegistry *op_registry);
+extern void RegisterConcat(OpRegistry *op_registry);
+extern void RegisterConv2D(OpRegistry *op_registry);
+extern void RegisterCrop(OpRegistry *op_registry);
+extern void RegisterCumsum(OpRegistry *op_registry);
+extern void RegisterDeconv2D(OpRegistry *op_registry);
+extern void RegisterDepthToSpace(OpRegistry *op_registry);
+extern void RegisterDepthwiseConv2d(OpRegistry *op_registry);
+extern void RegisterDepthwiseDeconv2d(OpRegistry *op_registry);
+extern void RegisterDynamicLSTM(OpRegistry *op_registry);
+extern void RegisterEltwise(OpRegistry *op_registry);
+extern void RegisterExpandDims(OpRegistry *op_registry);
+extern void RegisterExtractPooling(OpRegistry *op_registry);
+extern void RegisterFill(OpRegistry *op_registry);
+extern void RegisterFullyConnected(OpRegistry *op_registry);
+extern void RegisterGather(OpRegistry *op_registry);
+extern void RegisterIdentity(OpRegistry *op_registry);
+extern void RegisterIfDefined(OpRegistry *op_registry);
+extern void RegisterInferConv2dShape(OpRegistry *op_registry);
+extern void RegisterKaldiBatchNorm(OpRegistry *op_registry);
+extern void RegisterLocalResponseNorm(OpRegistry *op_registry);
+extern void RegisterLpNorm(OpRegistry *op_registry);
+extern void RegisterLSTMNonlinear(OpRegistry *op_registry);
+extern void RegisterMatMul(OpRegistry *op_registry);
+extern void RegisterMVNorm(OpRegistry *op_registry);
+extern void RegisterOneHot(OpRegistry *op_registry);
+extern void RegisterPad(OpRegistry *op_registry);
+extern void RegisterPadContext(OpRegistry *op_registry);
+extern void RegisterPNorm(OpRegistry *op_registry);
+extern void RegisterPooling(OpRegistry *op_registry);
+extern void RegisterReduce(OpRegistry *op_registry);
+extern void RegisterReplaceIndex(OpRegistry *op_registry);
+extern void RegisterPriorBox(OpRegistry *op_registry);
+extern void RegisterReshape(OpRegistry *op_registry);
+extern void RegisterResizeBicubic(OpRegistry *op_registry);
+extern void RegisterResizeBilinear(OpRegistry *op_registry);
+extern void RegisterResizeNearestNeighbor(OpRegistry *op_registry);
+extern void RegisterReverse(OpRegistry *op_registry);
+extern void RegisterScalarMath(OpRegistry *op_registry);
+extern void RegisterSelect(OpRegistry *op_registry);
+extern void RegisterShape(OpRegistry *op_registry);
+extern void RegisterSlice(OpRegistry *op_registry);
+extern void RegisterSoftmax(OpRegistry *op_registry);
+extern void RegisterSpaceToBatchND(OpRegistry *op_registry);
+extern void RegisterSpaceToDepth(OpRegistry *op_registry);
+extern void RegisterSplice(OpRegistry *op_registry);
+extern void RegisterSplit(OpRegistry *op_registry);
+extern void RegisterSqrDiffMean(OpRegistry *op_registry);
+extern void RegisterSqueeze(OpRegistry *op_registry);
+extern void RegisterStack(OpRegistry *op_registry);
+extern void RegisterStridedSlice(OpRegistry *op_registry);
+extern void RegisterSubsample(OpRegistry *op_registry);
+extern void RegisterSumGroup(OpRegistry *op_registry);
+extern void RegisterTargetRMSNorm(OpRegistry *op_registry);
+extern void RegisterTile(OpRegistry *op_registry);
+extern void RegisterTranspose(OpRegistry *op_registry);
+extern void RegisterUnstack(OpRegistry *op_registry);
+extern void RegisterUnsqueeze(OpRegistry *op_registry);
 
 #ifdef MACE_ENABLE_QUANTIZE
-extern void RegisterDequantize(OpRegistryBase *op_registry);
-extern void RegisterQuantize(OpRegistryBase *op_registry);
+extern void RegisterDequantize(OpRegistry *op_registry);
+extern void RegisterQuantize(OpRegistry *op_registry);
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-extern void RegisterBufferTransform(OpRegistryBase *op_registry);
-extern void RegisterLSTMCell(OpRegistryBase *op_registry);
+extern void RegisterBufferTransform(OpRegistry *op_registry);
+extern void RegisterLSTMCell(OpRegistry *op_registry);
 #endif  // MACE_ENABLE_OPENCL
-}  // namespace ops
 
 
-OpRegistry::OpRegistry() : OpRegistryBase() {
+void RegisterAllOps(OpRegistry *registry) {
   // Keep in lexicographical order
-  ops::RegisterActivation(this);
-  ops::RegisterAddN(this);
-  ops::RegisterArgMax(this);
-  ops::RegisterBatchNorm(this);
-  ops::RegisterBatchToSpaceND(this);
-  ops::RegisterBiasAdd(this);
-  ops::RegisterCast(this);
-  ops::RegisterChannelShuffle(this);
-  ops::RegisterConcat(this);
-  ops::RegisterConv2D(this);
-  ops::RegisterCrop(this);
-  ops::RegisterCumsum(this);
-  ops::RegisterDeconv2D(this);
-  ops::RegisterDepthToSpace(this);
-  ops::RegisterDepthwiseConv2d(this);
-  ops::RegisterDepthwiseDeconv2d(this);
-  ops::RegisterDynamicLSTM(this);
-  ops::RegisterEltwise(this);
-  ops::RegisterExpandDims(this);
-  ops::RegisterExtractPooling(this);
-  ops::RegisterFill(this);
-  ops::RegisterFullyConnected(this);
-  ops::RegisterGather(this);
-  ops::RegisterIdentity(this);
-  ops::RegisterIfDefined(this);
-  ops::RegisterInferConv2dShape(this);
-  ops::RegisterKaldiBatchNorm(this);
-  ops::RegisterLocalResponseNorm(this);
-  ops::RegisterLpNorm(this);
-  ops::RegisterLSTMNonlinear(this);
-  ops::RegisterMatMul(this);
-  ops::RegisterMVNorm(this);
-  ops::RegisterOneHot(this);
-  ops::RegisterPad(this);
-  ops::RegisterPadContext(this);
-  ops::RegisterPNorm(this);
-  ops::RegisterPooling(this);
-  ops::RegisterReduce(this);
-  ops::RegisterReplaceIndex(this);
-  ops::RegisterPriorBox(this);
-  ops::RegisterReshape(this);
-  ops::RegisterResizeBicubic(this);
-  ops::RegisterResizeBilinear(this);
-  ops::RegisterResizeNearestNeighbor(this);
-  ops::RegisterReverse(this);
-  ops::RegisterScalarMath(this);
-  ops::RegisterSelect(this);
-  ops::RegisterShape(this);
-  ops::RegisterSlice(this);
-  ops::RegisterSoftmax(this);
-  ops::RegisterSpaceToBatchND(this);
-  ops::RegisterSpaceToDepth(this);
-  ops::RegisterSplice(this);
-  ops::RegisterSplit(this);
-  ops::RegisterStack(this);
-  ops::RegisterStridedSlice(this);
-  ops::RegisterSqrDiffMean(this);
-  ops::RegisterSqueeze(this);
-  ops::RegisterSubsample(this);
-  ops::RegisterSumGroup(this);
-  ops::RegisterTargetRMSNorm(this);
-  ops::RegisterTile(this);
-  ops::RegisterTranspose(this);
-  ops::RegisterUnstack(this);
-  ops::RegisterUnsqueeze(this);
+  ops::RegisterActivation(registry);
+  ops::RegisterAddN(registry);
+  ops::RegisterArgMax(registry);
+  ops::RegisterBatchNorm(registry);
+  ops::RegisterBatchToSpaceND(registry);
+  ops::RegisterBiasAdd(registry);
+  ops::RegisterCast(registry);
+  ops::RegisterChannelShuffle(registry);
+  ops::RegisterConcat(registry);
+  ops::RegisterConv2D(registry);
+  ops::RegisterCrop(registry);
+  ops::RegisterCumsum(registry);
+  ops::RegisterDeconv2D(registry);
+  ops::RegisterDepthToSpace(registry);
+  ops::RegisterDepthwiseConv2d(registry);
+  ops::RegisterDepthwiseDeconv2d(registry);
+  ops::RegisterDynamicLSTM(registry);
+  ops::RegisterEltwise(registry);
+  ops::RegisterExpandDims(registry);
+  ops::RegisterExtractPooling(registry);
+  ops::RegisterFill(registry);
+  ops::RegisterFullyConnected(registry);
+  ops::RegisterGather(registry);
+  ops::RegisterIdentity(registry);
+  ops::RegisterIfDefined(registry);
+  ops::RegisterInferConv2dShape(registry);
+  ops::RegisterKaldiBatchNorm(registry);
+  ops::RegisterLocalResponseNorm(registry);
+  ops::RegisterLpNorm(registry);
+  ops::RegisterLSTMNonlinear(registry);
+  ops::RegisterMatMul(registry);
+  ops::RegisterMVNorm(registry);
+  ops::RegisterOneHot(registry);
+  ops::RegisterPad(registry);
+  ops::RegisterPadContext(registry);
+  ops::RegisterPNorm(registry);
+  ops::RegisterPooling(registry);
+  ops::RegisterReduce(registry);
+  ops::RegisterReplaceIndex(registry);
+  ops::RegisterPriorBox(registry);
+  ops::RegisterReshape(registry);
+  ops::RegisterResizeBicubic(registry);
+  ops::RegisterResizeBilinear(registry);
+  ops::RegisterResizeNearestNeighbor(registry);
+  ops::RegisterReverse(registry);
+  ops::RegisterScalarMath(registry);
+  ops::RegisterSelect(registry);
+  ops::RegisterShape(registry);
+  ops::RegisterSlice(registry);
+  ops::RegisterSoftmax(registry);
+  ops::RegisterSpaceToBatchND(registry);
+  ops::RegisterSpaceToDepth(registry);
+  ops::RegisterSplice(registry);
+  ops::RegisterSplit(registry);
+  ops::RegisterStack(registry);
+  ops::RegisterStridedSlice(registry);
+  ops::RegisterSqrDiffMean(registry);
+  ops::RegisterSqueeze(registry);
+  ops::RegisterSubsample(registry);
+  ops::RegisterSumGroup(registry);
+  ops::RegisterTargetRMSNorm(registry);
+  ops::RegisterTile(registry);
+  ops::RegisterTranspose(registry);
+  ops::RegisterUnstack(registry);
+  ops::RegisterUnsqueeze(registry);
 
 #ifdef MACE_ENABLE_QUANTIZE
-  ops::RegisterDequantize(this);
-  ops::RegisterQuantize(this);
+  ops::RegisterDequantize(registry);
+  ops::RegisterQuantize(registry);
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-  ops::RegisterBufferTransform(this);
-  ops::RegisterLSTMCell(this);
+  ops::RegisterBufferTransform(registry);
+  ops::RegisterLSTMCell(registry);
 #endif  // MACE_ENABLE_OPENCL
 }
 
+}  // namespace ops
 }  // namespace mace

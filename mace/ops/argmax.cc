@@ -18,7 +18,8 @@
 #include <memory>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -109,7 +110,7 @@ class ArgMaxOp : public Operation {
 
 
 
-void RegisterArgMax(OpRegistryBase *op_registry) {
+void RegisterArgMax(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ArgMax", ArgMaxOp,
                    DeviceType::CPU, float);
 }

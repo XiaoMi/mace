@@ -22,7 +22,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -148,7 +149,7 @@ class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
   int block_dim_;
 };
 
-void RegisterTargetRMSNorm(OpRegistryBase *op_registry) {
+void RegisterTargetRMSNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "TargetRMSNorm", TargetRMSNormOp,
                    DeviceType::CPU, float);
 }

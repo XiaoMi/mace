@@ -18,7 +18,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
 
 namespace mace {
@@ -100,7 +101,7 @@ class SubsampleOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> forward_indexes_;
 };
 
-void RegisterSubsample(OpRegistryBase *op_registry) {
+void RegisterSubsample(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Subsample", SubsampleOp,
                    DeviceType::CPU, float);
 }

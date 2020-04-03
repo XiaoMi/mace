@@ -16,19 +16,20 @@
 #ifndef MACE_OPS_REF_GEMM_H_
 #define MACE_OPS_REF_GEMM_H_
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
 #include "mace/ops/common/matrix.h"
+#include "mace/ops/delegator/gemm.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
 template<typename OUTPUT_TYPE>
-class Gemm {
+class Gemm : public delegator::Gemm {
  public:
-  Gemm() {}
+  explicit Gemm(const delegator::GemmParam &param) : delegator::Gemm(param) {}
   ~Gemm() {}
   MaceStatus Compute(const OpContext *context,
                      const Tensor *lhs,
@@ -42,13 +43,13 @@ class Gemm {
                      const MatrixMajor output_major,
                      const bool lhs_batched,
                      const bool rhs_batched,
-                     Tensor *output);
+                     Tensor *output) override;
 };
 
 template<>
-class Gemm<float> {
+class Gemm<float> : public delegator::Gemm {
  public:
-  Gemm() {}
+  explicit Gemm(const delegator::GemmParam &param) : delegator::Gemm(param) {}
   ~Gemm() {}
   MaceStatus Compute(const OpContext *context,
                      const Tensor *lhs,
@@ -62,7 +63,7 @@ class Gemm<float> {
                      const MatrixMajor output_major,
                      const bool lhs_batched,
                      const bool rhs_batched,
-                     Tensor *output);
+                     Tensor *output) override;
   // Original matrix before transpose has row-major
   MaceStatus Compute(
       const OpContext *context,
@@ -78,7 +79,7 @@ class Gemm<float> {
       const bool transpose_out,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 }  // namespace ref

@@ -15,7 +15,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/space_to_batch.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -328,7 +329,7 @@ class SpaceToBatchNDOp<DeviceType::GPU, float> : public SpaceToBatchOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterSpaceToBatchND(OpRegistryBase *op_registry) {
+void RegisterSpaceToBatchND(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
                    SpaceToBatchNDOp, DeviceType::CPU, float);
 

@@ -24,31 +24,17 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/delegator/activation.h"
+#include "mace/ops/delegator/bias_add.h"
+#include "mace/ops/delegator/conv_2d.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
-
-#ifdef MACE_ENABLE_NEON
-#include "mace/ops/arm/fp32/conv_2d.h"
-#include "mace/ops/arm/fp32/conv_2d_1x1.h"
-#include "mace/ops/arm/fp32/conv_2d_3x3.h"
-#include "mace/ops/arm/fp32/conv_2d_3x3_winograd.h"
-#include "mace/ops/arm/fp32/conv_2d_5x5.h"
-#include "mace/ops/arm/fp32/conv_2d_7x7.h"
-#include "mace/ops/arm/fp32/conv_2d_1xn.h"
-#include "mace/ops/arm/fp32/conv_general.h"
-#include "mace/ops/arm/fp32/bias_add.h"
-#include "mace/ops/arm/fp32/activation.h"
-#else
-#include "mace/ops/ref/activation.h"
-#include "mace/ops/ref/bias_add.h"
-#endif  // MACE_ENABLE_NEON
-
-#include "mace/ops/ref/conv_2d.h"
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/common/gemmlowp_util.h"
@@ -72,13 +58,21 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
-        activation_delegator_(ops::StringToActivationType(
-            Operation::GetOptionalArg<std::string>("activation",
-                                                   "NOOP")),
-                              Operation::GetOptionalArg<float>("max_limit",
-                                                               0.0f),
-                              Operation::GetOptionalArg<float>(
-                                  "leakyrelu_coefficient", 0.0f)) {}
+        activation_delegator_(
+            delegator::Activation::Create(
+                context->workspace(),
+                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                delegator::ActivationParam(
+                    ops::StringToActivationType(
+                        Operation::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                    Operation::GetOptionalArg<float>("max_limit", 0.0f),
+                    Operation::GetOptionalArg<float>("leakyrelu_coefficient",
+                                                     0.0f)))),
+        bias_add_delegator_(delegator::BiasAdd::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
@@ -86,116 +80,100 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
 
-#ifdef MACE_ENABLE_NEON
-    // the following params are used to decide which conv delegator to use
-    const index_t stride_h = strides_[0];
-    const index_t stride_w = strides_[1];
-    const index_t dilation_h = dilations_[0];
-    const index_t dilation_w = dilations_[1];
-    const index_t filter_h = filter->dim(2);
-    const index_t filter_w = filter->dim(3);
-    const index_t input_channels = input->dim(1);
-    const index_t channels = filter->dim(0);
-
-    // NOTE: delegator is fixed after first round of running,
-    // although winograd depends on input params.
-    // We do not support changeable filter for now.
     if (conv2d_delegator_ == nullptr) {
-      if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
-          && dilation_h == 1 && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x1>(
-            paddings_, padding_type_);
-      } else if (filter_h == 3 && filter_w == 3
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        if (input_channels >= 8 && channels >= 8) {
-          conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3Winograd>(
-              paddings_, padding_type_);
-        } else {
-          conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3S1>(
-              paddings_, padding_type_);
+      std::string tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                              MACE_CPU_IMPL_TYPE, General);
+      if (MACE_CPU_IMPL_TYPE == NEON) {
+        // the following params are used to decide which conv delegator to use
+        const index_t stride_h = strides_[0];
+        const index_t stride_w = strides_[1];
+        const index_t dilation_h = dilations_[0];
+        const index_t dilation_w = dilations_[1];
+        const index_t filter_h = filter->dim(2);
+        const index_t filter_w = filter->dim(3);
+        const index_t input_channels = input->dim(1);
+        const index_t channels = filter->dim(0);
+        // NOTE: delegator is fixed after first round of running,
+        // although winograd depends on input params.
+        // We do not support changeable filter for now.
+        if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
+            && dilation_h == 1 && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K1x1);
+        } else if (filter_h == 3 && filter_w == 3
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          if (input_channels >= 8 && channels >= 8) {
+            tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K3x3Winograd);
+          } else {
+            tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                        MACE_CPU_IMPL_TYPE, K3x3S1);
+          }
+        } else if (filter_h == 3 && filter_w == 3
+            && stride_h == 2 && stride_w == 2 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K3x3S2);
+        } else if (filter_h == 5 && filter_w == 5
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K5x5S1);
+        } else if (filter_h == 7 && filter_w == 7
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K7x7S1);
+        } else if (filter_h == 7 && filter_w == 7
+            && stride_h == 2 && stride_w == 2 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K7x7S2);
+        } else if (filter_h == 7 && filter_w == 7
+            && stride_h == 3 && stride_w == 3 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K7x7S3);
+        } else if (filter_h == 1 && filter_w == 7
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K1x7S1);
+        } else if (filter_h == 7 && filter_w == 1
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K7x1S1);
+        } else if (filter_h == 1 && filter_w == 15
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K1x15S1);
+        } else if (filter_h == 15 && filter_w == 1
+            && stride_h == 1 && stride_w == 1 && dilation_h == 1
+            && dilation_w == 1) {
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
+                                      MACE_CPU_IMPL_TYPE, K15x1S1);
         }
-      } else if (filter_h == 3 && filter_w == 3
-          && stride_h == 2 && stride_w == 2 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK3x3S2>(
-            paddings_, padding_type_);
-      } else if (filter_h == 5 && filter_w == 5
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK5x5S1>(
-            paddings_, padding_type_);
-      } else if (filter_h == 7 && filter_w == 7
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x7S1>(
-            paddings_, padding_type_);
-      } else if (filter_h == 7 && filter_w == 7
-          && stride_h == 2 && stride_w == 2 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x7S2>(
-            paddings_, padding_type_);
-      } else if (filter_h == 7 && filter_w == 7
-          && stride_h == 3 && stride_w == 3 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x7S3>(
-            paddings_, padding_type_);
-      } else if (filter_h == 1 && filter_w == 7
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x7S1>(
-            paddings_, padding_type_);
-      } else if (filter_h == 7 && filter_w == 1
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK7x1S1>(
-            paddings_, padding_type_);
-      } else if (filter_h == 1 && filter_w == 15
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK1x15S1>(
-            paddings_, padding_type_);
-      } else if (filter_h == 15 && filter_w == 1
-          && stride_h == 1 && stride_w == 1 && dilation_h == 1
-          && dilation_w == 1) {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dK15x1S1>(
-            paddings_, padding_type_);
-      } else {
-        conv2d_delegator_ = make_unique<arm::fp32::Conv2dGeneral>(
-            strides_,
-            dilations_,
-            paddings_,
-            padding_type_);
       }
+      delegator::Conv2dParam param(strides_, dilations_,
+                                   paddings_, padding_type_);
+      conv2d_delegator_ = delegator::Conv2d::Create(context->workspace(),
+                                                    tag, param);
     }
 
     conv2d_delegator_->Compute(context, input, filter, output);
-#else
-    if (ref_conv2d_delegator_ == nullptr) {
-      ref_conv2d_delegator_ = make_unique<ref::Conv2d<float>>(strides_,
-                                                              dilations_,
-                                                              paddings_,
-                                                              padding_type_);
-    }
-    ref_conv2d_delegator_->Compute(context, input, filter, output);
-#endif
-
-    bias_add_delegator_.Compute(context, output, bias, output);
-    activation_delegator_.Compute(context, output, output);
+    bias_add_delegator_->Compute(context, output, bias, output);
+    activation_delegator_->Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-#ifdef MACE_ENABLE_NEON
-  std::unique_ptr<arm::fp32::Conv2dBase> conv2d_delegator_;
-  arm::fp32::BiasAdd bias_add_delegator_;
-  arm::fp32::Activation activation_delegator_;
-#else
-  std::unique_ptr<ref::Conv2d<float>> ref_conv2d_delegator_;
-  ref::BiasAdd bias_add_delegator_;
-  ref::Activation activation_delegator_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::Activation> activation_delegator_;
+  std::unique_ptr<delegator::BiasAdd> bias_add_delegator_;
+  std::unique_ptr<delegator::Conv2d> conv2d_delegator_;
 
  private:
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
@@ -518,7 +496,7 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterConv2D(OpRegistryBase *op_registry) {
+void RegisterConv2D(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
                    DeviceType::CPU, float);
 

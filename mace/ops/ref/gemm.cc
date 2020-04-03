@@ -111,6 +111,10 @@ MaceStatus Gemm<float>::Compute(const OpContext *context,
                  output);
 }
 
+typedef Gemm<float> GemmRef;
+MACE_REGISTER_DELEGATOR(registry, GemmRef, delegator::GemmParam,
+                        MACE_DELEGATOR_KEY(Gemm, CPU, float, REF))
+
 }  // namespace ref
 }  // namespace ops
 }  // namespace mace

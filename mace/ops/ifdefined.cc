@@ -25,7 +25,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -162,7 +163,7 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterIfDefined(OpRegistryBase *op_registry) {
+void RegisterIfDefined(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "IfDefined", IfDefinedOp,
                    DeviceType::CPU, float);
 }

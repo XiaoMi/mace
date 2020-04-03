@@ -302,6 +302,11 @@ MaceStatus GroupDeconv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
+typedef DepthwiseDeconv2d<float> DepthwiseDeconv2dRef;
+MACE_REGISTER_DELEGATOR(
+    registry, DepthwiseDeconv2dRef, delegator::DepthwiseDeconv2dParam,
+    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, REF, General))
+
 }  // namespace ref
 }  // namespace ops
 }  // namespace mace

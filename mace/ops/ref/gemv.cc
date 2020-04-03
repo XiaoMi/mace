@@ -159,7 +159,15 @@ MaceStatus Gemv<int32_t>::Compute(const OpContext *context,
   }   // b
   return MaceStatus::MACE_SUCCESS;
 }
+
+typedef Gemv<uint8_t> GemvUint8Ref;
+MACE_REGISTER_DELEGATOR(registry, GemvUint8Ref, DelegatorParam,
+                        MACE_DELEGATOR_KEY(Gemv, CPU, uint8_t, Ref))
 #endif  // MACE_ENABLE_QUANTIZE
+
+typedef Gemv<float> GemvRef;
+MACE_REGISTER_DELEGATOR(registry, GemvRef, DelegatorParam,
+                        MACE_DELEGATOR_KEY(Gemv, CPU, float, REF))
 
 }  // namespace ref
 }  // namespace ops

@@ -15,7 +15,8 @@
 #include <vector>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -144,7 +145,7 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
 };
 
 
-void RegisterOneHot(OpRegistryBase *op_registry) {
+void RegisterOneHot(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, DeviceType::CPU, float);
 }
 

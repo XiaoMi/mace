@@ -19,7 +19,7 @@ Define the new Op class in `mace/ops/my_custom_op.cc`.
  
 The structure of Op is like the following code.
 ```c++
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
 
 namespace mace {
 namespace ops {
@@ -39,7 +39,7 @@ class MyCustomOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterMyCustomOp(OpRegistryBase *op_registry) {
+void RegisterMyCustomOp(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "MyCustomOp", MyCustomOp,
                    DeviceType::CPU, float);
 
@@ -63,14 +63,14 @@ namespace ops {
 
 ...
 
-extern void RegisterMyCustomOp(OpRegistryBase *op_registry);
+extern void RegisterMyCustomOp(OpRegistry *op_registry);
 
 ...
 
 }  // namespace ops
 
 
-OpRegistry::OpRegistry() : OpRegistryBase() {
+OpRegistry::OpRegistry() {
   // Keep in lexicographical order
 
   ...

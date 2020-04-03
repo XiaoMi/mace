@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/ops/opencl/buffer_transform_kernel.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"
 

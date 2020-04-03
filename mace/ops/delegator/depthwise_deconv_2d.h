@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,31 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_CORE_OP_CONTEXT_H_
-#define MACE_CORE_OP_CONTEXT_H_
 
-#include "mace/core/device.h"
-#include "mace/core/workspace.h"
-#include "mace/core/future.h"
+#ifndef MACE_OPS_DELEGATOR_DEPTHWISE_DECONV_2D_H_
+#define MACE_OPS_DELEGATOR_DEPTHWISE_DECONV_2D_H_
 
+#include "mace/ops/delegator/deconv_2d.h"
 namespace mace {
+namespace ops {
+namespace delegator {
 
-class OpContext {
- public:
-  OpContext(Workspace *ws, Device *device);
-  ~OpContext();
-  void set_device(Device *device);
-  Device *device() const;
-  Workspace *workspace() const;
+typedef Deconv2dParam DepthwiseDeconv2dParam;
+typedef Deconv2dParam GroupDeconv2dParam;
 
-  void set_future(StatsFuture *future);
-  StatsFuture *future() const;
- private:
-  Device *device_;
-  Workspace *ws_;
-  StatsFuture *future_;
-  // metadata
-};
+typedef Deconv2d DepthwiseDeconv2d;
+typedef Deconv2d GroupDeconv2d;
 
+}  // namespace delegator
+}  // namespace ops
 }  // namespace mace
-#endif  // MACE_CORE_OP_CONTEXT_H_
+
+#endif  // MACE_OPS_DELEGATOR_DEPTHWISE_DECONV_2D_H_
+

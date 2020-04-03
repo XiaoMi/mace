@@ -17,22 +17,12 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
-
-#ifdef MACE_ENABLE_NEON
-#include "mace/ops/arm/fp32/gemv.h"
-#include "mace/ops/arm/fp32/activation.h"
-
-#ifdef MACE_ENABLE_QUANTIZE
-#include "mace/ops/arm/q8/gemv.h"
-#endif  // MACE_ENABLE_QUANTIZE
-
-#else
-#include "mace/ops/ref/gemv.h"
-#include "mace/ops/ref/activation.h"
-#endif  // MACE_ENABLE_NEON
+#include "mace/ops/delegator/activation.h"
+#include "mace/ops/delegator/gemv.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/buffer_transformer.h"
@@ -71,9 +61,16 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context),
-        activation_delegator_(activation_,
-                              relux_max_limit_,
-                              leakyrelu_coefficient_) {}
+        activation_delegator_(delegator::Activation::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+            delegator::ActivationParam(activation_,
+                                       relux_max_limit_,
+                                       leakyrelu_coefficient_))),
+        gemv_(delegator::Gemv::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(Gemv, CPU, float, MACE_CPU_IMPL_TYPE),
+            DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -100,30 +97,25 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
     const index_t input_size = weight->dim(1) * weight->dim(2) * weight->dim(3);
     const index_t output_size = weight->dim(0);
 
-    gemv_.Compute(context,
-                  weight,
-                  input,
-                  bias,
-                  batch,
-                  output_size,
-                  input_size,
-                  false,
-                  true,
-                  output);
+    gemv_->Compute(context,
+                   weight,
+                   input,
+                   bias,
+                   batch,
+                   output_size,
+                   input_size,
+                   false,
+                   true,
+                   output);
 
-    activation_delegator_.Compute(context, output, output);
+    activation_delegator_->Compute(context, output, output);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-#ifdef MACE_ENABLE_NEON
-  arm::fp32::Gemv gemv_;
-  arm::fp32::Activation activation_delegator_;
-#else
-  ref::Gemv<float> gemv_;
-  ref::Activation activation_delegator_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::Activation> activation_delegator_;
+  std::unique_ptr<delegator::Gemv> gemv_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -132,7 +124,11 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
     : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
-      : FullyConnectedOpBase(context) {}
+      : FullyConnectedOpBase(context),
+        gemv_(delegator::Gemv::Create(
+            context->workspace(),
+            MACE_DELEGATOR_KEY(Gemv, CPU, uint8_t, MACE_CPU_IMPL_TYPE),
+            DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
@@ -161,7 +157,7 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
     const int input_size =
         static_cast<int>(weight->dim(1) * weight->dim(2) * weight->dim(3));
     const int output_size = static_cast<int>(weight->dim(0));
-    gemv_.Compute(context,
+    gemv_->Compute(context,
                   weight,
                   input,
                   bias,
@@ -175,11 +171,7 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
   }
 
  private:
-#ifdef MACE_ENABLE_NEON
-  ::mace::ops::arm::q8::Gemv<uint8_t> gemv_;
-#else
-  ref::Gemv<uint8_t> gemv_;
-#endif  // MACE_ENABLE_NEON
+  std::unique_ptr<delegator::Gemv> gemv_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -231,7 +223,7 @@ class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterFullyConnected(OpRegistryBase *op_registry) {
+void RegisterFullyConnected(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "FullyConnected",
                    FullyConnectedOp, DeviceType::CPU, float);
 

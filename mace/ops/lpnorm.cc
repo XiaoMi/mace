@@ -16,7 +16,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/lpnorm.h"
@@ -147,7 +148,7 @@ class LpNormOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterLpNorm(OpRegistryBase *op_registry) {
+void RegisterLpNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LpNorm", LpNormOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_GPU_OP(op_registry, "LpNorm", LpNormOp);

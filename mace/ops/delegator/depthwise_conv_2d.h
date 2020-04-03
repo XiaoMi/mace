@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_REF_BIAS_ADD_H_
-#define MACE_OPS_REF_BIAS_ADD_H_
 
-#include "mace/core/op_context.h"
+#ifndef MACE_OPS_DELEGATOR_DEPTHWISE_CONV_2D_H_
+#define MACE_OPS_DELEGATOR_DEPTHWISE_CONV_2D_H_
+
+#include "mace/ops/delegator/conv_2d.h"
 
 namespace mace {
 namespace ops {
-namespace ref {
+namespace delegator {
 
-class BiasAdd {
- public:
-  BiasAdd() = default;
-  ~BiasAdd() = default;
+typedef Conv2dParam DepthwiseConv2dParam;
+typedef Conv2d DepthwiseConv2d;
 
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *bias,
-      Tensor *output);
-
- private:
-  void AddBias(const OpContext *context,
-               const Tensor *input,
-               const Tensor *bias,
-               Tensor *output);
-};
-
-}  // namespace ref
+}  // namespace delegator
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_REF_BIAS_ADD_H_
+#endif  // MACE_OPS_DELEGATOR_DEPTHWISE_CONV_2D_H_
+

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_context.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/ops/common/activation_type.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"

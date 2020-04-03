@@ -19,7 +19,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/addn.h"
@@ -92,7 +93,7 @@ class AddNOp<DeviceType::GPU, float> : public Operation {
 };
 #endif  // MACE_ENABLE_OPENCL
 
-void RegisterAddN(OpRegistryBase *op_registry) {
+void RegisterAddN(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::CPU, float);
   MACE_REGISTER_GPU_OP(op_registry, "AddN", AddNOp);
   MACE_REGISTER_OP_CONDITION(

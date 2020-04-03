@@ -17,7 +17,8 @@
 #include <algorithm>
 #include <limits>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/quantize.h"
 
@@ -106,12 +107,12 @@ class DequantizeOp<DeviceType::CPU, T> : public Operation {
   QuantizeUtil<float, T> quantize_util_;
 };
 
-void RegisterQuantize(OpRegistryBase *op_registry) {
+void RegisterQuantize(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Quantize", QuantizeOp,
                    DeviceType::CPU, uint8_t);
 }
 
-void RegisterDequantize(OpRegistryBase *op_registry) {
+void RegisterDequantize(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Dequantize", DequantizeOp,
                    DeviceType::CPU, uint8_t);
   MACE_REGISTER_OP(op_registry, "Dequantize", DequantizeOp,

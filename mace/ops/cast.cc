@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 #include <arm_neon.h>
@@ -54,7 +55,7 @@ class CastOp : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-void RegisterCast(OpRegistryBase *op_registry) {
+void RegisterCast(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Cast", CastOp,
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Cast", CastOp,

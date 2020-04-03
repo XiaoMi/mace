@@ -20,7 +20,8 @@
 #include <cmath>
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/transpose.h"
 
 namespace mace {
@@ -64,7 +65,7 @@ class TransposeOp<D, float> : public Operation {
   std::vector<int> dims_;
 };
 
-void RegisterTranspose(OpRegistryBase *op_registry) {
+void RegisterTranspose(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
                    DeviceType::CPU, float);
 }

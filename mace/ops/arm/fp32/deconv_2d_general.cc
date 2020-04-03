@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/deconv_2d_general.h"
+#include "mace/ops/arm/fp32/deconv_2d.h"
 
 // TODO(liutuo): optimize it
 
@@ -20,6 +20,20 @@ namespace mace {
 namespace ops {
 namespace arm {
 namespace fp32 {
+
+class Deconv2dGeneral : public Deconv2dBase {
+ public:
+  explicit Deconv2dGeneral(const delegator::Deconv2dParam &param)
+      : Deconv2dBase(param) {}
+  virtual ~Deconv2dGeneral() {}
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *output_shape,
+      Tensor *output) override;
+};
 
 MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
                                     const Tensor *input,
@@ -109,6 +123,10 @@ MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
 
   return MaceStatus::MACE_SUCCESS;
 }
+
+MACE_REGISTER_DELEGATOR(registry, Deconv2dGeneral, delegator::Deconv2dParam,
+                        MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
+                                              NEON, General))
 
 }  // namespace fp32
 }  // namespace arm

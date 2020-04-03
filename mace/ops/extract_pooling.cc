@@ -26,7 +26,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 
 namespace mace {
@@ -176,7 +177,7 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
   std::vector<float> counts_;
 };
 
-void RegisterExtractPooling(OpRegistryBase *op_registry) {
+void RegisterExtractPooling(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExtractPooling", ExtractPoolingOp,
                    DeviceType::CPU, float);
 }

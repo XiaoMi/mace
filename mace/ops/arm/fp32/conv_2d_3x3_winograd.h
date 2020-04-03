@@ -18,11 +18,11 @@
 #include <vector>
 #include <memory>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
-#include "mace/ops/arm/fp32/gemm.h"
 #include "mace/ops/arm/fp32/conv_2d.h"
+#include "mace/ops/arm/fp32/gemm.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
@@ -31,10 +31,9 @@ namespace fp32 {
 
 class Conv2dK3x3Winograd : public Conv2dBase {
  public:
-  Conv2dK3x3Winograd(const std::vector<int> &paddings,
-                     const Padding padding_type)
-      : Conv2dBase({1, 1}, {1, 1}, paddings, padding_type),
-        gemm_(),
+  explicit Conv2dK3x3Winograd(const delegator::Conv2dParam &param)
+      : Conv2dBase(param),
+        gemm_(delegator::GemmParam()),
         transformed_filter_(nullptr),
         out_tile_size_(0) {}
 

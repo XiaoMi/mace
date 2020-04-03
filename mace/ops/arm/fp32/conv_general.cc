@@ -12,14 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/conv_general.h"
+#include "mace/ops/arm/fp32/conv_2d.h"
 
 #include <memory>
+
+#include "mace/ops/delegator/conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
 namespace fp32 {
+
+class Conv2dGeneral : public Conv2dBase {
+ public:
+  explicit Conv2dGeneral(const delegator::Conv2dParam &param)
+      : Conv2dBase(param) {}
+  virtual ~Conv2dGeneral() {}
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output) override;
+};
 
 MaceStatus Conv2dGeneral::Compute(const OpContext *context,
                                   const Tensor *input,
@@ -236,6 +251,10 @@ MaceStatus Conv2dGeneral::Compute(const OpContext *context,
   UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
+
+MACE_REGISTER_DELEGATOR(
+    registry, Conv2dGeneral, delegator::Conv2dParam,
+    MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, NEON, General))
 
 }  // namespace fp32
 }  // namespace arm

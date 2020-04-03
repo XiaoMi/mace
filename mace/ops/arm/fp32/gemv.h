@@ -15,18 +15,19 @@
 #ifndef MACE_OPS_ARM_FP32_GEMV_H_
 #define MACE_OPS_ARM_FP32_GEMV_H_
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
+#include "mace/ops/delegator/gemv.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
 namespace fp32 {
 
-class Gemv {
+class Gemv : public delegator::Gemv {
  public:
-  Gemv() {}
+  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
   ~Gemv() {}
   // Always row-major after transpose
   MaceStatus Compute(
@@ -39,7 +40,7 @@ class Gemv {
       const index_t lhs_width,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output);
+      Tensor *output) override;
 };
 
 }  // namespace fp32

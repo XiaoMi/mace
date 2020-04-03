@@ -15,7 +15,8 @@
 #include <functional>
 #include <memory>
 
-#include "mace/core/operator.h"
+#include "mace/core/ops/operator.h"
+#include "mace/core/registry/ops_registry.h"
 
 namespace mace {
 namespace ops {
@@ -83,7 +84,7 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
   std::vector<int> ends_;
 };
 
-void RegisterSlice(OpRegistryBase *op_registry) {
+void RegisterSlice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Slice", SliceOp,
                    DeviceType::CPU, float);
 }

@@ -18,35 +18,24 @@
 #include <vector>
 #include <memory>
 
-#include "mace/public/mace.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/op_context.h"
+#include "mace/ops/delegator/conv_2d.h"
 #include "mace/ops/arm/fp32/gemm.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
 namespace fp32 {
 
-class Conv2dBase {
+class Conv2dBase : public delegator::Conv2d {
  public:
-  Conv2dBase(const std::vector<int> &strides,
-             const std::vector<int> &dilations,
-             const std::vector<int> &paddings,
-             const Padding padding_type)
-      : strides_(strides),
-        dilations_(dilations),
-        paddings_(paddings),
-        padding_type_(padding_type) {}
+  explicit Conv2dBase(const delegator::Conv2dParam &param)
+      : delegator::Conv2d(param) {}
 
   virtual ~Conv2dBase() = default;
-
-  virtual MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      Tensor *output) = 0;
 
  protected:
   void CalOutputShapeAndInputPadSize(const std::vector<index_t> &input_shape,
@@ -83,11 +72,6 @@ class Conv2dBase {
                 const int pad_left,
                 Tensor *dst);
   void UnPadOutput(const Tensor &src, Tensor *dst);
-
-  const std::vector<int> strides_;
-  const std::vector<int> dilations_;
-  const std::vector<int> paddings_;
-  const Padding padding_type_;
 };
 
 }  // namespace fp32

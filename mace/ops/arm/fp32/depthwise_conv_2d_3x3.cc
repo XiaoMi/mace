@@ -512,6 +512,13 @@ MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
+MACE_REGISTER_DELEGATOR(
+    registry, DepthwiseConv2dK3x3S1, delegator::DepthwiseConv2dParam,
+    MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float, NEON, K3x3S1))
+MACE_REGISTER_DELEGATOR(
+    registry, DepthwiseConv2dK3x3S2, delegator::DepthwiseConv2dParam,
+    MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float, NEON, K3x3S2))
+
 }  // namespace fp32
 }  // namespace arm
 }  // namespace ops
