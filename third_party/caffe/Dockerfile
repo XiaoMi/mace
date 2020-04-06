@@ -29,7 +29,8 @@ WORKDIR $CAFFE_ROOT
 
 # FIXME: use ARG instead of ENV once DockerHub supports this
 # https://github.com/docker/hub-feedback/issues/460
-ENV CLONE_TAG=1.0
+# ENV CLONE_TAG=1.0
+ENV CLONE_TAG=master
 
 # ImportError in system pip wrappers after an upgrade.
 # https://github.com/pypa/pip/issues/5599
