@@ -541,6 +541,7 @@ message LayerParameter {
   optional TanHParameter tanh_param = 127;
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
+  optional UpsampleParameter upsample_param = 149;
   optional VideoDataParameter video_data_param = 207;
   optional WindowDataParameter window_data_param = 129;
   optional ShuffleChannelParameter shuffle_channel_param = 164;
@@ -1938,4 +1939,8 @@ message ShuffleChannelParameter {
 
 message L2NormalizationParameter {
   optional int32 axis = 1 [default = 1];
+}
+
+message UpsampleParameter {
+  optional int32 scale = 1 [default = 1];
 }

@@ -52,6 +52,7 @@ class ShapeInference(object):
             MaceOp.PriorBox.name: self.infer_shape_prior_box,
             MaceOp.Reshape.name: self.infer_shape_reshape,
             MaceOp.ResizeBilinear.name: self.infer_shape_resize_bilinear,
+            MaceOp.ResizeNearestNeighbor.name: self.infer_shape_resize_nearest_neighbor,
             MaceOp.LpNorm.name: self.infer_shape_general,
             MaceOp.MVNorm.name: self.infer_shape_general,
         }
@@ -305,6 +306,20 @@ class ShapeInference(object):
             output_shape = [input_shape[0], input_shape[1], size[0], size[1]]
         elif ConverterUtil.data_format(op) == DataFormat.NHWC:
             output_shape = [input_shape[0], size[0], size[1], input_shape[3]]
+        else:
+            output_shape = []
+            mace_check(False, "format %s is not supported"
+                       % ConverterUtil.data_format(op))
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_resize_nearest_neighbor(self, op):
+        input_shape = self._output_shape_cache[op.input[0]]
+        size = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_resize_size_str).ints
+        if ConverterUtil.data_format(op) == DataFormat.NCHW:
+            output_shape = [input_shape[0], input_shape[1], size[0]*input_shape[2], size[0]*input_shape[3]]
+        elif ConverterUtil.data_format(op) == DataFormat.NHWC:
+            output_shape = [input_shape[0], size[0]*input_shape[1], size[0]*input_shape[2], input_shape[3]]
         else:
             output_shape = []
             mace_check(False, "format %s is not supported"

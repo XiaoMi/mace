@@ -35,8 +35,13 @@ ENV CLONE_TAG=1.0
 # https://github.com/pypa/pip/issues/5599
 RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/BVLC/caffe.git . && \
     python -m pip install --upgrade pip && \
-    cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd .. && \
-    mkdir build && cd build && \
+    cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd ..
+
+COPY upsample.patch .
+
+RUN git apply upsample.patch
+
+RUN mkdir build && cd build && \
     cmake -DCPU_ONLY=1 .. && \
     make -j"$(nproc)"
 

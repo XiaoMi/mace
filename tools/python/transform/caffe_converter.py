@@ -195,6 +195,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'L1Normalization': self.convert_lpnorm,
             'MVN': self.convert_MVN,
             'Bias': self.convert_Bias,
+            'Upsample': self.convert_resize_nearest_neighbor,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -819,6 +820,20 @@ class CaffeConverter(base_converter.ConverterInterface):
         num_axes_arg.i = -1
         if param.HasField('num_axes'):
             num_axes_arg.i = param.num_axes
+
+    def convert_resize_nearest_neighbor(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.upsample_param
+        op.type = MaceOp.ResizeNearestNeighbor.name
+
+        size_arg = op.arg.add()
+        size_arg.name = MaceKeyword.mace_resize_size_str
+        size_value = [int(param.scale)]
+        size_arg.ints.extend(size_value)
+
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = 1
 
     def convert_lpnorm(self, caffe_op):
         op = self.convert_general_op(caffe_op)

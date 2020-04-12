@@ -77,28 +77,27 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
       : Operation(context),
-        align_corners_(Operation::GetOptionalArg<bool>("align_corners",
-                                                       false)) {}
+        align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
+        size_(Operation::GetRepeatedArgs<index_t>("size", {-1})) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
-    const Tensor *size = this->Input(1);
-    Tensor::MappingGuard size_mapper(size);
     Tensor *output = this->Output(0);
 
-    MACE_CHECK(input->dim_size() == 4 && size->dim_size() == 1,
-               "input must be 4-dimensional and size must be 1-dimensional. ",
-               input->dim_size(), size->dim_size());
+    MACE_CHECK(input->dim_size() == 4,
+               "input must be 4-dimensional. ",
+               input->dim_size());
 
     const index_t batch = input->dim(0);
     const index_t channels = input->dim(1);
     const index_t in_height = input->dim(2);
     const index_t in_width = input->dim(3);
 
-    const index_t out_height = size->data<int32_t>()[0];
-    const index_t out_width = size->data<int32_t>()[1];
-    MACE_CHECK(out_height > 0 && out_width > 0, out_height, out_width);
+    index_t scale = size_[0];
+    MACE_CHECK(scale > 0);
+    const index_t out_height = in_height*scale;
+    const index_t out_width = in_width*scale;
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
     Tensor::MappingGuard input_mapper(input);
@@ -138,6 +137,7 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
 
  private:
   bool align_corners_;
+  std::vector<index_t> size_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -145,29 +145,30 @@ template<>
 class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
-      : Operation(context), dim_(Operation::GetRepeatedArgs<index_t>("dim")) {
+      : Operation(context) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
+    std::vector<index_t> size = Operation::GetRepeatedArgs<index_t>(
+        "size", {-1});
+    MACE_CHECK(size.size() == 1);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel>(
-          align_corners);
+          align_corners, size[0]);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
   }
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
-    const Tensor *size = this->Input(1);
     Tensor *output = this->Output(0);
-    MACE_CHECK(input->dim_size() == 4 && size->dim_size() == 1,
+    MACE_CHECK(input->dim_size() == 4,
                "input must be 4-dimensional and size must be 1-dimensional.",
-               input->dim_size(), size->dim_size());
+               input->dim_size());
 
-    return kernel_->Compute(context, input, size, dim_, output);
+    return kernel_->Compute(context, input, output);
   }
 
  private:
-  std::vector<index_t> dim_;
   std::unique_ptr<OpenCLResizeNearestNeighborKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL

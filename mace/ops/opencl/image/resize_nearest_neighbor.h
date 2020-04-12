@@ -66,18 +66,19 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
  public:
-  explicit ResizeNearestNeighborKernel(bool align_corners)
-      : align_corners_(align_corners) {}
+  ResizeNearestNeighborKernel(bool align_corners,
+                              const index_t scale)
+      : align_corners_(align_corners),
+        scale_(scale) {}
 
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
-      const Tensor *size,
-      const std::vector<index_t> &dims,
       Tensor *output) override;
 
  private:
   bool align_corners_;
+  index_t scale_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

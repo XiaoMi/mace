@@ -1,0 +1,347 @@
+diff --git a/include/caffe/layers/upsample_layer.hpp b/include/caffe/layers/upsample_layer.hpp
+new file mode 100644
+index 0000000..1ef6044
+--- /dev/null
++++ b/include/caffe/layers/upsample_layer.hpp
+@@ -0,0 +1,44 @@
++#ifndef CAFFE_UPSAMPLE_LAYER_HPP_
++#define CAFFE_UPSAMPLE_LAYER_HPP_
++
++#include <vector>
++
++#include "caffe/blob.hpp"
++#include "caffe/layer.hpp"
++#include "caffe/proto/caffe.pb.h"
++
++namespace caffe {
++
++template <typename Dtype>
++class UpsampleLayer : public Layer<Dtype> {
++ public:
++  explicit UpsampleLayer(const LayerParameter& param)
++      : Layer<Dtype>(param) {}
++  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
++      const vector<Blob<Dtype>*>& top);
++  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
++      const vector<Blob<Dtype>*>& top);
++
++  virtual inline const char* type() const { return "Upsample"; }
++  virtual inline int MinBottomBlobs() const { return 1; }
++  virtual inline int MaxBottomBlobs() const { return 1; }
++  virtual inline int ExactNumTopBlobs() const { return 1; }
++
++  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
++      const vector<Blob<Dtype>*>& top);
++  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
++      const vector<Blob<Dtype>*>& top);
++  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
++      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
++  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
++      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
++
++ private:
++  int scale_;
++};
++
++
++
++}  // namespace caffe
++
++#endif  // CAFFE_UPSAMPLE_LAYER_HPP_
+diff --git a/src/caffe/layers/upsample_layer.cpp b/src/caffe/layers/upsample_layer.cpp
+new file mode 100644
+index 0000000..46b2ed9
+--- /dev/null
++++ b/src/caffe/layers/upsample_layer.cpp
+@@ -0,0 +1,89 @@
++#include <vector>
++#include "caffe/layers/upsample_layer.hpp"
++
++namespace caffe {
++
++template <typename Dtype>
++void UpsampleLayer<Dtype>::LayerSetUp(
++  const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
++  UpsampleParameter upsample_param = this->layer_param_.upsample_param();
++  scale_ = upsample_param.scale();
++}
++
++template <typename Dtype>
++void UpsampleLayer<Dtype>::Reshape(
++  const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
++  vector<int> out_shape;
++  for (int i = 0; i < bottom[0]->num_axes(); i++) {
++    out_shape.push_back(bottom[0]->shape(i));
++  }
++
++  out_shape[bottom[0]->num_axes() - 1] *= scale_;
++  out_shape[bottom[0]->num_axes() - 2] *= scale_;
++  top[0]->Reshape(out_shape);
++}
++
++template <typename Dtype>
++void UpsampleLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
++    const vector<Blob<Dtype>*>& top) {
++
++  int N = top[0]->shape(0);
++  int C = top[0]->shape(1);
++  int H = top[0]->shape(2);
++  int W = top[0]->shape(3);
++
++  const Dtype *input = bottom[0]->cpu_data();
++  Dtype *output = top[0]->mutable_cpu_data();
++  for (int n = 0; n < N; n++) {
++    for (int c = 0; c < C; c++) {
++      for (int h = 0; h < H; h++) {
++        for (int w = 0; w < W; w++) {
++          int nw = w/scale_;
++          int nh = h/scale_;
++          int out_idx = (((n * C + c) * H) + h) * W + w;
++          int in_idx = (((n * C + c) * (H / scale_)) + nh) * (W / scale_) + nw;
++          output[out_idx] = input[in_idx];
++        }
++      }
++    }
++  }
++}
++
++template <typename Dtype>
++void UpsampleLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
++    const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
++  int N = bottom[0]->shape(0);
++  int C = bottom[0]->shape(1);
++  int H = bottom[0]->shape(2);
++  int W = bottom[0]->shape(3);
++  const Dtype *output_grad = top[0]->cpu_diff();
++  Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
++  caffe_set(bottom[0]->count(), Dtype(0), bottom_diff);
++  for (int n = 0; n < N; n++) {
++    for (int c = 0; c < C; c++) {
++      for (int h = 0; h < H; h++) {
++        for (int w = 0; w < W; w++) {
++          for (int i = 0; i < scale_; i++) {
++            for (int j = 0; j < scale_; j++) {
++              int nw = w * scale_ + i;
++              int nh = h * scale_ + j;
++              int out_idx = (((n * C + c) * H) + h) * W + w;
++              int in_idx = (((n * C + c) * (H * scale_))
++                  + nh) * (W * scale_) + nw;
++              bottom_diff[out_idx] += output_grad[in_idx];
++            }
++          }
++        }
++      }
++    }
++  }
++}
++
++#ifdef CPU_ONLY
++STUB_GPU(UpsampleLayer);
++#endif
++
++INSTANTIATE_CLASS(UpsampleLayer);
++REGISTER_LAYER_CLASS(Upsample);
++
++}  // namespace caffe
+diff --git a/src/caffe/layers/upsample_layer.cu b/src/caffe/layers/upsample_layer.cu
+new file mode 100644
+index 0000000..aade4b3
+--- /dev/null
++++ b/src/caffe/layers/upsample_layer.cu
+@@ -0,0 +1,101 @@
++#include <vector>
++
++#include "caffe/filler.hpp"
++#include "caffe/layers/upsample_layer.hpp"
++#include "caffe/util/math_functions.hpp"
++
++namespace caffe {
++
++__device__ int translate_idx(int ii, int d1, int d2, int d3, int scale_factor) {
++  int x, y, z, w;
++  w = ii % d3;
++  ii = ii/d3;
++  z = ii % d2;
++  ii = ii/d2;
++  y = ii % d1;
++  ii = ii/d1;
++  x = ii;
++  w = w/scale_factor;
++  z = z/scale_factor;
++  d2 /= scale_factor;
++  d3 /= scale_factor;
++  return (((x*d1+y)*d2)+z)*d3+w;
++}
++
++__device__ int translate_idx_inv(
++    int ii, int d1, int d2, int d3, int scale_factor, int off_x, int off_y) {
++  int x, y, z, w;
++  w = ii % d3;
++  ii = ii/d3;
++  z = ii % d2;
++  ii = ii/d2;
++  y = ii % d1;
++  ii = ii/d1;
++  x = ii;
++  w = w*scale_factor+off_x;
++  z = z*scale_factor+off_y;
++  d2 *= scale_factor;
++  d3 *= scale_factor;
++  return (((x*d1+y)*d2)+z)*d3+w;
++}
++
++template <typename Dtype>
++__global__ void upscale(const Dtype *input, Dtype *output,
++        int no_elements, int scale_factor, int d1, int d2, int d3) {
++  int ii = threadIdx.x + blockDim.x * blockIdx.x;
++  if (ii >= no_elements) return;
++  int ipidx = translate_idx(ii, d1, d2, d3, scale_factor);
++  output[ii]=input[ipidx];
++}
++
++template <typename Dtype>
++__global__ void downscale(Dtype *gradInput_data, const Dtype *gradOutput_data,
++                          int no_elements, int scale_factor, int d1, int d2,
++                          int d3) {
++  int ii = threadIdx.x + blockDim.x * blockIdx.x;
++  if (ii >= no_elements) return;
++  for (int i = 0; i < scale_factor; i++) {
++    for (int j = 0; j < scale_factor; j++) {
++      int ipidx = translate_idx_inv(ii, d1, d2, d3, scale_factor, i, j);
++      gradInput_data[ii] += gradOutput_data[ipidx];
++    }
++  }
++}
++
++
++
++template <typename Dtype>
++void UpsampleLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
++      const vector<Blob<Dtype>*>& top) {
++  int d1, d2, d3;
++
++  d1 = top[0]->shape(1);
++  d2 = top[0]->shape(2);
++  d3 = top[0]->shape(3);
++
++  int no_elements = top[0]->count();
++
++  upscale<Dtype>  // NOLINT_NEXT_LINE(whitespace/operators)
++      <<<CAFFE_GET_BLOCKS(no_elements), CAFFE_CUDA_NUM_THREADS>>>(
++      bottom[0]->gpu_data(),
++      top[0]->mutable_gpu_data(), no_elements, scale_, d1, d2, d3);
++}
++
++template <typename Dtype>
++void UpsampleLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
++      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
++  int d1, d2, d3;
++  Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
++  d1 = bottom[0]->shape(1);
++  d2 = bottom[0]->shape(2);
++  d3 = bottom[0]->shape(3);
++  int no_elements = bottom[0]->count();
++  caffe_gpu_set(bottom[0]->count(), Dtype(0), bottom_diff);
++  downscale<Dtype>  // NOLINT_NEXT_LINE(whitespace/operators)
++      <<<CAFFE_GET_BLOCKS(no_elements), CAFFE_CUDA_NUM_THREADS>>>(
++      bottom_diff, top[0]->gpu_diff(), no_elements, scale_, d1, d2, d3);
++}
++
++INSTANTIATE_LAYER_GPU_FUNCS(UpsampleLayer);
++
++}  // namespace caffe
+diff --git a/src/caffe/proto/caffe.proto b/src/caffe/proto/caffe.proto
+index 3dcad69..6c587e8 100644
+--- a/src/caffe/proto/caffe.proto
++++ b/src/caffe/proto/caffe.proto
+@@ -322,7 +322,7 @@ message ParamSpec {
+ // NOTE
+ // Update the next available ID when you add a new LayerParameter field.
+ //
+-// LayerParameter next available layer-specific ID: 149 (last added: clip_param)
++// LayerParameter next available layer-specific ID: 150 (last added: upsample_param)
+ message LayerParameter {
+   optional string name = 1; // the layer name
+   optional string type = 2; // the layer type
+@@ -421,6 +421,7 @@ message LayerParameter {
+   optional ThresholdParameter threshold_param = 128;
+   optional TileParameter tile_param = 138;
+   optional WindowDataParameter window_data_param = 129;
++  optional UpsampleParameter upsample_param = 149;
+ }
+ 
+ // Message that stores parameters used to apply transformation
+@@ -1447,3 +1448,7 @@ message PReLUParameter {
+   // Whether or not slope parameters are shared across channels.
+   optional bool channel_shared = 2 [default = false];
+ }
++
++message UpsampleParameter {
++  optional int32 scale = 1 [default = 1];
++}
+diff --git a/src/caffe/test/test_upsample_layer.cpp b/src/caffe/test/test_upsample_layer.cpp
+new file mode 100644
+index 0000000..e114db9
+--- /dev/null
++++ b/src/caffe/test/test_upsample_layer.cpp
+@@ -0,0 +1,60 @@
++#include <cmath>
++#include <vector>
++
++#include "boost/scoped_ptr.hpp"
++#include "gtest/gtest.h"
++
++#include "caffe/blob.hpp"
++#include "caffe/filler.hpp"
++#include "caffe/layers/upsample_layer.hpp"
++#include "caffe/util/io.hpp"
++
++#include "caffe/test/test_caffe_main.hpp"
++#include "caffe/test/test_gradient_check_util.hpp"
++
++using boost::scoped_ptr;
++
++namespace caffe {
++
++template <typename TypeParam>
++class UpsampleLayerTest : public MultiDeviceTest<TypeParam> {
++  typedef typename TypeParam::Dtype Dtype;
++
++ protected:
++  UpsampleLayerTest()
++      : blob_bottom_data_(new Blob<Dtype>(2, 5, 2, 2)),
++        blob_top_data_(new Blob<Dtype>()) {
++    // fill the values
++    FillerParameter filler_param;
++    filler_param.set_std(10);
++    GaussianFiller<Dtype> filler(filler_param);
++    filler.Fill(this->blob_bottom_data_);
++    blob_bottom_vec_.push_back(blob_bottom_data_);
++    blob_top_vec_.push_back(blob_top_data_);
++  }
++
++  virtual ~UpsampleLayerTest() {
++    delete blob_bottom_data_;
++    delete blob_top_data_;
++  }
++  Blob<Dtype>* const blob_bottom_data_;
++  Blob<Dtype>* const blob_top_data_;
++  vector<Blob<Dtype>*> blob_bottom_vec_;
++  vector<Blob<Dtype>*> blob_top_vec_;
++};
++
++TYPED_TEST_CASE(UpsampleLayerTest, TestDtypesAndDevices);
++
++TYPED_TEST(UpsampleLayerTest, TestGradient) {
++  typedef typename TypeParam::Dtype Dtype;
++  LayerParameter layer_param;
++  UpsampleParameter* upsample_param =
++      layer_param.mutable_upsample_param();
++  upsample_param->set_scale(2);
++  UpsampleLayer<Dtype> layer(layer_param);
++  GradientChecker<Dtype> checker(1e-2, 1e-2, 1701);
++  checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
++      this->blob_top_vec_, 0);
++}
++
++}  // namespace caffe
