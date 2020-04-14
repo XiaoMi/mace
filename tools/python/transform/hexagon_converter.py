@@ -94,6 +94,17 @@ def get_op_and_port_from_tensor(tensor_name):
     return op, port
 
 
+def get_input_shape(tensor_name, model):
+    producer_op_name, _ = get_op_and_port_from_tensor(tensor_name)
+    input_shape = None
+    for producer_op in model.op:
+        if producer_op.name == producer_op_name:
+            input_shape = producer_op.output_shape[0].dims
+            break
+    mace_check(input_shape is not None, "Missing input shape.")
+    return input_shape
+
+
 def normalize_name(name):
     return name.replace(':', '_')
 
@@ -471,27 +482,37 @@ class HexagonConverter(base_converter.ConverterInterface):
             ConverterUtil.get_arg(op, MaceKeyword.mace_padding_type_str)
         mace_check(padding_type_arg is not None, "Missing padding of Deconv.")
         padding_type = PaddingMode(padding_type_arg.i)
+        strides_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_strides_str)
+        mace_check(strides_arg is not None, "Missing strides of Deconv.")
+        stride_h = strides_arg.ints[0]
+        stride_w = strides_arg.ints[1]
+
+        input_shape = get_input_shape(op.input[0], self._model)
+        input_h = input_shape[1]
+        input_w = input_shape[2]
         filter_tensor = self._consts[op.input[1]]
-        filter_height = filter_tensor.dims[1]
-        filter_width = filter_tensor.dims[2]
+        filter_h = filter_tensor.dims[1]
+        filter_w = filter_tensor.dims[2]
+        output_h = op.output_shape[0].dims[1]
+        output_w = op.output_shape[0].dims[2]
 
         if padding_type == PaddingMode.VALID:
-            paddings = [0, 0, 0, 0]
+            expected_input_h = (output_h - filter_h + stride_h) // stride_h
+            expected_input_w = (output_w - filter_w + stride_w) // stride_w
         elif padding_type == PaddingMode.SAME:
-            pad_height, pad_width = filter_height // 2, filter_width // 2
-            paddings = [pad_height, pad_height, pad_width, pad_width]
+            expected_input_h = (output_h + stride_h - 1) // stride_h
+            expected_input_w = (output_w + stride_w - 1) // stride_w
         else:
             raise Exception('Hexagon deconv does not support padding type: ',
                             padding_type)
+        mace_check(expected_input_h == input_h, "Wrong input/output height")
+        mace_check(expected_input_w == input_w, "Wrong input/output width")
 
-        padding_tensor = self._model.tensors.add()
-        padding_tensor.name = op.name + "/paddings:0"
-        padding_tensor.data_type = mace_pb2.DT_INT32
-        padding_tensor.dims.extend([1, 1, 2, 2])
-        padding_tensor.int32_data.extend(paddings)
-
-        self._consts[padding_tensor.name] = padding_tensor
-        op.input.append(padding_tensor.name)
+        pad_h = (input_h - 1) * stride_h + filter_h - output_h
+        pad_w = (input_w - 1) * stride_w + filter_w - output_w
+        pad_h, pad_w = max(pad_h, 0), max(pad_w, 0)
+        paddings = [pad_h, pad_h, pad_w, pad_w]
+        self.add_arg_const_node(op, "/paddings:0", [1, 1, 2, 2], paddings)
 
     def convert_deconv2d(self, op):
         channels = op.output_shape[0].dims[3]
@@ -549,7 +570,7 @@ class HexagonConverter(base_converter.ConverterInterface):
         if len(op.input) == 1:
             scalar_input_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_scalar_input_str)
-            self.add_scalar_const_node("/b:0", scalar_input_arg.i, op)
+            self.add_scalar_const_node("/b:0", scalar_input_arg.f, op)
         self.add_min_max_const_node(op, op.input[0])
         self.add_min_max_const_node(op, op.input[1])
 
@@ -631,18 +652,12 @@ class HexagonConverter(base_converter.ConverterInterface):
         for i in axis_arg.ints:
             mace_check(1 <= i <= 2,
                        "Hexagon Reduce Mean only supports spatial now")
-        producer_op_name, _ = get_op_and_port_from_tensor(op.input[0])
-        input_dims = None
-        for producer_op in self._model.op:
-            if producer_op.name == producer_op_name:
-                input_dims = producer_op.output_shape[0].dims
-                break
-        mace_check(input_dims is not None, "Missing input shape.")
+        input_shape = get_input_shape(op.input[0], self._model)
         if len(axis_arg.ints) == 1:
-            dim1, dim2 = (input_dims[1], 1) \
-                if axis_arg.ints[0] == 1 else (1, input_dims[2])
+            dim1, dim2 = (input_shape[1], 1) \
+                if axis_arg.ints[0] == 1 else (1, input_shape[2])
         else:
-            dim1, dim2 = input_dims[1], input_dims[2]
+            dim1, dim2 = input_shape[1], input_shape[2]
         self.add_arg_const_node(op, '/window:0', [1, dim1, dim2, 1])
         self.add_arg_const_node(op, '/strides:0', [1, dim1, dim2, 1])
 
@@ -669,15 +684,15 @@ class HexagonConverter(base_converter.ConverterInterface):
         op.type = HexagonOp.QuantizedSoftmax_8.name
 
     def convert_stridedslice(self, op):
-        beigin_mask = ConverterUtil.get_arg(
+        begin_mask = ConverterUtil.get_arg(
             op, MaceKeyword.mace_begin_mask_str).i
         end_mask = ConverterUtil.get_arg(
             op, MaceKeyword.mace_end_mask_str).i
         shrink_mask = ConverterUtil.get_arg(
             op, MaceKeyword.mace_shrink_axis_mask_str).i
-        self.add_scalar_const_node("/begin_mask:0", beigin_mask, op)
-        self.add_scalar_const_node("/end_mask:0", end_mask, op)
-        self.add_scalar_const_node("/shrink_mask:0", shrink_mask, op)
+        self.add_arg_const_node(op, "/begin_mask:0", [1], [begin_mask])
+        self.add_arg_const_node(op, "/end_mask:0", [1], [end_mask])
+        self.add_arg_const_node(op, "/shrink_mask:0", [1], [shrink_mask])
         self.add_min_max_const_node(op, op.input[0])
 
         op.type = HexagonOp.QuantizedStridedSlice_8.name
