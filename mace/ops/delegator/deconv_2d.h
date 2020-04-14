@@ -21,12 +21,12 @@
 #include "mace/core/ops/op_context.h"
 #include "mace/core/ops/op_delegator.h"
 #include "mace/core/registry/op_delegator_registry.h"
+#include "mace/ops/common/conv_pool_2d_util.h"
 
 namespace mace {
 namespace ops {
 
 enum DeconvType {
-  General,
   K2x2S1,
   K2x2S2,
   K3x3S1,

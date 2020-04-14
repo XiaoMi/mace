@@ -166,6 +166,7 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
 void RegisterIfDefined(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "IfDefined", IfDefinedOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "IfDefined", IfDefinedOp, DeviceType::CPU);
 }
 
 }  // namespace ops

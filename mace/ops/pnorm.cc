@@ -80,7 +80,7 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
           for (index_t j = start1; j < end1; j += step1) {
             const T *in_base = input_data + i * input_dim + j * group_size;
             T *out_base = output_data + i * output_dim_;
-            T temp_result = 0;
+            T temp_result = 0.f;
             for (index_t g = 0; g < group_size; ++g) {
               T value =
                   (std::fabs(in_base[g])
@@ -99,9 +99,9 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
           for (index_t j = start1; j < end1; j += step1) {
             const T *in_base = input_data + i * input_dim + j * group_size;
             T *out_base = output_data + i * output_dim_;
-            T temp_result = 0;
+            T temp_result = 0.f;
             for (index_t g = 0; g < group_size; ++g) {
-              temp_result += std::abs(in_base[g]);;
+              temp_result += std::abs(in_base[g]);
             }
             out_base[j] = temp_result;
           }
@@ -114,7 +114,7 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
           for (index_t j = start1; j < end1; j += step1) {
             const T *in_base = input_data + i * input_dim + j * group_size;
             T *out_base = output_data + i * output_dim_;
-            T temp_result = 0;
+            T temp_result = 0.f;
             for (index_t g = 0; g < group_size; ++g) {
               temp_result += in_base[g] * in_base[g];
             }
@@ -136,6 +136,8 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
 void RegisterPNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PNorm", PNormOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "PNorm", PNormOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

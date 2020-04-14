@@ -354,6 +354,8 @@ class StridedSliceOp : public Operation {
 void RegisterStridedSlice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "StridedSlice", StridedSliceOp,
+                        DeviceType::CPU);
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
                    DeviceType::CPU, int32_t);
 }

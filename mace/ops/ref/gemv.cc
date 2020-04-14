@@ -13,7 +13,7 @@
 // limitations under the License.
 
 
-#include "mace/ops/ref/gemv.h"
+#include "mace/ops/delegator/gemv.h"
 
 #if defined(MACE_ENABLE_QUANTIZE)
 #include "mace/core/quantize.h"
@@ -23,7 +23,27 @@ namespace mace {
 namespace ops {
 namespace ref {
 
-MaceStatus Gemv<float>::Compute(const OpContext *context,
+template<typename T>
+class Gemv : public delegator::Gemv {
+ public:
+  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
+  ~Gemv() {}
+  // Always row-major after transpose
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *lhs,
+      const Tensor *rhs,
+      const Tensor *bias,
+      const index_t batch,
+      const index_t lhs_height,
+      const index_t lhs_width,
+      const bool lhs_batched,
+      const bool rhs_batched,
+      Tensor *output) override;
+};
+
+template<typename T>
+MaceStatus Gemv<T>::Compute(const OpContext *context,
                                 const Tensor *lhs,
                                 const Tensor *rhs,
                                 const Tensor *bias,
@@ -39,18 +59,18 @@ MaceStatus Gemv<float>::Compute(const OpContext *context,
   Tensor::MappingGuard rhs_guard(rhs);
   Tensor::MappingGuard bias_guard(bias);
   Tensor::MappingGuard output_guard(output);
-  const float *lhs_data = lhs->data<float>();
-  const float *rhs_data = rhs->data<float>();
-  const float *bias_data = nullptr;
+  const T *lhs_data = lhs->data<T>();
+  const T *rhs_data = rhs->data<T>();
+  const T *bias_data = nullptr;
   if (bias) {
-    bias_data = bias->data<float>();
+    bias_data = bias->data<T>();
   }
 
-  float *output_data = output->mutable_data<float>();
+  T *output_data = output->mutable_data<T>();
 
   for (index_t b = 0; b < batch; ++b) {
     for (index_t h = 0; h < lhs_height; ++h) {
-      float sum = bias ? bias_data[h] : 0;
+      float sum = bias ? static_cast<float>(bias_data[h]) : 0.f;
       for (index_t w = 0; w < lhs_width; ++w) {
         sum += lhs_data[
             static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
@@ -65,109 +85,14 @@ MaceStatus Gemv<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-#if defined(MACE_ENABLE_QUANTIZE)
-MaceStatus Gemv<uint8_t>::Compute(const OpContext *context,
-                                  const Tensor *lhs,
-                                  const Tensor *rhs,
-                                  const Tensor *bias,
-                                  const index_t batch,
-                                  const index_t lhs_height,
-                                  const index_t lhs_width,
-                                  const bool lhs_batched,
-                                  const bool rhs_batched,
-                                  Tensor *output) {
-  MACE_UNUSED(context);
-
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard bias_guard(bias);
-  Tensor::MappingGuard output_guard(output);
-  const uint8_t *lhs_data = lhs->data<uint8_t>();
-  const uint8_t *rhs_data = rhs->data<uint8_t>();
-  const int32_t *bias_data = nullptr;
-  if (bias) {
-    bias_data = bias->data<int32_t>();
-  }
-
-  uint8_t *output_data = output->mutable_data<uint8_t>();
-
-  MACE_CHECK(output->scale() > 0, "output scale must not be zero");
-  const float
-      output_multiplier_float = lhs->scale() * rhs->scale() / output->scale();
-  int32_t lhs_zero = lhs->zero_point();
-  int32_t rhs_zero = rhs->zero_point();
-
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t h = 0; h < lhs_height; ++h) {
-      int32_t sum = bias ? bias_data[h] : 0;
-      for (index_t w = 0; w < lhs_width; ++w) {
-        sum += (lhs_data[
-            static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
-                + h * lhs_width + w] - lhs_zero)
-            * (rhs_data[static_cast<index_t>(rhs_batched) * b * lhs_width + w]
-                - rhs_zero);
-      }  // w
-
-      output_data[b * lhs_height + h] =
-          Saturate<uint8_t>(std::roundf(sum * output_multiplier_float));
-    }  // h
-  }   // b
-  return MaceStatus::MACE_SUCCESS;
+void RegisterGemvDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Gemv<float>, DelegatorParam,
+      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, Gemv<BFloat16>, DelegatorParam,
+      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, BFloat16, ImplType::REF));
 }
-
-MaceStatus Gemv<int32_t>::Compute(const OpContext *context,
-                                  const Tensor *lhs,
-                                  const Tensor *rhs,
-                                  const Tensor *bias,
-                                  const index_t batch,
-                                  const index_t lhs_height,
-                                  const index_t lhs_width,
-                                  const bool lhs_batched,
-                                  const bool rhs_batched,
-                                  Tensor *output) {
-  MACE_UNUSED(context);
-
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard bias_guard(bias);
-  Tensor::MappingGuard output_guard(output);
-  const uint8_t *lhs_data = lhs->data<uint8_t>();
-  const uint8_t *rhs_data = rhs->data<uint8_t>();
-  const int32_t *bias_data = nullptr;
-  if (bias) {
-    bias_data = bias->data<int32_t>();
-  }
-
-  int32_t *output_data = output->mutable_data<int32_t>();
-
-  int32_t lhs_zero = lhs->zero_point();
-  int32_t rhs_zero = rhs->zero_point();
-
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t h = 0; h < lhs_height; ++h) {
-      int32_t sum = bias ? bias_data[h] : 0;
-      for (index_t w = 0; w < lhs_width; ++w) {
-        sum += (lhs_data[
-            static_cast<index_t>(lhs_batched) * b * lhs_height * lhs_width
-                + h * lhs_width + w] - lhs_zero)
-            * (rhs_data[static_cast<index_t>(rhs_batched) * b * lhs_width + w]
-                - rhs_zero);
-      }  // w
-
-      output_data[b * lhs_height + h] = sum;
-    }  // h
-  }   // b
-  return MaceStatus::MACE_SUCCESS;
-}
-
-typedef Gemv<uint8_t> GemvUint8Ref;
-MACE_REGISTER_DELEGATOR(registry, GemvUint8Ref, DelegatorParam,
-                        MACE_DELEGATOR_KEY(Gemv, CPU, uint8_t, Ref))
-#endif  // MACE_ENABLE_QUANTIZE
-
-typedef Gemv<float> GemvRef;
-MACE_REGISTER_DELEGATOR(registry, GemvRef, DelegatorParam,
-                        MACE_DELEGATOR_KEY(Gemv, CPU, float, REF))
 
 }  // namespace ref
 }  // namespace ops

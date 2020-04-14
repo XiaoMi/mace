@@ -113,8 +113,12 @@ MaceStatus Conv2dK1x1::Compute(const OpContext *context,
                        output);
 }
 
-MACE_REGISTER_DELEGATOR(registry, Conv2dK1x1, delegator::Conv2dParam,
-                        MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, NEON, K1x1))
+void RegisterConv2dK1x1Delegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Conv2dK1x1, delegator::Conv2dParam,
+      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K1x1));
+}
 
 }  // namespace fp32
 }  // namespace arm

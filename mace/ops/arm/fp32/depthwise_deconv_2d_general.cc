@@ -207,13 +207,19 @@ MaceStatus GroupDeconv2dGeneral::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MACE_REGISTER_DELEGATOR(
-    registry, DepthwiseDeconv2dGeneral, delegator::DepthwiseDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, NEON, General))
+void RegisterDepthwiseDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, DepthwiseDeconv2dGeneral, delegator::DepthwiseDeconv2dParam,
+      MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU,
+                         float, ImplType::NEON));
+}
 
-MACE_REGISTER_DELEGATOR(
-    registry, GroupDeconv2dGeneral, delegator::GroupDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float, NEON, General))
+void RegisterGroupDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, GroupDeconv2dGeneral, delegator::GroupDeconv2dParam,
+      MACE_DELEGATOR_KEY(GroupDeconv2d, DeviceType::CPU,
+                         float, ImplType::NEON));
+}
 
 }  // namespace fp32
 }  // namespace arm

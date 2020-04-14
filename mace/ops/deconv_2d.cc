@@ -46,20 +46,21 @@ const std::vector<int> kDeconv2dStrides = {1, 1};
 template<DeviceType D, class T>
 class Deconv2dOp;
 
-template<>
-class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
+template<class T>
+class Deconv2dOp<DeviceType::CPU, T> : public Deconv2dOpBase {
  public:
   explicit Deconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context),
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                                   T, kCpuImplType),
                 delegator::ActivationParam(activation_, relux_max_limit_,
                                            leakyrelu_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -80,11 +81,9 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
 
-
     if (deconv2d_delegator_ == nullptr) {
-      std::string tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                              MACE_CPU_IMPL_TYPE, General);
-      if (MACE_CPU_IMPL_TYPE == NEON) {
+      auto tag = MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, T, kCpuImplType);
+      if (kCpuImplType == NEON) {
         const index_t kernel_h = filter->dim(2);
         const index_t kernel_w = filter->dim(3);
 
@@ -104,23 +103,23 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
             strides_[0] == strides_[1] && strides_[0] == 2;
 
         if (use_neon_2x2_s1) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K2x2S1);
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K2x2S1);
         } else if (use_neon_2x2_s2) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K2x2S2);
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K2x2S2);
         } else if (use_neon_3x3_s1) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K3x3S1);
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K3x3S1);
         } else if (use_neon_3x3_s2) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K3x3S2);
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K3x3S2);
         } else if (use_neon_4x4_s1) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K4x4S1);
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K4x4S1);
         } else if (use_neon_4x4_s2) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K4x4S2);
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K4x4S2);
         }
       }
       delegator::Deconv2dParam param(strides_, kDeconv2dStrides, paddings_,
@@ -236,8 +235,8 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterDeconv2D(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Deconv2D", Deconv2dOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Deconv2D", Deconv2dOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Deconv2D", Deconv2dOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "Deconv2D", Deconv2dOp);
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP_CONDITION(

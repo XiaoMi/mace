@@ -36,6 +36,8 @@ class IdentityOp : public Operation {
 void RegisterIdentity(OpRegistry *op_registry) {
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
                             DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
+                                 DeviceType::CPU);
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
                             DeviceType::CPU, int32_t);
 #ifdef MACE_ENABLE_OPENCL

@@ -40,6 +40,7 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DMACE_ENABLE_HEXAGON_DSP=${MACE_ENABLE_HEXAGON_DSP}   \
       -DMACE_ENABLE_HEXAGON_HTA=${MACE_ENABLE_HEXAGON_HTA}   \
       -DMACE_ENABLE_MTK_APU=${MACE_ENABLE_MTK_APU}           \
+      -DMACE_ENABLE_BFLOAT16=ON                              \
       -DMACE_ENABLE_OPT_SIZE=ON                              \
       -DMACE_ENABLE_OBFUSCATE=ON                             \
       -DMACE_ENABLE_TESTS=ON                                 \

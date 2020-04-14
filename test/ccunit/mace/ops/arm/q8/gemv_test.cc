@@ -17,8 +17,8 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/arm/q8/gemv.h"
-#include "mace/ops/ref/gemv.h"
+#include "mace/ops/delegator/gemv.h"
+#include "mace/ops/ops_test_util.h"
 #include "mace/ops/testing/test_utils.h"
 
 namespace mace {
@@ -57,34 +57,38 @@ void TestGemvInt32(const index_t batch,
   utils::ThreadPool thread_pool(1, AFFINITY_NONE);
   thread_pool.Init();
   CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
-  OpContext context(nullptr, &cpu_device);
-  mace::ops::arm::q8::Gemv<int32_t> gemv =
-      mace::ops::arm::q8::Gemv<int32_t>(DelegatorParam());
-  gemv.Compute(&context,
-               &lhs,
-               &rhs,
-               &bias,
-               batch,
-               height,
-               width,
-               lhs_batched,
-               rhs_batched,
-               &output);
+  OpsTestNet net;
+  OpContext context(net.ws(), &cpu_device);
+  std::unique_ptr<delegator::Gemv> gemv = delegator::Gemv::Create(
+      context.workspace(),
+      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, int32_t, ImplType::NEON),
+      DelegatorParam());
+  gemv->Compute(&context,
+                &lhs,
+                &rhs,
+                &bias,
+                batch,
+                height,
+                width,
+                lhs_batched,
+                rhs_batched,
+                &output);
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_INT32);
   expected_output.Resize({batch, height});
-  mace::ops::ref::Gemv<int32_t> gemv_ref =
-      mace::ops::ref::Gemv<int32_t>(DelegatorParam());
-  gemv_ref.Compute(nullptr,
-                   &lhs,
-                   &rhs,
-                   &bias,
-                   batch,
-                   height,
-                   width,
-                   lhs_batched,
-                   rhs_batched,
-                   &expected_output);
+  std::unique_ptr<delegator::Gemv> gemv_ref = delegator::Gemv::Create(
+      context.workspace(), MACE_DELEGATOR_KEY(
+      Gemv, DeviceType::CPU, int32_t, ImplType::REF), DelegatorParam());
+  gemv_ref->Compute(&context,
+                    &lhs,
+                    &rhs,
+                    &bias,
+                    batch,
+                    height,
+                    width,
+                    lhs_batched,
+                    rhs_batched,
+                    &expected_output);
 
   Tensor::MappingGuard output_guard(&output);
   Tensor::MappingGuard expected_guard(&expected_output);
@@ -131,36 +135,40 @@ void TestGemvUint8(const index_t batch,
   utils::ThreadPool thread_pool(1, AFFINITY_NONE);
   thread_pool.Init();
   CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
-  OpContext context(nullptr, &cpu_device);
-  mace::ops::arm::q8::Gemv<uint8_t> gemv =
-      mace::ops::arm::q8::Gemv<uint8_t>(DelegatorParam());
-  gemv.Compute(&context,
-               &lhs,
-               &rhs,
-               &bias,
-               batch,
-               height,
-               width,
-               lhs_batched,
-               rhs_batched,
-               &output);
+  OpsTestNet net;
+  OpContext context(net.ws(), &cpu_device);
+  std::unique_ptr<delegator::Gemv> gemv = delegator::Gemv::Create(
+      context.workspace(),
+      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, uint8_t, ImplType::NEON),
+      DelegatorParam());
+  gemv->Compute(&context,
+                &lhs,
+                &rhs,
+                &bias,
+                batch,
+                height,
+                width,
+                lhs_batched,
+                rhs_batched,
+                &output);
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_INT32);
   expected_output.SetScale(0.6);
   expected_output.SetZeroPoint(57);
   expected_output.Resize({batch, height});
-  mace::ops::ref::Gemv<uint8_t> gemv_ref =
-      mace::ops::ref::Gemv<uint8_t>(DelegatorParam());
-  gemv_ref.Compute(nullptr,
-                   &lhs,
-                   &rhs,
-                   &bias,
-                   batch,
-                   height,
-                   width,
-                   lhs_batched,
-                   rhs_batched,
-                   &expected_output);
+  std::unique_ptr<delegator::Gemv> gemv_ref = delegator::Gemv::Create(
+      context.workspace(), MACE_DELEGATOR_KEY(
+      Gemv, DeviceType::CPU, uint8_t, ImplType::REF), DelegatorParam());
+  gemv_ref->Compute(&context,
+                    &lhs,
+                    &rhs,
+                    &bias,
+                    batch,
+                    height,
+                    width,
+                    lhs_batched,
+                    rhs_batched,
+                    &expected_output);
 
   Tensor::MappingGuard output_guard(&output);
   Tensor::MappingGuard expected_guard(&expected_output);

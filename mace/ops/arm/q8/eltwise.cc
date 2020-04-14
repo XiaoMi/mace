@@ -162,8 +162,11 @@ MaceStatus Eltwise::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MACE_REGISTER_DELEGATOR(registry, Eltwise, delegator::EltwiseParam,
-                        MACE_DELEGATOR_KEY(Eltwise, CPU, uint8_t, NEON))
+void RegisterEltwiseDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Eltwise, delegator::EltwiseParam,
+      MACE_DELEGATOR_KEY(Eltwise, DeviceType::CPU, uint8_t, ImplType::NEON));
+}
 
 }  // namespace q8
 }  // namespace arm

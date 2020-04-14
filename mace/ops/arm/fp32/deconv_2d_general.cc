@@ -124,9 +124,11 @@ MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MACE_REGISTER_DELEGATOR(registry, Deconv2dGeneral, delegator::Deconv2dParam,
-                        MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                              NEON, General))
+void RegisterDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Deconv2dGeneral, delegator::Deconv2dParam,
+      MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, float, ImplType::NEON));
+}
 
 }  // namespace fp32
 }  // namespace arm

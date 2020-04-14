@@ -22,8 +22,8 @@ namespace ops {
 template<DeviceType D, typename T>
 class SelectOp;
 
-template<>
-class SelectOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class SelectOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit SelectOp(OpConstructContext *context)
       : Operation(context) {}
@@ -41,7 +41,7 @@ class SelectOp<DeviceType::CPU, float> : public Operation {
     Tensor *output = this->Output(OUTPUT);
     const index_t condition_rank = condition->dim_size();
     MACE_RETURN_IF_ERROR(output->Resize({condition->size(), condition_rank}));
-    float *output_data = output->mutable_data<float>();
+    T *output_data = output->mutable_data<T>();
     const bool *condition_data = condition->data<bool>();
 
     index_t i = 0;
@@ -161,10 +161,10 @@ class SelectOp<DeviceType::CPU, float> : public Operation {
 
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->Resize(x->shape()));
-    float *output_data = output->mutable_data<float>();
+    T *output_data = output->mutable_data<T>();
     const bool *condition_data = condition->data<bool>();
-    const float *x_data = x->data<float>();
-    const float *y_data = y->data<float>();
+    const T *x_data = x->data<T>();
+    const T *y_data = y->data<T>();
 
     const index_t condition_size = condition->size();
     const index_t x_size = x->size();
@@ -182,7 +182,7 @@ class SelectOp<DeviceType::CPU, float> : public Operation {
       MACE_ASSERT(
           block_size > 1 && x_size % condition_size == 0,
           "x_size should be a multiple of condition_size and greater than 1");
-      const auto raw_block_size = block_size * sizeof(float);
+      const auto raw_block_size = block_size * sizeof(T);
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         for (index_t k = start; k < end; k += step) {
           auto offset = block_size * k;
@@ -208,6 +208,8 @@ class SelectOp<DeviceType::CPU, float> : public Operation {
 void RegisterSelect(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Select", SelectOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Select", SelectOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

@@ -152,6 +152,8 @@ class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
 void RegisterTargetRMSNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "TargetRMSNorm", TargetRMSNormOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "TargetRMSNorm", TargetRMSNormOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

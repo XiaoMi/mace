@@ -185,8 +185,11 @@ void Activation::DoActivation(const OpContext *context,
   }
 }
 
-MACE_REGISTER_DELEGATOR(registry, Activation, delegator::ActivationParam,
-                        MACE_DELEGATOR_KEY(Activation, CPU, float, NEON))
+void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Activation, delegator::ActivationParam,
+      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, float, ImplType::NEON));
+}
 
 }  // namespace fp32
 }  // namespace arm

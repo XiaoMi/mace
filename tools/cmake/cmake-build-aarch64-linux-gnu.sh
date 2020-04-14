@@ -24,6 +24,7 @@ cmake -DCROSSTOOL_ROOT=${LINARO_AARCH64_LINUX_GNU} \
       -DMACE_ENABLE_NEON=ON               \
       -DMACE_ENABLE_QUANTIZE=ON           \
       -DMACE_ENABLE_OPENCL=${MACE_ENABLE_OPENCL}             \
+      -DMACE_ENABLE_BFLOAT16=ON           \
       -DMACE_ENABLE_OPT_SIZE=ON           \
       -DMACE_ENABLE_OBFUSCATE=ON          \
       -DMACE_ENABLE_TESTS=ON              \

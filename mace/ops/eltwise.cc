@@ -1073,7 +1073,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
             "scalar_input_index", 1)),
         eltwise_delegator_(delegator::Eltwise::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Eltwise, CPU, uint8_t, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Eltwise, DeviceType::CPU, uint8_t, kCpuImplType),
             delegator::EltwiseParam(
                 static_cast<ops::EltwiseType>(
                     Operation::GetOptionalArg<int>(
@@ -1175,8 +1175,8 @@ class EltwiseOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterEltwise(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Eltwise", EltwiseOp, DeviceType::CPU);
 
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
                    DeviceType::CPU, int32_t);

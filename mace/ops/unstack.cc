@@ -77,6 +77,8 @@ class UnstackOp : public Operation {
 void RegisterUnstack(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Unstack", UnstackOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Unstack", UnstackOp,
+                        DeviceType::CPU);
   MACE_REGISTER_OP(op_registry, "Unstack", UnstackOp,
                    DeviceType::CPU, int32_t);
 }

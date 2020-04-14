@@ -57,6 +57,8 @@ class ExpandDimsOp<DeviceType::CPU, T> : public Operation {
 void RegisterExpandDims(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "ExpandDims", ExpandDimsOp,
+                        DeviceType::CPU);
 
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
                    DeviceType::CPU, int32_t);

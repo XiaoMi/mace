@@ -26,10 +26,10 @@
 namespace mace {
 namespace ops {
 
-template<typename T>
+template<typename SrcT, typename DstT>
 void TransposeNHWCToNCHWC3(utils::ThreadPool *thread_pool,
-                           const T *input,
-                           T *output,
+                           const SrcT *input,
+                           DstT *output,
                            const index_t height,
                            const index_t width) {
   index_t image_size = height * width;
@@ -50,11 +50,11 @@ void TransposeNHWCToNCHWC3(utils::ThreadPool *thread_pool,
 }
 
 template<>
-inline void TransposeNHWCToNCHWC3<float>(utils::ThreadPool *thread_pool,
-                                         const float *input,
-                                         float *output,
-                                         const index_t height,
-                                         const index_t width) {
+inline void TransposeNHWCToNCHWC3<float, float>(utils::ThreadPool *thread_pool,
+                                                const float *input,
+                                                float *output,
+                                                const index_t height,
+                                                const index_t width) {
   index_t image_size = height * width;
 
   thread_pool->Compute1D([=](index_t start, index_t end, index_t step) {
@@ -91,10 +91,10 @@ inline void TransposeNHWCToNCHWC3<float>(utils::ThreadPool *thread_pool,
   }, 0, height, 1);
 }
 
-template<typename T>
+template<typename SrcT, typename DstT>
 void TransposeNCHWToNHWCC2(utils::ThreadPool *thread_pool,
-                           const T *input,
-                           T *output,
+                           const SrcT *input,
+                           DstT *output,
                            const index_t height,
                            const index_t width) {
   index_t image_size = height * width;
@@ -115,11 +115,11 @@ void TransposeNCHWToNHWCC2(utils::ThreadPool *thread_pool,
 }
 
 template<>
-inline void TransposeNCHWToNHWCC2<float>(utils::ThreadPool *thread_pool,
-                                         const float *input,
-                                         float *output,
-                                         const index_t height,
-                                         const index_t width) {
+inline void TransposeNCHWToNHWCC2<float, float>(utils::ThreadPool *thread_pool,
+                                                const float *input,
+                                                float *output,
+                                                const index_t height,
+                                                const index_t width) {
   index_t image_size = height * width;
 
   thread_pool->Compute1D([=](index_t start, index_t end, index_t step) {
@@ -155,15 +155,15 @@ inline void TransposeNCHWToNHWCC2<float>(utils::ThreadPool *thread_pool,
   }, 0, height, 1);
 }
 
-template<typename T>
+template<typename SrcT, typename DstT>
 MaceStatus Transpose(utils::ThreadPool *thread_pool,
-                     const T *input,
+                     const SrcT *input,
                      const std::vector<int64_t> &input_shape,
                      const std::vector<int> &dst_dims,
-                     T *output) {
+                     DstT *output) {
   MACE_CHECK((input_shape.size() == 2 && dst_dims.size() == 2) ||
-                 (input_shape.size() == 3 && dst_dims.size() == 3) ||
-                 (input_shape.size() == 4 && dst_dims.size() == 4),
+      (input_shape.size() == 3 && dst_dims.size() == 3) ||
+      (input_shape.size() == 4 && dst_dims.size() == 4),
              "Only support 2D, 3D or 4D transpose");
 
   std::vector<index_t> output_shape;
@@ -220,7 +220,6 @@ MaceStatus Transpose(utils::ThreadPool *thread_pool,
       index_t height = input_shape[1];
       index_t width = input_shape[2];
       index_t channel = input_shape[3];
-      size_t channel_raw_size = channel * sizeof(T);
       index_t stride_i = height;
       index_t stride_j = width;
       index_t tile_size = std::max(static_cast<index_t>(1),
@@ -232,9 +231,11 @@ MaceStatus Transpose(utils::ThreadPool *thread_pool,
           index_t end_j = std::min(j + tile_size, width);
           for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
             for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
-              memcpy(output + (tile_j * stride_i + tile_i) * channel,
-                     input + (tile_i * stride_j + tile_j) * channel,
-                     channel_raw_size);
+              auto output_ptr = output + (tile_j * stride_i + tile_i) * channel;
+              auto input_ptr = input + (tile_i * stride_j + tile_j) * channel;
+              for (index_t k = 0; k < channel; ++k) {
+                output_ptr[k] = input_ptr[k];
+              }
             }
           }
         }
@@ -296,14 +297,15 @@ MaceStatus Transpose(utils::ThreadPool *thread_pool,
         }
       }, 0, batch, 1, 0, height, tile_size, 0, width, tile_size);
     } else if (dst_dims == std::vector<int>{1, 0, 2}) {
-      size_t width_raw_size = width * sizeof(T);
       thread_pool->Compute2D([=](index_t start0, index_t end0, index_t step0,
                                  index_t start1, index_t end1, index_t step1) {
         for (int i = start0; i < end0; i += step0) {
           for (int j = start1; j < end1; j += step1) {
-            memcpy(output + (j * batch + i) * width,
-                   input + (i * height + j) * width,
-                   width_raw_size);
+            auto output_ptr = output + (j * batch + i) * width;
+            auto input_ptr = input + (i * height + j) * width;
+            for (index_t k = 0; k < width; ++k) {
+              output_ptr[k] = input_ptr[k];
+            }
           }
         }
       }, 0, batch, 1, 0, height, 1);

@@ -105,6 +105,8 @@ class InferConv2dShapeOp : public Operation {
 void RegisterInferConv2dShape(OpRegistry *op_registry) {
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
                             InferConv2dShapeOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, "InferConv2dShape",
+                                 InferConv2dShapeOp, DeviceType::CPU);
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
                             InferConv2dShapeOp, DeviceType::CPU, int32_t);
 #ifdef MACE_ENABLE_OPENCL

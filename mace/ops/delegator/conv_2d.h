@@ -27,7 +27,6 @@ namespace mace {
 namespace ops {
 
 enum ConvType {
-  General,
   K1x1,
   K1x7S1,
   K7x1S1,

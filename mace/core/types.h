@@ -21,6 +21,7 @@
 #include <arm_neon.h>
 #endif
 
+#include "mace/core/bfloat16.h"
 #include "mace/proto/mace.pb.h"
 #include "include/half.hpp"
 
@@ -56,6 +57,9 @@ struct EnumToDataType;
 MACE_MAPPING_DATA_TYPE_AND_ENUM(half, DT_HALF);
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 MACE_MAPPING_DATA_TYPE_AND_ENUM(float16_t, DT_FLOAT16);
+#endif
+#ifdef MACE_ENABLE_BFLOAT16
+MACE_MAPPING_DATA_TYPE_AND_ENUM(BFloat16, DT_BFLOAT16);
 #endif
 MACE_MAPPING_DATA_TYPE_AND_ENUM(float, DT_FLOAT);
 MACE_MAPPING_DATA_TYPE_AND_ENUM(uint8_t, DT_UINT8);

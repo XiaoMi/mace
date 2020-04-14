@@ -378,9 +378,11 @@ MaceStatus Gemv::Compute(const OpContext *context,
 #undef vaddvq_f32
 #endif
 
-
-MACE_REGISTER_DELEGATOR(registry, Gemv, DelegatorParam,
-                        MACE_DELEGATOR_KEY(Gemv, CPU, float, NEON))
+void RegisterGemvDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Gemv, DelegatorParam,
+      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, float, ImplType::NEON));
+}
 
 }  // namespace fp32
 }  // namespace arm

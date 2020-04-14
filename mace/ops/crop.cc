@@ -100,8 +100,7 @@ class CropOp<DeviceType::CPU, T> : public Operation {
               input_data + (b + offsets[0]) * in_img_size +
                   (c + offsets[1]) * in_hw +
                   (h + offsets[2]) * input_shape[3] + offsets[3];
-          memcpy(out_ptr, in_ptr_bch,
-                 output_shape[3] * sizeof(T));
+          memcpy(out_ptr, in_ptr_bch, output_shape[3] * sizeof(T));
         }
       }
     }
@@ -134,8 +133,8 @@ class CropOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterCrop(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Crop", CropOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Crop", CropOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Crop", CropOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "Crop", CropOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,

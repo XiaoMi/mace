@@ -104,6 +104,8 @@ class SubsampleOp<DeviceType::CPU, T> : public Operation {
 void RegisterSubsample(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Subsample", SubsampleOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Subsample", SubsampleOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

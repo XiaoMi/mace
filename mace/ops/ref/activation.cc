@@ -20,6 +20,7 @@ namespace mace {
 namespace ops {
 namespace ref {
 
+template<typename T>
 class Activation : public delegator::Activation {
  public:
   explicit Activation(const delegator::ActivationParam &param)
@@ -34,9 +35,10 @@ class Activation : public delegator::Activation {
                     Tensor *output);
 };
 
-MaceStatus Activation::Compute(const OpContext *context,
-                               const Tensor *input,
-                               Tensor *output) {
+template<typename T>
+MaceStatus Activation<T>::Compute(const OpContext *context,
+                                  const Tensor *input,
+                                  Tensor *output) {
   Tensor::MappingGuard input_guard(input);
   if (input != output) {
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
@@ -49,12 +51,13 @@ MaceStatus Activation::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-void Activation::DoActivation(const OpContext *context,
-                              const Tensor *input,
-                              Tensor *output) {
+template<typename T>
+void Activation<T>::DoActivation(const OpContext *context,
+                                 const Tensor *input,
+                                 Tensor *output) {
   MACE_UNUSED(context);
-  auto input_ptr = input->data<float>();
-  auto output_ptr = output->mutable_data<float>();
+  auto input_ptr = input->data<T>();
+  auto output_ptr = output->mutable_data<T>();
   const index_t size = input->size();
 
   switch (type_) {
@@ -77,7 +80,7 @@ void Activation::DoActivation(const OpContext *context,
     case LEAKYRELU: {
       for (index_t i = 0; i < size; ++i) {
         *output_ptr =
-            std::max(*input_ptr, 0.f)
+            std::max<float>(*input_ptr, 0.f)
                 + std::min(*input_ptr, 0.f) * leakyrelu_coefficient_;
         ++input_ptr;
         ++output_ptr;
@@ -107,8 +110,14 @@ void Activation::DoActivation(const OpContext *context,
   }
 }
 
-MACE_REGISTER_DELEGATOR(registry, Activation, delegator::ActivationParam,
-                        MACE_DELEGATOR_KEY(Activation, CPU, float, REF))
+void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Activation<float>, delegator::ActivationParam,
+      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, Activation<BFloat16>, delegator::ActivationParam,
+      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, BFloat16, ImplType::REF));
+}
 
 }  // namespace ref
 }  // namespace ops

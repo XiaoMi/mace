@@ -33,15 +33,15 @@ namespace ops {
 template<DeviceType D, class T>
 class BiasAddOp;
 
-template<>
-class BiasAddOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class BiasAddOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
         has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 0)),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -67,9 +67,9 @@ class BiasAddOp<DeviceType::CPU, float> : public Operation {
       Tensor::MappingGuard bias_mapper(bias);
       Tensor::MappingGuard output_mapper(output);
 
-      const float *input_ptr = input->data<float>();
-      const float *bias_ptr = bias->data<float>();
-      float *output_ptr = output->mutable_data<float>();
+      const T *input_ptr = input->data<T>();
+      const T *bias_ptr = bias->data<T>();
+      T *output_ptr = output->mutable_data<T>();
 
       const std::vector<index_t> &shape = input->shape();
       const index_t channels = *shape.rbegin();
@@ -162,6 +162,7 @@ class BiasAddOp<DeviceType::GPU, float> : public Operation {
 void RegisterBiasAdd(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "BiasAdd", BiasAddOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,

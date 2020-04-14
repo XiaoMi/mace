@@ -33,8 +33,8 @@ namespace ops {
 template<DeviceType D, class T>
 class BatchNormOp;
 
-template<>
-class BatchNormOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class BatchNormOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit BatchNormOp(OpConstructContext *context)
       : Operation(context),
@@ -43,7 +43,8 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                                   T, kCpuImplType),
                 delegator::ActivationParam(
                     ops::StringToActivationType(
                         Operation::GetOptionalArg<std::string>("activation",
@@ -91,13 +92,13 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
       Tensor::MappingGuard offset_mapper(offset);
       Tensor::MappingGuard output_mapper(output);
 
-      const float *input_ptr = input->data<float>();
-      const float *scale_ptr = scale->data<float>();
-      const float *offset_ptr = offset->data<float>();
-      float *output_ptr = output->mutable_data<float>();
+      const T *input_ptr = input->data<T>();
+      const T *scale_ptr = scale->data<T>();
+      const T *offset_ptr = offset->data<T>();
+      T *output_ptr = output->mutable_data<T>();
 
-      std::vector<float> new_scale;
-      std::vector<float> new_offset;
+      std::vector<T> new_scale;
+      std::vector<T> new_offset;
       if (not_folded) {
         const Tensor *mean = this->Input(MEAN);
         const Tensor *var = this->Input(VAR);
@@ -109,8 +110,8 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
         new_offset.resize(channels);
         Tensor::MappingGuard mean_mapper(mean);
         Tensor::MappingGuard var_mapper(var);
-        const float *mean_ptr = mean->data<float>();
-        const float *var_ptr = var->data<float>();
+        const T *mean_ptr = mean->data<T>();
+        const T *var_ptr = var->data<T>();
 
         thread_pool.Compute1D([=, &new_scale, &new_offset](index_t start,
                                                            index_t end,
@@ -122,9 +123,8 @@ class BatchNormOp<DeviceType::CPU, float> : public Operation {
         }, 0, channels, 1);
       }
 
-      const float *scale_data = not_folded ? new_scale.data() : scale_ptr;
-      const float
-          *offset_data = not_folded ? new_offset.data() : offset_ptr;
+      const T *scale_data = not_folded ? new_scale.data() : scale_ptr;
+      const T *offset_data = not_folded ? new_offset.data() : offset_ptr;
 
       index_t channel_size = height * width;
       index_t batch_size = channels * channel_size;
@@ -232,6 +232,7 @@ class BatchNormOp<DeviceType::GPU, float> : public Operation {
 void RegisterBatchNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "BatchNorm", BatchNormOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "BatchNorm", BatchNormOp);
 }
 

@@ -959,19 +959,27 @@ MaceStatus GroupDeconv2dK4x4S2::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MACE_REGISTER_DELEGATOR(
-    registry, DepthwiseDeconv2dK4x4S1, delegator::DepthwiseDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, NEON, K4x4S1))
-MACE_REGISTER_DELEGATOR(
-    registry, DepthwiseDeconv2dK4x4S2, delegator::DepthwiseDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, NEON, K4x4S2))
+void RegisterDepthwiseDeconv2dK4x4Delegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, DepthwiseDeconv2dK4x4S1, delegator::DepthwiseDeconv2dParam,
+      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K4x4S1));
+  MACE_REGISTER_DELEGATOR(
+      registry, DepthwiseDeconv2dK4x4S2, delegator::DepthwiseDeconv2dParam,
+      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K4x4S2));
+}
 
-MACE_REGISTER_DELEGATOR(
-    registry, GroupDeconv2dK4x4S1, delegator::GroupDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float, NEON, K4x4S1))
-MACE_REGISTER_DELEGATOR(
-    registry, GroupDeconv2dK4x4S2, delegator::GroupDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float, NEON, K4x4S2))
+void RegisterGroupDeconv2dK4x4Delegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, GroupDeconv2dK4x4S1, delegator::GroupDeconv2dParam,
+      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K4x4S1));
+  MACE_REGISTER_DELEGATOR(
+      registry, GroupDeconv2dK4x4S2, delegator::GroupDeconv2dParam,
+      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K4x4S2));
+}
 
 }  // namespace fp32
 }  // namespace arm

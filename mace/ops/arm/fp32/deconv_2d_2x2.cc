@@ -335,12 +335,16 @@ MaceStatus Deconv2dK2x2S2::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MACE_REGISTER_DELEGATOR(registry, Deconv2dK2x2S1, delegator::Deconv2dParam,
-                        MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                              NEON, K2x2S1))
-MACE_REGISTER_DELEGATOR(registry, Deconv2dK2x2S2, delegator::Deconv2dParam,
-                        MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float,
-                                              NEON, K2x2S2))
+void RegisterDeconv2dK2x2Delegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Deconv2dK2x2S1, delegator::Deconv2dParam,
+      MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K2x2S1));
+  MACE_REGISTER_DELEGATOR(
+      registry, Deconv2dK2x2S2, delegator::Deconv2dParam,
+      MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU,
+                            float, ImplType::NEON, K2x2S2));
+}
 
 }  // namespace fp32
 }  // namespace arm

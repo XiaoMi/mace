@@ -28,8 +28,8 @@ namespace ops {
 template <DeviceType D, class T>
 class KaldiBatchNormOp;
 
-template <>
-class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
+template <class T>
+class KaldiBatchNormOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit KaldiBatchNormOp(OpConstructContext *context)
       : Operation(context),
@@ -40,13 +40,13 @@ class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
         test_mode_(static_cast<bool>(
                        Operation::GetOptionalArg<int>("test_mode", 0))) {}
 
-  void CalculateMeanVar(const float *input_data,
+  void CalculateMeanVar(const T *input_data,
                         index_t length,
                         index_t stride,
                         float mean_scale,
                         float var_scale,
-                        float *mean_data,
-                        float *var_data) {
+                        T *mean_data,
+                        T *var_data) {
     float mean_value = 0.f;
     float var_value = 0.f;
     for (index_t i = 0; i < length; ++i) {
@@ -84,8 +84,8 @@ class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
-    const float *input_data = input->data<float>();
-    float *output_data = output->mutable_data<float>();
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
 
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
@@ -102,8 +102,8 @@ class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
                      && scale->size() == block_dim_);
       Tensor::MappingGuard scale_guard(scale);
       Tensor::MappingGuard offset_guard(offset);
-      const float *scale_data = scale->data<float>();
-      const float *offset_data = offset->data<float>();
+      const T *scale_data = scale->data<T>();
+      const T *offset_data = offset->data<T>();
 
       thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                                 index_t start1, index_t end1, index_t step1) {
@@ -116,18 +116,18 @@ class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
       }, 0, num_rows, 1, 0, block_dim_, 1);
     } else {
       const index_t buf_size =
-          PadAlignSize(block_dim_ * sizeof(float));
+          PadAlignSize(block_dim_ * sizeof(T));
       ScratchBuffer *scratch = context->device()->scratch_buffer();
       scratch->Rewind();
       scratch->GrowSize(2 * buf_size);
 
-      Tensor mean(scratch->Scratch(buf_size), DT_FLOAT);
+      Tensor mean(scratch->Scratch(buf_size), DataTypeToEnum<T>::v());
       mean.Reshape({block_dim_});
-      float *mean_data = mean.mutable_data<float>();
+      T *mean_data = mean.mutable_data<T>();
 
-      Tensor var(scratch->Scratch(buf_size), DT_FLOAT);
+      Tensor var(scratch->Scratch(buf_size), DataTypeToEnum<T>::v());
       var.Reshape({block_dim_});
-      float *var_data = var.mutable_data<float>();
+      T *var_data = var.mutable_data<T>();
 
       float var_scale = 1.0f / (target_rms_ * target_rms_);
       float mean_scale = 1.0f / num_rows;
@@ -171,6 +171,8 @@ class KaldiBatchNormOp<DeviceType::CPU, float> : public Operation {
 void RegisterKaldiBatchNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "KaldiBatchNorm", KaldiBatchNormOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "KaldiBatchNorm", KaldiBatchNormOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

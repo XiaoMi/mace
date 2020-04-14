@@ -80,6 +80,7 @@ class StackOp : public Operation {
 
 void RegisterStack(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Stack", StackOp, DeviceType::CPU);
   MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, int32_t);
 }
 

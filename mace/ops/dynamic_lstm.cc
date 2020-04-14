@@ -75,7 +75,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
             Operation::GetRepeatedArgs<index_t>("out_cache_indexes")),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, CPU, T, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   inline void Validate() {
@@ -107,14 +107,14 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                ") should be greater than zero.");
   }
 
-  void UpdateCell(float *cell_data,
+  void UpdateCell(T *cell_data,
                   const index_t cell_dim,
                   const float scale) {
     if (std::abs(scale - 1.f) < 1e-6)
       return;
     const index_t rounds = cell_dim / 4;
     for (index_t i = 0; i < rounds * 4; i += 4) {
-#ifdef MACE_ENABLE_NEON
+#if defined(MACE_ENABLE_NEON) and not defined(MACE_ENABLE_BFLOAT16)
       float32x4_t in_vec = vld1q_f32(cell_data + i);
       float32x4_t scale_vec = vdupq_n_f32(scale);
       in_vec = vmulq_f32(in_vec, scale_vec);
@@ -130,18 +130,18 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     }
   }
 
-  void CopyAndUpdateCell(float *src_data,
+  void CopyAndUpdateCell(T *src_data,
                          const index_t cell_dim,
                          const float scale,
-                         float *cell_data) {
+                         T *cell_data) {
     if (std::abs(scale - 1.f) < 1e-6) {
-      memcpy(cell_data, src_data, cell_dim * sizeof(float));
+      memcpy(cell_data, src_data, cell_dim * sizeof(T));
       return;
     }
 
     const index_t rounds = cell_dim / 4;
     for (index_t i = 0; i < rounds * 4; i += 4) {
-#ifdef MACE_ENABLE_NEON
+#if defined(MACE_ENABLE_NEON) and not defined(MACE_ENABLE_BFLOAT16)
       float32x4_t in_vec = vld1q_f32(src_data + i);
       float32x4_t scale_vec = vdupq_n_f32(scale);
       in_vec = vmulq_f32(in_vec, scale_vec);
@@ -222,49 +222,54 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         << " output_dim: " << output_dim;
 
     const index_t affine_a_in_size =
-        PadAlignSize(affine_a_in_dim * sizeof(float));
+        PadAlignSize(affine_a_in_dim * sizeof(T));
     const index_t affine_a_out_size =
-        PadAlignSize(affine_a_out_dim * sizeof(float));
+        PadAlignSize(affine_a_out_dim * sizeof(T));
     const index_t affine_b_in_size =
-        PadAlignSize(affine_b_in_dim * sizeof(float));
+        PadAlignSize(affine_b_in_dim * sizeof(T));
     const index_t affine_b_out_size =
-        PadAlignSize(affine_b_out_dim * sizeof(float));
+        PadAlignSize(affine_b_out_dim * sizeof(T));
 
     const int out_buf_chunk = abs(prev_out_delay_ / subsample_factor_);
     const int cell_buf_chunk = abs(prev_cell_delay_ / subsample_factor_);
     const index_t out_buf_size =
-        PadAlignSize(out_buf_chunk * prev_out_dim_ * sizeof(float));
+        PadAlignSize(out_buf_chunk * prev_out_dim_ * sizeof(T));
     const index_t cell_buf_size =
-        PadAlignSize(cell_buf_chunk * prev_cell_dim_ * sizeof(float));
+        PadAlignSize(cell_buf_chunk * prev_cell_dim_ * sizeof(T));
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     scratch->GrowSize(affine_a_in_size + affine_a_out_size
                           + affine_b_in_size + affine_b_out_size
                           + out_buf_size + cell_buf_size);
 
-    Tensor prev_out_buf(scratch->Scratch(out_buf_size), DT_FLOAT);
+    Tensor prev_out_buf(scratch->Scratch(out_buf_size), DataTypeToEnum<T>::v());
     prev_out_buf.Reshape({out_buf_chunk, prev_out_dim_});
-    float *prev_out_buf_data = prev_out_buf.mutable_data<float>();
+    T *prev_out_buf_data = prev_out_buf.mutable_data<T>();
 
-    Tensor prev_cell_buf(scratch->Scratch(cell_buf_size), DT_FLOAT);
+    Tensor prev_cell_buf(
+        scratch->Scratch(cell_buf_size), DataTypeToEnum<T>::v());
     prev_cell_buf.Reshape({cell_buf_chunk, prev_cell_dim_});
-    float *prev_cell_buf_data = prev_cell_buf.mutable_data<float>();
+    T *prev_cell_buf_data = prev_cell_buf.mutable_data<T>();
 
-    Tensor affine_a_in(scratch->Scratch(affine_a_in_size), DT_FLOAT);
+    Tensor affine_a_in(
+        scratch->Scratch(affine_a_in_size), DataTypeToEnum<T>::v());
     affine_a_in.Reshape({1, affine_a_in_dim});
-    float *affine_a_in_data = affine_a_in.mutable_data<float>();
+    T *affine_a_in_data = affine_a_in.mutable_data<T>();
 
-    Tensor affine_a_out(scratch->Scratch(affine_a_out_size), DT_FLOAT);
+    Tensor affine_a_out(
+        scratch->Scratch(affine_a_out_size), DataTypeToEnum<T>::v());
     affine_a_out.Reshape({1, affine_a_out_dim});
-    float *affine_a_out_data = affine_a_out.mutable_data<float>();
+    T *affine_a_out_data = affine_a_out.mutable_data<T>();
 
-    Tensor affine_b_in(scratch->Scratch(affine_b_in_size), DT_FLOAT);
+    Tensor affine_b_in(
+        scratch->Scratch(affine_b_in_size), DataTypeToEnum<T>::v());
     affine_b_in.Reshape({1, affine_b_in_dim});
-    float *affine_b_in_data = affine_b_in.mutable_data<float>();
+    T *affine_b_in_data = affine_b_in.mutable_data<T>();
 
-    Tensor affine_b_out(scratch->Scratch(affine_b_out_size), DT_FLOAT);
+    Tensor affine_b_out(
+        scratch->Scratch(affine_b_out_size), DataTypeToEnum<T>::v());
     affine_b_out.Reshape({1, affine_b_out_dim});
-    float *affine_b_out_data = affine_b_out.mutable_data<float>();
+    T *affine_b_out_data = affine_b_out.mutable_data<T>();
 
     Tensor *output = this->Output(OUTPUT);
     Tensor *out_cache = this->Output(OUT_CACHE);
@@ -293,31 +298,31 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     Tensor::MappingGuard out_cache_guard(out_cache);
     Tensor::MappingGuard cell_cache_guard(cell_cache);
 
-    const float *input_data = input->data<float>();
-    const float *prev_out_data = prev_out->data<float>();
-    const float *prev_cell_data = prev_cell->data<float>();
-    const float *lstm_params_data = lstm_params->data<float>();
-    float *output_data = output->mutable_data<float>();
-    float *out_cache_data = out_cache->mutable_data<float>();
-    float *cell_cache_data = cell_cache->mutable_data<float>();
+    const T *input_data = input->data<T>();
+    const T *prev_out_data = prev_out->data<T>();
+    const T *prev_cell_data = prev_cell->data<T>();
+    const T *lstm_params_data = lstm_params->data<T>();
+    T *output_data = output->mutable_data<T>();
+    T *out_cache_data = out_cache->mutable_data<T>();
+    T *cell_cache_data = cell_cache->mutable_data<T>();
 
     for (int b = 0; b < batch; ++b) {
       memcpy(prev_out_buf_data,
              prev_out_data + b * out_buf_chunk * prev_out_dim_,
-             sizeof(float) * out_buf_chunk * prev_out_dim_);
+             sizeof(T) * out_buf_chunk * prev_out_dim_);
       memcpy(prev_cell_buf_data,
              prev_cell_data + b * cell_buf_chunk * prev_cell_dim_,
-             sizeof(float) * cell_buf_chunk * prev_cell_dim_);
+             sizeof(T) * cell_buf_chunk * prev_cell_dim_);
 
       for (index_t i = 0; i < out_chunk; ++i) {
-        const float *input_ptr =
+        const T *input_ptr =
             input_data + (b * chunk + forward_indexes_[i]) * input_dim;
-        float *output_ptr = output_data + (b * out_chunk + i) * output_dim;
+        T *output_ptr = output_data + (b * out_chunk + i) * output_dim;
         // Append
-        memcpy(affine_a_in_data, input_ptr, input_dim * sizeof(float));
+        memcpy(affine_a_in_data, input_ptr, input_dim * sizeof(T));
         memcpy(affine_a_in_data + input_dim,
                prev_out_buf_data + i % out_buf_chunk * prev_out_dim_,
-               prev_out_dim_ * sizeof(float));
+               prev_out_dim_ * sizeof(T));
         // Affine
         gemv_->Compute(context,
                        weights_a,
@@ -330,11 +335,11 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                        false,
                        &affine_a_out);
         // Prepare LSTMNonlinear input and output pointer
-        float *lstm_cell_ptr =
+        T *lstm_cell_ptr =
             prev_cell_buf_data + i % cell_buf_chunk * prev_cell_dim_;
-        float *curr_cell_ptr = lstm_cell_ptr;
+        T *curr_cell_ptr = lstm_cell_ptr;
         // LSTMNonlinear
-        LSTMNonlinearKernel(context,
+        LSTMNonlinearKernel<T>(context,
                             affine_a_out_data,
                             lstm_cell_ptr,
                             nullptr,
@@ -359,9 +364,9 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         // Output
         memcpy(output_ptr,
                affine_b_out_data,
-               output_dim * sizeof(float));
+               output_dim * sizeof(T));
         // Update
-        float *curr_out_ptr =
+        T *curr_out_ptr =
             prev_out_buf_data + i % out_buf_chunk * prev_out_dim_;
         CopyAndUpdateCell(affine_b_out_data + prev_out_offset_,
                           prev_out_dim_,
@@ -371,22 +376,22 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         for (size_t k = 0; k < out_cache_indexes_.size(); ++k) {
           if (i == out_cache_indexes_[k]) {
             const index_t idx = b * out_buf_chunk + k;
-            float *out_cache_ptr =
+            T *out_cache_ptr =
                 out_cache_data + idx * prev_out_dim_;
             memcpy(out_cache_ptr,
                    curr_out_ptr,
-                   sizeof(float) * prev_out_dim_);
+                   sizeof(T) * prev_out_dim_);
           }
         }
 
         for (size_t k = 0; k < cell_cache_indexes_.size(); ++k) {
           if (i == cell_cache_indexes_[k]) {
             const index_t idx = b * cell_buf_chunk + k;
-            float *cell_cache_ptr =
+            T *cell_cache_ptr =
                 cell_cache_data + idx * prev_cell_dim_;
             memcpy(cell_cache_ptr,
                    curr_cell_ptr,
-                   sizeof(float) * prev_cell_dim_);
+                   sizeof(T) * prev_cell_dim_);
           }
         }
       }
@@ -416,6 +421,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
 void RegisterDynamicLSTM(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DynamicLSTM", DynamicLSTMOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "DynamicLSTM", DynamicLSTMOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

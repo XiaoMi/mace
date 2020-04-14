@@ -148,6 +148,8 @@ class PriorBoxOp : public Operation {
 void RegisterPriorBox(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PriorBox", PriorBoxOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "PriorBox", PriorBoxOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

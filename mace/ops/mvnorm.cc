@@ -30,8 +30,8 @@ namespace ops {
 template<DeviceType D, typename T>
 class MVNormOp;
 
-template<>
-class MVNormOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class MVNormOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit MVNormOp(OpConstructContext *context)
       : Operation(context),
@@ -52,8 +52,8 @@ class MVNormOp<DeviceType::CPU, float> : public Operation {
 
     Tensor::MappingGuard guard_input(input);
     Tensor::MappingGuard guard_output(output);
-    const auto *input_data = input->data<float>();
-    auto *output_data = output->mutable_data<float>();
+    const auto *input_data = input->data<T>();
+    auto *output_data = output->mutable_data<T>();
 
     const auto input_size = input->size();
     const auto outer_loop =
@@ -71,7 +71,8 @@ class MVNormOp<DeviceType::CPU, float> : public Operation {
       for (index_t i = start; i < end; i += step) {
         const auto offset = inner_loop * i;
         mean_ptr[i] = std::accumulate(input_data + offset,
-                                      input_data + offset + inner_loop, 0.0f);
+                                      input_data + offset + inner_loop,
+                                      static_cast<T>(0.0f));
         mean_ptr[i] /= inner_loop;
       }
     }, 0, outer_loop, 1);
@@ -105,7 +106,8 @@ class MVNormOp<DeviceType::CPU, float> : public Operation {
         for (index_t i = start; i < end; i += step) {
           auto output_data_base = output_data + inner_loop * i;
           mean_v_ptr[i] = std::accumulate(output_data_base,
-                                          output_data_base + inner_loop, 0.0f);
+                                          output_data_base + inner_loop,
+                                          static_cast<T>(0.0f));
           mean_v_ptr[i] = std::pow(mean_v_ptr[i] / inner_loop, 0.5f) + eps_;
         }
       }, 0, outer_loop, 1);
@@ -169,6 +171,8 @@ class MVNormOp<DeviceType::GPU, float> : public Operation {
 void RegisterMVNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "MVNorm", MVNormOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "MVNorm", MVNormOp,
+                        DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "MVNorm", MVNormOp);
 }
 

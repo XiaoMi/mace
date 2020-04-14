@@ -33,8 +33,8 @@ namespace ops {
 template<DeviceType D, class T>
 class AddNOp;
 
-template<>
-class AddNOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class AddNOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit AddNOp(OpConstructContext *context)
       : Operation(context) {}
@@ -46,12 +46,12 @@ class AddNOp<DeviceType::CPU, float> : public Operation {
     const index_t size = output->size();
 
     Tensor::MappingGuard output_guard(output);
-    auto output_data = output->mutable_data<float>();
-    memset(output_data, 0, size * sizeof(float));
+    auto output_data = output->mutable_data<T>();
+    memset(output_data, 0, size * sizeof(T));
 
     for (auto &input : inputs_) {
       Tensor::MappingGuard input_guard(input);
-      auto input_data = input->data<float>();
+      auto input_data = input->template data<T>();
 
       for (index_t j = 0; j < size; ++j) {
         output_data[j] += input_data[j];
@@ -95,6 +95,7 @@ class AddNOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterAddN(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "AddN", AddNOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "AddN", AddNOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
