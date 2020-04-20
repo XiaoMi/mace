@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,95 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/conv_2d_3x3.h"
-
 #include <arm_neon.h>
 #include <memory>
 
+#include "mace/ops/arm/base/conv_2d_3x3.h"
 #include "mace/ops/delegator/conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
-                                 const Tensor *input,
-                                 const Tensor *filter,
-                                 Tensor *output) {
-  std::unique_ptr<const Tensor> padded_input;
-  std::unique_ptr<Tensor> padded_output;
-  ResizeOutAndPadInOut(context,
-                       input,
-                       filter,
-                       output,
-                       2,
-                       4,
-                       &padded_input,
-                       &padded_output);
-  const Tensor *in_tensor = input;
-  if (padded_input != nullptr) {
-    in_tensor = padded_input.get();
-  }
-  Tensor *out_tensor = output;
-  if (padded_output != nullptr) {
-    out_tensor = padded_output.get();
-  }
-  out_tensor->Clear();
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = in_tensor->data<float>();
-  auto output_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = in_tensor->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus Conv2dK3x3S1<float>::DoCompute(
+    const ConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        if (m + 1 < out_channels) {
+        if (m + 1 < p.out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + m * out_image_size;
+              output_data + b * p.out_batch_size + m * p.out_image_size;
           float *out_ptr1_base =
-              output_data + b * out_batch_size + (m + 1) * out_image_size;
-          for (index_t c = 0; c < in_channels; ++c) {
+              output_data + b * p.out_batch_size + (m + 1) * p.out_image_size;
+          for (index_t c = 0; c < p.in_channels; ++c) {
+            const float *in_ptr0 =
+                input_data + b * p.in_batch_size + c * p.in_image_size;
             const float
-                *in_ptr0 = input_data + b * in_batch_size + c * in_image_size;
-            const float
-                *filter_ptr0 = filter_data + m * in_channels * 9 + c * 9;
+                *filter_ptr0 = filter_data + m * p.in_channels * 9 + c * 9;
 
             float *out_ptr1 = out_ptr1_base;
             const float *in_ptr1 =
-                input_data + b * in_batch_size + c * in_image_size
-                    + 1 * in_width;
+                input_data + b * p.in_batch_size + c * p.in_image_size
+                    + 1 * p.in_width;
             const float *in_ptr2 =
-                input_data + b * in_batch_size + c * in_image_size
-                    + 2 * in_width;
+                input_data + b * p.in_batch_size + c * p.in_image_size
+                    + 2 * p.in_width;
             const float *in_ptr3 =
-                input_data + b * in_batch_size + c * in_image_size
-                    + 3 * in_width;
-            const float
-                *filter_ptr1 = filter_data + (m + 1) * in_channels * 9 + c * 9;
+                input_data + b * p.in_batch_size + c * p.in_image_size
+                    + 3 * p.in_width;
+            const float *filter_ptr1 =
+                filter_data + (m + 1) * p.in_channels * 9 + c * 9;
 
 #if defined(__aarch64__)
             float *out_ptr0 = out_ptr0_base;
@@ -116,8 +68,8 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
             vf11 = vld1q_f32(filter_ptr1 + 3);
             vf12 = vld1q_f32(filter_ptr1 + 6);
 
-            for (index_t h = 0; h + 1 < out_height; h += 2) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
+            for (index_t h = 0; h + 1 < p.out_height; h += 2) {
+              for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                 // input (4 height x 3 slide): vi_height_slide
                 float32x4_t vi00, vi01, vi02;  // reg count: 14
                 float32x4_t vi10, vi11, vi12;
@@ -150,9 +102,9 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
 
                 // load ouptut
                 vo00 = vld1q_f32(out_ptr0);
-                vo01 = vld1q_f32(out_ptr0 + out_width);
+                vo01 = vld1q_f32(out_ptr0 + p.out_width);
                 vo10 = vld1q_f32(out_ptr1);
-                vo11 = vld1q_f32(out_ptr1 + out_width);
+                vo11 = vld1q_f32(out_ptr1 + p.out_width);
 
                 // outch 0, height 0
                 vo00 = vfmaq_laneq_f32(vo00, vi00, vf00, 0);  // reg count: 18
@@ -199,9 +151,9 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                 vo11 = vfmaq_laneq_f32(vo11, vi32, vf12, 2);
 
                 vst1q_f32(out_ptr0, vo00);
-                vst1q_f32(out_ptr0 + out_width, vo01);
+                vst1q_f32(out_ptr0 + p.out_width, vo01);
                 vst1q_f32(out_ptr1, vo10);
-                vst1q_f32(out_ptr1 + out_width, vo11);
+                vst1q_f32(out_ptr1 + p.out_width, vo11);
 
                 in_ptr0 += 4;
                 in_ptr1 += 4;
@@ -212,13 +164,13 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                 out_ptr1 += 4;
               }  // w
 
-              in_ptr0 += 2 + in_width;
-              in_ptr1 += 2 + in_width;
-              in_ptr2 += 2 + in_width;
-              in_ptr3 += 2 + in_width;
+              in_ptr0 += 2 + p.in_width;
+              in_ptr1 += 2 + p.in_width;
+              in_ptr2 += 2 + p.in_width;
+              in_ptr3 += 2 + p.in_width;
 
-              out_ptr0 += out_width;
-              out_ptr1 += out_width;
+              out_ptr0 += p.out_width;
+              out_ptr1 += p.out_width;
             }                      // h
 #else  // arm v7
             float *out_ptr0 = out_ptr0_base;
@@ -238,8 +190,8 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
             vf167 = vld1_f32(filter_ptr1 + 6);
             vf189 = vld1_f32(filter_ptr1 + 8);
 
-            for (index_t h = 0; h + 1 < out_height; h += 2) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
+            for (index_t h = 0; h + 1 < p.out_height; h += 2) {
+              for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                 // input (4 height x 3 slide): vi_height_slide
                 float32x4_t vi00, vi01, vi02;  // reg count: 14
                 float32x4_t vi10, vi11, vi12;
@@ -272,9 +224,9 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
 
                 // load ouptut
                 vo00 = vld1q_f32(out_ptr0);
-                vo01 = vld1q_f32(out_ptr0 + out_width);
+                vo01 = vld1q_f32(out_ptr0 + p.out_width);
                 vo10 = vld1q_f32(out_ptr1);
-                vo11 = vld1q_f32(out_ptr1 + out_width);
+                vo11 = vld1q_f32(out_ptr1 + p.out_width);
 
                 // outch 0, height 0
                 vo00 = vmlaq_lane_f32(vo00, vi00, vf001, 0);
@@ -321,9 +273,9 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                 vo11 = vmlaq_lane_f32(vo11, vi32, vf189, 0);
 
                 vst1q_f32(out_ptr0, vo00);
-                vst1q_f32(out_ptr0 + out_width, vo01);
+                vst1q_f32(out_ptr0 + p.out_width, vo01);
                 vst1q_f32(out_ptr1, vo10);
-                vst1q_f32(out_ptr1 + out_width, vo11);
+                vst1q_f32(out_ptr1 + p.out_width, vo11);
 
                 in_ptr0 += 4;
                 in_ptr1 += 4;
@@ -334,34 +286,34 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                 out_ptr1 += 4;
               }  // w
 
-              in_ptr0 += 2 + in_width;
-              in_ptr1 += 2 + in_width;
-              in_ptr2 += 2 + in_width;
-              in_ptr3 += 2 + in_width;
+              in_ptr0 += 2 + p.in_width;
+              in_ptr1 += 2 + p.in_width;
+              in_ptr2 += 2 + p.in_width;
+              in_ptr3 += 2 + p.in_width;
 
-              out_ptr0 += out_width;
-              out_ptr1 += out_width;
+              out_ptr0 += p.out_width;
+              out_ptr1 += p.out_width;
             }  // h
 #endif
           }  // c
         } else {
-          for (index_t mm = m; mm < out_channels; ++mm) {
+          for (index_t mm = m; mm < p.out_channels; ++mm) {
             float *out_ptr0_base =
-                output_data + b * out_batch_size + mm * out_image_size;
-            for (index_t c = 0; c < in_channels; ++c) {
+                output_data + b * p.out_batch_size + mm * p.out_image_size;
+            for (index_t c = 0; c < p.in_channels; ++c) {
               const float *in_ptr0 =
-                  input_data + b * in_batch_size + c * in_image_size;
+                  input_data + b * p.in_batch_size + c * p.in_image_size;
               const float *in_ptr1 =
-                  input_data + b * in_batch_size + c * in_image_size
-                      + 1 * in_width;
+                  input_data + b * p.in_batch_size + c * p.in_image_size
+                      + 1 * p.in_width;
               const float *in_ptr2 =
-                  input_data + b * in_batch_size + c * in_image_size
-                      + 2 * in_width;
+                  input_data + b * p.in_batch_size + c * p.in_image_size
+                      + 2 * p.in_width;
               const float *in_ptr3 =
-                  input_data + b * in_batch_size + c * in_image_size
-                      + 3 * in_width;
+                  input_data + b * p.in_batch_size + c * p.in_image_size
+                      + 3 * p.in_width;
               const float
-                  *filter_ptr0 = filter_data + mm * in_channels * 9 + c * 9;
+                  *filter_ptr0 = filter_data + mm * p.in_channels * 9 + c * 9;
 
 #if defined(__aarch64__)
               float *out_ptr0 = out_ptr0_base;
@@ -372,8 +324,8 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
               vf01 = vld1q_f32(filter_ptr0 + 3);
               vf02 = vld1q_f32(filter_ptr0 + 5);
 
-              for (index_t h = 0; h + 1 < out_height; h += 2) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
+              for (index_t h = 0; h + 1 < p.out_height; h += 2) {
+                for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                   // input (4 height x 3 slide): vi_height_slide
                   float32x4_t vi00, vi01, vi02, vi0n;
                   float32x4_t vi10, vi11, vi12, vi1n;
@@ -404,7 +356,7 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
 
                   // load ouptut
                   vo00 = vld1q_f32(out_ptr0);
-                  vo01 = vld1q_f32(out_ptr0 + out_width);
+                  vo01 = vld1q_f32(out_ptr0 + p.out_width);
 
                   // outch 0, height 0
                   vo00 = vfmaq_laneq_f32(vo00, vi00, vf00, 0);
@@ -429,7 +381,7 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                   vo01 = vfmaq_laneq_f32(vo01, vi32, vf02, 3);
 
                   vst1q_f32(out_ptr0, vo00);
-                  vst1q_f32(out_ptr0 + out_width, vo01);
+                  vst1q_f32(out_ptr0 + p.out_width, vo01);
 
                   in_ptr0 += 4;
                   in_ptr1 += 4;
@@ -439,12 +391,12 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                   out_ptr0 += 4;
                 }  // w
 
-                in_ptr0 += 2 + in_width;
-                in_ptr1 += 2 + in_width;
-                in_ptr2 += 2 + in_width;
-                in_ptr3 += 2 + in_width;
+                in_ptr0 += 2 + p.in_width;
+                in_ptr1 += 2 + p.in_width;
+                in_ptr2 += 2 + p.in_width;
+                in_ptr3 += 2 + p.in_width;
 
-                out_ptr0 += out_width;
+                out_ptr0 += p.out_width;
               }                    // h
 #else  // arm v7
               float *out_ptr0 = out_ptr0_base;
@@ -457,8 +409,8 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
               vf67 = vld1_f32(filter_ptr0 + 6);
               vf78 = vld1_f32(filter_ptr0 + 7);
 
-              for (index_t h = 0; h + 1 < out_height; h += 2) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
+              for (index_t h = 0; h + 1 < p.out_height; h += 2) {
+                for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                   // input (4 height x 3 slide): vi_height_slide
                   float32x4_t vi00, vi01, vi02, vi0n;
                   float32x4_t vi10, vi11, vi12, vi1n;
@@ -489,7 +441,7 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
 
                   // load ouptut
                   vo00 = vld1q_f32(out_ptr0);
-                  vo01 = vld1q_f32(out_ptr0 + out_width);
+                  vo01 = vld1q_f32(out_ptr0 + p.out_width);
 
                   // outch 0, height 0
                   vo00 = vmlaq_lane_f32(vo00, vi00, vf01, 0);
@@ -514,7 +466,7 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                   vo01 = vmlaq_lane_f32(vo01, vi32, vf78, 1);
 
                   vst1q_f32(out_ptr0, vo00);
-                  vst1q_f32(out_ptr0 + out_width, vo01);
+                  vst1q_f32(out_ptr0 + p.out_width, vo01);
 
                   in_ptr0 += 4;
                   in_ptr1 += 4;
@@ -524,12 +476,12 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
                   out_ptr0 += 4;
                 }  // w
 
-                in_ptr0 += 2 + in_width;
-                in_ptr1 += 2 + in_width;
-                in_ptr2 += 2 + in_width;
-                in_ptr3 += 2 + in_width;
+                in_ptr0 += 2 + p.in_width;
+                in_ptr1 += 2 + p.in_width;
+                in_ptr2 += 2 + p.in_width;
+                in_ptr3 += 2 + p.in_width;
 
-                out_ptr0 += out_width;
+                out_ptr0 += p.out_width;
               }  // h
 #endif
             }  // c
@@ -537,73 +489,25 @@ MaceStatus Conv2dK3x3S1::Compute(const OpContext *context,
         }      // if
       }        // m
     }          // b
-  }, 0, batch, 1, 0, out_channels, 2);
+  }, 0, p.batch, 1, 0, p.out_channels, 2);
 
-  UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
-                                 const Tensor *input,
-                                 const Tensor *filter,
-                                 Tensor *output) {
-  std::unique_ptr<const Tensor> padded_input;
-  std::unique_ptr<Tensor> padded_output;
-
-  ResizeOutAndPadInOut(context,
-                       input,
-                       filter,
-                       output,
-                       1,
-                       4,
-                       &padded_input,
-                       &padded_output);
-  const Tensor *in_tensor = input;
-  if (padded_input != nullptr) {
-    in_tensor = padded_input.get();
-  }
-  Tensor *out_tensor = output;
-  if (padded_output != nullptr) {
-    out_tensor = padded_output.get();
-  }
-  out_tensor->Clear();
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = in_tensor->data<float>();
-  auto output_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = in_tensor->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus Conv2dK3x3S2<float>::DoCompute(
+    const ConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        for (index_t c = 0; c < in_channels; ++c) {
+        for (index_t c = 0; c < p.in_channels; ++c) {
           const float
-              *in_base = input_data + b * in_batch_size + c * in_image_size;
-          const float *filter_ptr = filter_data + m * in_channels * 9 + c * 9;
-          float
-              *out_base = output_data + b * out_batch_size + m * out_image_size;
+              *in_base = input_data + b * p.in_batch_size + c * p.in_image_size;
+          const float *filter_ptr = filter_data + m * p.in_channels * 9 + c * 9;
+          float *out_base =
+              output_data + b * p.out_batch_size + m * p.out_image_size;
 
 #if defined(__aarch64__)
           // load filter (1 outch x 3 height x 3 width): vf_outch_height
@@ -612,8 +516,8 @@ MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
           vf01 = vld1q_f32(filter_ptr + 3);
           vf02 = vld1q_f32(filter_ptr + 5);
 
-          for (index_t h = 0; h < out_height; ++h) {
-            for (index_t w = 0; w + 3 < out_width; w += 4) {
+          for (index_t h = 0; h < p.out_height; ++h) {
+            for (index_t w = 0; w + 3 < p.out_width; w += 4) {
               float32x4x2_t vi0, vi1, vi2;
               float32x4_t vi0n, vi1n, vi2n;
 
@@ -628,17 +532,17 @@ MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
               // load input
               index_t in_h = h * 2;
               index_t in_w = w * 2;
-              index_t in_offset = in_h * in_width + in_w;
+              index_t in_offset = in_h * p.in_width + in_w;
               vi0 = vld2q_f32(in_base + in_offset);  // [0.2.4.6, 1.3.5.7]
-              vi1 = vld2q_f32(in_base + in_offset + in_width);
-              vi2 = vld2q_f32(in_base + in_offset + 2 * in_width);
+              vi1 = vld2q_f32(in_base + in_offset + p.in_width);
+              vi2 = vld2q_f32(in_base + in_offset + 2 * p.in_width);
 
               vi0n = vld1q_f32(in_base + in_offset + 8);  // [8.9.10.11]
-              vi1n = vld1q_f32(in_base + in_offset + in_width + 8);
-              vi2n = vld1q_f32(in_base + in_offset + 2 * in_width + 8);
+              vi1n = vld1q_f32(in_base + in_offset + p.in_width + 8);
+              vi2n = vld1q_f32(in_base + in_offset + 2 * p.in_width + 8);
 
               // load ouptut
-              index_t out_offset = h * out_width + w;
+              index_t out_offset = h * p.out_width + w;
               vo = vld1q_f32(out_base + out_offset);
 
               vi00 = vi0.val[0];                // [0.2.4.6]
@@ -674,8 +578,8 @@ MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
           vf67 = vld1_f32(filter_ptr + 6);
           vf78 = vld1_f32(filter_ptr + 7);
 
-          for (index_t h = 0; h < out_height; ++h) {
-            for (index_t w = 0; w + 3 < out_width; w += 4) {
+          for (index_t h = 0; h < p.out_height; ++h) {
+            for (index_t w = 0; w + 3 < p.out_width; w += 4) {
               float32x4x2_t vi0, vi1, vi2;
               float32x4_t vi0n, vi1n, vi2n;
 
@@ -690,17 +594,17 @@ MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
               // load input
               index_t in_h = h * 2;
               index_t in_w = w * 2;
-              index_t in_offset = in_h * in_width + in_w;
+              index_t in_offset = in_h * p.in_width + in_w;
               vi0 = vld2q_f32(in_base + in_offset);  // [0.2.4.6, 1.3.5.7]
-              vi1 = vld2q_f32(in_base + in_offset + in_width);
-              vi2 = vld2q_f32(in_base + in_offset + 2 * in_width);
+              vi1 = vld2q_f32(in_base + in_offset + p.in_width);
+              vi2 = vld2q_f32(in_base + in_offset + 2 * p.in_width);
 
               vi0n = vld1q_f32(in_base + in_offset + 8);  // [8.9.10.11]
-              vi1n = vld1q_f32(in_base + in_offset + in_width + 8);
-              vi2n = vld1q_f32(in_base + in_offset + 2 * in_width + 8);
+              vi1n = vld1q_f32(in_base + in_offset + p.in_width + 8);
+              vi2n = vld1q_f32(in_base + in_offset + 2 * p.in_width + 8);
 
               // load ouptut
-              index_t out_offset = h * out_width + w;
+              index_t out_offset = h * p.out_width + w;
               vo = vld1q_f32(out_base + out_offset);
 
               vi00 = vi0.val[0];                // [0.2.4.6]
@@ -731,24 +635,11 @@ MaceStatus Conv2dK3x3S2::Compute(const OpContext *context,
         }  // c
       }    // m
     }      // b
-  }, 0, batch, 1, 0, out_channels, 1);
+  }, 0, p.batch, 1, 0, p.out_channels, 1);
 
-  UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
 
-void RegisterConv2dK3x3Delegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK3x3S1, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K3x3S1));
-  MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK3x3S2, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K3x3S2));
-}
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

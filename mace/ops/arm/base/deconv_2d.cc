@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/deconv_2d.h"
+#include "mace/ops/arm/base/deconv_2d.h"
 
-#include <utility>
 #include <functional>
-#include "mace/utils/memory.h"
+#include <utility>
+
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
 MaceStatus Deconv2dBase::ResizeOutAndPadOut(
     const OpContext *context,
@@ -67,7 +67,7 @@ MaceStatus Deconv2dBase::ResizeOutAndPadOut(
         std::accumulate(padded_out_shape.begin(),
                         padded_out_shape.end(),
                         1,
-                        std::multiplies<index_t>()) * sizeof(float);
+                        std::multiplies<index_t>()) * type_size_;
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     index_t scratch_size = PadAlignSize(padded_out_size);
@@ -75,7 +75,7 @@ MaceStatus Deconv2dBase::ResizeOutAndPadOut(
 
     std::unique_ptr<Tensor>
         padded_out
-        (make_unique<Tensor>(scratch->Scratch(scratch_size), DT_FLOAT));
+        (make_unique<Tensor>(scratch->Scratch(scratch_size), output->dtype()));
     padded_out->Reshape(padded_out_shape);
     *padded_output = std::move(padded_out);
   }
@@ -97,24 +97,97 @@ void Deconv2dBase::UnPadOutput(const Tensor &src,
   const index_t padded_height = src.dim(2);
   const index_t padded_width = src.dim(3);
 
-  auto padded_out_data = src.data<float>();
-  auto out_data = dst->mutable_data<float>();
+  auto padded_out_data = src.data<uint8_t>();
+  auto out_data = dst->mutable_data<uint8_t>();
 
   for (index_t i = 0; i < batch; ++i) {
     for (index_t j = 0; j < channels; ++j) {
       for (index_t k = 0; k < height; ++k) {
-        const float *input_base =
+        const uint8_t *input_base =
             padded_out_data + ((i * channels + j) * padded_height
-                + (k + pad_h)) * padded_width;
-        float *output_base =
-            out_data + ((i * channels + j) * height + k) * width;
-        memcpy(output_base, input_base + pad_w, width * sizeof(float));
+                + (k + pad_h)) * padded_width * type_size_;
+        uint8_t *output_base =
+            out_data + ((i * channels + j) * height + k) * width * type_size_;
+        memcpy(output_base,
+               input_base + pad_w * type_size_,
+               width * type_size_);
       }
     }
   }
 }
 
-}  // namespace fp32
+DeconvComputeParam Deconv2dBase::PreWorkAndGetDeconvParam(
+    const OpContext *context, const Tensor *input, Tensor *out_tensor) {
+
+  auto &in_shape = input->shape();
+  auto &out_shape = out_tensor->shape();
+
+  const index_t batch = in_shape[0];
+  const index_t inch = in_shape[1];
+  const index_t h = in_shape[2];
+  const index_t w = in_shape[3];
+
+  const index_t outch = out_shape[1];
+  const index_t outh = out_shape[2];
+  const index_t outw = out_shape[3];
+  const index_t out_img_size = outh * outw;
+
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  return DeconvComputeParam(batch, inch, h, w, outch, outh, outw,
+                            out_img_size, &thread_pool);
+}
+
+DepthwiseDeconvComputeParam Deconv2dBase::PreWorkAndGetDepthwiseDeconvParam(
+    const OpContext *context, const Tensor *input, Tensor *out_tensor) {
+  auto &in_shape = input->shape();
+  auto &out_shape = out_tensor->shape();
+
+  const index_t batch = in_shape[0];
+  const index_t channels = in_shape[1];
+  const index_t h = in_shape[2];
+  const index_t w = in_shape[3];
+  const index_t in_img_size = h * w;
+  const index_t outh = out_shape[2];
+  const index_t outw = out_shape[3];
+  const index_t out_img_size = outh * outw;
+
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  return DepthwiseDeconvComputeParam(batch, channels, h, w, in_img_size,
+                                     outh, outw, out_img_size, &thread_pool);
+}
+
+GroupDeconvComputeParam Deconv2dBase::PreWorkAndGetGroupDeconvParam(
+    const OpContext *context, const Tensor *input, Tensor *out_tensor) {
+  auto &in_shape = input->shape();
+  auto &out_shape = out_tensor->shape();
+
+  const index_t batch = in_shape[0];
+  const index_t inch = in_shape[1];
+  const index_t h = in_shape[2];
+  const index_t w = in_shape[3];
+
+  const index_t outch = out_shape[1];
+  const index_t outh = out_shape[2];
+  const index_t outw = out_shape[3];
+
+  const index_t in_img_size = h * w;
+  const index_t out_img_size = outh * outw;
+
+  const index_t inch_g = inch / group_;
+  const index_t outch_g = outch / group_;
+
+  utils::ThreadPool
+      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+
+  return GroupDeconvComputeParam(batch, inch, h, w, outch, outh, outw,
+                                 in_img_size, out_img_size, inch_g,
+                                 outch_g, &thread_pool);
+}
+
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

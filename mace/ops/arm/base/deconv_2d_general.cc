@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,34 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/deconv_2d.h"
+#include "mace/ops/arm/base/deconv_2d_general.h"
 
-// TODO(liutuo): optimize it
+#include <memory>
+#include <vector>
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-class Deconv2dGeneral : public Deconv2dBase {
- public:
-  explicit Deconv2dGeneral(const delegator::Deconv2dParam &param)
-      : Deconv2dBase(param) {}
-  virtual ~Deconv2dGeneral() {}
-
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      const Tensor *output_shape,
-      Tensor *output) override;
-};
-
-MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
-                                    const Tensor *input,
-                                    const Tensor *filter,
-                                    const Tensor *output_shape,
-                                    Tensor *output) {
+template<typename T>
+MaceStatus Deconv2dGeneral<T>::Compute(const OpContext *context,
+                                       const Tensor *input,
+                                       const Tensor *filter,
+                                       const Tensor *output_shape,
+                                       Tensor *output) {
   std::unique_ptr<Tensor> padded_out;
   std::vector<int> out_pad_size;
   ResizeOutAndPadOut(context,
@@ -60,9 +47,9 @@ MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard output_mapper(output);
 
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto filter_data = filter->data<T>();
+  auto padded_out_data = out_tensor->mutable_data<T>();
 
   auto &in_shape = input->shape();
   auto &out_shape = out_tensor->shape();
@@ -95,7 +82,7 @@ MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
                             index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t oc = start1; oc < end1; oc += step1) {
-        float *out_base =
+        T *out_base =
             padded_out_data + (b * out_channels + oc) * out_img_size;
         for (index_t i = 0; i < in_height; ++i) {
           for (index_t j = 0; j < in_width; ++j) {
@@ -104,7 +91,7 @@ MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
             for (int ic = 0; ic < in_channels; ++ic) {
               const index_t input_idx =
                   (b * in_channels + ic) * in_img_size + i * in_width + j;
-              const float val = input_data[input_idx];
+              const T val = input_data[input_idx];
               const index_t kernel_offset =
                   (oc * in_channels + ic) * kernel_size;
               for (int k = 0; k < kernel_size; ++k) {
@@ -126,11 +113,10 @@ MaceStatus Deconv2dGeneral::Compute(const OpContext *context,
 
 void RegisterDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
-      registry, Deconv2dGeneral, delegator::Deconv2dParam,
+      registry, Deconv2dGeneral<float>, delegator::Deconv2dParam,
       MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, float, ImplType::NEON));
 }
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

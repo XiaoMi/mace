@@ -105,6 +105,7 @@ cc_library(
     name = "arm_neon_kernels",
     srcs = glob(
         [
+            "arm/base/*.cc",
             "arm/fp32/*.cc",
             "arm/fp16/gemv.h",
         ],
@@ -121,6 +122,7 @@ cc_library(
     )),
     hdrs = glob(
         [
+            "arm/base/*.h",
             "arm/fp32/*.h",
         ],
     ) + if_quantize_enabled(glob(

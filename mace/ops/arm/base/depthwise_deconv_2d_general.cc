@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/depthwise_deconv_2d_general.h"
+#include "mace/ops/arm/base/depthwise_deconv_2d_general.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-MaceStatus DepthwiseDeconv2dGeneral::Compute(const OpContext *context,
-                                             const Tensor *input,
-                                             const Tensor *filter,
-                                             const Tensor *output_shape,
-                                             Tensor *output) {
+template<typename T>
+MaceStatus DepthwiseDeconv2dGeneral<T>::Compute(const OpContext *context,
+                                                const Tensor *input,
+                                                const Tensor *filter,
+                                                const Tensor *output_shape,
+                                                Tensor *output) {
   std::unique_ptr<Tensor> padded_out;
   std::vector<int> out_pad_size;
   group_ = input->dim(1);
@@ -46,9 +46,9 @@ MaceStatus DepthwiseDeconv2dGeneral::Compute(const OpContext *context,
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard output_mapper(output);
 
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
+  const T *input_data = input->data<T>();
+  const T *filter_data = filter->data<T>();
+  T *padded_out_data = out_tensor->mutable_data<T>();
 
   auto &in_shape = input->shape();
   auto &out_shape = out_tensor->shape();
@@ -79,7 +79,7 @@ MaceStatus DepthwiseDeconv2dGeneral::Compute(const OpContext *context,
                             index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t c = start1; c < end1; c += step1) {
-        float *out_base =
+        T *out_base =
             padded_out_data + (b * channels + c) * out_img_size;
         for (index_t i = 0; i < in_height; ++i) {
           for (index_t j = 0; j < in_width; ++j) {
@@ -105,11 +105,12 @@ MaceStatus DepthwiseDeconv2dGeneral::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus GroupDeconv2dGeneral::Compute(const OpContext *context,
-                                         const Tensor *input,
-                                         const Tensor *filter,
-                                         const Tensor *output_shape,
-                                         Tensor *output) {
+template<typename T>
+MaceStatus GroupDeconv2dGeneral<T>::Compute(const OpContext *context,
+                                            const Tensor *input,
+                                            const Tensor *filter,
+                                            const Tensor *output_shape,
+                                            Tensor *output) {
   std::unique_ptr<Tensor> padded_out;
   std::vector<int> out_pad_size;
   ResizeOutAndPadOut(context,
@@ -131,9 +132,9 @@ MaceStatus GroupDeconv2dGeneral::Compute(const OpContext *context,
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard output_mapper(output);
 
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
+  const T *input_data = input->data<T>();
+  const T *filter_data = filter->data<T>();
+  T *padded_out_data = out_tensor->mutable_data<T>();
 
   auto &in_shape = input->shape();
   auto &out_shape = out_tensor->shape();
@@ -209,19 +210,19 @@ MaceStatus GroupDeconv2dGeneral::Compute(const OpContext *context,
 
 void RegisterDepthwiseDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
-      registry, DepthwiseDeconv2dGeneral, delegator::DepthwiseDeconv2dParam,
+      registry, DepthwiseDeconv2dGeneral<float>,
+      delegator::DepthwiseDeconv2dParam,
       MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU,
                          float, ImplType::NEON));
 }
 
 void RegisterGroupDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
-      registry, GroupDeconv2dGeneral, delegator::GroupDeconv2dParam,
+      registry, GroupDeconv2dGeneral<float>, delegator::GroupDeconv2dParam,
       MACE_DELEGATOR_KEY(GroupDeconv2d, DeviceType::CPU,
                          float, ImplType::NEON));
 }
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

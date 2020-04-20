@@ -60,6 +60,7 @@ MaceStatus OpDelegatorRegistry::Register(const DelegatorInfo &key,
 DelegatorCreator OpDelegatorRegistry::GetCreator(
     const DelegatorInfo &key) const {
   if (registry_.count(key) > 0) {
+    VLOG(3) << "find delegator creator: " << key.ToString();
     return registry_.at(key);
   }
 

@@ -12,69 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/depthwise_deconv_2d_4x4.h"
-
 #include <arm_neon.h>
+
+#include "mace/ops/arm/base/depthwise_deconv_2d_4x4.h"
 #include "mace/ops/arm/fp32/common_neon.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-MaceStatus DepthwiseDeconv2dK4x4S1::Compute(const OpContext *context,
-                                            const Tensor *input,
-                                            const Tensor *filter,
-                                            const Tensor *output_shape,
-                                            Tensor *output) {
-  std::unique_ptr<Tensor> padded_out;
-  std::vector<int> out_pad_size;
-  group_ = input->dim(1);
-  ResizeOutAndPadOut(context,
-                     input,
-                     filter,
-                     output_shape,
-                     output,
-                     &out_pad_size,
-                     &padded_out);
-
-  Tensor *out_tensor = output;
-  if (padded_out != nullptr) {
-    out_tensor = padded_out.get();
-  }
-
-  out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
-
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = input->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t channels = in_shape[1];
-  const index_t h = in_shape[2];
-  const index_t w = in_shape[3];
-  const index_t in_img_size = h * w;
-  const index_t outh = out_shape[2];
-  const index_t outw = out_shape[3];
-  const index_t out_img_size = outh * outw;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus DepthwiseDeconv2dK4x4S1<float>::DoCompute(
+    const DepthwiseDeconvComputeParam &p, const float *filter_data,
+    const float *input_data, float *padded_out_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t c = start1; c < end1; c += step1) {
-        const index_t offset = b * channels + c;
-        float *out_base = padded_out_data + offset * out_img_size;
-        const float *input_base = input_data + offset * in_img_size;
+        const index_t offset = b * p.in_channels + c;
+        float *out_base = padded_out_data + offset * p.out_img_size;
+        const float *input_base = input_data + offset * p.in_img_size;
         const float *kernel_base = filter_data + c * 16;
         const float *in = input_base;
         const float *k0 = kernel_base;
@@ -87,15 +44,15 @@ MaceStatus DepthwiseDeconv2dK4x4S1::Compute(const OpContext *context,
         float32x4_t k2_vec = vld1q_f32(k2);
         float32x4_t k3_vec = vld1q_f32(k3);
 
-        for (index_t i = 0; i < h; i++) {
-          float *out_row = out_base + i * outw;
+        for (index_t i = 0; i < p.in_height; i++) {
+          float *out_row = out_base + i * p.out_width;
           float *out_row_0 = out_row;
-          float *out_row_1 = out_row_0 + outw;
-          float *out_row_2 = out_row_1 + outw;
-          float *out_row_3 = out_row_2 + outw;
+          float *out_row_1 = out_row_0 + p.out_width;
+          float *out_row_2 = out_row_1 + p.out_width;
+          float *out_row_3 = out_row_2 + p.out_width;
           index_t j = 0;
 
-          for (; j + 3 < w; j += 4) {
+          for (; j + 3 < p.in_width; j += 4) {
             float32x4_t in_vec = vld1q_f32(in);
 
             float32x4_t out00 = vld1q_f32(out_row_0);
@@ -172,7 +129,7 @@ MaceStatus DepthwiseDeconv2dK4x4S1::Compute(const OpContext *context,
             out_row_3 += 4;
           }
 
-          for (; j < w; j++) {
+          for (; j < p.in_width; j++) {
             float val = in[0];
             for (int k = 0; k < 4; ++k) {
               out_row_0[k] += val * k0[k];
@@ -189,66 +146,22 @@ MaceStatus DepthwiseDeconv2dK4x4S1::Compute(const OpContext *context,
         }
       }
     }
-  }, 0, batch, 1, 0, channels, 1);
-
-  UnPadOutput(*out_tensor, out_pad_size, output);
+  }, 0, p.batch, 1, 0, p.in_channels, 1);
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus DepthwiseDeconv2dK4x4S2::Compute(const OpContext *context,
-                                            const Tensor *input,
-                                            const Tensor *filter,
-                                            const Tensor *output_shape,
-                                            Tensor *output) {
-  std::unique_ptr<Tensor> padded_out;
-  std::vector<int> out_pad_size;
-  group_ = input->dim(1);
-  ResizeOutAndPadOut(context,
-                     input,
-                     filter,
-                     output_shape,
-                     output,
-                     &out_pad_size,
-                     &padded_out);
-
-  Tensor *out_tensor = output;
-  if (padded_out != nullptr) {
-    out_tensor = padded_out.get();
-  }
-
-  out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
-
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = input->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t channels = in_shape[1];
-  const index_t h = in_shape[2];
-  const index_t w = in_shape[3];
-  const index_t in_img_size = h * w;
-  const index_t outh = out_shape[2];
-  const index_t outw = out_shape[3];
-  const index_t out_img_size = outh * outw;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus DepthwiseDeconv2dK4x4S2<float>::DoCompute(
+    const DepthwiseDeconvComputeParam &p, const float *filter_data,
+    const float *input_data, float *padded_out_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t c = start1; c < end1; c += step1) {
-        const index_t offset = b * channels + c;
-        float *out_base = padded_out_data + offset * out_img_size;
-        const float *input_base = input_data + offset * in_img_size;
+        const index_t offset = b * p.in_channels + c;
+        float *out_base = padded_out_data + offset * p.out_img_size;
+        const float *input_base = input_data + offset * p.in_img_size;
         const float *kernel_base = filter_data + c * 16;
         const float *in = input_base;
 
@@ -262,17 +175,17 @@ MaceStatus DepthwiseDeconv2dK4x4S2::Compute(const OpContext *context,
         float32x4_t k2_vec = vld1q_f32(k2);
         float32x4_t k3_vec = vld1q_f32(k3);
 
-        for (index_t i = 0; i < h; i++) {
-          float *out_row = out_base + 2 * i * outw;
+        for (index_t i = 0; i < p.in_height; i++) {
+          float *out_row = out_base + 2 * i * p.out_width;
 
           float *out_row_0 = out_row;
-          float *out_row_1 = out_row_0 + outw;
-          float *out_row_2 = out_row_1 + outw;
-          float *out_row_3 = out_row_2 + outw;
+          float *out_row_1 = out_row_0 + p.out_width;
+          float *out_row_2 = out_row_1 + p.out_width;
+          float *out_row_3 = out_row_2 + p.out_width;
 
           index_t j = 0;
 
-          for (index_t n = 0; n + 9 < outw; n += 8) {
+          for (index_t n = 0; n + 9 < p.out_width; n += 8) {
             float32x4_t in_vec = vld1q_f32(in);
 
             // row 0
@@ -339,7 +252,7 @@ MaceStatus DepthwiseDeconv2dK4x4S2::Compute(const OpContext *context,
             j += 4;
           }
 
-          for (; j < w; j++) {
+          for (; j < p.in_width; j++) {
             float val = in[0];
             for (int k = 0; k < 4; ++k) {
               out_row_0[k] += val * k0[k];
@@ -356,89 +269,40 @@ MaceStatus DepthwiseDeconv2dK4x4S2::Compute(const OpContext *context,
         }
       }
     }
-  }, 0, batch, 1, 0, channels, 1);
-
-  UnPadOutput(*out_tensor, out_pad_size, output);
+  }, 0, p.batch, 1, 0, p.in_channels, 1);
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
-                                        const Tensor *input,
-                                        const Tensor *filter,
-                                        const Tensor *output_shape,
-                                        Tensor *output) {
-  std::unique_ptr<Tensor> padded_out;
-  std::vector<int> out_pad_size;
-  ResizeOutAndPadOut(context,
-                     input,
-                     filter,
-                     output_shape,
-                     output,
-                     &out_pad_size,
-                     &padded_out);
-
-  Tensor *out_tensor = output;
-  if (padded_out != nullptr) {
-    out_tensor = padded_out.get();
-  }
-
-  out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
-
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = input->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t inch = in_shape[1];
-  const index_t h = in_shape[2];
-  const index_t w = in_shape[3];
-
-  const index_t outch = out_shape[1];
-  const index_t outh = out_shape[2];
-  const index_t outw = out_shape[3];
-
-  const index_t in_img_size = h * w;
-  const index_t out_img_size = outh * outw;
-
-  const index_t inch_g = inch / group_;
-  const index_t outch_g = outch / group_;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1,
-                            index_t start2, index_t end2, index_t step2) {
+template<>
+MaceStatus GroupDeconv2dK4x4S1<float>::DoCompute(
+    const GroupDeconvComputeParam &p, const float *filter_data,
+    const float *input_data, float *padded_out_data) {
+  p.thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1,
+                              index_t start2, index_t end2, index_t step2) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t g = start1; g < end1; g += step1) {
         for (index_t oc = start2; oc < end2; oc += step2) {
-          if (oc + 1 < outch_g) {
+          if (oc + 1 < p.outch_g) {
             const index_t out_offset =
-                (b * outch + outch_g * g + oc) * out_img_size;
+                (b * p.out_channels + p.outch_g * g + oc) * p.out_img_size;
             float *out_base = padded_out_data + out_offset;
-            float *out_base1 = out_base + out_img_size;
-            for (index_t ic = 0; ic < inch_g; ic++) {
+            float *out_base1 = out_base + p.out_img_size;
+            for (index_t ic = 0; ic < p.inch_g; ic++) {
               const index_t in_offset =
-                  (b * inch + inch_g * g + ic) * in_img_size;
+                  (b * p.in_channels + p.inch_g * g + ic) * p.in_img_size;
               const float *input_base = input_data + in_offset;
               const float *in = input_base;
               const index_t kernel_offset =
-                  ((oc * group_ + g) * inch_g + ic) * 16;
+                  ((oc * group_ + g) * p.inch_g + ic) * 16;
               const float *kernel_base = filter_data + kernel_offset;
               const float *k0 = kernel_base;
               const float *k1 = kernel_base + 4;
               const float *k2 = kernel_base + 8;
               const float *k3 = kernel_base + 12;
 
-              const float *kernel_base1 = kernel_base + inch * 16;
+              const float *kernel_base1 = kernel_base + p.in_channels * 16;
               const float *k10 = kernel_base1;
               const float *k11 = kernel_base1 + 4;
               const float *k12 = kernel_base1 + 8;
@@ -454,24 +318,24 @@ MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
               float32x4_t k12_vec = vld1q_f32(k12);
               float32x4_t k13_vec = vld1q_f32(k13);
 
-              for (index_t i = 0; i < h; i++) {
-                float *out_row = out_base + i * outw;
+              for (index_t i = 0; i < p.in_height; i++) {
+                float *out_row = out_base + i * p.out_width;
 
                 float *out_row_0 = out_row;
-                float *out_row_1 = out_row_0 + outw;
-                float *out_row_2 = out_row_1 + outw;
-                float *out_row_3 = out_row_2 + outw;
+                float *out_row_1 = out_row_0 + p.out_width;
+                float *out_row_2 = out_row_1 + p.out_width;
+                float *out_row_3 = out_row_2 + p.out_width;
 
-                float *out_row1 = out_base1 + i * outw;
+                float *out_row1 = out_base1 + i * p.out_width;
 
                 float *out_row1_0 = out_row1;
-                float *out_row1_1 = out_row1_0 + outw;
-                float *out_row1_2 = out_row1_1 + outw;
-                float *out_row1_3 = out_row1_2 + outw;
+                float *out_row1_1 = out_row1_0 + p.out_width;
+                float *out_row1_2 = out_row1_1 + p.out_width;
+                float *out_row1_3 = out_row1_2 + p.out_width;
 
                 index_t j = 0;
 
-                for (; j + 3 < w; j += 4) {
+                for (; j + 3 < p.in_width; j += 4) {
                   float32x4_t in_vec = vld1q_f32(in);
                   float32x4_t out00, out01, out02, out03;
                   float32x4_t out10, out11, out12, out13;
@@ -618,7 +482,7 @@ MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
                   out_row1_3 += 4;
                 }
 
-                for (; j < w; j++) {
+                for (; j < p.in_width; j++) {
                   float val = in[0];
                   for (int k = 0; k < 4; ++k) {
                     out_row_0[k] += val * k0[k];
@@ -644,13 +508,13 @@ MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
             }
           } else {
             const index_t out_offset =
-                (b * outch + outch_g * g + oc) * out_img_size;
+                (b * p.out_channels + p.outch_g * g + oc) * p.out_img_size;
             float *out_base = padded_out_data + out_offset;
-            for (index_t ic = 0; ic < inch_g; ++ic) {
+            for (index_t ic = 0; ic < p.inch_g; ++ic) {
               const index_t in_offset =
-                  (b * inch + inch_g * g + ic) * in_img_size;
+                  (b * p.in_channels + p.inch_g * g + ic) * p.in_img_size;
               const index_t kernel_offset =
-                  ((oc * group_ + g) * inch_g + ic) * 16;
+                  ((oc * group_ + g) * p.inch_g + ic) * 16;
 
               const float *input_base = input_data + in_offset;
               const float *kernel_base = filter_data + kernel_offset;
@@ -665,15 +529,15 @@ MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
               float32x4_t k2_vec = vld1q_f32(k2);
               float32x4_t k3_vec = vld1q_f32(k3);
 
-              for (index_t i = 0; i < h; i++) {
-                float *out_row = out_base + i * outw;
+              for (index_t i = 0; i < p.in_height; i++) {
+                float *out_row = out_base + i * p.out_width;
                 float *out_row_0 = out_row;
-                float *out_row_1 = out_row_0 + outw;
-                float *out_row_2 = out_row_1 + outw;
-                float *out_row_3 = out_row_2 + outw;
+                float *out_row_1 = out_row_0 + p.out_width;
+                float *out_row_2 = out_row_1 + p.out_width;
+                float *out_row_3 = out_row_2 + p.out_width;
                 index_t j = 0;
 
-                for (; j + 3 < w; j += 4) {
+                for (; j + 3 < p.in_width; j += 4) {
                   float32x4_t in_vec = vld1q_f32(in);
 
                   float32x4_t out00 = vld1q_f32(out_row_0);
@@ -750,7 +614,7 @@ MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
                   out_row_3 += 4;
                 }
 
-                for (; j < w; j++) {
+                for (; j < p.in_width; j++) {
                   float val = in[0];
                   for (int k = 0; k < 4; ++k) {
                     out_row_0[k] += val * k0[k];
@@ -770,78 +634,29 @@ MaceStatus GroupDeconv2dK4x4S1::Compute(const OpContext *context,
         }
       }
     }
-  }, 0, batch, 1, 0, group_, 1, 0, outch_g, 2);
-
-  UnPadOutput(*out_tensor, out_pad_size, output);
+  }, 0, p.batch, 1, 0, group_, 1, 0, p.outch_g, 2);
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus GroupDeconv2dK4x4S2::Compute(const OpContext *context,
-                                        const Tensor *input,
-                                        const Tensor *filter,
-                                        const Tensor *output_shape,
-                                        Tensor *output) {
-  std::unique_ptr<Tensor> padded_out;
-  std::vector<int> out_pad_size;
-  ResizeOutAndPadOut(context,
-                     input,
-                     filter,
-                     output_shape,
-                     output,
-                     &out_pad_size,
-                     &padded_out);
-
-  Tensor *out_tensor = output;
-  if (padded_out != nullptr) {
-    out_tensor = padded_out.get();
-  }
-
-  out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
-
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto padded_out_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = input->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t inch = in_shape[1];
-  const index_t h = in_shape[2];
-  const index_t w = in_shape[3];
-
-  const index_t outch = out_shape[1];
-  const index_t outh = out_shape[2];
-  const index_t outw = out_shape[3];
-
-  const index_t in_img_size = h * w;
-  const index_t out_img_size = outh * outw;
-
-  const index_t inch_g = inch / group_;
-  const index_t outch_g = outch / group_;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1,
-                            index_t start2, index_t end2, index_t step2) {
+template<>
+MaceStatus GroupDeconv2dK4x4S2<float>::DoCompute(
+    const GroupDeconvComputeParam &p, const float *filter_data,
+    const float *input_data, float *padded_out_data) {
+  p.thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1,
+                              index_t start2, index_t end2, index_t step2) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t g = start1; g < end1; g += step1) {
         for (index_t oc = start2; oc < end2; oc += step2) {
           const index_t out_offset =
-              (b * outch + outch_g * g + oc) * out_img_size;
+              (b * p.out_channels + p.outch_g * g + oc) * p.out_img_size;
           float *out_base = padded_out_data + out_offset;
-          for (index_t ic = 0; ic < inch_g; ic++) {
+          for (index_t ic = 0; ic < p.inch_g; ic++) {
             const index_t in_offset =
-                (b * inch + inch_g * g + ic) * in_img_size;
+                (b * p.in_channels + p.inch_g * g + ic) * p.in_img_size;
             const index_t kernel_offset =
-                ((oc * group_ + g) * inch_g + ic) * 16;
+                ((oc * group_ + g) * p.inch_g + ic) * 16;
             const float *input_base = input_data + in_offset;
             const float *kernel_base = filter_data + kernel_offset;
             const float *in = input_base;
@@ -856,17 +671,17 @@ MaceStatus GroupDeconv2dK4x4S2::Compute(const OpContext *context,
             float32x4_t k2_vec = vld1q_f32(k2);
             float32x4_t k3_vec = vld1q_f32(k3);
 
-            for (index_t i = 0; i < h; i++) {
-              float *out_row = out_base + 2 * i * outw;
+            for (index_t i = 0; i < p.in_height; i++) {
+              float *out_row = out_base + 2 * i * p.out_width;
 
               float *out_row_0 = out_row;
-              float *out_row_1 = out_row_0 + outw;
-              float *out_row_2 = out_row_1 + outw;
-              float *out_row_3 = out_row_2 + outw;
+              float *out_row_1 = out_row_0 + p.out_width;
+              float *out_row_2 = out_row_1 + p.out_width;
+              float *out_row_3 = out_row_2 + p.out_width;
 
               index_t j = 0;
 
-              for (index_t n = 0; n + 9 < outw; n += 8) {
+              for (index_t n = 0; n + 9 < p.out_width; n += 8) {
                 float32x4_t in_vec = vld1q_f32(in);
 
                 // row 0
@@ -933,7 +748,7 @@ MaceStatus GroupDeconv2dK4x4S2::Compute(const OpContext *context,
                 j += 4;
               }
 
-              for (; j < w; j++) {
+              for (; j < p.in_width; j++) {
                 float val = in[0];
                 for (int k = 0; k < 4; ++k) {
                   out_row_0[k] += val * k0[k];
@@ -952,36 +767,11 @@ MaceStatus GroupDeconv2dK4x4S2::Compute(const OpContext *context,
         }
       }
     }
-  }, 0, batch, 1, 0, group_, 1, 0, outch_g, 1);
-
-  UnPadOutput(*out_tensor, out_pad_size, output);
+  }, 0, p.batch, 1, 0, group_, 1, 0, p.outch_g, 1);
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-void RegisterDepthwiseDeconv2dK4x4Delegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, DepthwiseDeconv2dK4x4S1, delegator::DepthwiseDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K4x4S1));
-  MACE_REGISTER_DELEGATOR(
-      registry, DepthwiseDeconv2dK4x4S2, delegator::DepthwiseDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K4x4S2));
-}
-
-void RegisterGroupDeconv2dK4x4Delegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, GroupDeconv2dK4x4S1, delegator::GroupDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K4x4S1));
-  MACE_REGISTER_DELEGATOR(
-      registry, GroupDeconv2dK4x4S2, delegator::GroupDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K4x4S2));
-}
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

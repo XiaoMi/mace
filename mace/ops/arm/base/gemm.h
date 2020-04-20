@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_FP32_GEMM_H_
-#define MACE_OPS_ARM_FP32_GEMM_H_
+#ifndef MACE_OPS_ARM_BASE_GEMM_H_
+#define MACE_OPS_ARM_BASE_GEMM_H_
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
@@ -28,8 +28,10 @@
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
+enum { kNoCache, kCacheLhs, kCacheRhs };
+
+template<typename T>
 class Gemm : public delegator::Gemm {
  public:
   explicit Gemm(const delegator::GemmParam &param)
@@ -68,26 +70,49 @@ class Gemm : public delegator::Gemm {
       const bool transpose_out,
       const bool lhs_batched,
       const bool rhs_batched,
-      Tensor *output) override;
+      Tensor *output) override {
+    index_t rows = transpose_lhs ? lhs_cols : lhs_rows;
+    index_t depth = transpose_lhs ? lhs_rows : lhs_cols;
+    index_t cols = transpose_rhs ? rhs_rows : rhs_cols;
+    index_t depth2 = transpose_rhs ? rhs_cols : rhs_rows;
+    MACE_CHECK(depth == depth2,
+               "Matrices that multiply have inconsistent depth dim: ",
+               depth,
+               " vs. ",
+               depth2);
 
- private:
-  void ComputeBlock(const float *packed_lhs_data,
-                    const float *packed_rhs_data,
+    return Compute(context,
+                   lhs,
+                   rhs,
+                   batch,
+                   rows,
+                   cols,
+                   depth,
+                   transpose_lhs ? ColMajor : RowMajor,
+                   transpose_rhs ? ColMajor : RowMajor,
+                   transpose_out ? ColMajor : RowMajor,
+                   lhs_batched,
+                   rhs_batched,
+                   output);
+  }
+
+ protected:
+  void ComputeBlock(const T *packed_lhs_data,
+                    const T *packed_rhs_data,
                     const index_t depth_padded,
-                    float *packed_output_data);
+                    T *packed_output_data);
 
-  void PackLhs(const MatrixMap<const float> &lhs,
-               float *packed_lhs);
+  void PackLhs(const MatrixMap<const T> &lhs,
+               T *packed_lhs);
 
-  void PackRhs(const MatrixMap<const float> &rhs,
-               float *packed_rhs);
+  void PackRhs(const MatrixMap<const T> &rhs,
+               T *packed_rhs);
 
-  void UnpackOutput(const float *packed_output,
-                    MatrixMap<float> *output);
-
+  void UnpackOutput(const T *packed_output,
+                    MatrixMap<T> *output);
   template<int RowBlockSize, int ColBlockSize>
-  void Unpack(const float *packed_output,
-              MatrixMap<float> *output) {
+  void Unpack(const T *packed_output,
+              MatrixMap<T> *output) {
     const index_t rows = output->rows();
     const index_t cols = output->cols();
     for (index_t r = 0; r < rows; ++r) {
@@ -98,9 +123,9 @@ class Gemm : public delegator::Gemm {
   }
 
   template<int WidthBlockSize, int DepthBlockSize>
-  void Pack(const MatrixMap<const float> &matrix,
+  void Pack(const MatrixMap<const T> &matrix,
             MatrixMajor dst_major,
-            float *packed_matrix) {
+            T *packed_matrix) {
     const index_t rows = matrix.rows();
     const index_t cols = matrix.cols();
     index_t depth = cols;
@@ -109,7 +134,7 @@ class Gemm : public delegator::Gemm {
       depth = rows;
     }
     const index_t depth_padded = RoundUp(depth, static_cast<index_t>(4));
-    memset(packed_matrix, 0, sizeof(float) * WidthBlockSize * depth_padded);
+    memset(packed_matrix, 0, sizeof(T) * WidthBlockSize * depth_padded);
     if (dst_major == ColMajor) {
       for (index_t c = 0; c < cols; ++c) {
         for (index_t r = 0; r < rows; ++r) {
@@ -125,31 +150,14 @@ class Gemm : public delegator::Gemm {
     }
   }
 
+ private:
   Buffer pack_cache_;
-
   bool should_cache_pack_;
   int cached_;
 };
 
-template<>
-void Gemm::Pack<4, 4>(const MatrixMap<const float> &matrix,
-                      MatrixMajor dst_major,
-                      float *packed_matrix);
-
-template<>
-void Gemm::Pack<8, 4>(const MatrixMap<const float> &matrix,
-                      MatrixMajor dst_major,
-                      float *packed_matrix);
-
-template<>
-void Gemm::Unpack<4, 8>(const float *packed_output, MatrixMap<float> *output);
-
-template<>
-void Gemm::Unpack<8, 8>(const float *packed_output, MatrixMap<float> *output);
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_FP32_GEMM_H_
+#endif  // MACE_OPS_ARM_BASE_GEMM_H_

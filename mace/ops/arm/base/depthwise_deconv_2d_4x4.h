@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_FP32_DEPTHWISE_DECONV_2D_4X4_H_
-#define MACE_OPS_ARM_FP32_DEPTHWISE_DECONV_2D_4X4_H_
+#ifndef MACE_OPS_ARM_BASE_DEPTHWISE_DECONV_2D_4X4_H_
+#define MACE_OPS_ARM_BASE_DEPTHWISE_DECONV_2D_4X4_H_
 
 #include <vector>
 #include <memory>
@@ -21,7 +21,7 @@
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
-#include "mace/ops/arm/fp32/deconv_2d.h"
+#include "mace/ops/arm/base/depthwise_deconv_2d_mxn.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/delegator/depthwise_deconv_2d.h"
 #include "mace/public/mace.h"
@@ -29,69 +29,55 @@
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-class DepthwiseDeconv2dK4x4S1 : public Deconv2dBase {
+template<typename T>
+class DepthwiseDeconv2dK4x4S1 : public DepthwiseDeconv2dKMxN<T> {
  public:
   explicit DepthwiseDeconv2dK4x4S1(
       const delegator::DepthwiseDeconv2dParam &param)
-      : Deconv2dBase(param) {}
+      : DepthwiseDeconv2dKMxN<T>(param) {}
   virtual ~DepthwiseDeconv2dK4x4S1() {}
 
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      const Tensor *output_shape,
-      Tensor *output) override;
+  MaceStatus DoCompute(const DepthwiseDeconvComputeParam &p, const T *filter,
+                       const T *input_data, T *padded_out_data) override;
 };
 
-class DepthwiseDeconv2dK4x4S2 : public Deconv2dBase {
+template<typename T>
+class DepthwiseDeconv2dK4x4S2 : public DepthwiseDeconv2dKMxN<T> {
  public:
   explicit DepthwiseDeconv2dK4x4S2(
       const delegator::DepthwiseDeconv2dParam &param)
-      : Deconv2dBase(param) {}
+      : DepthwiseDeconv2dKMxN<T>(param) {}
   virtual ~DepthwiseDeconv2dK4x4S2() {}
 
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      const Tensor *output_shape,
-      Tensor *output) override;
+  MaceStatus DoCompute(const DepthwiseDeconvComputeParam &p, const T *filter,
+                       const T *input_data, T *padded_out_data) override;
 };
 
-class GroupDeconv2dK4x4S1 : public Deconv2dBase {
+template<typename T>
+class GroupDeconv2dK4x4S1 : public GroupDeconv2dKMxN<T> {
  public:
   explicit GroupDeconv2dK4x4S1(const delegator::GroupDeconv2dParam &param)
-      : Deconv2dBase(param) {}
+      : GroupDeconv2dKMxN<T>(param) {}
   virtual ~GroupDeconv2dK4x4S1() {}
 
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      const Tensor *output_shape,
-      Tensor *output) override;
+  MaceStatus DoCompute(const GroupDeconvComputeParam &p, const T *filter,
+                       const T *input_data, T *padded_out_data) override;
 };
 
-class GroupDeconv2dK4x4S2 : public Deconv2dBase {
+template<typename T>
+class GroupDeconv2dK4x4S2 : public GroupDeconv2dKMxN<T> {
  public:
   explicit GroupDeconv2dK4x4S2(const delegator::GroupDeconv2dParam &param)
-      : Deconv2dBase(param) {}
+      : GroupDeconv2dKMxN<T>(param) {}
   virtual ~GroupDeconv2dK4x4S2() {}
 
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      const Tensor *output_shape,
-      Tensor *output) override;
+  MaceStatus DoCompute(const GroupDeconvComputeParam &p, const T *filter,
+                       const T *input_data, T *padded_out_data) override;
 };
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_FP32_DEPTHWISE_DECONV_2D_4X4_H_
+#endif  // MACE_OPS_ARM_BASE_DEPTHWISE_DECONV_2D_4X4_H_

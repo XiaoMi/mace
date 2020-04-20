@@ -18,8 +18,8 @@
 
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/delegator/conv_2d.h"
-#include "mace/utils/memory.h"
 #include "mace/utils/math.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
