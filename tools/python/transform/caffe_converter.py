@@ -164,6 +164,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         'PReLU': ActivationType.PRELU,
         'TanH': ActivationType.TANH,
         'Sigmoid': ActivationType.SIGMOID,
+        'Clip': ActivationType.RELUX,
     }
 
     def __init__(self, option, src_model_file, src_weight_file):
@@ -177,6 +178,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'TanH': self.convert_activation,
             'Sigmoid': self.convert_activation,
             'PReLU': self.convert_activation,
+            'Clip': self.convert_activation,
             'Pooling': self.convert_pooling,
             'Concat': self.convert_concat,
             'Slice': self.convert_slice,
@@ -505,6 +507,13 @@ class CaffeConverter(base_converter.ConverterInterface):
             param_arg.f = caffe_op.layer.relu_param.negative_slope
 
             type_arg.s = six.b(ActivationType.LEAKYRELU.name)
+
+        if caffe_op.type == 'Clip':
+            mace_check(caffe_op.layer.clip_param.min == 0,
+                       "Mace only supports min == 0 Clip op")
+            limit_arg = op.arg.add()
+            limit_arg.name = MaceKeyword.mace_activation_max_limit_str
+            limit_arg.f = caffe_op.layer.clip_param.max
 
     def convert_folded_batchnorm(self, caffe_op):
         op = self.convert_general_op(caffe_op)
