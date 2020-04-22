@@ -74,6 +74,7 @@ class ScratchComputer:
                 data_type == mace_pb2.DT_INT32:
             return 4
         elif data_type == mace_pb2.DT_HALF or \
+                data_type == mace_pb2.DT_BFLOAT16 or \
                 data_type == mace_pb2.DT_FLOAT16:
             return 2
         elif data_type == mace_pb2.DT_UINT8:

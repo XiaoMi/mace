@@ -22,6 +22,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "mace/core/bfloat16.h"
+#include "mace/core/types.h"
 #include "mace/core/ops/operator.h"
 #include "mace/core/ops/op_condition_builder.h"
 #include "mace/core/ops/op_condition_context.h"
@@ -79,6 +81,26 @@ class OpRegistry {
                         device,                    \
                         DataTypeToEnum<dt>::value, \
                         OpRegistry::DefaultCreator<class_name>)
+
+#ifndef MACE_REGISTER_BF16_OP
+#ifdef MACE_ENABLE_BFLOAT16
+#define MACE_REGISTER_BF16_OP(op_registry, op_type, class_name, device) \
+    MACE_REGISTER_OP(op_registry, op_type, class_name, device, BFloat16)
+#else
+#define MACE_REGISTER_BF16_OP(op_registry, op_type, class_name, device)
+#endif  // MACE_ENABLE_BFLOAT16
+#endif  // MACE_REGISTER_BF16_OP
+
+#ifndef MACE_REGISTER_BF16_OP_BY_CLASS
+#ifdef MACE_ENABLE_BFLOAT16
+#define MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, op_type, \
+                                       class_name, device)   \
+    MACE_REGISTER_OP_BY_CLASS(op_registry, op_type,          \
+                              class_name, device, BFloat16)
+#else
+#define MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, op_type, class_name, device)
+#endif  // MACE_ENABLE_BFLOAT16
+#endif  // MACE_REGISTER_BF16_OP_BY_CLASS
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_REGISTER_GPU_OP(op_registry, op_type, class_name) \

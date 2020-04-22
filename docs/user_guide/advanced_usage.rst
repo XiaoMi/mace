@@ -85,7 +85,7 @@ in one deployment file.
     * - runtime
       - The running device, one of [cpu, gpu, dsp, cpu+gpu]. cpu+gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
     * - data_type
-      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU, default is fp16_fp32, [fp32] for CPU and [uint8] for DSP.
+      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU; [fp16_fp32, bf16_fp32, fp32_fp32] for CPU, default is fp16_fp32.
     * - input_data_types
       - [optional] The input data type for specific op(eg. gather), which can be [int32, float32], default to float32.
     * - input_data_formats
@@ -582,9 +582,10 @@ half (16bit) can be used to reduce it by half with negligible accuracy degradati
 Therefore, the default storage type for a regular model in MACE is half. However,
 if the model is very sensitive to accuracy, storage type can be changed to float.
 
-In the deployment file, ``data_type`` is ``fp16_fp32`` by default and can be changed to ``fp32_fp32``.
+In the deployment file, ``data_type`` is ``fp16_fp32`` by default and can be changed to ``fp32_fp32``,
+for CPU it can also be changed to ``bf16_fp32``.
 
-For CPU, ``fp16_fp32`` means that the weights are saved in half and actual inference is in float.
+For CPU, ``fp16_fp32`` means that the weights are saved in half and actual inference is in float; while ``bf16_fp32`` means that the weights are saved in bfloat16 and actual inference is in float.
 
 For GPU, ``fp16_fp32`` means that the ops in GPU take half as inputs and outputs while kernel execution in float.
 

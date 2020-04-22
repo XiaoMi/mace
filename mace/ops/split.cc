@@ -130,8 +130,8 @@ class SplitOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterSplit(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Split", SplitOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Split", SplitOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Split", SplitOp, DeviceType::CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "Split", SplitOp);
 

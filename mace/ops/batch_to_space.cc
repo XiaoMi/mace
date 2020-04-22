@@ -84,8 +84,8 @@ class BatchToSpaceOpBase : public Operation {
 template<DeviceType D, class T>
 class BatchToSpaceNDOp;
 
-template<>
-class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
+template<class T>
+class BatchToSpaceNDOp<DeviceType::CPU, T> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {}
@@ -108,8 +108,8 @@ class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
     int block_shape_h = block_shape_[0];
     int block_shape_w = block_shape_[1];
 
-    const float *input_data = batch_tensor->data<float>();
-    float *output_data = space_tensor->mutable_data<float>();
+    const T *input_data = batch_tensor->data<T>();
+    T *output_data = space_tensor->mutable_data<T>();
 
     index_t in_batches = batch_tensor->dim(0);
     index_t in_height = batch_tensor->dim(2);
@@ -120,10 +120,11 @@ class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
     index_t out_height = space_tensor->dim(2);
     index_t out_width = space_tensor->dim(3);
 
-    // 32k/sizeof(float)/out_width/block_shape
-    index_t
-        block_h_size =
-        std::max(static_cast<index_t>(1), 8 * 1024 / block_shape_w / out_width);
+    // 32k/sizeof(T)/out_width/block_shape
+    index_t block_h_size = std::max(
+        static_cast<index_t>(1),
+        static_cast<index_t>(
+            (32 / sizeof(T)) * 1024 / block_shape_w / out_width));
 
     // make channel outter loop so we can make best use of cache
     for (index_t c = 0; c < channels; ++c) {
@@ -153,9 +154,9 @@ class BatchToSpaceNDOp<DeviceType::CPU, float> : public BatchToSpaceOpBase {
                                                (out_width + pad_left - tile_w
                                                    + block_shape_w - 1)
                                                    / block_shape_w);
-          const float *input_base =
+          const T *input_base =
               input_data + (in_b * channels + c) * in_height * in_width;
-          float *output_base =
+          T *output_base =
               output_data + (b * channels + c) * out_height * out_width;
 
           index_t h = valid_h_start * block_shape_h + tile_h - pad_top;
@@ -289,6 +290,9 @@ class BatchToSpaceNDOp<DeviceType::GPU, float> : public BatchToSpaceOpBase {
 void RegisterBatchToSpaceND(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
                    BatchToSpaceNDOp, DeviceType::CPU, float);
+
+  MACE_REGISTER_BF16_OP(op_registry, "BatchToSpaceND",
+                        BatchToSpaceNDOp, DeviceType::CPU);
 
   MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
                    BatchToSpaceNDOp, DeviceType::CPU, uint8_t);

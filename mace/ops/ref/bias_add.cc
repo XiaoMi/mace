@@ -18,6 +18,7 @@ namespace mace {
 namespace ops {
 namespace ref {
 
+template<typename T>
 class BiasAdd : public delegator::BiasAdd {
  public:
   explicit BiasAdd(const DelegatorParam &param) : delegator::BiasAdd(param) {}
@@ -31,10 +32,11 @@ class BiasAdd : public delegator::BiasAdd {
                const Tensor *bias, Tensor *output);
 };
 
-MaceStatus BiasAdd::Compute(const OpContext *context,
-                            const Tensor *input,
-                            const Tensor *bias,
-                            Tensor *output) {
+template<typename T>
+MaceStatus BiasAdd<T>::Compute(const OpContext *context,
+                               const Tensor *input,
+                               const Tensor *bias,
+                               Tensor *output) {
   Tensor::MappingGuard input_guard(input);
   Tensor::MappingGuard bias_guard(bias);
   if (input != output) {
@@ -54,14 +56,15 @@ MaceStatus BiasAdd::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-void BiasAdd::AddBias(const OpContext *context,
-                      const Tensor *input,
-                      const Tensor *bias,
-                      mace::Tensor *output) {
+template<typename T>
+void BiasAdd<T>::AddBias(const OpContext *context,
+                         const Tensor *input,
+                         const Tensor *bias,
+                         mace::Tensor *output) {
   MACE_UNUSED(context);
-  auto input_data = input->data<float>();
-  auto bias_data = bias->data<float>();
-  auto output_data = output->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto bias_data = bias->data<T>();
+  auto output_data = output->mutable_data<T>();
 
   const index_t batch = input->dim(0);
   const index_t channels = input->dim(1);
@@ -84,8 +87,14 @@ void BiasAdd::AddBias(const OpContext *context,
   }
 }
 
-MACE_REGISTER_DELEGATOR(registry, BiasAdd, DelegatorParam,
-                        MACE_DELEGATOR_KEY(BiasAdd, CPU, float, REF))
+void RegisterBiasAddDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, BiasAdd<float>, DelegatorParam,
+      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, BiasAdd<BFloat16>, DelegatorParam,
+      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, BFloat16, ImplType::REF));
+}
 
 }  // namespace ref
 }  // namespace ops

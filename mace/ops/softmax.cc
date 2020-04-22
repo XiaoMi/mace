@@ -39,8 +39,8 @@ namespace ops {
 template<DeviceType D, typename T>
 class SoftmaxOp;
 
-template<>
-class SoftmaxOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class SoftmaxOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context),
@@ -71,9 +71,9 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
  protected:
   MaceStatus RunForNCHW(OpContext *context) {
     const Tensor *input = this->Input(INPUT);
-    const float *input_data = input->data<float>();
+    const T *input_data = input->data<T>();
     Tensor *output = this->Output(OUTPUT);
-    float *output_data = output->mutable_data<float>();
+    T *output_data = output->mutable_data<T>();
 
     MACE_CHECK(input->dim_size() == 4, "The dim size of NCHW should be 4.");
     index_t hw_stride = input->dim(3);
@@ -93,8 +93,8 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
     for (index_t b_offset = 0;
          b_offset < batch_size; b_offset += batch_stride) {
-      const float *input_b_base = input_data + b_offset;
-      float *output_b_base = output_data + b_offset;
+      const T *input_b_base = input_data + b_offset;
+      T *output_b_base = output_data + b_offset;
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         const auto raw_step_size = step * sizeof(float);
         for (index_t k = start; k < end; k += step) {
@@ -106,9 +106,9 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
         for (index_t c_offset = 0; c_offset < class_size;
              c_offset += class_stride) {
-          const float *input_c_base = input_b_base + c_offset;
+          const T *input_c_base = input_b_base + c_offset;
           for (index_t k = start; k < end; k += step) {
-            const float *input_ptr = input_c_base + k;
+            const T *input_ptr = input_c_base + k;
             float *cache_k_ptr = cache_ptr + k;
             for (index_t i = 0; i < step; ++i) {
               cache_k_ptr[i] = std::max(cache_k_ptr[i], input_ptr[i]);
@@ -118,14 +118,14 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
         for (index_t c_offset = 0; c_offset < class_size;
              c_offset += class_stride) {
-          const float *input_c_base = input_b_base + c_offset;
-          float *output_c_base = output_b_base + c_offset;
+          const T *input_c_base = input_b_base + c_offset;
+          T *output_c_base = output_b_base + c_offset;
           for (index_t k = start; k < end; k += step) {
-            const float *input_ptr = input_c_base + k;
-            float *output_ptr = output_c_base + k;
+            const T *input_ptr = input_c_base + k;
+            T *output_ptr = output_c_base + k;
             float *cache_k_ptr = cache_ptr + k;
             for (index_t i = 0; i < step; ++i) {
-              output_ptr[i] = ::exp(input_ptr[i] - cache_k_ptr[i]);
+              output_ptr[i] = std::exp(input_ptr[i] - cache_k_ptr[i]);
             }
           }
         }
@@ -136,24 +136,24 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
         for (index_t c_offset = 0; c_offset < class_size;
              c_offset += class_stride) {
-          float *output_c_base = output_b_base + c_offset;
+          T *output_c_base = output_b_base + c_offset;
           for (index_t k = start; k < end; k += step) {
-            float *output_ptr = output_c_base + k;
+            T *output_ptr = output_c_base + k;
             float *cache_k_ptr = cache_ptr + k;
             for (index_t i = 0; i < step; ++i) {
-              cache_k_ptr[i] += output_ptr[i];
+              cache_k_ptr[i] += static_cast<float>(output_ptr[i]);
             }
           }
         }
 
         for (index_t c_offset = 0; c_offset < class_size;
              c_offset += class_stride) {
-          float *output_c_base = output_b_base + c_offset;
+          T *output_c_base = output_b_base + c_offset;
           for (index_t k = start; k < end; k += step) {
-            float *output_ptr = output_c_base + k;
+            T *output_ptr = output_c_base + k;
             float *cache_k_ptr = cache_ptr + k;
             for (index_t i = 0; i < step; ++i) {
-              output_ptr[i] = output_ptr[i] / cache_k_ptr[i];
+              output_ptr[i] /= cache_k_ptr[i];
             }
           }
         }
@@ -161,9 +161,9 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
         if (use_log_) {
           for (index_t c_offset = 0; c_offset < class_size;
                c_offset += class_stride) {
-            float *output_c_base = output_b_base + c_offset;
+            T *output_c_base = output_b_base + c_offset;
             for (index_t k = start; k < end; k += step) {
-              float *output_ptr = output_c_base + k;
+              T *output_ptr = output_c_base + k;
               for (index_t i = 0; i < step; ++i) {
                 output_ptr[i] = std::log(output_ptr[i]);
               }
@@ -179,7 +179,7 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
   MaceStatus RunForNHWC(OpContext *context) {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
-    float *output_data = output->mutable_data<float>();
+    T *output_data = output->mutable_data<T>();
 
     MACE_CHECK(input->dim_size() >= 2, "The input->dim_size() >= 2 failed.");
     index_t class_size = input->dim(input->dim_size() - 1);
@@ -196,16 +196,16 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
-    const float *input_data = input->data<float>();
+    const T *input_data = input->data<T>();
     float std_lowest = std::numeric_limits<float>::lowest();
     for (index_t b_offset = 0; b_offset < batch_size;
          b_offset += batch_stride) {
-      const float *input_b_ptr = input_data + b_offset;
-      float *output_b_ptr = output_data + b_offset;
+      const T *input_b_ptr = input_data + b_offset;
+      T *output_b_ptr = output_data + b_offset;
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         for (index_t k = start; k < end; k += step) {
-          const float *input_ptr = input_b_ptr + k;
-          float *output_ptr = output_b_ptr + k;
+          const T *input_ptr = input_b_ptr + k;
+          T *output_ptr = output_b_ptr + k;
 
           float max_val = std_lowest;
           for (index_t c = 0; c < class_size; ++c) {
@@ -214,15 +214,15 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 
           float sum = 0;
           for (index_t c = 0; c < class_size; ++c) {
-            float exp_value = ::exp(input_ptr[c] - max_val);
+            float exp_value = std::exp(input_ptr[c] - max_val);
             sum += exp_value;
             output_ptr[c] = exp_value;
           }
 
           if (use_log_) {
             for (index_t c = 0; c < class_size; ++c) {
-              output_ptr[c] /= sum;
-              output_ptr[c] = std::log(output_ptr[c]);
+              float output = (static_cast<float>(output_ptr[c])) / sum;
+              output_ptr[c] = std::log(output);
             }
           } else {
             for (index_t c = 0; c < class_size; ++c) {
@@ -306,8 +306,8 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
           float sum = 0;
           std::vector<float> depth_cache(depth);
           for (index_t d = 0; d < depth; ++d) {
-            float exp_value = ::exp((static_cast<int>(input_ptr[d]) - max_value)
-                                        * input_scale);
+            float exp_value = std::exp(
+                (static_cast<int>(input_ptr[d]) - max_value) * input_scale);
             sum += exp_value;
             depth_cache[d] = exp_value;
           }
@@ -524,6 +524,8 @@ class SoftmaxOp<DeviceType::GPU, float> : public Operation {
 void RegisterSoftmax(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Softmax", SoftmaxOp,
+                        DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,

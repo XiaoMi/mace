@@ -60,8 +60,8 @@ class PoolingOpBase : public ConvPool2dOpBase {
 template<DeviceType D, class T>
 class PoolingOp;
 
-template<>
-class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
+template<class T>
+class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {}
@@ -93,8 +93,8 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
 
     Tensor::MappingGuard input_guard(input_tensor);
     Tensor::MappingGuard output_guard(output_tensor);
-    const float *input = input_tensor->data<float>();
-    float *output = output_tensor->mutable_data<float>();
+    const T *input = input_tensor->data<T>();
+    T *output = output_tensor->mutable_data<T>();
     const index_t *input_shape = input_tensor->shape().data();
     int pad_hw[2] = {paddings[0] / 2, paddings[1] / 2};
 
@@ -127,14 +127,14 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
 
  private:
   void MaxPooling(const OpContext *context,
-                  const float *input,
+                  const T *input,
                   const index_t *in_shape,
                   const index_t *out_shape,
                   const int *filter_hw,
                   const int *stride_hw,
                   const int *dilation_hw,
                   const int *pad_hw,
-                  float *output) {
+                  T *output) {
     const index_t batch = out_shape[0];
     const index_t out_channels = out_shape[1];
     const index_t out_height = out_shape[2];
@@ -184,14 +184,14 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
   }
 
   void AvgPooling(const OpContext *context,
-                  const float *input,
+                  const T *input,
                   const index_t *in_shape,
                   const index_t *out_shape,
                   const int *filter_hw,
                   const int *stride_hw,
                   const int *dilation_hw,
                   const int *pad_hw,
-                  float *output) {
+                  T *output) {
     const index_t batch = out_shape[0];
     const index_t out_channels = out_shape[1];
     const index_t out_height = out_shape[2];
@@ -514,6 +514,8 @@ class PoolingOp<DeviceType::GPU, float> : public PoolingOpBase {
 void RegisterPooling(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Pooling", PoolingOp,
+                        DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,

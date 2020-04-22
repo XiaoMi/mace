@@ -16,18 +16,36 @@
 #include <memory>
 #include <functional>
 #include <vector>
-#include "mace/ops/ref/deconv_2d.h"
+
+#include "mace/ops/delegator/deconv_2d.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
-MaceStatus Deconv2d<float>::Compute(const OpContext *context,
-                                    const Tensor *input,
-                                    const Tensor *filter,
-                                    const Tensor *output_shape,
-                                    Tensor *output) {
+template<typename T>
+class Deconv2d : public delegator::Deconv2d {
+ public:
+  explicit Deconv2d(const delegator::Deconv2dParam &param)
+      : delegator::Deconv2d(param) {}
+
+  ~Deconv2d() = default;
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *output_shape,
+      Tensor *output) override;
+};
+
+template<typename T>
+MaceStatus Deconv2d<T>::Compute(const OpContext *context,
+                                const Tensor *input,
+                                const Tensor *filter,
+                                const Tensor *output_shape,
+                                Tensor *output) {
   MACE_UNUSED(context);
 
   std::vector<index_t> out_shape;
@@ -65,15 +83,14 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
         std::accumulate(padded_out_shape.begin(),
                         padded_out_shape.end(),
                         1,
-                        std::multiplies<index_t>()) * sizeof(float);
+                        std::multiplies<index_t>()) * sizeof(T);
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     index_t scratch_size = PadAlignSize(padded_out_size);
     scratch->GrowSize(scratch_size);
 
-    std::unique_ptr<Tensor>
-        padded_out
-        (make_unique<Tensor>(scratch->Scratch(scratch_size), DT_FLOAT));
+    std::unique_ptr<Tensor> padded_out(make_unique<Tensor>(
+        scratch->Scratch(scratch_size), DataTypeToEnum<T>::v()));
     padded_out->Reshape(padded_out_shape);
     padded_output = std::move(padded_out);
   }
@@ -88,10 +105,10 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard output_mapper(output);
 
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto pad_out_data = out_tensor->mutable_data<float>();
-  auto out_data = output->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto filter_data = filter->data<T>();
+  auto pad_out_data = out_tensor->mutable_data<T>();
+  auto out_data = output->mutable_data<T>();
 
   auto &in_shape = input->shape();
 
@@ -122,7 +139,7 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
 
   for (index_t b = 0; b < batch; ++b) {
     for (index_t oc = 0; oc < out_channels; ++oc) {
-      float *out_base =
+      T *out_base =
           pad_out_data + (b * out_channels + oc) * out_img_size;
       for (index_t i = 0; i < in_height; ++i) {
         for (index_t j = 0; j < in_width; ++j) {
@@ -148,13 +165,13 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
     for (index_t i = 0; i < batch; ++i) {
       for (index_t j = 0; j < out_channels; ++j) {
         for (index_t k = 0; k < out_height; ++k) {
-          const float *input_base =
+          const T *input_base =
               pad_out_data
                   + ((i * out_channels + j) * pad_out_height + (k + pad_top))
                       * pad_out_width;
-          float *output_base =
+          T *output_base =
               out_data + ((i * out_channels + j) * out_height + k) * out_width;
-          memcpy(output_base, input_base + pad_left, out_width * sizeof(float));
+          memcpy(output_base, input_base + pad_left, out_width * sizeof(T));
         }
       }
     }
@@ -162,10 +179,14 @@ MaceStatus Deconv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-typedef Deconv2d<float> Deconv2dRef;
-MACE_REGISTER_DELEGATOR(
-    registry, Deconv2dRef, delegator::Deconv2dParam,
-    MACE_DELEGATOR_KEY_EX(Deconv2d, CPU, float, REF, General))
+void RegisterDeconv2dDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Deconv2d<float>, delegator::Deconv2dParam,
+      MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, Deconv2d<BFloat16>, delegator::Deconv2dParam,
+      MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, BFloat16, ImplType::REF));
+}
 
 }  // namespace ref
 }  // namespace ops

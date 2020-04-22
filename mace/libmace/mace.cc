@@ -16,9 +16,11 @@
 #include <numeric>
 #include <memory>
 
+#include "mace/core/bfloat16.h"
 #include "mace/core/device_context.h"
 #include "mace/core/memory_optimizer.h"
 #include "mace/core/net.h"
+#include "mace/core/net_def_adapter.h"
 #include "mace/core/registry/ops_registry.h"
 #include "mace/core/registry/op_delegator_registry.h"
 #include "mace/ops/common/transpose.h"
@@ -29,7 +31,6 @@
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
-#include "mace/core/net_def_adapter.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/gpu_device.h"
@@ -460,6 +461,7 @@ class MaceEngine::Impl {
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
   bool is_quantized_model_;
+  DataType net_data_type_;
   std::map<std::string, mace::InputOutputInfo> input_info_map_;
   std::map<std::string, mace::InputOutputInfo> output_info_map_;
   std::unique_ptr<utils::ThreadPool> thread_pool_;
@@ -565,6 +567,7 @@ MaceStatus MaceEngine::Impl::Init(
 #endif
   // mark quantized model flag
   is_quantized_model_ = IsQuantizedModel(*net_def);
+  net_data_type_ = net_def->data_type();
   // Get input and output information.
   for (auto &input_info : net_def->input_info()) {
     input_info_map_[input_info.name()] = input_info;
@@ -589,8 +592,8 @@ MaceStatus MaceEngine::Impl::Init(
     }
     input_tensor->Resize(shape);
     // Set to the default data format
-    input_tensor->set_data_format(static_cast<DataFormat>(
-        input_info_map_[input_name].data_format()));
+    input_tensor->set_data_format(
+        static_cast<DataFormat>(input_info_map_[input_name].data_format()));
   }
   for (auto output_name : output_nodes) {
     if (output_info_map_.find(output_name) == output_info_map_.end()) {
@@ -691,7 +694,8 @@ MaceStatus MaceEngine::Impl::Init(
   MACE_RETURN_IF_ERROR(fs->NewReadOnlyMemoryRegionFromFile(
       model_data_file.c_str(), &model_data_));
 
-  MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes,
+  MACE_RETURN_IF_ERROR(Init(
+      net_def, input_nodes, output_nodes,
       reinterpret_cast<const unsigned char *>(model_data_->data())));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
@@ -753,11 +757,24 @@ MaceStatus MaceEngine::Impl::TransposeInput(
       Tensor::MappingGuard input_guard(input_tensor);
       if (input_dt == DataType::DT_FLOAT) {
         auto input_data = input_tensor->mutable_data<float>();
-        return ops::Transpose(thread_pool_.get(),
-                              input.second.data<float>().get(),
-                              input.second.shape(),
-                              dst_dims,
-                              input_data);
+        if (net_data_type_ == DT_FLOAT || net_data_type_ == DataType::DT_HALF) {
+          return ops::Transpose(thread_pool_.get(),
+                                input.second.data<float>().get(),
+                                input.second.shape(),
+                                dst_dims,
+                                input_data);
+#ifdef MACE_ENABLE_BFLOAT16
+        } else if (net_data_type_ == DT_BFLOAT16) {
+          auto *input_data = input_tensor->mutable_data<BFloat16>();
+          return ops::Transpose(thread_pool_.get(),
+                                input.second.data<float>().get(),
+                                input.second.shape(),
+                                dst_dims,
+                                input_data);
+#endif  // MACE_ENABLE_BFLOAT16
+        } else {
+          LOG(FATAL) << "Invalid net data type: " << net_data_type_;
+        }
       } else if (input_dt == DataType::DT_INT32) {
         auto input_data = input_tensor->mutable_data<int>();
         return ops::Transpose(thread_pool_.get(),
@@ -776,9 +793,22 @@ MaceStatus MaceEngine::Impl::TransposeInput(
   MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
   Tensor::MappingGuard input_guard(input_tensor);
   if (input_dt == DataType::DT_FLOAT) {
-    auto input_data = input_tensor->mutable_data<float>();
-    memcpy(input_data, input.second.data().get(),
-           input_tensor->size() * sizeof(float));
+    if (net_data_type_ == DataType::DT_FLOAT ||
+        net_data_type_ == DataType::DT_HALF) {
+      auto input_data = input_tensor->mutable_data<float>();
+      memcpy(input_data, input.second.data().get(),
+             input_tensor->size() * sizeof(float));
+#ifdef MACE_ENABLE_BFLOAT16
+    } else if (net_data_type_ == DataType::DT_BFLOAT16) {
+      auto input_data = input_tensor->mutable_data<BFloat16>();
+      const float *data = input.second.data().get();
+      for (index_t i = 0; i < input_tensor->size(); ++i) {
+        input_data[i] = data[i];
+      }
+#endif  // MACE_ENABLE_BFLOAT16
+    } else {
+      LOG(FATAL) << "Invalid net data type: " << net_data_type_;
+    }
   } else if (input_dt == DataType::DT_INT32) {
     auto input_data = input_tensor->mutable_data<int>();
     memcpy(input_data, input.second.data().get(),
@@ -842,6 +872,15 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
                               output_tensor->shape(),
                               dst_dims,
                               output->second.data<int>().get());
+#ifdef MACE_ENABLE_BFLOAT16
+      } else if (output_dt == DataType::DT_BFLOAT16) {
+        auto output_data = output_tensor->data<BFloat16>();
+        return ops::Transpose(thread_pool_.get(),
+                              output_data,
+                              output_tensor->shape(),
+                              dst_dims,
+                              output->second.data<float>().get());
+#endif  // MACE_ENABLE_BFLOAT16
       } else {
         LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
         return MaceStatus::MACE_INVALID_ARGS;
@@ -864,6 +903,14 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
         std::memcpy(output->second.data<int>().get(),
                     output_tensor->data<int>(),
                     output_size * sizeof(int));
+#ifdef MACE_ENABLE_BFLOAT16
+      } else if (output_dt == DataType::DT_BFLOAT16) {
+        const auto *output_data = output_tensor->data<BFloat16>();
+        float *data = output->second.data<float>().get();
+        for (index_t i = 0; i < output_tensor->size(); ++i) {
+          data[i] = output_data[i];
+        }
+#endif  // MACE_ENABLE_BFLOAT16
       } else {
         LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
       }

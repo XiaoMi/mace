@@ -28,9 +28,9 @@ enum ImplType {
 };
 
 #ifdef MACE_ENABLE_NEON
-#define MACE_CPU_IMPL_TYPE NEON
+const ImplType kCpuImplType = ImplType::NEON;
 #else
-#define MACE_CPU_IMPL_TYPE REF
+const ImplType kCpuImplType = ImplType::REF;
 #endif
 
 struct DelegatorParam {

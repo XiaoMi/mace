@@ -70,27 +70,27 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard params_guard(params);
     Tensor::MappingGuard output_guard(output);
-    const float *input_data = input->data<T>();
-    const float *params_data = params->data<T>();
-    float *output_data = output->mutable_data<T>();
+    const T *input_data = input->data<T>();
+    const T *params_data = params->data<T>();
+    T *output_data = output->mutable_data<T>();
 
     for (int r = 0; r < num_rows; ++r) {
-      const float *input_row = input_data + r * input_cols;
-      const float *prev_row = input_row + 4 * cell_dim;
-      const float *scale_data =
+      const T *input_row = input_data + r * input_cols;
+      const T *prev_row = input_row + 4 * cell_dim;
+      const T *scale_data =
           embed_scales ? prev_row + cell_dim : nullptr;
-      float *output_cell = output_data + r * output_dim;
-      float *output_row = output_cell + cell_dim;
-      LSTMNonlinearKernel(context,
-                          input_row,
-                          prev_row,
-                          scale_data,
-                          params_data,
-                          embed_scales,
-                          params_stride,
-                          cell_dim,
-                          output_cell,
-                          output_row);
+      T *output_cell = output_data + r * output_dim;
+      T *output_row = output_cell + cell_dim;
+      LSTMNonlinearKernel<T>(context,
+                             input_row,
+                             prev_row,
+                             scale_data,
+                             params_data,
+                             embed_scales,
+                             params_stride,
+                             cell_dim,
+                             output_cell,
+                             output_row);
     }
 
     return MaceStatus::MACE_SUCCESS;
@@ -104,6 +104,8 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
 void RegisterLSTMNonlinear(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LSTMNonlinear", LSTMNonlinearOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "LSTMNonlinear", LSTMNonlinearOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

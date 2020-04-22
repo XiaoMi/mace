@@ -12,19 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-#include "mace/ops/ref/depthwise_conv_2d.h"
-
 #include <vector>
+
+#include "mace/ops/delegator/depthwise_conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
-MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
-                                           const Tensor *input,
-                                           const Tensor *filter,
-                                           Tensor *output) {
+template<typename T>
+class DepthwiseConv2d : public delegator::DepthwiseConv2d {
+ public:
+  explicit DepthwiseConv2d(const delegator::DepthwiseConv2dParam &param)
+      : delegator::DepthwiseConv2d(param) {}
+  ~DepthwiseConv2d() {}
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output) override;
+};
+
+template<typename T>
+MaceStatus DepthwiseConv2d<T>::Compute(const OpContext *context,
+                                       const Tensor *input,
+                                       const Tensor *filter,
+                                       Tensor *output) {
   MACE_UNUSED(context);
 
   const std::vector<index_t> in_shape = input->shape();
@@ -65,9 +78,9 @@ MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
   Tensor::MappingGuard input_guard(input);
   Tensor::MappingGuard filter_guard(filter);
   Tensor::MappingGuard output_guard(output);
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto output_data = output->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto filter_data = filter->data<T>();
+  auto output_data = output->mutable_data<T>();
 
   for (index_t b = 0; b < in_shape[0]; b++) {
     for (index_t m = 0; m < out_shape[1]; ++m) {
@@ -80,16 +93,16 @@ MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
       const index_t out_width = out_shape[3];
       const index_t in_channels = in_shape[1];
 
-      float *out_ptr_base =
+      T *out_ptr_base =
           output_data + b * out_batch_size + m * out_image_size;
 
       for (index_t h = 0; h < out_height; ++h) {
         for (index_t w = 0; w < out_width; ++w) {
           float sum = 0;
 
-          const float *in_ptr_base =
+          const T *in_ptr_base =
               input_data + b * in_batch_size + c * in_image_size;
-          const float *filter_ptr =
+          const T *filter_ptr =
               filter_data + multi_index * in_channels * filter_size
                   + c * filter_size;
 
@@ -115,10 +128,16 @@ MaceStatus DepthwiseConv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-typedef DepthwiseConv2d<float> DepthwiseConv2dRef;
-MACE_REGISTER_DELEGATOR(
-    registry, DepthwiseConv2dRef, delegator::DepthwiseConv2dParam,
-    MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float, REF, General))
+void RegisterDepthwiseConv2dDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, DepthwiseConv2d<float>, delegator::DepthwiseConv2dParam,
+      MACE_DELEGATOR_KEY(DepthwiseConv2d, DeviceType::CPU,
+                         float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, DepthwiseConv2d<BFloat16>, delegator::DepthwiseConv2dParam,
+      MACE_DELEGATOR_KEY(DepthwiseConv2d, DeviceType::CPU,
+                         BFloat16, ImplType::REF));
+}
 
 }  // namespace ref
 }  // namespace ops

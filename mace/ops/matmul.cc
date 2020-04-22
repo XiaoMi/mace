@@ -92,18 +92,18 @@ class MatMulOpBase : public Operation {
 template<DeviceType D, class T>
 class MatMulOp;
 
-template<>
-class MatMulOp<CPU, float> : public MatMulOpBase {
+template<class T>
+class MatMulOp<CPU, T> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context),
         gemm_(delegator::Gemm::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemm, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, T, kCpuImplType),
             delegator::GemmParam())),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -197,8 +197,8 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
                    "bias' dim should be <= 2.");
         Tensor::MappingGuard bias_guard(bias);
         Tensor::MappingGuard c_guard(C);
-        const float *bias_data = bias->data<float>();
-        float *c_data = C->mutable_data<float>();
+        const T *bias_data = bias->data<T>();
+        T *c_data = C->mutable_data<T>();
 
         utils::ThreadPool
             &thread_pool = context->device()->cpu_runtime()->thread_pool();
@@ -599,6 +599,8 @@ class MatMulOp<CPU, float16_t> : public MatMulOpBase {
 void RegisterMatMul(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "MatMul", MatMulOp,
+                        DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,

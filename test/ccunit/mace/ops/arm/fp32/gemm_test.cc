@@ -17,8 +17,8 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/arm/fp32/gemm.h"
-#include "mace/ops/ref/gemm.h"
+#include "mace/ops/delegator/gemm.h"
+#include "mace/ops/ops_test_util.h"
 #include "mace/ops/testing/test_utils.h"
 
 namespace mace {
@@ -50,41 +50,48 @@ void TestGemmFloat32(const index_t batch,
     GenerateRandomRealTypeData<float>(rhs.shape(), rhs_data);
     GenerateRandomRealTypeData<float>(output.shape(), output_data);
   }
-  ::mace::ops::arm::fp32::Gemm gemm((delegator::GemmParam()));
+
   utils::ThreadPool thread_pool(1, AFFINITY_NONE);
   thread_pool.Init();
   CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
-  OpContext context(nullptr, &cpu_device);
-  gemm.Compute(&context,
-               &lhs,
-               &rhs,
-               batch,
-               rows,
-               cols,
-               depth,
-               lhs_major,
-               rhs_major,
-               output_major,
-               lhs_batched,
-               rhs_batched,
-               &output);
+  OpsTestNet net;
+  OpContext context(net.ws(), &cpu_device);
+  std::unique_ptr<delegator::Gemm> gemm = delegator::Gemm::Create(
+      context.workspace(),
+      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float, ImplType::NEON),
+      delegator::GemmParam());
+  gemm->Compute(&context,
+                &lhs,
+                &rhs,
+                batch,
+                rows,
+                cols,
+                depth,
+                lhs_major,
+                rhs_major,
+                output_major,
+                lhs_batched,
+                rhs_batched,
+                &output);
 
   Tensor expected_output(GetCPUAllocator(), DataType::DT_FLOAT);
   expected_output.Resize({batch, rows, cols});
-  ::mace::ops::ref::Gemm<float> gemm_ref((delegator::GemmParam()));
-  gemm_ref.Compute(nullptr,
-                   &lhs,
-                   &rhs,
-                   batch,
-                   rows,
-                   cols,
-                   depth,
-                   lhs_major,
-                   rhs_major,
-                   output_major,
-                   lhs_batched,
-                   rhs_batched,
-                   &expected_output);
+  std::unique_ptr<delegator::Gemm> gemm_ref = delegator::Gemm::Create(
+      context.workspace(), MACE_DELEGATOR_KEY(
+          Gemm, DeviceType::CPU, float, ImplType::REF), delegator::GemmParam());
+  gemm_ref->Compute(&context,
+                    &lhs,
+                    &rhs,
+                    batch,
+                    rows,
+                    cols,
+                    depth,
+                    lhs_major,
+                    rhs_major,
+                    output_major,
+                    lhs_batched,
+                    rhs_batched,
+                    &expected_output);
 
   ExpectTensorNear<float>(expected_output, output);
 }

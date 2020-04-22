@@ -171,7 +171,16 @@ def parse_device_type(runtime):
     return device_type
 
 
-def get_hexagon_mode(configs):
+def bfloat16_enabled(configs):
+    for model_name in configs[YAMLKeyword.models]:
+        model_config = configs[YAMLKeyword.models][model_name]
+        dtype = model_config.get(YAMLKeyword.data_type, FPDataType.fp16_fp32)
+        if dtype == FPDataType.bf16_fp32:
+            return True
+    return False
+
+
+def hexagon_enabled(configs):
     runtime_list = []
     for model_name in configs[YAMLKeyword.models]:
         model_runtime = \
@@ -184,7 +193,7 @@ def get_hexagon_mode(configs):
     return False
 
 
-def get_hta_mode(configs):
+def hta_enabled(configs):
     runtime_list = []
     for model_name in configs[YAMLKeyword.models]:
         model_runtime = \
@@ -197,7 +206,7 @@ def get_hta_mode(configs):
     return False
 
 
-def get_apu_mode(configs):
+def apu_enabled(configs):
     runtime_list = []
     for model_name in configs[YAMLKeyword.models]:
         model_runtime = \
@@ -210,7 +219,7 @@ def get_apu_mode(configs):
     return False
 
 
-def get_opencl_mode(configs):
+def opencl_enabled(configs):
     runtime_list = []
     for model_name in configs[YAMLKeyword.models]:
         model_runtime = \
@@ -224,7 +233,7 @@ def get_opencl_mode(configs):
     return False
 
 
-def get_quantize_mode(configs):
+def quantize_enabled(configs):
     for model_name in configs[YAMLKeyword.models]:
         quantize = \
             configs[YAMLKeyword.models][model_name].get(
@@ -739,11 +748,12 @@ def build_model_lib(configs, address_sanitizer, debug_mode):
             MODEL_LIB_TARGET,
             abi=target_abi,
             toolchain=toolchain,
-            enable_hexagon=get_hexagon_mode(configs),
-            enable_hta=get_hta_mode(configs),
-            enable_apu=get_apu_mode(configs),
-            enable_opencl=get_opencl_mode(configs),
-            enable_quantize=get_quantize_mode(configs),
+            enable_hexagon=hexagon_enabled(configs),
+            enable_hta=hta_enabled(configs),
+            enable_apu=apu_enabled(configs),
+            enable_opencl=opencl_enabled(configs),
+            enable_quantize=quantize_enabled(configs),
+            enable_bfloat16=bfloat16_enabled(configs),
             address_sanitizer=address_sanitizer,
             symbol_hidden=get_symbol_hidden_mode(debug_mode),
             debug_mode=debug_mode
@@ -900,12 +910,13 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         mace_run_target,
         abi=target_abi,
         toolchain=toolchain,
-        enable_hexagon=get_hexagon_mode(configs),
-        enable_hta=get_hta_mode(configs),
-        enable_apu=get_apu_mode(configs),
+        enable_hexagon=hexagon_enabled(configs),
+        enable_hta=hta_enabled(configs),
+        enable_apu=apu_enabled(configs),
         enable_openmp=enable_openmp,
-        enable_opencl=get_opencl_mode(configs),
-        enable_quantize=get_quantize_mode(configs),
+        enable_opencl=opencl_enabled(configs),
+        enable_quantize=quantize_enabled(configs),
+        enable_bfloat16=bfloat16_enabled(configs),
         address_sanitizer=address_sanitizer,
         symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),
         debug_mode=debug_mode,

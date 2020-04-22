@@ -57,15 +57,7 @@ inline T ComputeLerp(const T top_left,
                      const T bottom_left,
                      const T bottom_right,
                      const float x_lerp,
-                     const float y_lerp);
-
-template<>
-inline float ComputeLerp<float>(const float top_left,
-                                const float top_right,
-                                const float bottom_left,
-                                const float bottom_right,
-                                const float x_lerp,
-                                const float y_lerp) {
+                     const float y_lerp) {
   const float top = top_left + (top_right - top_left) * x_lerp;
   const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
   return top + (bottom - top) * y_lerp;
@@ -370,6 +362,8 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
 void RegisterResizeBilinear(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
+                        DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,

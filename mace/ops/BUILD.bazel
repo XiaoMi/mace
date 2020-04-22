@@ -10,6 +10,7 @@ load(
     "//mace:mace.bzl",
     "if_android",
     "if_android_armv7",
+    "if_bfloat16_enabled",
     "if_hexagon_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
@@ -46,6 +47,8 @@ cc_library(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -85,6 +88,8 @@ cc_library(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -138,6 +143,8 @@ cc_library(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -223,6 +230,8 @@ cc_library(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -263,6 +272,8 @@ cc_library(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),

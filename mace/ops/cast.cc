@@ -56,10 +56,8 @@ class CastOp : public Operation {
 };
 
 void RegisterCast(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Cast", CastOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "Cast", CastOp,
-                   DeviceType::CPU, int32_t);
+  MACE_REGISTER_OP(op_registry, "Cast", CastOp, DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Cast", CastOp, DeviceType::CPU, int32_t);
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "Cast", CastOp,
                    DeviceType::CPU, float16_t);

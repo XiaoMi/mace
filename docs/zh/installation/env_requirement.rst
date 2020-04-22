@@ -43,12 +43,13 @@ MACE 需要安装下列依赖：
       - 版本和说明
     * - Android NDK
       - `NDK 安装指南 <https://developer.android.com/ndk/guides/setup#install>`__
-      - Required by Android build, r15b, r15c, r16b, r17b
+      - 安卓编译需要, bazel用户可以使用r15b及以上的版本, cmake用户可以使用r17b及以上版本
     * - CMake
       - apt-get install cmake
       - >= 3.11.3
     * - ADB
-      - Linux:``apt-get install android-tools-adb`` Mac:``brew cask install android-platform-tools``
+      - | Linux:``apt-get install android-tools-adb``
+        | Mac:``brew cask install android-platform-tools``
       - Android 运行需要, >= 1.0.32
     * - TensorFlow
       - pip install tensorflow==1.8.0

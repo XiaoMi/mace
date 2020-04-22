@@ -90,8 +90,8 @@ class SpaceToBatchOpBase : public Operation {
 template<DeviceType D, class T>
 class SpaceToBatchNDOp;
 
-template<>
-class SpaceToBatchNDOp<DeviceType::CPU, float> : public SpaceToBatchOpBase {
+template<class T>
+class SpaceToBatchNDOp<DeviceType::CPU, T> : public SpaceToBatchOpBase {
  public:
   explicit SpaceToBatchNDOp(OpConstructContext *context)
       : SpaceToBatchOpBase(context) {}
@@ -115,8 +115,8 @@ class SpaceToBatchNDOp<DeviceType::CPU, float> : public SpaceToBatchOpBase {
     int block_shape_h = block_shape_[0];
     int block_shape_w = block_shape_[1];
 
-    const float *input_data = space_tensor->data<float>();
-    float *output_data = batch_tensor->mutable_data<float>();
+    const T *input_data = space_tensor->data<T>();
+    T *output_data = batch_tensor->mutable_data<T>();
 
     index_t in_batches = space_tensor->dim(0);
     index_t in_height = space_tensor->dim(2);
@@ -158,20 +158,20 @@ class SpaceToBatchNDOp<DeviceType::CPU, float> : public SpaceToBatchOpBase {
                                                (in_width + pad_left - tile_w
                                                    + block_shape_w - 1)
                                                    / block_shape_w);
-          const float *input_base =
+          const T *input_base =
               input_data + (in_b * channels + c) * in_height * in_width;
-          float *output_base =
+          T *output_base =
               output_data + (b * channels + c) * out_height * out_width;
 
           memset(output_base + block_h * out_width,
                  0,
-                 (valid_h_start - block_h) * out_width * sizeof(float));
+                 (valid_h_start - block_h) * out_width * sizeof(T));
 
           index_t in_h = valid_h_start * block_shape_h + tile_h - pad_top;
           for (index_t h = valid_h_start; h < valid_h_end; ++h) {
             memset(output_base + h * out_width,
                    0,
-                   valid_w_start * sizeof(float));
+                   valid_w_start * sizeof(T));
 
             index_t in_w = valid_w_start * block_shape_w + tile_w - pad_left;
             for (index_t w = valid_w_start; w < valid_w_end; ++w) {
@@ -183,13 +183,13 @@ class SpaceToBatchNDOp<DeviceType::CPU, float> : public SpaceToBatchOpBase {
 
             memset(output_base + h * out_width + valid_w_end,
                    0,
-                   (out_width - valid_w_end) * sizeof(float));
+                   (out_width - valid_w_end) * sizeof(T));
           }  // h
 
           memset(output_base + valid_h_end * out_width,
                  0,
                  (std::min(out_height, block_h + block_h_size) - valid_h_end)
-                     * out_width * sizeof(float));
+                     * out_width * sizeof(T));
         }  // b
       }  // block_h
     }  // c
@@ -332,6 +332,8 @@ class SpaceToBatchNDOp<DeviceType::GPU, float> : public SpaceToBatchOpBase {
 void RegisterSpaceToBatchND(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
                    SpaceToBatchNDOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "SpaceToBatchND",
+                        SpaceToBatchNDOp, DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",

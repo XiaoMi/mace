@@ -53,15 +53,16 @@ namespace ops {
 template<DeviceType D, class T>
 class Conv2dOp;
 
-template<>
-class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
+template<class T>
+class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                                   T, kCpuImplType),
                 delegator::ActivationParam(
                     ops::StringToActivationType(
                         Operation::GetOptionalArg<std::string>("activation",
@@ -71,7 +72,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
                                                      0.0f)))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -81,9 +82,8 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     Tensor *output = this->Output(OUTPUT);
 
     if (conv2d_delegator_ == nullptr) {
-      std::string tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                              MACE_CPU_IMPL_TYPE, General);
-      if (MACE_CPU_IMPL_TYPE == NEON) {
+      auto tag = MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, T, kCpuImplType);
+      if (kCpuImplType == NEON) {
         // the following params are used to decide which conv delegator to use
         const index_t stride_h = strides_[0];
         const index_t stride_w = strides_[1];
@@ -98,63 +98,63 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
         // We do not support changeable filter for now.
         if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
             && dilation_h == 1 && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K1x1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K1x1);
         } else if (filter_h == 3 && filter_w == 3
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
           if (input_channels >= 8 && channels >= 8) {
-            tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K3x3Winograd);
+            tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K3x3Winograd);
           } else {
-            tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K3x3S1);
+            tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K3x3S1);
           }
         } else if (filter_h == 3 && filter_w == 3
             && stride_h == 2 && stride_w == 2 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K3x3S2);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K3x3S2);
         } else if (filter_h == 5 && filter_w == 5
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K5x5S1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K5x5S1);
         } else if (filter_h == 7 && filter_w == 7
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K7x7S1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K7x7S1);
         } else if (filter_h == 7 && filter_w == 7
             && stride_h == 2 && stride_w == 2 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K7x7S2);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K7x7S2);
         } else if (filter_h == 7 && filter_w == 7
             && stride_h == 3 && stride_w == 3 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K7x7S3);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K7x7S3);
         } else if (filter_h == 1 && filter_w == 7
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K1x7S1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K1x7S1);
         } else if (filter_h == 7 && filter_w == 1
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K7x1S1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K7x1S1);
         } else if (filter_h == 1 && filter_w == 15
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K1x15S1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K1x15S1);
         } else if (filter_h == 15 && filter_w == 1
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K15x1S1);
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K15x1S1);
         }
       }
       delegator::Conv2dParam param(strides_, dilations_,
@@ -497,8 +497,8 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterConv2D(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,

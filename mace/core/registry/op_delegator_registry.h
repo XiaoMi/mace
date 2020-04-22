@@ -21,7 +21,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "mace/core/bfloat16.h"
 #include "mace/core/ops/op_delegator.h"
+#include "mace/core/types.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
 
@@ -29,40 +31,50 @@ namespace mace {
 typedef std::function<std::unique_ptr<OpDelegator>(const DelegatorParam &)>
     DelegatorCreator;
 
+struct DelegatorInfo {
+  explicit DelegatorInfo(const char *delegator_name,
+                         DataType data_type,
+                         DeviceType device,
+                         ImplType impl_type,
+                         const char *tag);
+  explicit DelegatorInfo(const char *delegator_name,
+                         DataType data_type,
+                         DeviceType device,
+                         ImplType impl_type);
+
+  std::string ToString() const;
+
+  bool operator==(const DelegatorInfo &info) const;
+
+  std::string delegator_name;
+  DataType data_type;
+  DeviceType device;
+  ImplType impl_type;
+  std::string tag;
+};
+
 class OpDelegatorRegistry {
  public:
   OpDelegatorRegistry() = default;
   ~OpDelegatorRegistry() = default;
 
-  MaceStatus Register(const std::string &key, DelegatorCreator creator);
-  DelegatorCreator GetCreator(const std::string &key) const;
+  MaceStatus Register(const DelegatorInfo &key, DelegatorCreator creator);
+  DelegatorCreator GetCreator(const DelegatorInfo &key) const;
 
  private:
-  std::unordered_map<std::string, DelegatorCreator> registry_;
+  struct HashName {
+    size_t operator()(const DelegatorInfo &delegator_info) const {
+      return std::hash<std::string>()(delegator_info.ToString());
+    }
+  };
+  std::unordered_map<DelegatorInfo, DelegatorCreator, HashName> registry_;
 };
-
-template<typename T>
-struct DType { static const char *name_; };
-template<> const char *DType<float>::name_;
-template<> const char *DType<int>::name_;
-template<> const char *DType<uint8_t>::name_;
-
 
 }  // namespace mace
 
-#ifndef MACE_DELEGATOR_KEY_TMP
-#define MACE_DELEGATOR_KEY_TMP(delegator_name, device, DT, impl) \
-  (std::string(#delegator_name"_"#device"_"#impl"_") + DType<DT>::name_)
-#endif  // MACE_DELEGATOR_KEY_TMP
-
-#ifndef MACE_DELEGATOR_KEY
-#define MACE_DELEGATOR_KEY(delegator_name, device, DT, impl) \
-  MACE_DELEGATOR_KEY_TMP(delegator_name, device, DT, impl)
-#endif  // MACE_DELEGATOR_KEY
-
 #ifndef MACE_DELEGATOR_KEY_EX_TMP
 #define MACE_DELEGATOR_KEY_EX_TMP(delegator_name, device, DT, impl, tag) \
-  (std::string(#delegator_name"_"#device"_"#impl"_"#tag"_") + DType<DT>::name_)
+  DelegatorInfo(#delegator_name, DataTypeToEnum<DT>::value, device, impl, #tag)
 #endif  // MACE_DELEGATOR_KEY_EX_TMP
 
 #ifndef MACE_DELEGATOR_KEY_EX
@@ -70,21 +82,32 @@ template<> const char *DType<uint8_t>::name_;
   MACE_DELEGATOR_KEY_EX_TMP(delegator_name, device, DT, impl, tag)
 #endif  // MACE_DELEGATOR_KEY_EX
 
+#ifndef MACE_DELEGATOR_KEY
+#define MACE_DELEGATOR_KEY(delegator_name, device, DT, impl) \
+  DelegatorInfo(#delegator_name, DataTypeToEnum<DT>::value, device, impl)
+#endif  // MACE_DELEGATOR_KEY
+
 #ifndef MACE_REGISTER_DELEGATOR
 #define MACE_REGISTER_DELEGATOR(registry, class_name, param_name, key)  \
-  void Register##class_name##Delegator(OpDelegatorRegistry *registry) { \
-    registry->Register(                                                 \
-        key, OpDelegator::DefaultCreator<class_name, param_name>);      \
-  }
+  registry->Register(key, OpDelegator::DefaultCreator<class_name, param_name>)
 #endif  // MACE_REGISTER_DELEGATOR
+
+#ifndef MACE_REGISTER_BF16_DELEGATOR
+#ifdef MACE_ENABLE_BFLOAT16
+#define MACE_REGISTER_BF16_DELEGATOR(registry, class_name, param_name, key) \
+  MACE_REGISTER_DELEGATOR(registry, class_name, param_name, key)
+#else
+#define MACE_REGISTER_BF16_DELEGATOR(registry, class_name, param_name, key)
+#endif  // MACE_ENABLE_BFLOAT16
+#endif  // MACE_REGISTER_BF16_DELEGATOR
 
 #ifndef MACE_DEFINE_DELEGATOR_CREATOR
 #define MACE_DEFINE_DELEGATOR_CREATOR(class_name)            \
   static std::unique_ptr<class_name> Create(                 \
-      Workspace *workspace, const std::string &tag,          \
+      Workspace *workspace, const DelegatorInfo &key,        \
       const DelegatorParam &param) {                         \
     DelegatorCreator creator =                               \
-        workspace->GetDelegatorRegistry()->GetCreator(tag);  \
+        workspace->GetDelegatorRegistry()->GetCreator(key);  \
     std::unique_ptr<OpDelegator> delegator = creator(param); \
     return  std::unique_ptr<class_name>(                     \
         static_cast<class_name *>(delegator.release()));     \

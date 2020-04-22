@@ -39,10 +39,10 @@ class OneHotOpBase : public Operation {
   int axis_;
 };
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class OneHotOp;
 
-template <typename T>
+template<typename T>
 class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
  public:
   explicit OneHotOp(OpConstructContext *context) : OneHotOpBase(context) {}
@@ -81,15 +81,17 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
       if (axis == 1) {
         for (index_t i = 0; i < batch; ++i) {
           for (index_t j = 0; j < depth_; ++j) {
-            output_ptr[i * depth_ + j] = input_ptr[i] == j ? on_value_ :
-                                                             off_value_;
+            float input_value = input_ptr[i];
+            output_ptr[i * depth_ + j] =
+                input_value == j ? on_value_ : off_value_;
           }
         }
       } else {
         for (index_t i = 0; i < depth_; ++i) {
           for (index_t j = 0; j < batch; ++j) {
-            output_ptr[i * batch + j] = input_ptr[j] == i ? on_value_ :
-                                                            off_value_;
+            float input_value = input_ptr[j];
+            output_ptr[i * batch + j] =
+                input_value == i ? on_value_ : off_value_;
           }
         }
       }
@@ -110,7 +112,8 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
 
       if (left == 0) {
         for (index_t i = 0; i < length; ++i) {
-          **output_ptr = **input_ptr == i ? on_value_ : off_value_;
+          float input_value = **input_ptr;
+          **output_ptr = input_value == i ? on_value_ : off_value_;
           ++(*output_ptr);
         }
 
@@ -130,7 +133,8 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
 
       if (left == 0) {
         for (index_t i = 0; i < length; ++i) {
-          **output_ptr = **input_ptr == test ? on_value_ : off_value_;
+          float input_value = **input_ptr;
+          **output_ptr = input_value == test ? on_value_ : off_value_;
           ++(*output_ptr);
           ++(*input_ptr);
         }
@@ -144,9 +148,9 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
   }
 };
 
-
 void RegisterOneHot(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "OneHot", OneHotOp, DeviceType::CPU);
 }
 
 }  // namespace ops

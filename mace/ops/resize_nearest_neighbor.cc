@@ -176,6 +176,8 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
 void RegisterResizeNearestNeighbor(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeNearestNeighbor",
                    ResizeNearestNeighborOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "ResizeNearestNeighbor",
+                        ResizeNearestNeighborOp, DeviceType::CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "ResizeNearestNeighbor",
                        ResizeNearestNeighborOp);

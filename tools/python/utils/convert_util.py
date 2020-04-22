@@ -1,4 +1,3 @@
-
 # Copyright 2020 The MACE Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +78,7 @@ def merge_params(net_def, data_type):
     for tensor in net_def.tensors:
         if tensor.data_type == mace_pb2.DT_FLOAT \
                 or tensor.data_type == mace_pb2.DT_HALF \
-                or tensor.data_type == mace_pb2.DT_FLOAT16\
+                or tensor.data_type == mace_pb2.DT_FLOAT16 \
                 or tensor.data_type == mace_pb2.DT_BFLOAT16:
             del tensor.float_data[:]
         elif tensor.data_type == mace_pb2.DT_INT32:

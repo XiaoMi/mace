@@ -19,7 +19,6 @@
 
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
-
 #include "mace/ops/delegator/activation.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -43,11 +42,12 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
             Operation::GetOptionalArg<std::string>("activation", "NOOP"))),
         activation_delegator_(delegator::Activation::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Activation, CPU, T, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, T, kCpuImplType),
             delegator::ActivationParam(
                 activation_type_,
-                Operation::GetOptionalArg<T>("max_limit", 0),
-                Operation::GetOptionalArg<T>("leakyrelu_coefficient", 0)))) {}
+                Operation::GetOptionalArg<float>("max_limit", 0.f),
+                Operation::GetOptionalArg<float>(
+                    "leakyrelu_coefficient", 0.f)))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -119,6 +119,8 @@ class ActivationOp<DeviceType::GPU, float> : public Operation {
 void RegisterActivation(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Activation",
+                        ActivationOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "Activation", ActivationOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,

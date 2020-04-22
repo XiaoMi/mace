@@ -15,18 +15,52 @@
 #include <utility>
 #include <memory>
 #include <functional>
-#include "mace/ops/ref/depthwise_deconv_2d.h"
+
+#include "mace/ops/delegator/depthwise_deconv_2d.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
-MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
-                                             const Tensor *input,
-                                             const Tensor *filter,
-                                             const Tensor *output_shape,
-                                             Tensor *output) {
+template<typename T>
+class GroupDeconv2d : public delegator::GroupDeconv2d {
+ public:
+  explicit GroupDeconv2d(const delegator::GroupDeconv2dParam &param)
+      : delegator::GroupDeconv2d(param) {}
+
+  virtual ~GroupDeconv2d() = default;
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *output_shape,
+      Tensor *output) override;
+};
+
+template<typename T>
+class DepthwiseDeconv2d : public GroupDeconv2d<T> {
+ public:
+  explicit DepthwiseDeconv2d<T>(const delegator::DepthwiseDeconv2dParam &param)
+      : GroupDeconv2d<T>(param) {}
+
+  ~DepthwiseDeconv2d<T>() = default;
+
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *output_shape,
+      Tensor *output) override;
+};
+
+template<typename T>
+MaceStatus DepthwiseDeconv2d<T>::Compute(const OpContext *context,
+                                         const Tensor *input,
+                                         const Tensor *filter,
+                                         const Tensor *output_shape,
+                                         Tensor *output) {
   MACE_UNUSED(context);
 
   std::vector<index_t> out_shape;
@@ -41,15 +75,15 @@ MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
   std::vector<int> out_pad_size;
   CalDeconvOutputShapeAndPadSize(input->shape(),
                                  filter->shape(),
-                                 strides_,
-                                 padding_type_,
-                                 paddings_,
+                                 GroupDeconv2d<T>::strides_,
+                                 GroupDeconv2d<T>::padding_type_,
+                                 GroupDeconv2d<T>::paddings_,
                                  input->dim(1),
                                  &out_shape,
                                  nullptr,
                                  &out_pad_size,
                                  &padded_out_shape,
-                                 framework_type_,
+                                 GroupDeconv2d<T>::framework_type_,
                                  DataFormat::NCHW);
 
   MACE_RETURN_IF_ERROR(output->Resize(out_shape));
@@ -64,15 +98,14 @@ MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
         std::accumulate(padded_out_shape.begin(),
                         padded_out_shape.end(),
                         1,
-                        std::multiplies<index_t>()) * sizeof(float);
+                        std::multiplies<index_t>()) * sizeof(T);
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     index_t scratch_size = PadAlignSize(padded_out_size);
     scratch->GrowSize(scratch_size);
 
-    std::unique_ptr<Tensor>
-        padded_out
-        (make_unique<Tensor>(scratch->Scratch(scratch_size), DT_FLOAT));
+    std::unique_ptr<Tensor> padded_out(make_unique<Tensor>(
+        scratch->Scratch(scratch_size), DataTypeToEnum<T>::v()));
     padded_out->Reshape(padded_out_shape);
     padded_output = std::move(padded_out);
   }
@@ -87,10 +120,10 @@ MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard output_mapper(output);
 
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto pad_out_data = out_tensor->mutable_data<float>();
-  auto out_data = output->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto filter_data = filter->data<T>();
+  auto pad_out_data = out_tensor->mutable_data<T>();
+  auto out_data = output->mutable_data<T>();
 
   auto &in_shape = input->shape();
 
@@ -119,15 +152,15 @@ MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
 
   for (index_t b = 0; b < batch; ++b) {
     for (index_t c = 0; c < channels; ++c) {
-      float *out_base =
+      T *out_base =
           pad_out_data + (b * channels + c) * out_img_size;
       for (index_t i = 0; i < in_height; ++i) {
         for (index_t j = 0; j < in_width; ++j) {
-          const index_t out_offset =
-              i * strides_[0] * pad_out_width + j * strides_[1];
+          const index_t out_offset = i * GroupDeconv2d<T>::strides_[0] *
+              pad_out_width + j * GroupDeconv2d<T>::strides_[1];
           const index_t input_idx =
               (b * channels + c) * in_img_size + i * in_width + j;
-          const float val = input_data[input_idx];
+          const T val = input_data[input_idx];
           const index_t kernel_offset = c * kernel_size;
           for (int k = 0; k < kernel_size; ++k) {
             const index_t out_idx = out_offset + index_map[k];
@@ -143,13 +176,13 @@ MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
     for (index_t i = 0; i < batch; ++i) {
       for (index_t j = 0; j < channels; ++j) {
         for (index_t k = 0; k < out_height; ++k) {
-          const float *input_base =
+          const T *input_base =
               pad_out_data
                   + ((i * channels + j) * pad_out_height + (k + pad_top))
                       * pad_out_width;
-          float *output_base =
+          T *output_base =
               out_data + ((i * channels + j) * out_height + k) * out_width;
-          memcpy(output_base, input_base + pad_left, out_width * sizeof(float));
+          memcpy(output_base, input_base + pad_left, out_width * sizeof(T));
         }
       }
     }
@@ -157,11 +190,12 @@ MaceStatus DepthwiseDeconv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus GroupDeconv2d<float>::Compute(const OpContext *context,
-                                         const Tensor *input,
-                                         const Tensor *filter,
-                                         const Tensor *output_shape,
-                                         Tensor *output) {
+template<typename T>
+MaceStatus GroupDeconv2d<T>::Compute(const OpContext *context,
+                                     const Tensor *input,
+                                     const Tensor *filter,
+                                     const Tensor *output_shape,
+                                     Tensor *output) {
   MACE_UNUSED(context);
 
   std::vector<index_t> out_shape;
@@ -199,15 +233,14 @@ MaceStatus GroupDeconv2d<float>::Compute(const OpContext *context,
         std::accumulate(padded_out_shape.begin(),
                         padded_out_shape.end(),
                         1,
-                        std::multiplies<index_t>()) * sizeof(float);
+                        std::multiplies<index_t>()) * sizeof(T);
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     index_t scratch_size = PadAlignSize(padded_out_size);
     scratch->GrowSize(scratch_size);
 
-    std::unique_ptr<Tensor>
-        padded_out
-        (make_unique<Tensor>(scratch->Scratch(scratch_size), DT_FLOAT));
+    std::unique_ptr<Tensor> padded_out(make_unique<Tensor>(
+        scratch->Scratch(scratch_size), DataTypeToEnum<T>::v()));
     padded_out->Reshape(padded_out_shape);
     padded_output = std::move(padded_out);
   }
@@ -222,10 +255,10 @@ MaceStatus GroupDeconv2d<float>::Compute(const OpContext *context,
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard output_mapper(output);
 
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto pad_out_data = out_tensor->mutable_data<float>();
-  auto out_data = output->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto filter_data = filter->data<T>();
+  auto pad_out_data = out_tensor->mutable_data<T>();
+  auto out_data = output->mutable_data<T>();
 
   auto &in_shape = input->shape();
 
@@ -288,13 +321,13 @@ MaceStatus GroupDeconv2d<float>::Compute(const OpContext *context,
     for (int i = 0; i < batch; ++i) {
       for (int j = 0; j < out_channels; ++j) {
         for (int k = 0; k < out_height; ++k) {
-          const float *input_base =
+          const T *input_base =
               pad_out_data
                   + ((i * out_channels + j) * pad_out_height + (k + pad_top))
                       * pad_out_width;
-          float *output_base =
+          T *output_base =
               out_data + ((i * out_channels + j) * out_height + k) * out_width;
-          memcpy(output_base, input_base + pad_left, out_width * sizeof(float));
+          memcpy(output_base, input_base + pad_left, out_width * sizeof(T));
         }
       }
     }
@@ -302,10 +335,16 @@ MaceStatus GroupDeconv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-typedef DepthwiseDeconv2d<float> DepthwiseDeconv2dRef;
-MACE_REGISTER_DELEGATOR(
-    registry, DepthwiseDeconv2dRef, delegator::DepthwiseDeconv2dParam,
-    MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float, REF, General))
+void RegisterDepthwiseDeconv2dDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, DepthwiseDeconv2d<float>, delegator::DepthwiseDeconv2dParam,
+      MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU,
+                         float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, DepthwiseDeconv2d<BFloat16>, delegator::DepthwiseDeconv2dParam,
+      MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU,
+                         BFloat16, ImplType::REF));
+}
 
 }  // namespace ref
 }  // namespace ops

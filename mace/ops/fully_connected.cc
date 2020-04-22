@@ -56,20 +56,20 @@ class FullyConnectedOpBase : public Operation {
 template<DeviceType D, class T>
 class FullyConnectedOp;
 
-template<>
-class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
+template<class T>
+class FullyConnectedOp<DeviceType::CPU, T> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context),
         activation_delegator_(delegator::Activation::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, T, kCpuImplType),
             delegator::ActivationParam(activation_,
                                        relux_max_limit_,
                                        leakyrelu_coefficient_))),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -127,7 +127,7 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
       : FullyConnectedOpBase(context),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, CPU, uint8_t, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, uint8_t, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -226,6 +226,8 @@ class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
 void RegisterFullyConnected(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "FullyConnected",
                    FullyConnectedOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "FullyConnected",
+                        FullyConnectedOp, DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "FullyConnected",

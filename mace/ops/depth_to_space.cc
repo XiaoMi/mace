@@ -28,8 +28,8 @@ namespace ops {
 template<DeviceType D, class T>
 class DepthToSpaceOp;
 
-template<>
-class DepthToSpaceOp<CPU, float> : public Operation {
+template<class T>
+class DepthToSpaceOp<CPU, T> : public Operation {
  public:
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context),
@@ -59,8 +59,8 @@ class DepthToSpaceOp<CPU, float> : public Operation {
 
     Tensor::MappingGuard logits_guard(input);
     Tensor::MappingGuard output_guard(output);
-    const float *input_ptr = input->data<float>();
-    float *output_ptr = output->mutable_data<float>();
+    const T *input_ptr = input->data<T>();
+    T *output_ptr = output->mutable_data<T>();
 
     for (index_t b = 0; b < batch_size; ++b) {
       for (index_t d = 0; d < output_depth; ++d) {
@@ -188,6 +188,8 @@ class DepthToSpaceOp<DeviceType::GPU, float> : public Operation {
 void RegisterDepthToSpace(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthToSpace",
                    DepthToSpaceOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "DepthToSpace",
+                        DepthToSpaceOp, DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "DepthToSpace",

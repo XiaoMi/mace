@@ -143,8 +143,8 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
 };
 
 void RegisterCumsum(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Cumsum", CumsumOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Cumsum", CumsumOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Cumsum", CumsumOp, DeviceType::CPU);
 }
 
 }  // namespace ops

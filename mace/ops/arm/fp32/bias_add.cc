@@ -129,8 +129,11 @@ void BiasAdd::AddBias(const OpContext *context,
   }
 }
 
-MACE_REGISTER_DELEGATOR(registry, BiasAdd, DelegatorParam,
-                        MACE_DELEGATOR_KEY(BiasAdd, CPU, float, NEON))
+void RegisterBiasAddDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, BiasAdd, DelegatorParam,
+      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float, ImplType::NEON));
+}
 
 }  // namespace fp32
 }  // namespace arm

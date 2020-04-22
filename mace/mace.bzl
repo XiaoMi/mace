@@ -109,6 +109,12 @@ def if_quantize_enabled(a):
       "//conditions:default": [],
   })
 
+def if_bfloat16_enabled(a):
+  return select({
+      "//mace:bfloat16_enabled": a,
+      "//conditions:default": [],
+  })
+
 def if_rpcmem_enabled(a):
   return select({
       "//mace:rpcmem_enabled": a,

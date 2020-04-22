@@ -44,8 +44,8 @@ const std::vector<int> kDepthwiseStrides = {1, 1};
 template<DeviceType D, class T>
 class DepthwiseDeconv2dOp;
 
-template<>
-class DepthwiseDeconv2dOp<DeviceType::CPU, float>
+template<class T>
+class DepthwiseDeconv2dOp<DeviceType::CPU, T>
     : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
@@ -53,12 +53,13 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                                   T, kCpuImplType),
                 delegator::ActivationParam(activation_, relux_max_limit_,
                                            leakyrelu_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -75,7 +76,7 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
     bool is_depthwise = group_ == in_channels;
 
     if (depthwise_deconv2d_delegator_ == nullptr) {
-      if (MACE_CPU_IMPL_TYPE == NEON) {
+      if (kCpuImplType == NEON) {
         const index_t kernel_h = filter->dim(2);
         const index_t kernel_w = filter->dim(3);
         bool use_neon_3x3_s1 = kernel_h == kernel_w && kernel_h == 3 &&
@@ -88,20 +89,20 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
             strides_[0] == strides_[1] && strides_[0] == 2;
 
         if (is_depthwise) {
-          std::string tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
-                                                  MACE_CPU_IMPL_TYPE, General);
+          auto tag = MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType);
           if (use_neon_3x3_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K3x3S1);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K3x3S1);
           } else if (use_neon_3x3_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K3x3S2);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K3x3S2);
           } else if (use_neon_4x4_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K4x4S1);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K4x4S1);
           } else if (use_neon_4x4_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K4x4S2);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K4x4S2);
           }
           delegator::DepthwiseDeconv2dParam param(strides_, kDepthwiseStrides,
                                                   paddings_, padding_type_,
@@ -109,20 +110,20 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
           depthwise_deconv2d_delegator_ = delegator::DepthwiseDeconv2d::Create(
               context->workspace(), tag, param);
         } else {
-          std::string tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
-                                                  MACE_CPU_IMPL_TYPE, General);
+          auto tag = MACE_DELEGATOR_KEY(GroupDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType);
           if (use_neon_3x3_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K3x3S1);
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K3x3S1);
           } else if (use_neon_3x3_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K3x3S2);
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K3x3S2);
           } else if (use_neon_4x4_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K4x4S1);
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K4x4S1);
           } else if (use_neon_4x4_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, CPU, float,
-                                        MACE_CPU_IMPL_TYPE, K4x4S2);
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+                                        kCpuImplType, K4x4S2);
           }
           delegator::GroupDeconv2dParam param(strides_, kDepthwiseStrides,
                                               paddings_, padding_type_,
@@ -218,6 +219,8 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 void RegisterDepthwiseDeconv2d(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseDeconv2d",
                    DepthwiseDeconv2dOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "DepthwiseDeconv2d",
+                        DepthwiseDeconv2dOp, DeviceType::CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "DepthwiseDeconv2d", DepthwiseDeconv2dOp);
 }

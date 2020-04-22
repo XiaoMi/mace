@@ -133,6 +133,14 @@ config_setting(
 )
 
 config_setting(
+    name = "bfloat16_enabled",
+    define_values = {
+        "bfloat16": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "rpcmem_enabled",
     define_values = {
         "rpcmem": "true",

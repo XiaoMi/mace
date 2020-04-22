@@ -35,8 +35,8 @@ namespace ops {
 template<DeviceType D, typename T>
 class LpNormOp;
 
-template<>
-class LpNormOp<DeviceType::CPU, float> : public Operation {
+template<class T>
+class LpNormOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit LpNormOp(OpConstructContext *context)
       : Operation(context),
@@ -59,8 +59,8 @@ class LpNormOp<DeviceType::CPU, float> : public Operation {
     Tensor::MappingGuard guard_input(input);
     Tensor::MappingGuard guard_output(output);
 
-    const auto *input_data = input->data<float>();
-    auto *output_data = output->mutable_data<float>();
+    const auto *input_data = input->data<T>();
+    auto *output_data = output->mutable_data<T>();
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
     auto outer_loop = std::accumulate(input_shape.begin(),
@@ -95,7 +95,8 @@ class LpNormOp<DeviceType::CPU, float> : public Operation {
       for (index_t i = start; i < end; i += step) {
         auto output_data_base = output_data + inner_loop * i;
         norm_ptr[i] = std::accumulate(output_data_base,
-                                      output_data_base + inner_loop, 0.0f);
+                                      output_data_base + inner_loop,
+                                      static_cast<T>(0.0f));
         norm_ptr[i] = std::pow(norm_ptr[i], power);
         norm_ptr[i] += 1e-6;
       }
@@ -151,6 +152,8 @@ class LpNormOp<DeviceType::GPU, float> : public Operation {
 void RegisterLpNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LpNorm", LpNormOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "LpNorm", LpNormOp,
+                        DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "LpNorm", LpNormOp);
 }
 

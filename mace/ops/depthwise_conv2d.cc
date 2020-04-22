@@ -63,20 +63,21 @@ class DepthwiseConv2dOpBase : public ConvPool2dOpBase {
 template<DeviceType D, class T>
 class DepthwiseConv2dOp;
 
-template<>
-class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
+template<class T>
+class DepthwiseConv2dOp<DeviceType::CPU, T> : public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
       : DepthwiseConv2dOpBase(context),
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, CPU, float, MACE_CPU_IMPL_TYPE),
+                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                                   T, kCpuImplType),
                 delegator::ActivationParam(activation_, relux_max_limit_,
                                            leakyrelu_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, CPU, float, MACE_CPU_IMPL_TYPE),
+            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -93,9 +94,9 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
     MACE_CHECK_NOTNULL(output);
 
     if (depthwise_conv2d_delegator_ == nullptr) {
-      std::string tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float,
-                                              REF, General);
-      if (MACE_CPU_IMPL_TYPE == NEON) {
+      auto tag = MACE_DELEGATOR_KEY(DepthwiseConv2d, DeviceType::CPU,
+                                    T, ImplType::REF);
+      if (kCpuImplType == NEON) {
         const index_t filter_h = filter->dim(2);
         const index_t filter_w = filter->dim(3);
         const index_t stride_h = strides_[0];
@@ -104,13 +105,13 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
         const index_t dilation_w = dilations_[1];
         if (filter_h == 3 && filter_w == 3 && stride_h == 1 && stride_w == 1
             && dilation_h == 1 && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K3x3S1);
+          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K3x3S1);
         } else if (filter_h == 3 && filter_w == 3 && stride_h == 2
             && stride_w == 2
             && dilation_h == 1 && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, CPU, float,
-                                      MACE_CPU_IMPL_TYPE, K3x3S2);
+          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU, T,
+                                      kCpuImplType, K3x3S2);
         }
       }
       delegator::Conv2dParam param(strides_, dilations_,
@@ -347,7 +348,8 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class DepthwiseConv2dOp<DeviceType::GPU, float> : public DepthwiseConv2dOpBase {
+class DepthwiseConv2dOp<DeviceType::GPU, float> :
+    public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
       : DepthwiseConv2dOpBase(context) {
@@ -402,6 +404,8 @@ class DepthwiseConv2dOp<DeviceType::GPU, float> : public DepthwiseConv2dOpBase {
 void RegisterDepthwiseConv2d(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
                    DepthwiseConv2dOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "DepthwiseConv2d",
+                        DepthwiseConv2dOp, DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",

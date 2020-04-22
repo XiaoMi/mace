@@ -89,15 +89,16 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
     output_shape[dim_size - 2] = output_chunk;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    const index_t extract_out_size = PadAlignSize(output_dim * sizeof(float));
+    const index_t extract_out_size = PadAlignSize(output_dim * sizeof(T));
     ScratchBuffer *scratch = context->device()->scratch_buffer();
     scratch->Rewind();
     scratch->GrowSize(extract_out_size);
 
-    Tensor extract_out(scratch->Scratch(extract_out_size), DT_FLOAT);
+    Tensor extract_out(
+        scratch->Scratch(extract_out_size), DataTypeToEnum<T>::v());
     extract_out.Reshape({1, output_dim});
     extract_out.Clear();
-    float *extract_out_data = extract_out.mutable_data<float>();
+    T *extract_out_data = extract_out.mutable_data<T>();
 
     Tensor::MappingGuard guard_input(input);
     Tensor::MappingGuard guard_output(output);
@@ -162,7 +163,7 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
           }, 0, input_dim, 1);
         }
         memcpy(output_data + (b * output_chunk + i) * output_dim,
-               extract_out_data, output_dim * sizeof(float));
+               extract_out_data, output_dim * sizeof(T));
       }
     }
 
@@ -180,6 +181,8 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
 void RegisterExtractPooling(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExtractPooling", ExtractPoolingOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "ExtractPooling", ExtractPoolingOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

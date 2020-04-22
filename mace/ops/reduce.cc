@@ -145,7 +145,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     MACE_UNUSED(context);
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
-        T tmp = 0;
+        T tmp = 0.f;
         for (int i = 0; i < data_reshape_[0]; ++i) {
           tmp = tmp + input[i];
         }
@@ -169,7 +169,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
         }
         output[0] = tmp;
       } else if (type == ReduceType::SUM) {
-        T tmp = 0;
+        T tmp = 0.f;
         for (int i = 0; i < data_reshape_[0]; ++i) {
           tmp = tmp + input[i];
         }
@@ -193,7 +193,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         if (type == ReduceType::MEAN) {
           for (index_t i = start; i < end; i += step) {
-            T tmp = 0;
+            T tmp = 0.f;
             for (int j = 0; j < data_reshape_[0]; ++j) {
               tmp += input[j * data_reshape_[1] + i];
             }
@@ -225,7 +225,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
           }
         } else if (type == ReduceType::SUM) {
           for (index_t i = start; i < end; i += step) {
-            T tmp = 0;
+            T tmp = 0.f;
             for (int j = 0; j < data_reshape_[0]; ++j) {
               tmp += input[j * data_reshape_[1] + i];
             }
@@ -239,7 +239,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         if (type == ReduceType::MEAN) {
           for (index_t i = start; i < end; i += step) {
-            T tmp = 0;
+            T tmp = 0.f;
             for (int j = 0; j < data_reshape_[1]; ++j) {
               tmp += input[i * data_reshape_[1] + j];
             }
@@ -271,7 +271,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
           }
         } else if (type == ReduceType::SUM) {
           for (index_t i = start; i < end; i += step) {
-            T tmp = 0;
+            T tmp = 0.f;
             for (int j = 0; j < data_reshape_[1]; ++j) {
               tmp += input[i * data_reshape_[1] + j];
             }
@@ -335,9 +335,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
             T tmp = 1;
             for (int j = 0; j < data_reshape_[2]; ++j) {
               for (int k = 0; k < data_reshape_[0]; ++k) {
-                tmp *=
-                    input[(k * data_reshape_[1] + i) * data_reshape_[2]
-                        + j];
+                tmp *= input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
               }
             }
             output[i] = tmp;
@@ -1036,6 +1034,8 @@ class ReduceOp<DeviceType::GPU, float> : public ReduceOpBase {
 void RegisterReduce(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Reduce", ReduceOp,
+                        DeviceType::CPU);
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
                    DeviceType::CPU, int);
 #ifdef MACE_ENABLE_QUANTIZE

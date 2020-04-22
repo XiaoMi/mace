@@ -53,6 +53,13 @@ namespace mace {
 #define MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)
 #endif
 
+#ifdef MACE_ENABLE_BFLOAT16
+#define MACE_TYPE_ENUM_SWITCH_CASE_BFLOAT16(STATEMENTS)             \
+  MACE_CASE(BFloat16, MACE_SINGLE_ARG(STATEMENTS))
+#else
+#define MACE_TYPE_ENUM_SWITCH_CASE_BFLOAT16(STATEMENTS)
+#endif  // MACE_ENABLE_BFLOAT16
+
 #if MACE_ENABLE_OPENCL
 #define MACE_TYPE_ENUM_SWITCH_CASE_OPENCL(STATEMENTS)           \
   MACE_CASE(half, MACE_SINGLE_ARG(STATEMENTS))
@@ -67,6 +74,7 @@ namespace mace {
     MACE_CASE(uint8_t, MACE_SINGLE_ARG(STATEMENTS))                \
     MACE_CASE(int32_t, MACE_SINGLE_ARG(STATEMENTS))                \
     MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)                    \
+    MACE_TYPE_ENUM_SWITCH_CASE_BFLOAT16(STATEMENTS)                \
     MACE_TYPE_ENUM_SWITCH_CASE_OPENCL(STATEMENTS)                  \
     case DT_INVALID:                                               \
       INVALID_STATEMENTS;                                          \
@@ -419,7 +427,8 @@ class Tensor {
       if (i != 0 && i % shape_.back() == 0) {
         os << "\n";
       }
-      MACE_RUN_WITH_TYPE_ENUM(dtype_, (os << (this->data<T>()[i]) << ", "));
+      MACE_RUN_WITH_TYPE_ENUM(
+          dtype_, (os << this->data<T>()[i] << ", "));
     }
     LOG(INFO) << os.str();
   }

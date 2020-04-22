@@ -98,6 +98,8 @@ class ReplaceIndexOp<DeviceType::CPU, T> : public Operation {
 void RegisterReplaceIndex(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ReplaceIndex", ReplaceIndexOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "ReplaceIndex", ReplaceIndexOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

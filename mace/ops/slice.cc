@@ -87,6 +87,8 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
 void RegisterSlice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Slice", SliceOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Slice", SliceOp,
+                        DeviceType::CPU);
 }
 
 }  // namespace ops

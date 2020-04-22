@@ -12,19 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-#include "mace/ops/ref/conv_2d.h"
-
 #include <vector>
+
+#include "mace/ops/delegator/conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace ref {
 
-MaceStatus Conv2d<float>::Compute(const OpContext *context,
-                                  const Tensor *input,
-                                  const Tensor *filter,
-                                  Tensor *output) {
+template<typename T>
+class Conv2d : public delegator::Conv2d {
+ public:
+  explicit Conv2d(const delegator::Conv2dParam &param)
+      : delegator::Conv2d(param) {}
+  ~Conv2d() {}
+  MaceStatus Compute(
+      const OpContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      Tensor *output) override;
+};
+
+template<typename T>
+MaceStatus Conv2d<T>::Compute(const OpContext *context,
+                              const Tensor *input,
+                              const Tensor *filter,
+                              Tensor *output) {
   MACE_UNUSED(context);
 
   const std::vector<index_t> in_shape = input->shape();
@@ -62,9 +75,9 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
   Tensor::MappingGuard input_guard(input);
   Tensor::MappingGuard filter_guard(filter);
   Tensor::MappingGuard output_guard(output);
-  auto input_data = input->data<float>();
-  auto filter_data = filter->data<float>();
-  auto output_data = output->mutable_data<float>();
+  auto input_data = input->data<T>();
+  auto filter_data = filter->data<T>();
+  auto output_data = output->mutable_data<T>();
 
   for (index_t b = 0; b < in_shape[0]; b++) {
     for (index_t m = 0; m < filter_shape[0]; ++m) {
@@ -74,7 +87,7 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
       const index_t out_width = out_shape[3];
       const index_t in_channels = filter_shape[1];
 
-      float *out_ptr_base =
+      T *out_ptr_base =
           output_data + b * out_batch_size + m * out_image_size;
 
       for (index_t h = 0; h < out_height; ++h) {
@@ -82,9 +95,9 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
           float sum = 0;
 
           for (index_t c = 0; c < in_channels; ++c) {
-            const float *in_ptr_base =
+            const T *in_ptr_base =
                 input_data + b * in_batch_size + c * in_image_size;
-            const float *filter_ptr =
+            const T *filter_ptr =
                 filter_data + m * in_channels * filter_size + c * filter_size;
 
             for (index_t kh = 0; kh < filter_shape[2]; ++kh) {
@@ -94,7 +107,9 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
                 const index_t
                     iw = -pad_left + w * strides_[1] + kw * dilations_[1];
                 if (ih >= 0 && ih < in_height && iw >= 0 && iw < in_width) {
-                  sum += in_ptr_base[ih * in_width + iw] * filter_ptr[kw];
+                  float input_value = in_ptr_base[ih * in_width + iw];
+                  float filter_value = filter_ptr[kw];
+                  sum += input_value * filter_value;
                 }
               }  // kw
               filter_ptr += filter_shape[3];
@@ -109,9 +124,14 @@ MaceStatus Conv2d<float>::Compute(const OpContext *context,
   return MaceStatus::MACE_SUCCESS;
 }
 
-typedef Conv2d<float> Conv2dRef;
-MACE_REGISTER_DELEGATOR(registry, Conv2dRef, delegator::Conv2dParam,
-                        MACE_DELEGATOR_KEY_EX(Conv2d, CPU, float, REF, General))
+void RegisterConv2dDelegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_DELEGATOR(
+      registry, Conv2d<float>, delegator::Conv2dParam,
+      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, float, ImplType::REF));
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, Conv2d<BFloat16>, delegator::Conv2dParam,
+      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, BFloat16, ImplType::REF));
+}
 
 }  // namespace ref
 }  // namespace ops

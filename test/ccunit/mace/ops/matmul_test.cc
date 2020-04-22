@@ -16,7 +16,6 @@
 
 #include "mace/ops/delegator/gemm.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/ref/gemm.h"
 
 namespace mace {
 namespace ops {
@@ -112,7 +111,9 @@ void Complex(const std::vector<index_t> &batch,
       .Finalize(net.NewOperatorDef());
   net.RunOp(CPU);
 
-  ref::Gemm<float> gemm = ref::Gemm<float>(delegator::GemmParam());
+  std::unique_ptr<delegator::Gemm> gemm = delegator::Gemm::Create(
+      net.ws(), MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float, ImplType::REF),
+      delegator::GemmParam());
   Tensor expected_output_tensor;
   std::vector<index_t> expected_output_shape({rows, cols});
   expected_output_shape.insert(expected_output_shape.begin(),
@@ -121,20 +122,20 @@ void Complex(const std::vector<index_t> &batch,
   expected_output_tensor.Resize(expected_output_shape);
   index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
                                         std::multiplies<index_t>());
-  gemm.Compute(nullptr,
-               net.GetTensor("A"),
-               net.GetTensor("B"),
-               batch_count,
-               lhs_rows,
-               lhs_cols,
-               rhs_rows,
-               rhs_cols,
-               transpose_lhs,
-               transpose_rhs,
-               false,
-               lhs_batched,
-               rhs_batched,
-               &expected_output_tensor);
+  gemm->Compute(nullptr,
+                net.GetTensor("A"),
+                net.GetTensor("B"),
+                batch_count,
+                lhs_rows,
+                lhs_cols,
+                rhs_rows,
+                rhs_cols,
+                transpose_lhs,
+                transpose_rhs,
+                false,
+                lhs_batched,
+                rhs_batched,
+                &expected_output_tensor);
 
   ExpectTensorNear<float>(expected_output_tensor, *net.GetTensor("Output"),
       1e-4, 1e-2);
