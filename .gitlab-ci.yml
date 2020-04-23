@@ -56,7 +56,34 @@ cmake_build_android-arm64-v8:
 bazel_build:
   stage: build
   script:
-    - sh tools/bazel-build-standalone-lib.sh
+    - bash tools/bazel_build_standalone_lib.sh
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,dsp
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,apu
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,dsp
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,apu
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu,gpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=aarch64_linux_gnu --runtimes=cpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=aarch64_linux_gnu --runtimes=cpu,gpu
+    - bash tools/bazel_build_standalone_lib.sh --abi=host
+    - bash tools/bazel_build_standalone_lib.sh --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,dsp --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,apu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,dsp --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,apu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu,gpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=aarch64_linux_gnu --runtimes=cpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=aarch64_linux_gnu --runtimes=cpu,gpu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=host --static
   only:
     - triggers
 

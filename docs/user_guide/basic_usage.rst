@@ -5,7 +5,7 @@ Basic usage for Bazel users
 Build and run an example model
 -------------------------------
 
-At first, make sure the environment has been set up correctly already (refer to :doc:`../installation/env_requirement`).
+At first, make sure the environment has been set up correctly already (refer to :doc:`../installation/env_requirement.rst`).
 
 The followings are instructions about how to quickly build and run a provided model in
 `MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__.
@@ -45,16 +45,16 @@ Here we use the mobilenet-v2 model as an example.
         cd path/to/mace
         # Build library
         # output lib path: build/lib
-        bash tools/bazel-build-standalone-lib.sh
-
+        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-static]
 
     .. note::
 
         - This step can be skipped if you just want to run a model using ``tools/converter.py``, such as commands in step 5.
-
-        - Libraries in ``build/lib/armeabi-v7a/cpu_gpu/`` means it can run on ``cpu`` or ``gpu`` devices.
-
-        - The results in ``build/lib/armeabi-v7a/cpu_gpu_dsp/`` need HVX supported.
+        - Use the `-abi` parameter to specify the ABI. Supported ABIs are armeabi-v7a, arm64-v8a, arm_linux_gnueabihf, aarch64_linux_gnu and host (for host machine, linux-x86-64). The default ABI is arm64-v8a.
+        - For each ABI, several runtimes can be chosen by specifying the `-runtimes` parameter. Supported runtimes are CPU, GPU, DSP and APU. By default, the library is built to run on CPU.
+        - Omit the `-static` option if a shared library is desired instead of a static one. By default, a shared library is built.
+        - See 'bash tools/bazel_build_standalone_lib.sh -help' for detailed information.
+        - DO respect the hyphens ('-') and the underscores ('_') in the ABI.
 
 
     4. Convert the pre-trained mobilenet-v2 model to MACE format model.
@@ -189,14 +189,13 @@ Or use bazel to build MACE source code into a library.
         cd path/to/mace
         # Build library
         # output lib path: build/lib
-        bash tools/bazel-build-standalone-lib.sh
+        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-static]
 
-The above command will generate dynamic library ``build/lib/${ABI}/${DEVICES}/libmace.so`` and static library ``build/lib/${ABI}/${DEVICES}/libmace.a``.
+The above command will generate static library ``build/lib/libmace.a`` dynamic library ``build/lib/libmace.so``.
 
     .. warning::
 
-        Please verify that the target_abis param in the above command and your deployment file are the same.
-
+        Please verify that the -abi param in the above command is the same as the target_abi param in your deployment file.
 
 ==================
 5. Run your model
@@ -284,21 +283,9 @@ header files.
     │       └── public
     │           └── mace.h
     ├── lib
-    │   ├── arm64-v8a
-    │   │   └── cpu_gpu
-    │   │       ├── libmace.a
-    │   │       └── libmace.so
-    │   ├── armeabi-v7a
-    │   │   ├── cpu_gpu
-    │   │   │   ├── libmace.a
-    │   │   │   └── libmace.so
-    │   │   └── cpu_gpu_dsp
-    │   │       ├── libhexagon_controller.so
-    │   │       ├── libmace.a
-    │   │       └── libmace.so
-    │   └── linux-x86-64
-    │       ├── libmace.a
-    │       └── libmace.so
+    │   ├── libmace.a	(for static library)
+    │   ├── libmace.so	(for shared library)
+    │   └── libhexagon_controller.so	(for DSP runtime)
     └── mobilenet-v1
         ├── model
         │   ├── mobilenet_v1.data
@@ -387,3 +374,4 @@ Please refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list
     MaceStatus status = engine.Run(inputs, &outputs);
 
 More details are in :doc:`advanced_usage`.
+
