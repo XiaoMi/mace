@@ -56,7 +56,6 @@ void ActivationBenchmark(const char *activation_type, int iters,
   static void MICRO_BM##_##TYPE##_##N##_##H##_##W##_##C(int32_t iters) { \
     const int32_t buffer_length = N * H * W * C;                         \
     MACE_DEFINE_RANDOM_INPUT(float, input, buffer_length);               \
-    MACE_DEFINE_RANDOM_INPUT(float, input, buffer_length);               \
     float *output =                                                      \
         common::test::GetGlobalBuffer()->GetBuffer<float>(buffer_length);\
     int32_t input_dims[] = {N, H, W, C};                                 \
