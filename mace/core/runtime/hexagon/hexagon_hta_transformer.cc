@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/op_context.h"
 #include "mace/core/quantize.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
