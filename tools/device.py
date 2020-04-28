@@ -243,7 +243,8 @@ class DeviceWrapper:
                     "--model_file=%s" % mace_model_path,
                 ],
                 stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
+                stdout=subprocess.PIPE,
+                universal_newlines=True)
             out, err = p.communicate()
             self.stdout = err + out
             six.print_(self.stdout)
