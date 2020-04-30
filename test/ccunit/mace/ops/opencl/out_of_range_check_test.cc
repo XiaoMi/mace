@@ -17,11 +17,12 @@
 
 #include "gtest/gtest.h"
 #include "mace/core/ops/op_context.h"
-#include "mace/core/runtime/opencl/gpu_device.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/ops/ops_test_util.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -32,11 +33,10 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
                                Tensor *buffer,
                                Tensor *image,
                                const std::vector<size_t> &image_shape) {
-  std::unique_ptr<BufferBase> oorc_flag;
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
-
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto *opencl_runtime = OpenclRuntime::Get(context);
+  auto executor = opencl_runtime->GetOpenclExecutor();
 
   std::string kernel_name = "in_out_buffer_to_image";
   std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
@@ -44,6 +44,7 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
   built_options.emplace(kernel_name_ss.str());
+  MACE_OUT_OF_RANGE_DEFINITION;
   MACE_OUT_OF_RANGE_CONFIG;
   MACE_NON_UNIFORM_WG_CONFIG;
   if (buffer->dtype() == image->dtype()) {
@@ -60,36 +61,36 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
   }
 
   cl::Kernel kernel;
-  MACE_RETURN_IF_ERROR(runtime->BuildKernel("buffer_to_image",
-                                            obfuscated_kernel_name,
-                                            built_options,
-                                            &kernel));
+  MACE_RETURN_IF_ERROR(executor->BuildKernel("buffer_to_image",
+                                             obfuscated_kernel_name,
+                                             built_options,
+                                             &kernel));
   MACE_OUT_OF_RANGE_INIT(kernel);
   uint32_t idx = 0;
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    kernel.setArg(idx++,
-                  *(static_cast<cl::Buffer *>(oorc_flag->buffer())));
+  if (executor->IsOutOfRangeCheckEnabled()) {
+    kernel.setArg(idx++, *(oorc_flag.memory<cl::Buffer>()));
   }
   MACE_SET_2D_GWS_ARGS(kernel, gws);
-  kernel.setArg(idx++, *(buffer->opencl_buffer()));
+  kernel.setArg(idx++, *(buffer->memory<cl::Buffer>()));
   MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0,
              "buffer offset not aligned");
   kernel.setArg(idx++,
-                    static_cast<uint32_t>(buffer->buffer_offset() /
-                                          GetEnumTypeSize(buffer->dtype())));
+                static_cast<uint32_t>(buffer->buffer_offset() /
+                                      GetEnumTypeSize(buffer->dtype())));
   kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
   kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
   kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-  kernel.setArg(idx++, *(image->opencl_image()));
+  kernel.setArg(idx++, *(image->mutable_memory<cl::Image>()));
 
   const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
+      static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel));
   const std::vector<uint32_t> lws = {16, kwg_size / 16};
 
   cl_int error;
   cl::Event event;
-  if (runtime->IsNonUniformWorkgroupsSupported()) {
-    error = runtime->command_queue().enqueueNDRangeKernel(
+
+  if (executor->IsNonUniformWorkgroupsSupported()) {
+    error = executor->command_queue().enqueueNDRangeKernel(
         kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   } else {
@@ -97,8 +98,7 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
     for (size_t i = 0; i < lws.size(); ++i) {
       roundup_gws[i] = RoundUp(gws[i], lws[i]);
     }
-
-    error = runtime->command_queue().enqueueNDRangeKernel(
+    error = executor->command_queue().enqueueNDRangeKernel(
         kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
@@ -106,12 +106,12 @@ MaceStatus BufferToImageOpImpl(OpContext *context,
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   }
 
-  runtime->command_queue().finish();
+  executor->command_queue().finish();
   bool is_out_of_range = false;
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    oorc_flag->Map(nullptr);
-    is_out_of_range = *(oorc_flag->mutable_data<int>()) == 1 ? true : false;
-    oorc_flag->UnMap();
+  if (executor->IsOutOfRangeCheckEnabled()) {
+    opencl_runtime->MapBuffer(&oorc_flag, true);
+    is_out_of_range = *(oorc_flag.mutable_data<int>()) == 0 ? false : true;
+    opencl_runtime->UnMapBuffer(&oorc_flag);
   }
   return is_out_of_range ? MaceStatus::MACE_OUT_OF_RESOURCES
                          : MaceStatus::MACE_SUCCESS;
@@ -130,28 +130,26 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   index_t width = 7;
   index_t channels = 11;
 
-  GPUContext gpu_context;
-  std::unique_ptr<Device> device = make_unique<GPUDevice>(
-      gpu_context.opencl_tuner());
+  auto *runtime = test::OpTestContext::Get()->GetRuntime(RT_OPENCL);
+  runtime->ReleaseAllBuffer(RENT_PRIVATE, true);
 
-  Workspace ws(nullptr);
-  OpContext context(&ws, device.get());
+  Workspace ws(nullptr, nullptr);
+  OpContext context(&ws, runtime);
 
   std::vector<index_t> buffer_shape = {batch, height, width, channels};
-  Tensor *buffer =
-      ws.CreateTensor("Buffer", device->allocator(),
-                      DataTypeToEnum<float>::v());
+  Tensor *buffer = ws.CreateTensor(
+      "Buffer", runtime, DataTypeToEnum<float>::v(), false, GPU_BUFFER);
   buffer->Resize(buffer_shape);
 
   std::vector<size_t> image_shape;
-  Tensor *image = ws.CreateTensor("Image", device->allocator(),
-                                  DataTypeToEnum<float>::v());
+  Tensor *image = ws.CreateTensor(
+      "Image", runtime, DataTypeToEnum<float>::v(), false, GPU_IMAGE);
   OpenCLUtil::CalImage2DShape(buffer->shape(),
-                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              BufferContentType::IN_OUT_CHANNEL,
                               &image_shape);
-  image->ResizeImage(buffer->shape(), image_shape);
-  ASSERT_FALSE(BufferToImageOpImpl(&context, buffer, image, image_shape)
-                   != MaceStatus::MACE_SUCCESS);
+  image->Resize(buffer->shape());
+  ASSERT_TRUE(BufferToImageOpImpl(&context, buffer, image, image_shape)
+                  == MaceStatus::MACE_SUCCESS);
 
   std::vector<size_t> overflow_image_shape = image_shape;
   for (size_t i = 0; i < overflow_image_shape.size(); ++i) {

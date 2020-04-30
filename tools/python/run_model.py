@@ -89,20 +89,17 @@ def run_models_for_device(flags, args, dev):
 
 
 def run_model_for_device(flags, args, dev, model_name, model_conf):
-    runtime = flags.runtime
     target_abi = flags.target_abi
     install_dir = run_target.default_install_dir(target_abi) + "/" + model_name
     sysdir = install_dir + "/interior"
     dev.mkdir(sysdir)
 
-    if not runtime:
-        runtime = model_conf[ModelKeys.runtime]
-        if runtime == DeviceType.CPU_GPU:
-            runtime = DeviceType.GPU
-    else:
-        runtime = config_parser.parse_device_type(runtime)
-    mace_check(runtime != DeviceType.APU or target_abi == "arm64-v8a",
-               "APU runtime does only support arm64-v8a")
+    runtime_list = []
+    for graph_name, graph_conf in model_conf[ModelKeys.subgraphs].items():
+        runtime = graph_conf[ModelKeys.runtime]
+        runtime_list.append(runtime)
+        mace_check(runtime != DeviceType.APU or target_abi == "arm64-v8a",
+                   "APU runtime does only support arm64-v8a")
 
     # install models to devices
     workdir = flags.output + "/" + model_name
@@ -129,24 +126,29 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     model_data_file_path = ""
     if not flags.gencode_param:
         model_data_file_path = install_dir + "/" + model_data_file
+
+    input_tensors_info = config_parser.find_input_tensors_info(
+        model_conf[ModelKeys.subgraphs], model_conf[ModelKeys.input_tensors])
+    output_tensors_info = config_parser.find_output_tensors_info(
+        model_conf[ModelKeys.subgraphs], model_conf[ModelKeys.output_tensors])
+
     model_args = {"model_name": model_name,
                   "model_file": model_file_path,
                   "model_data_file": model_data_file_path,
                   "input_node": ",".join(
                       model_conf[ModelKeys.input_tensors]),
                   "input_shape": join_2d_array(
-                      model_conf[ModelKeys.input_shapes]),
+                      input_tensors_info[ModelKeys.input_shapes]),
                   "output_node": ",".join(
                       model_conf[ModelKeys.output_tensors]),
                   "output_shape": join_2d_array(
-                      model_conf[ModelKeys.output_shapes]),
+                      output_tensors_info[ModelKeys.output_shapes]),
                   "input_data_format": ",".join(
                       [df.name for df in
-                       model_conf[ModelKeys.input_data_formats]]),
+                       input_tensors_info[ModelKeys.input_data_formats]]),
                   "output_data_format": ",".join(
                       [df.name for df in
-                       model_conf[ModelKeys.output_data_formats]]),
-                  "device": runtime.name
+                       output_tensors_info[ModelKeys.output_data_formats]])
                   }
 
     opts = ["--%s='%s'" % (arg_key, arg_val) for arg_key, arg_val in
@@ -172,9 +174,9 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
         else:
             generate_input_data(input_file_prefix,
                                 model_conf[ModelKeys.input_tensors],
-                                model_conf[ModelKeys.input_shapes],
-                                model_conf[ModelKeys.input_ranges],
-                                model_conf[ModelKeys.input_data_types])
+                                input_tensors_info[ModelKeys.input_shapes],
+                                input_tensors_info[ModelKeys.input_ranges],
+                                input_tensors_info[ModelKeys.input_data_types])
 
         dev.install(Target(tmpdirname), install_dir + "/validate_in")
         target_input_file = "%s/validate_in/%s" % (
@@ -199,11 +201,11 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
 
     build_dir = flags.build_dir + "/" + target_abi
     libs = []
-    if runtime == DeviceType.HEXAGON:
+    if DeviceType.HEXAGON in runtime_list:
         libs += ["third_party/nnlib/%s/libhexagon_controller.so" % target_abi]
-    if runtime == DeviceType.HTA:
+    elif runtime == DeviceType.HTA:
         libs += ["third_party/hta/%s/libhta_hexagon_runtime.so" % target_abi]
-    elif runtime == DeviceType.APU:
+    elif DeviceType.APU in runtime_list:
         apu_libs = get_apu_so_paths(dev)
         libs += apu_libs
 
@@ -216,7 +218,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                     opts=opts, envs=envs)
     run_target.run_target(target_abi, install_dir, target, dev)
 
-    if runtime == DeviceType.GPU:
+    if DeviceType.GPU in runtime_list:
         opencl_dir = workdir + "/opencl"
         util.mkdir_p(opencl_dir)
         dev.pull(
@@ -252,14 +254,14 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                           validate_weight_file,
                           input_file_prefix,
                           output_file_prefix,
-                          model_conf[ModelKeys.input_shapes],
-                          model_conf[ModelKeys.output_shapes],
-                          model_conf[ModelKeys.input_data_formats],
-                          model_conf[ModelKeys.output_data_formats],
-                          model_conf[ModelKeys.input_tensors],
-                          model_conf[ModelKeys.output_tensors],
+                          input_tensors_info[ModelKeys.input_shapes],
+                          output_tensors_info[ModelKeys.output_shapes],
+                          input_tensors_info[ModelKeys.input_data_formats],
+                          output_tensors_info[ModelKeys.output_data_formats],
+                          input_tensors_info[ModelKeys.input_tensors],
+                          output_tensors_info[ModelKeys.output_tensors],
                           flags.validate_threshold,
-                          model_conf[ModelKeys.input_data_types],
+                          input_tensors_info[ModelKeys.input_data_types],
                           flags.backend,
                           "",
                           "")

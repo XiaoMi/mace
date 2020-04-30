@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/lstm_cell.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -36,7 +38,7 @@ MaceStatus LSTMCellKernel::Compute(
   const index_t hidden_units = pre_output->dim(1);
   const index_t w_blocks = hidden_units >> 2;
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -48,11 +50,11 @@ MaceStatus LSTMCellKernel::Compute(
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("lstmcell", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("lstmcell", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(w_blocks),
@@ -61,29 +63,25 @@ MaceStatus LSTMCellKernel::Compute(
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
     std::vector<index_t> output_shape_padded = {height, 1, 1, hidden_units};
-    std::vector<size_t> output_image_shape;
-    OpenCLUtil::CalImage2DShape(output_shape_padded,
-                                OpenCLBufferType::IN_OUT_CHANNEL,
-                                &output_image_shape);
-    MACE_RETURN_IF_ERROR(output->ResizeImage(pre_output->shape(),
-                                             output_image_shape));
-    MACE_RETURN_IF_ERROR(cell->ResizeImage(pre_cell->shape(),
-                                           output_image_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape_padded));
+    output->Reshape(pre_output->shape());
+    MACE_RETURN_IF_ERROR(cell->Resize(output_shape_padded));
+    cell->Reshape(pre_cell->shape());
 
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_2D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(pre_output->opencl_image()));
-    kernel_.setArg(idx++, *(weight->opencl_image()));
-    kernel_.setArg(idx++, *(bias->opencl_image()));
-    kernel_.setArg(idx++, *(pre_cell->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(pre_output->mutable_memory<cl::Image>()));
+    kernel_.setArg(idx++, *(weight->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(bias->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(pre_cell->memory<cl::Image>()));
     kernel_.setArg(idx++, forget_bias_);
     kernel_.setArg(idx++, static_cast<int32_t>(width));
     kernel_.setArg(idx++, static_cast<int32_t>(hidden_units));
     kernel_.setArg(idx++, static_cast<int32_t>(RoundUpDiv4(width)));
-    kernel_.setArg(idx++, *(cell->opencl_image()));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(cell->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input->shape();
   }
@@ -91,7 +89,7 @@ MaceStatus LSTMCellKernel::Compute(
   const std::vector<uint32_t> lws = {kwg_size_ / 16, 16, 0};
   std::string tuning_key =
       Concat("lstmcell_opencl_kernel", output->dim(0), output->dim(1));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
 

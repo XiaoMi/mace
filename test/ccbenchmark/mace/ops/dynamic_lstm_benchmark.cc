@@ -22,7 +22,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void DynamicLSTM(int iters,
                  int chunk,
                  int input_dim,
@@ -44,6 +44,8 @@ void DynamicLSTM(int iters,
 
   // Add input data
   net.AddRandomInput<D, float>("Input", {chunk, input_dim});
+  net.AddRandomInput<D, float>("PrevOut", {chunk, prev_out_dim});
+  net.AddRandomInput<D, float>("PrevCell", {chunk, cell_dim});
   net.AddRandomInput<D, float>("Weight_A",
                                {weights_a_rows, weights_a_cols},
                                true);
@@ -56,15 +58,19 @@ void DynamicLSTM(int iters,
   net.AddRandomInput<D, float>("Bias_A", {bias_a_rows}, true);
   net.AddRandomInput<D, float>("Bias_B", {bias_b_rows}, true);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("DynamicLSTM", "DynamicLSTMTest")
         .Input("Input")
+        .Input("PrevOut")
+        .Input("PrevCell")
         .Input("Weight_A")
         .Input("Params")
         .Input("Weight_B")
         .Input("Bias_A")
         .Input("Bias_B")
         .Output("Output")
+        .Output("OutCache")
+        .Output("CellCache")
         .AddIntArg("prev_out_delay", -delay)
         .AddIntArg("prev_cell_delay", -delay)
         .AddIntArg("prev_out_dim", prev_out_dim)
@@ -76,14 +82,15 @@ void DynamicLSTM(int iters,
   }
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -113,7 +120,7 @@ void DynamicLSTM(int iters,
         ##_##TYPE##_##DEVICE)
 
 #define MACE_BM_DYNAMIC_LSTM(N, ID, OD, CD, POD, DELAY)                       \
-  MACE_BM_DYNAMIC_LSTM_MACRO(N, ID, OD, CD, POD, DELAY, float, CPU);
+  MACE_BM_DYNAMIC_LSTM_MACRO(N, ID, OD, CD, POD, DELAY, float, RT_CPU);
 
 MACE_BM_DYNAMIC_LSTM(50, 184, 128, 184, 64, 3);
 MACE_BM_DYNAMIC_LSTM(50, 64, 256, 64, 128,  3);

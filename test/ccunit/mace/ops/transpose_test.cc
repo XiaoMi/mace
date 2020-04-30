@@ -25,7 +25,7 @@ void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
   // Construct graph
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<CPU, float>("Input", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", input_shape);
 
   OpDefBuilder("Transpose", "TransposeNCHWTest")
       .Input("Input")
@@ -36,7 +36,7 @@ void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
   // Run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   ExpectTensorNear<float>(*net.GetOutput("InputNCHW"),
@@ -47,7 +47,7 @@ void TransposeNHWCTest(const std::vector<index_t> &input_shape) {
   // Construct graph
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<CPU, float>("Input", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", input_shape);
 
   OpDefBuilder("Transpose", "TransposeNHWCTest")
       .Input("Input")
@@ -58,7 +58,7 @@ void TransposeNHWCTest(const std::vector<index_t> &input_shape) {
   // Run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NCHW, "InputNHWC", DataFormat::NHWC);
 
   ExpectTensorNear<float>(*net.GetOutput("InputNHWC"),
@@ -83,7 +83,8 @@ TEST_F(TransposeOpTest, Rank2) {
   // Construct graph
   OpsTestNet net;
   // Add input data
-  net.AddInputFromArray<CPU, float>("Input", {2, 3}, {1, 2, 3, 4, 5, 6});
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "Input", {2, 3}, {1, 2, 3, 4, 5, 6});
 
   OpDefBuilder("Transpose", "TransposeNCHWTest")
       .Input("Input")
@@ -94,8 +95,8 @@ TEST_F(TransposeOpTest, Rank2) {
   // Run on cpu
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", {3, 2},
-                                    {1, 4, 2, 5, 3, 6});
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "ExpectedOutput", {3, 2}, {1, 4, 2, 5, 3, 6});
 
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
@@ -110,9 +111,8 @@ void Transpose3DTest(const std::vector<index_t> &input_shape,
   // Construct graph
   OpsTestNet net;
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>("Input",
-                                                input_shape,
-                                                input_data);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input", input_shape,
+                                                    input_data);
 
   OpDefBuilder("Transpose", "TransposeNCHWTest")
       .Input("Input")
@@ -123,8 +123,8 @@ void Transpose3DTest(const std::vector<index_t> &input_shape,
   // Run on cpu
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", expected_shape,
-                                    expected_data);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "ExpectedOutput", expected_shape, expected_data);
 
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));

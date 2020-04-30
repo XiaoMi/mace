@@ -23,25 +23,16 @@
 
 namespace mace {
 OpRegistrationInfo::OpRegistrationInfo() {
-  // default device type placer
-  device_placer = [this](OpConditionContext *context) -> std::set<DeviceType> {
+  // default runtime type placer
+  runtime_placer =
+      [this](OpConditionContext *context) -> std::set<RuntimeType> {
     MACE_UNUSED(context);
-    return this->devices;
+    return this->runtimes;
   };
 
   // default input and output memory type setter
   memory_type_setter = [](OpConditionContext *context) -> void {
-    if (context->device()->device_type() == DeviceType::GPU) {
-#ifdef MACE_ENABLE_OPENCL
-      if (context->device()->gpu_runtime()->UseImageMemory()) {
-        context->set_output_mem_type(MemoryType::GPU_IMAGE);
-      } else {
-        context->set_output_mem_type(MemoryType::GPU_BUFFER);
-      }
-#endif  // MACE_ENABLE_OPENCL
-    } else {
-      context->set_output_mem_type(MemoryType::CPU_BUFFER);
-    }
+    context->set_output_mem_type(context->runtime()->GetUsedMemoryType());
   };
 
   data_format_selector = [](OpConditionContext *context)
@@ -56,8 +47,8 @@ OpRegistrationInfo::OpRegistrationInfo() {
   };
 }
 
-void OpRegistrationInfo::AddDevice(DeviceType device) {
-  devices.insert(device);
+void OpRegistrationInfo::AddRuntime(RuntimeType runtime) {
+  runtimes.insert(runtime);
 }
 
 void OpRegistrationInfo::Register(const std::string &key, OpCreator creator) {

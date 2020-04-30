@@ -30,7 +30,7 @@ __kernel void reduce(OUT_OF_RANGE_PARAMS
   const int oh = get_global_id(1);
   const int bc = get_global_id(2);
 #ifndef NON_UNIFORM_WORK_GROUP
-  if (bc >= global_size_dim2)
+  if (bc >= global_size_dim2 || ow >= global_size_dim0)
     return;
 #endif
 
@@ -63,7 +63,7 @@ __kernel void reduce(OUT_OF_RANGE_PARAMS
   }
 #endif
 
-  int pos_x = mad24(c, out_width, ow);
-  int pos_y = mad24(b, out_height, oh);
-  WRITE_IMAGET(output, (int2)(pos_x, pos_y), out);
+  int out_x = mad24(c, out_width, ow);
+  int out_y = mad24(b, out_height, oh);
+  WRITE_IMAGET(output, (int2)(out_x, out_y), out);
 }

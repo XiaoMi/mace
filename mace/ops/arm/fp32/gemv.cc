@@ -49,11 +49,6 @@ MaceStatus Gemv<float>::Compute(const OpContext *context,
   MACE_CHECK(output->size() == batch * lhs_height,
              "Need resize output tensor before call gemv.");
 
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard bias_guard(bias);
-  Tensor::MappingGuard output_guard(output);
-
   const float *lhs_data = lhs->data<float>();
   const float *rhs_data = rhs->data<float>();
   const float *bias_data = nullptr;
@@ -68,8 +63,7 @@ MaceStatus Gemv<float>::Compute(const OpContext *context,
   const index_t w_block_count = lhs_width / w_block_size;
   const index_t w_remain = lhs_width - w_block_size * w_block_count;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {

@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/split.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -27,19 +29,14 @@ MaceStatus SplitKernel::Compute(
   const index_t input_channels = input->dim(3);
   const size_t outputs_count = output_list.size();
   const index_t output_channels = input_channels / outputs_count;
+
   std::vector<index_t> output_shape(
       {input->dim(0), input->dim(1), input->dim(2), output_channels});
-
-  std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape,
-                              OpenCLBufferType::IN_OUT_CHANNEL,
-                              &image_shape);
   for (size_t i = 0; i < outputs_count; ++i) {
-    MACE_RETURN_IF_ERROR(
-        output_list[i]->ResizeImage(output_shape, image_shape));
+    MACE_RETURN_IF_ERROR(output_list[i]->Resize(output_shape));
   }
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -51,13 +48,13 @@ MaceStatus SplitKernel::Compute(
     auto input_dt = input->dtype();
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(input_dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(input_dt));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("split",
-                                              kernel_name,
-                                              built_options,
-                                              &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("split",
+                                               kernel_name,
+                                               built_options,
+                                               &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   const index_t channel_blk = RoundUpDiv4(output_channels);
 
@@ -67,20 +64,20 @@ MaceStatus SplitKernel::Compute(
   };
   MACE_OUT_OF_RANGE_INIT(kernel_);
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   cl::Event event;
   CallStats call_stats{INT64_MAX, 0};
   for (size_t i = 0; i < outputs_count; ++i) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blk * i));
-    kernel_.setArg(idx++, *(output_list[i]->opencl_image()));
+    kernel_.setArg(idx++, *(output_list[i]->memory<cl::Image>()));
 
     cl_int error;
-    if (runtime->IsNonUniformWorkgroupsSupported()) {
-      error = runtime->command_queue().enqueueNDRangeKernel(
+    if (executor->IsNonUniformWorkgroupsSupported()) {
+      error = executor->command_queue().enqueueNDRangeKernel(
           kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     } else {
@@ -89,17 +86,17 @@ MaceStatus SplitKernel::Compute(
         roundup_gws[j] = RoundUp(gws[j], lws[j]);
       }
 
-      error = runtime->command_queue().enqueueNDRangeKernel(
+      error = executor->command_queue().enqueueNDRangeKernel(
           kernel_, cl::NullRange,
           cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     }
     MACE_CL_RET_STATUS(error);
     MACE_OUT_OF_RANGE_VALIDATION;
-    if (context->future() != nullptr && runtime->is_profiling_enabled()) {
+    if (context->future() != nullptr && executor->is_profiling_enabled()) {
       event.wait();
       CallStats tmp_stats;
-      runtime->GetCallStats(event, &tmp_stats);
+      executor->GetCallStats(event, &tmp_stats);
       call_stats.start_micros =
           std::min<int64_t>(tmp_stats.start_micros, call_stats.start_micros);
       call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;

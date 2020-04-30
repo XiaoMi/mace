@@ -87,11 +87,11 @@ class SpaceToBatchOpBase : public Operation {
   }
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class SpaceToBatchNDOp;
 
 template<class T>
-class SpaceToBatchNDOp<DeviceType::CPU, T> : public SpaceToBatchOpBase {
+class SpaceToBatchNDOp<RuntimeType::RT_CPU, T> : public SpaceToBatchOpBase {
  public:
   explicit SpaceToBatchNDOp(OpConstructContext *context)
       : SpaceToBatchOpBase(context) {}
@@ -106,9 +106,6 @@ class SpaceToBatchNDOp<DeviceType::CPU, T> : public SpaceToBatchOpBase {
                                      DataFormat::NCHW,
                                      output_shape.data());
     MACE_RETURN_IF_ERROR(batch_tensor->Resize(output_shape));
-
-    Tensor::MappingGuard input_guard(space_tensor);
-    Tensor::MappingGuard output_guard(batch_tensor);
 
     int pad_top = paddings_[0];
     int pad_left = paddings_[2];
@@ -200,7 +197,8 @@ class SpaceToBatchNDOp<DeviceType::CPU, T> : public SpaceToBatchOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template <>
-class SpaceToBatchNDOp<DeviceType::CPU, uint8_t> : public SpaceToBatchOpBase {
+class SpaceToBatchNDOp<RuntimeType::RT_CPU, uint8_t>
+    : public SpaceToBatchOpBase {
  public:
   explicit SpaceToBatchNDOp(OpConstructContext *context)
       : SpaceToBatchOpBase(context) {}
@@ -216,9 +214,6 @@ class SpaceToBatchNDOp<DeviceType::CPU, uint8_t> : public SpaceToBatchOpBase {
                                      output_shape.data());
     MACE_RETURN_IF_ERROR(batch_tensor->Resize(output_shape));
     int zero_point = space_tensor->zero_point();
-
-    Tensor::MappingGuard input_guard(space_tensor);
-    Tensor::MappingGuard output_guard(batch_tensor);
 
     int pad_top = paddings_[0];
     int pad_left = paddings_[2];
@@ -304,7 +299,8 @@ class SpaceToBatchNDOp<DeviceType::CPU, uint8_t> : public SpaceToBatchOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class SpaceToBatchNDOp<DeviceType::GPU, float> : public SpaceToBatchOpBase {
+class SpaceToBatchNDOp<RuntimeType::RT_OPENCL, float>
+    : public SpaceToBatchOpBase {
  public:
   explicit SpaceToBatchNDOp(OpConstructContext *context)
       : SpaceToBatchOpBase(context) {
@@ -331,13 +327,13 @@ class SpaceToBatchNDOp<DeviceType::GPU, float> : public SpaceToBatchOpBase {
 
 void RegisterSpaceToBatchND(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
-                   SpaceToBatchNDOp, DeviceType::CPU, float);
+                   SpaceToBatchNDOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "SpaceToBatchND",
-                        SpaceToBatchNDOp, DeviceType::CPU);
+                        SpaceToBatchNDOp, RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
-                   SpaceToBatchNDOp, DeviceType::CPU, uint8_t);
+                   SpaceToBatchNDOp, RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "SpaceToBatchND", SpaceToBatchNDOp);

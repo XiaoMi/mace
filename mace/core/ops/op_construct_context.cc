@@ -19,7 +19,7 @@ namespace mace {
 OpConstructContext::OpConstructContext(Workspace *ws)
     : operator_def_(nullptr),
       ws_(ws),
-      device_(nullptr) {}
+      runtime_(nullptr) {}
 
 void OpConstructContext::set_operator_def(
     std::shared_ptr<OperatorDef> operator_def) {

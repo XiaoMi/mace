@@ -525,9 +525,6 @@ MaceStatus Gemm<T>::Compute(
     const bool lhs_batched, const bool rhs_batched, Tensor *output) {
   MACE_CHECK(output->size() == batch * rows * cols,
              "Need resize output tensor before call gemm.");
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard output_guard(output);
   const T *lhs_data = lhs->data<T>();
   const T *rhs_data = rhs->data<T>();
   T *output_data = output->mutable_data<T>();
@@ -545,44 +542,40 @@ MaceStatus Gemm<T>::Compute(
   const index_t cols_padded = RoundUp(cols, col_block_size);
   const index_t depth_padded = RoundUp(depth, depth_block_size);
 
-  ScratchBuffer *scratch = context->device()->scratch_buffer();
+  auto *runtime = context->runtime();
+  MemInfo mem_info(output->memory_type(), DataTypeToEnum<T>::value,
+                   {rows_padded * depth_padded});
+  auto packed_lhs_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  mem_info.dims = {depth_padded * cols_padded};
+  auto packed_rhs_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  mem_info.dims = {rows_padded * cols_padded};
+  auto packed_output_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
 
-  index_t packed_lhs_size =
-      PadAlignSize(sizeof(T) * rows_padded * depth_padded);
-  index_t packed_rhs_size =
-      PadAlignSize(sizeof(T) * depth_padded * cols_padded);
-  index_t packed_output_size =
-      PadAlignSize(sizeof(T) * rows_padded * cols_padded);
   // resize to the total size of lhs & rhs & output anyway,
   // in case we do not cache const tensor for saving memory
-  MACE_RETURN_IF_ERROR(scratch->GrowSize(
-      packed_lhs_size + packed_rhs_size + packed_output_size));
-  T *packed_lhs_data =
-      scratch->Scratch(packed_lhs_size).mutable_data<T>();
-  T *packed_rhs_data =
-      scratch->Scratch(packed_rhs_size).mutable_data<T>();
-  T *packed_output_data =
-      scratch->Scratch(packed_output_size).mutable_data<T>();
+  T *packed_lhs_data = packed_lhs_buffer->mutable_data<T>();
+  T *packed_rhs_data = packed_rhs_buffer->mutable_data<T>();
+  T *packed_output_data = packed_output_buffer->mutable_data<T>();
 
   int cache_side = kNoCache;
   if (cached_ == kCacheLhs) {
-    packed_lhs_data = pack_cache_.mutable_data<T>();
+    packed_lhs_data = pack_cache_->mutable_data<T>();
   } else if (cached_ == kCacheRhs) {
-    packed_rhs_data = pack_cache_.mutable_data<T>();
+    packed_rhs_data = pack_cache_->mutable_data<T>();
   } else if (should_cache_pack_) {
     if (lhs->is_weight() && (!lhs_batched || batch == 1)) {
       cache_side = kCacheLhs;
-      pack_cache_.Resize(packed_lhs_size);
-      packed_lhs_data = pack_cache_.mutable_data<T>();
+      pack_cache_->Resize({packed_lhs_buffer->size()});
+      packed_lhs_data = pack_cache_->mutable_data<T>();
+
     } else if (rhs->is_weight() && (!rhs_batched || batch == 1)) {
       cache_side = kCacheRhs;
-      pack_cache_.Resize(packed_rhs_size);
-      packed_rhs_data = pack_cache_.mutable_data<T>();
+      pack_cache_->Resize({packed_rhs_buffer->size()});
+      packed_rhs_data = pack_cache_->mutable_data<T>();
     }
   }
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   for (index_t b = 0; b < batch; ++b) {
     MatrixMap<const T>
@@ -619,10 +612,8 @@ MaceStatus Gemm<T>::Compute(
 
       if (cache_side == kCacheLhs) {
         cached_ = kCacheLhs;
-        if (lhs->UnderlyingBuffer()->OnHost()) {
-          AdviseFree(reinterpret_cast<void *>(const_cast<T *>(lhs->data<
-                         T>())),
-                     lhs->raw_size());
+        if (lhs->GetCurRuntime()->GetRuntimeType() == RT_CPU) {
+          AdviseFree(const_cast<T *>(lhs->data<T>()), lhs->raw_size());
         }
       }
     }
@@ -646,10 +637,8 @@ MaceStatus Gemm<T>::Compute(
 
       if (cache_side == kCacheRhs) {
         cached_ = kCacheRhs;
-        if (rhs->UnderlyingBuffer()->OnHost()) {
-          AdviseFree(reinterpret_cast<void *>(const_cast<T *>(rhs->data<
-                         T>())),
-                     rhs->raw_size());
+        if (rhs->GetCurRuntime()->GetRuntimeType() == RT_CPU) {
+          AdviseFree(const_cast<T *>(rhs->data<T>()), rhs->raw_size());
         }
       }
     }
@@ -696,11 +685,11 @@ MaceStatus Gemm<T>::Compute(
 void RegisterGemmDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Gemm<float>, delegator::GemmParam,
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float, ImplType::NEON));
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Gemm<BFloat16>, delegator::GemmParam,
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, BFloat16, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, BFloat16, ImplType::NEON));
 }
 }  // namespace arm
 }  // namespace ops

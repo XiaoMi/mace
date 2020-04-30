@@ -23,9 +23,8 @@ namespace {
 
 void TestQuantizeDequantize(const std::vector<float> &input, bool non_zero) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input",
-                                    {static_cast<index_t>(input.size())},
-                                    input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "Input", {static_cast<index_t>(input.size())}, input);
   OpDefBuilder("Quantize", "QuantizeTest")
       .Input("Input")
       .Output("QuantizeOutput")

@@ -21,8 +21,7 @@
  *          --output_shape=1,224,224,2   \
  *          --input_file=input_data \
  *          --output_file=mace.out  \
- *          --model_data_file=model_data.data \
- *          --device=GPU
+ *          --model_data_file=model_data.data
  */
 #include <sys/types.h>
 #include <dirent.h>
@@ -34,7 +33,7 @@
 #include <numeric>
 
 #include "gflags/gflags.h"
-#include "mace/ops/common/utils.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
@@ -42,6 +41,7 @@
 #include "mace/utils/memory.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/statistics.h"
+#include "mace/utils/transpose.h"
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -70,22 +70,6 @@ std::string FormatName(const std::string input) {
     if (!isalnum(res[i])) res[i] = '_';
   }
   return res;
-}
-
-DeviceType ParseDeviceType(const std::string &device_str) {
-  if (device_str.compare("CPU") == 0) {
-    return DeviceType::CPU;
-  } else if (device_str.compare("GPU") == 0) {
-    return DeviceType::GPU;
-  } else if (device_str.compare("HEXAGON") == 0) {
-    return DeviceType::HEXAGON;
-  } else if (device_str.compare("HTA") == 0) {
-    return DeviceType::HTA;
-  } else if (device_str.compare("APU") == 0) {
-    return DeviceType::APU;
-  } else {
-    return DeviceType::CPU;
-  }
 }
 
 IDataType ParseDataType(const std::string &data_type_str) {
@@ -169,7 +153,6 @@ DEFINE_string(apu_binary_file,
 DEFINE_string(apu_storage_file,
               "",
               "apu init cache path, used when store apu init cache");
-DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON/APU");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
@@ -183,11 +166,10 @@ DEFINE_bool(benchmark, false, "enable benchmark op");
 
 namespace {
 std::shared_ptr<char> ReadInputDataFromFile(
-    const std::string &file_path, const IDataType file_data_type,
-    const int tensor_size, const IDataType input_data_type,
+    const std::string &file_path, const int tensor_size,
+    const IDataType input_data_type,
     std::shared_ptr<char> input_data = nullptr) {
-  auto file_data_size =
-      tensor_size * GetEnumTypeSize(static_cast<DataType>(file_data_type));
+  auto file_data_size = tensor_size * GetEnumTypeSize(DT_FLOAT);
   auto buffer_in = std::shared_ptr<char>(new char[file_data_size],
                                          std::default_delete<char[]>());
   std::ifstream in_file(file_path, std::ios::in | std::ios::binary);
@@ -205,11 +187,27 @@ std::shared_ptr<char> ReadInputDataFromFile(
     input_data = std::shared_ptr<char>(new char[input_size],
                                        std::default_delete<char[]>());
   }
-  // CopyDataBetweenType is not an exported function, app should not use it,
-  // the follow line is only used to transform data from file during testing.
-  ops::common::utils::CopyDataBetweenType(
-      nullptr, buffer_in.get(), static_cast<DataType>(file_data_type),
-      input_data.get(), static_cast<DataType>(input_data_type), tensor_size);
+  // CopyDataBetweenSameType and CopyDataBetweenDiffType are not an exported
+  // functions, app should not use it, the follow line is only used to
+  // transform data from file during testing.
+  if (input_data_type == IDT_FLOAT) {
+    mace::ops::CopyDataBetweenSameType(
+        nullptr, buffer_in.get(), input_data.get(), input_size);
+#ifdef MACE_ENABLE_FP16
+  } else if (input_data_type == IDT_FLOAT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const float *>(buffer_in.get()),
+        reinterpret_cast<half *>(input_data.get()), tensor_size);
+#endif  // MACE_ENABLE_FP16
+#ifdef MACE_ENABLE_BFLOAT16
+  } else if (input_data_type == IDT_BFLOAT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const float *>(buffer_in.get()),
+        reinterpret_cast<BFloat16 *>(input_data.get()), tensor_size);
+#endif  // MACE_ENABLE_BFLOAT16
+  } else {
+    LOG(FATAL) << "Input data type " << input_data_type << " is not supported.";
+  }
 
   return input_data;
 }
@@ -222,17 +220,34 @@ int64_t WriteOutputDataToFile(const std::string &file_path,
   int64_t output_size = std::accumulate(output_shape.begin(),
                                         output_shape.end(), 1,
                                         std::multiplies<int64_t>());
+  auto output_bytes = output_size * sizeof(float);
   std::vector<float> tmp_output(output_size);
-  // CopyDataBetweenType is not an exported function, app should not use it,
-  // the follow line is only used to transform data to file during testing.
-  ops::common::utils::CopyDataBetweenType(
-      nullptr, output_data.get(), static_cast<DataType>(output_data_type),
-      tmp_output.data(), static_cast<DataType>(file_data_type), output_size);
+  // CopyDataBetweenSameType and CopyDataBetweenDiffType are not an exported
+  // functions, app should not use it, the follow line is only used to
+  // transform data from file during testing.
+  if (file_data_type == output_data_type) {
+    mace::ops::CopyDataBetweenSameType(
+        nullptr, output_data.get(), tmp_output.data(), output_bytes);
+#ifdef MACE_ENABLE_FP16
+  } else if (file_data_type == IDT_FLOAT && output_data_type == IDT_FLOAT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const half *>(output_data.get()),
+        reinterpret_cast<float *>(tmp_output.data()), output_size);
+#endif  // MACE_ENABLE_FP16
+#ifdef MACE_ENABLE_BFLOAT16
+  } else if (file_data_type == IDT_FLOAT && output_data_type == IDT_BFLOAT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const BFloat16 *>(output_data.get()),
+        reinterpret_cast<float *>(tmp_output.data()), output_size);
+#endif  // MACE_ENABLE_BFLOAT16
+  } else {
+    LOG(FATAL) << "Output data type " << output_data_type <<
+               " is not supported.";
+  }
 
   std::ofstream out_file(file_path, std::ios::binary);
   MACE_CHECK(out_file.is_open(), "Open output file failed: ", strerror(errno));
-  out_file.write(reinterpret_cast<char *>(tmp_output.data()),
-                 output_size * sizeof(float));
+  out_file.write(reinterpret_cast<char *>(tmp_output.data()), output_bytes);
   out_file.flush();
   out_file.close();
 
@@ -251,43 +266,36 @@ bool RunModel(const std::string &model_name,
               const std::vector<IDataType> &output_data_types,
               const std::vector<DataFormat> &output_data_formats,
               float cpu_capability) {
-  DeviceType device_type = ParseDeviceType(FLAGS_device);
-  bool mace_benchmark_op = false;
-  if (FLAGS_benchmark &&
-      (device_type == DeviceType::CPU || device_type == DeviceType::GPU)) {
-    mace_benchmark_op = true;
-  }
-
   int64_t t0 = NowMicros();
-  // config runtime
+
   MaceStatus status;
-  MaceEngineConfig config(device_type);
+  // Graph's runtime is set in the yml file, you can use config.SetRuntimeType
+  // To dynamically adjust the runtime type
+  MaceEngineConfig config;
   status = config.SetCPUThreadPolicy(
-          FLAGS_num_threads,
-          static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+      FLAGS_num_threads,
+      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
   if (status != MaceStatus::MACE_SUCCESS) {
     LOG(WARNING) << "Set cpu affinity failed.";
   }
 #if defined(MACE_ENABLE_OPENCL) || defined(MACE_ENABLE_HTA)
-  std::shared_ptr<GPUContext> gpu_context;
-  if (device_type == DeviceType::GPU || device_type == DeviceType::HTA) {
-    const char *storage_path_ptr = getenv("MACE_INTERNAL_STORAGE_PATH");
-    const std::string storage_path =
-        std::string(storage_path_ptr == nullptr ?
-                    "/data/local/tmp/mace_run/interior" : storage_path_ptr);
-    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+  std::shared_ptr<OpenclContext> opencl_context;
+  const char *storage_path_ptr = getenv("MACE_INTERNAL_STORAGE_PATH");
+  const std::string storage_path =
+      std::string(storage_path_ptr == nullptr ?
+                  "/data/local/tmp/mace_run/interior" : storage_path_ptr);
+  std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
 
-    gpu_context = GPUContextBuilder()
-        .SetStoragePath(storage_path)
-        .SetOpenCLBinaryPaths(opencl_binary_paths)
-        .SetOpenCLParameterPath(FLAGS_opencl_parameter_file)
-        .Finalize();
+  opencl_context = GPUContextBuilder()
+      .SetStoragePath(storage_path)
+      .SetOpenCLBinaryPaths(opencl_binary_paths)
+      .SetOpenCLParameterPath(FLAGS_opencl_parameter_file)
+      .Finalize();
 
-    config.SetGPUContext(gpu_context);
-    config.SetGPUHints(
-        static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
-        static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  }
+  config.SetGPUContext(opencl_context);
+  config.SetGPUHints(
+      static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
+      static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
 #endif  // MACE_ENABLE_OPENCL
 #ifdef MACE_ENABLE_HEXAGON
   // SetHexagonToUnsignedPD() can be called for 8150 family(with new cDSP
@@ -301,11 +309,11 @@ bool RunModel(const std::string &model_name,
                      FLAGS_apu_storage_file);
 #endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
-    make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
+      make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_file != "") {
     auto fs = GetFileSystem();
     status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_file.c_str(),
-        &model_graph_data);
+                                                 &model_graph_data);
     if (status != MaceStatus::MACE_SUCCESS) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
@@ -314,11 +322,11 @@ bool RunModel(const std::string &model_name,
   // model_weights_data should be kept the lifetime of MaceEngine if device_type
   // is CPU except half/uint8 weights are used to compress model data size.
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data =
-    make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
+      make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_data_file != "") {
     auto fs = GetFileSystem();
     status = fs->NewReadOnlyMemoryRegionFromFile(FLAGS_model_data_file.c_str(),
-        &model_weights_data);
+                                                 &model_weights_data);
     if (status != MaceStatus::MACE_SUCCESS) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_data_file;
     }
@@ -345,17 +353,17 @@ bool RunModel(const std::string &model_name,
                                    config,
                                    &engine);
 #else
-    (void)(model_name);
+    (void) (model_name);
     if (model_graph_data == nullptr || model_weights_data == nullptr) {
       LOG(INFO) << "Please specify model graph file and model data file";
       return false;
     }
     create_engine_status =
         CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
-                                    model_graph_data->data()),
+                                      model_graph_data->data()),
                                   model_graph_data->length(),
                                   reinterpret_cast<const unsigned char *>(
-                                    model_weights_data->data()),
+                                      model_weights_data->data()),
                                   model_weights_data->length(),
                                   input_names,
                                   output_names,
@@ -393,7 +401,7 @@ bool RunModel(const std::string &model_name,
         std::multiplies<int64_t>());
     auto file_path = FLAGS_input_file + "_" + FormatName(input_names[i]);
     auto input_data = ReadInputDataFromFile(
-        file_path, IDT_FLOAT, input_tensor_size, input_data_types[i]);
+        file_path, input_tensor_size, input_data_types[i]);
 
     inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], input_data,
         input_data_formats[i], input_data_types[i]);
@@ -406,8 +414,9 @@ bool RunModel(const std::string &model_name,
                         std::multiplies<int64_t>());
     auto buffer_out = std::shared_ptr<char>(new char[output_size],
                                             std::default_delete<char[]>());
-    outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out,
-        output_data_formats[i], static_cast<IDataType>(output_data_types[i]));
+    outputs[output_names[i]] = mace::MaceTensor(
+        output_shapes[i], buffer_out, output_data_formats[i],
+        static_cast<IDataType>(output_data_types[i]));
   }
 
   if (!FLAGS_input_dir.empty()) {
@@ -428,7 +437,7 @@ bool RunModel(const std::string &model_name,
           file_name =
               FLAGS_input_dir + "/" + FormatName(input_names[i]) + suffix;
           ReadInputDataFromFile(
-              file_name, IDT_FLOAT, inputs_size[input_names[i]],
+              file_name, inputs_size[input_names[i]],
               input_data_types[i], inputs[input_names[i]].data<char>());
         }
         engine->Run(inputs, &outputs);
@@ -512,7 +521,7 @@ bool RunModel(const std::string &model_name,
         MaceStatus run_status;
         RunMetadata metadata;
         RunMetadata *metadata_ptr = nullptr;
-        if (mace_benchmark_op) {
+        if (FLAGS_benchmark) {
           metadata_ptr = &metadata;
         }
 
@@ -552,7 +561,7 @@ bool RunModel(const std::string &model_name,
           } else {
             int64_t t1 = NowMicros();
             total_run_duration += (t1 - t0);
-            if (mace_benchmark_op) {
+            if (FLAGS_benchmark) {
               op_stat.StatMetadata(metadata);
             }
             break;
@@ -583,7 +592,7 @@ bool RunModel(const std::string &model_name,
     printf("========================================================\n");
     printf("time %15.3f %11.3f %11.3f %11.3f\n",
            cpu_capability, init_millis, warmup_millis, model_run_millis);
-    if (mace_benchmark_op) {
+    if (FLAGS_benchmark) {
       op_stat.PrintStat();
     }
   }
@@ -594,7 +603,7 @@ bool RunModel(const std::string &model_name,
 int Main(int argc, char **argv) {
   std::string usage = "MACE run model tool, please specify proper arguments.\n"
                       "usage: " + std::string(argv[0])
-                      + " --help";
+      + " --help";
   gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -628,7 +637,6 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "apu_cache_policy: " << FLAGS_apu_cache_policy;
   LOG(INFO) << "apu_binary_file: " << FLAGS_apu_binary_file;
   LOG(INFO) << "apu_storage_file: " << FLAGS_apu_storage_file;
-  LOG(INFO) << "device: " << FLAGS_device;
   LOG(INFO) << "round: " << FLAGS_round;
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;
   LOG(INFO) << "gpu_perf_hint: " << FLAGS_gpu_perf_hint;
@@ -679,9 +687,9 @@ int Main(int argc, char **argv) {
   }
 
   std::vector<std::string> raw_input_data_formats =
-    Split(FLAGS_input_data_format, ',');
+      Split(FLAGS_input_data_format, ',');
   std::vector<std::string> raw_output_data_formats =
-    Split(FLAGS_output_data_format, ',');
+      Split(FLAGS_output_data_format, ',');
   std::vector<DataFormat> input_data_formats(input_count);
   std::vector<DataFormat> output_data_formats(output_count);
   for (size_t i = 0; i < input_count; ++i) {
@@ -693,7 +701,8 @@ int Main(int argc, char **argv) {
   float cpu_float32_performance = 0.0f;
   if (FLAGS_input_dir.empty()) {
     // get cpu capability
-    Capability cpu_capability = GetCapability(DeviceType::CPU);
+    Capability cpu_capability =
+        GetCapability(static_cast<DeviceType>(RuntimeType::RT_CPU));
     cpu_float32_performance = cpu_capability.float32_performance.exec_time;
   }
   bool ret = false;

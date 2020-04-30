@@ -130,6 +130,12 @@ def if_rpcmem_enabled(a, default_value = []):
         "//conditions:default": default_value,
     })
 
+def if_opencl_and_rpcmem_enabled(a, default_value = []):
+    return select({
+        "//mace:opencl_and_rpcmem_enabled": a,
+        "//conditions:default": default_value,
+    })
+
 def mace_version_genrule():
     native.genrule(
         name = "mace_version_gen",

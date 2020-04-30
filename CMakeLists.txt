@@ -92,6 +92,10 @@ if(MACE_ENABLE_CUDA)
   enable_language(CUDA)
 endif(MACE_ENABLE_CUDA)
 
+if(MACE_ENABLE_RPCMEM)
+  add_definitions(-DMACE_ENABLE_RPCMEM)
+endif(MACE_ENABLE_RPCMEM)
+
 if(MACE_ENABLE_HEXAGON_DSP OR MACE_ENABLE_HEXAGON_HTA)
   if(ANDROID_ABI STREQUAL "arm64-v8a")
     # Use gold linker to avoid linking check of libcdsprpc.so

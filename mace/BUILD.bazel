@@ -198,3 +198,15 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "opencl_and_rpcmem_enabled",
+    define_values = {
+        "rpcmem": "true",
+        "opencl": "true",
+    },
+    values = {
+        "crosstool_top": "//external:android/crosstool",
+    },
+    visibility = ["//visibility:public"],
+)

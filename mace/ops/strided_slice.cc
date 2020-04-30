@@ -23,7 +23,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class StridedSliceOp : public Operation {
  public:
   explicit StridedSliceOp(OpConstructContext *context)
@@ -36,7 +36,8 @@ class StridedSliceOp : public Operation {
             Operation::GetOptionalArg<int>("shrink_axis_mask", 0)),
         is_slice_(Operation::GetOptionalArg<bool>("slice", false)),
         has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 0)),
-        checked_(false) {
+        checked_(false),
+        tmp_strides_tensor_(context->runtime(), DataTypeToEnum<T>::v()) {
     MACE_CHECK(ellipsis_mask_ == 0 && new_axis_mask_ == 0,
                "ellipsis_mask and new_axis_mask are not supported yet.");
   }
@@ -99,7 +100,6 @@ class StridedSliceOp : public Operation {
     }
     if (strides == nullptr) {
       tmp_strides_tensor_.Resize({begin_indices->size()});
-      Tensor::MappingGuard strides_guard(&tmp_strides_tensor_);
       int32_t *strides_data = tmp_strides_tensor_.mutable_data<int32_t>();
       std::fill(strides_data, strides_data + tmp_strides_tensor_.size(), 1);
       strides = &tmp_strides_tensor_;
@@ -110,10 +110,6 @@ class StridedSliceOp : public Operation {
                strides->dim_size() == 1,
                "Expected begin, end, and strides to be 1D tensor");
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard begin_indices_guard(begin_indices);
-    Tensor::MappingGuard end_indices_guard(end_indices);
-    Tensor::MappingGuard strides_guard(strides);
     const T *input_data = input->data<T>();
     const int32_t *begin_indices_data = begin_indices->data<int32_t>();
     const int32_t *end_indices_data = end_indices->data<int32_t>();
@@ -247,7 +243,6 @@ class StridedSliceOp : public Operation {
 
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    Tensor::MappingGuard output_guard(output);
     T *output_data = output->mutable_data<T>();
 
     bool slice_by_first_axis = true;
@@ -353,11 +348,11 @@ class StridedSliceOp : public Operation {
 
 void RegisterStridedSlice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "StridedSlice", StridedSliceOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_OP(op_registry, "StridedSlice", StridedSliceOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 }
 
 }  // namespace ops

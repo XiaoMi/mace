@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "mace/ops/opencl/buffer/utils.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -47,7 +47,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
 
 class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
  public:
-  DepthwiseConv2dKernel() : old_scratch_size_(0) {}
+  DepthwiseConv2dKernel() {}
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -63,7 +63,6 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
       Tensor *output) override;
 
  private:
-  index_t old_scratch_size_;
   cl::Kernel kernels_[2];
   std::vector<index_t> input_shape_;
 };

@@ -15,33 +15,35 @@
 #ifdef MACE_ENABLE_OPENCL
 
 #include "mace/benchmark_utils/test_benchmark.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 
 namespace mace {
 namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void FilterBufferToImage(
     int iters, int out_channel, int in_channel, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpContext context(net.ws(), OpTestContext::Get()->GetDevice(DeviceType::GPU));
+  OpContext context(net.ws(),
+                    OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL));
 
   // Add input data
   net.AddRandomInput<D, T>("Input", {out_channel, in_channel, height, width});
   // Create output
+  auto data_type = DataTypeToEnum<T>::value;
   Tensor *b2i_output = net.ws()->CreateTensor(
-      "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
+      "B2IOutput", context.runtime(), data_type, false, MemoryType::GPU_IMAGE);
 
   auto transform_func = [&]() {
     OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
         .Transform(&context, net.ws()->GetTensor("Input"),
-                   OpenCLBufferType::CONV2D_FILTER, MemoryType::GPU_IMAGE, 0,
+                   BufferContentType::CONV2D_FILTER, MemoryType::GPU_IMAGE, 0,
                    b2i_output);
   };
 
@@ -68,8 +70,8 @@ void FilterBufferToImage(
   MACE_BENCHMARK(MACE_BM_FILTER_B2I_##O##_##I##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_FILTER_B2I(O, I, H, W)              \
-  MACE_BM_FILTER_B2I_MACRO(O, I, H, W, float, GPU); \
-  MACE_BM_FILTER_B2I_MACRO(O, I, H, W, half, GPU);
+  MACE_BM_FILTER_B2I_MACRO(O, I, H, W, float, RT_OPENCL); \
+  MACE_BM_FILTER_B2I_MACRO(O, I, H, W, half, RT_OPENCL);
 
 MACE_BM_FILTER_B2I(5, 3, 3, 3);
 MACE_BM_FILTER_B2I(5, 3, 7, 7);
@@ -89,24 +91,26 @@ MACE_BM_FILTER_B2I(256, 32, 1, 1);
 MACE_BM_FILTER_B2I(256, 32, 3, 3);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void InOutBufferToImage(
     int iters, int batch, int height, int width, int channel) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpContext context(net.ws(), OpTestContext::Get()->GetDevice(DeviceType::GPU));
+  OpContext context(net.ws(),
+                    OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL));
 
   // Add input data
   net.AddRandomInput<D, T>("Input", {batch, height, width, channel});
   // Create output
+  const auto data_type = DataTypeToEnum<T>::value;
   Tensor *b2i_output = net.ws()->CreateTensor(
-      "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
+      "B2IOutput", context.runtime(), data_type, false, MemoryType::GPU_IMAGE);
 
   auto transform_func = [&]() {
     OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
         .Transform(&context, net.ws()->GetTensor("Input"),
-                   OpenCLBufferType::IN_OUT_CHANNEL, MemoryType::GPU_IMAGE, 0,
+                   BufferContentType::IN_OUT_CHANNEL, MemoryType::GPU_IMAGE, 0,
                    b2i_output);
   };
 
@@ -133,41 +137,43 @@ void InOutBufferToImage(
   MACE_BENCHMARK(MACE_BM_IN_OUT_B2I_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
 #define MACE_BM_IN_OUT_B2I(N, H, W, C)              \
-  MACE_BM_IN_OUT_B2I_MACRO(N, H, W, C, float, GPU); \
-  MACE_BM_IN_OUT_B2I_MACRO(N, H, W, C, half, GPU);
+  MACE_BM_IN_OUT_B2I_MACRO(N, H, W, C, float, RT_OPENCL); \
+  MACE_BM_IN_OUT_B2I_MACRO(N, H, W, C, half, RT_OPENCL);
 
 MACE_BM_IN_OUT_B2I(256, 1, 1, 32);
 MACE_BM_IN_OUT_B2I(256, 3, 3, 32);
 MACE_BM_IN_OUT_B2I(1, 4096, 4096, 3);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void InOutImageToBuffer(
     int iters, int batch, int height, int width, int channel) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpContext context(net.ws(), OpTestContext::Get()->GetDevice(DeviceType::GPU));
+  OpContext context(net.ws(),
+                    OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL));
 
   // Add input data
   net.AddRandomInput<D, T>("Input", {batch, height, width, channel});
   // Create output
+  const auto data_type = DataTypeToEnum<T>::value;
   Tensor *b2i_output = net.ws()->CreateTensor(
-      "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
+      "B2IOutput", context.runtime(), data_type, false, MemoryType::GPU_IMAGE);
 
   auto transform_func_b2i = [&]() {
     OpenCLBufferTransformer(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
         .Transform(&context, net.ws()->GetTensor("Input"),
-                   OpenCLBufferType::IN_OUT_CHANNEL, MemoryType::GPU_IMAGE, 0,
+                   BufferContentType::IN_OUT_CHANNEL, MemoryType::GPU_IMAGE, 0,
                    b2i_output);
   };
   transform_func_b2i();
 
   Tensor *i2b_output = net.ws()->CreateTensor(
-      "I2BOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
+      "I2BOutput", context.runtime(), data_type, false, MemoryType::GPU_BUFFER);
   auto transform_func_i2b = [&]() {
     OpenCLBufferTransformer(MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER)
-        .Transform(&context, b2i_output, OpenCLBufferType::IN_OUT_CHANNEL,
+        .Transform(&context, b2i_output, BufferContentType::IN_OUT_CHANNEL,
                    MemoryType::GPU_BUFFER, 0, i2b_output);
   };
 
@@ -194,8 +200,8 @@ void InOutImageToBuffer(
   MACE_BENCHMARK(MACE_BM_IN_OUT_I2B_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
 #define MACE_BM_IN_OUT_I2B(N, H, W, C)              \
-  MACE_BM_IN_OUT_I2B_MACRO(N, H, W, C, float, GPU); \
-  MACE_BM_IN_OUT_I2B_MACRO(N, H, W, C, half, GPU);
+  MACE_BM_IN_OUT_I2B_MACRO(N, H, W, C, float, RT_OPENCL); \
+  MACE_BM_IN_OUT_I2B_MACRO(N, H, W, C, half, RT_OPENCL);
 
 MACE_BM_IN_OUT_I2B(256, 1, 1, 32);
 MACE_BM_IN_OUT_I2B(256, 3, 3, 32);

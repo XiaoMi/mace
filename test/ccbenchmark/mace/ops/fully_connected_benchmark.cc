@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void FCBenchmark(
     int iters, int batch, int height, int width, int channel, int out_channel) {
   mace::testing::StopTiming();
@@ -31,7 +31,7 @@ void FCBenchmark(
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::GPU) {
+  if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channel});
   } else {
     net.AddRandomInput<D, float>("Input", {batch, channel, height, width});
@@ -48,39 +48,41 @@ void FCBenchmark(
       .Output("Output")
 #ifdef MACE_ENABLE_OPENCL
       .AddIntArg("weight_type",
-                 static_cast<int>(OpenCLBufferType::WEIGHT_WIDTH))
+                 static_cast<int>(BufferContentType::WEIGHT_WIDTH))
 #endif
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
 
 #ifdef MACE_ENABLE_QUANTIZE
 template <>
-void FCBenchmark<CPU, uint8_t>(
+void FCBenchmark<RT_CPU, uint8_t>(
     int iters, int batch, int height, int width, int channel, int out_channel) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<CPU, uint8_t>("Input", {batch, height, width, channel});
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>(
+      "Input", {batch, height, width, channel});
   net.GetTensor("Input")->SetScale(0.1);
-  net.AddRandomInput<CPU, uint8_t>("Weight",
-                                   {out_channel, height, width, channel});
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>
+      ("Weight", {out_channel, height, width, channel});
   net.GetTensor("Weight")->SetScale(0.1);
-  net.AddRandomInput<CPU, uint8_t>("Bias", {out_channel});
+  net.AddRandomInput<RuntimeType::RT_CPU, int32_t>("Bias", {out_channel});
 
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("Input")
@@ -90,7 +92,7 @@ void FCBenchmark<CPU, uint8_t>(
       .AddIntArg("T", DT_UINT8)
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(CPU);
+  net.Setup(RuntimeType::RT_CPU);
   net.GetTensor("Output")->SetScale(0.1);
 
   // Warm-up
@@ -123,22 +125,22 @@ void FCBenchmark<CPU, uint8_t>(
 
 #if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_FC(N, H, W, C, OC)                 \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, float, GPU);    \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU);     \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, CPU)
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, RT_CPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, RT_OPENCL);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, half, RT_OPENCL);     \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, RT_CPU)
 #elif defined(MACE_ENABLE_OPENCL)
 #define MACE_BM_FC(N, H, W, C, OC)                 \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, float, GPU);    \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU)
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, RT_CPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, RT_OPENCL);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, half, RT_OPENCL)
 #elif defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_FC(N, H, W, C, OC)                 \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, CPU)
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, RT_CPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, RT_CPU)
 #else
 #define MACE_BM_FC(N, H, W, C, OC)                 \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU)
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, RT_CPU)
 #endif
 
 MACE_BM_FC(1, 16, 16, 32, 32);

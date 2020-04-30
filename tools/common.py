@@ -213,6 +213,8 @@ def parse_device_type(runtime):
         device_type = DeviceType.CPU
     elif runtime == RuntimeType.apu:
         device_type = DeviceType.APU
+    elif runtime == RuntimeType.cpu_gpu:
+        device_type = DeviceType.GPU
 
     return device_type
 
@@ -393,10 +395,12 @@ class YAMLKeyword(object):
     weight_file_path = 'weight_file_path'
     weight_sha256_checksum = 'weight_sha256_checksum'
     subgraphs = 'subgraphs'
+    default_graph = 'default_graph'
     input_tensors = 'input_tensors'
     input_shapes = 'input_shapes'
     input_ranges = 'input_ranges'
     output_tensors = 'output_tensors'
+    output_aliases = 'output_aliases'
     output_shapes = 'output_shapes'
     check_tensors = 'check_tensors'
     check_shapes = 'check_shapes'

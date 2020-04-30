@@ -31,11 +31,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class IfDefinedOp;
 
-template <typename T>
-class IfDefinedOp<DeviceType::CPU, T> : public Operation {
+template<typename T>
+class IfDefinedOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit IfDefinedOp(OpConstructContext *context)
       : Operation(context),
@@ -57,7 +57,7 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
     }
     for (size_t i = 0; i < cache_forward_indexes_.size(); ++i) {
       MACE_CHECK(cache_forward_indexes_[i] < input_chunk &&
-                     cache_forward_indexes_[i] >= 0 ,
+          cache_forward_indexes_[i] >= 0,
                  "index is over range.");
     }
 
@@ -76,8 +76,8 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
                  cache_count);
       for (size_t i = 0; i < cache_forward_indexes_.size(); ++i) {
         MACE_CHECK(cache_forward_indexes_[i] < input_chunk &&
-          cache_forward_indexes_[i] >= 0,
-          "cache forward index is over range.");
+            cache_forward_indexes_[i] >= 0,
+                   "cache forward index is over range.");
       }
       const Tensor *cache_input = this->Input(CACHE_INPUT);
       MACE_CHECK(cache_input->dim_size() == input->dim_size(),
@@ -96,8 +96,7 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
                  const index_t dim,
                  const std::vector<index_t> &fwd_idxs,
                  T *output_data) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
       for (index_t i = start0; i < end0; i += step0) {
@@ -127,8 +126,6 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     output->Clear();
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
     DelayCopy(context,
@@ -141,7 +138,6 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
 
     if (this->InputSize() == 2 && cache_forward_indexes_.size() > 0) {
       const Tensor *cache_input = this->Input(CACHE_INPUT);
-      Tensor::MappingGuard cache_input_guard(cache_input);
       const T *cache_input_data = cache_input->data<T>();
       DelayCopy(context,
                 cache_input_data,
@@ -165,8 +161,9 @@ class IfDefinedOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterIfDefined(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "IfDefined", IfDefinedOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "IfDefined", IfDefinedOp, DeviceType::CPU);
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "IfDefined",
+                        IfDefinedOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

@@ -28,38 +28,15 @@
 namespace mace {
 namespace test {
 
-inline void GenerateInputs(const std::vector<std::string> &input_names,
+void GenerateInputs(const std::vector<std::string> &input_names,
                            const std::vector<int64_t> &input_shape,
-                           std::map<std::string, mace::MaceTensor> *inputs) {
-  size_t input_size = input_names.size();
-  for (size_t i = 0; i < input_size; ++i) {
-    // Allocate input and output
-    int64_t input_size =
-        std::accumulate(input_shape.begin(), input_shape.end(), 1,
-                        std::multiplies<int64_t>());
-    auto buffer_in = std::shared_ptr<float>(new float[input_size],
-                                            std::default_delete<float[]>());
-    // load input
-    std::vector<float> input_data;
-    ops::test::GenerateRandomRealTypeData(input_shape, &input_data);
-    memcpy(buffer_in.get(), input_data.data(), input_size * sizeof(float));
-    (*inputs)[input_names[i]] = mace::MaceTensor(input_shape, buffer_in);
-  }
-}
+                           std::map<std::string, mace::MaceTensor> *inputs,
+                           MemoryType mem_type = CPU_BUFFER);
 
-inline void GenerateOutputs(const std::vector<std::string> &output_names,
+void GenerateOutputs(const std::vector<std::string> &output_names,
                             const std::vector<int64_t> &output_shape,
-                            std::map<std::string, mace::MaceTensor> *outputs) {
-  size_t output_size = output_names.size();
-  for (size_t i = 0; i < output_size; ++i) {
-    int64_t output_size =
-        std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                        std::multiplies<int64_t>());
-    auto buffer_out = std::shared_ptr<float>(new float[output_size],
-                                             std::default_delete<float[]>());
-    (*outputs)[output_names[i]] = mace::MaceTensor(output_shape, buffer_out);
-  }
-}
+                            std::map<std::string, mace::MaceTensor> *outputs,
+                            MemoryType mem_type = CPU_BUFFER);
 
 template <typename T>
 void Conv3x3(const std::string &input_name,
@@ -90,7 +67,7 @@ void Conv3x3(const std::string &input_name,
 template <typename T>
 void Relu(const std::string &input_name,
           const std::string &output_name,
-          const DeviceType device_type,
+          const RuntimeType device_type,
           NetDef *net_def) {
   OperatorDef operator_def;
   ops::test::OpDefBuilder("Activation", "ReluTest")
@@ -122,7 +99,7 @@ void AddTensor(const std::string &name,
   tensor_ptr->set_data_type(DataTypeToEnum<T>::value);
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void CheckOutputs(const NetDef &net_def,
                   const std::map<std::string, mace::MaceTensor> &inputs,
                   const std::map<std::string, mace::MaceTensor> &outputs,
@@ -136,7 +113,7 @@ void CheckOutputs(const NetDef &net_def,
     std::vector<float> input_data(data_size);
     memcpy(input_data.data(), input.second.data().get(),
            data_size * sizeof(float));
-    if (D == DeviceType::CPU) {
+    if (D == RuntimeType::RT_CPU) {
       std::string input_name = input.first + "NHWC";
       net.AddInputFromArray<D, float>(input_name, input_shape, input_data);
       net.TransformDataFormat<D, float>(
@@ -159,26 +136,26 @@ void CheckOutputs(const NetDef &net_def,
   }
   net.RunNet(net_def, D);
 
-  std::unique_ptr<Allocator> allocator(new CPUAllocator);
+  auto *cpu_runtime =
+      ops::test::OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
   for (auto output : outputs) {
-    std::unique_ptr<Tensor> tmp_tensor(
-        new Tensor(allocator.get(),
-                   DataTypeToEnum<float>::v()));
     auto &output_shape = output.second.shape();
     const int64_t data_size = std::accumulate(output_shape.begin(),
                                               output_shape.end(), 1,
                                               std::multiplies<float>());
-    tmp_tensor->Resize(output.second.shape());
+    std::unique_ptr<Tensor> tmp_tensor(new Tensor(
+        cpu_runtime, DataTypeToEnum<float>::v(), output.second.shape()));
+    cpu_runtime->AllocateBufferForTensor(tmp_tensor.get(),
+                                         BufRentType::RENT_SCRATCH);
+
     float *data = tmp_tensor->mutable_data<float>();
     memcpy(data, output.second.data().get(), data_size * sizeof(float));
 
     std::string output_name = output.first;
-    if (D == DeviceType::CPU) {
+    if (D == RuntimeType::RT_CPU) {
       output_name = output.first + "NHWC";
-      net.TransformDataFormat<CPU, float>(output.first,
-                                          DataFormat::NCHW,
-                                          output_name,
-                                          DataFormat::NHWC);
+      net.TransformDataFormat<RuntimeType::RT_CPU, float>(
+          output.first, DataFormat::NCHW, output_name, DataFormat::NHWC);
     }
     ops::test::ExpectTensorNear<float>(*tmp_tensor,
                                        *net.GetOutput(output_name.data()),

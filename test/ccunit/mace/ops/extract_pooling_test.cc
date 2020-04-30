@@ -22,7 +22,7 @@ namespace test {
 class ExtractPoolingTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestExtractPooling(const std::vector<index_t> &input_shape,
                         const std::vector<float> &input_value,
                         const int modulus,
@@ -53,7 +53,7 @@ void TestExtractPooling(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(ExtractPoolingTest, SimpleCPU) {
-  TestExtractPooling<DeviceType::CPU, float>(
+  TestExtractPooling<RuntimeType::RT_CPU, float>(
     {3, 20, 3},
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
@@ -77,7 +77,7 @@ TEST_F(ExtractPoolingTest, SimpleCPU) {
 }
 
 TEST_F(ExtractPoolingTest, SimpleCPUWithVariance) {
-TestExtractPooling<DeviceType::CPU, float>(
+TestExtractPooling<RuntimeType::RT_CPU, float>(
     {3, 20, 3},
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,

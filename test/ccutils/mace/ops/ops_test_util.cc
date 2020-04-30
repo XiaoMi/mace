@@ -14,9 +14,12 @@
 
 #include "mace/ops/ops_test_util.h"
 
-#include "mace/core/memory_optimizer.h"
+#include <sys/stat.h>
+
 #include "mace/core/net_def_adapter.h"
-#include "mace/ops/memory_optimizer_for_test.h"
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/runtimes/opencl/opencl_runtime.h"
+#endif  // MACE_ENABLE_OPENCL
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -104,13 +107,11 @@ void OpDefBuilder::Finalize(OperatorDef *op_def) const {
 }
 
 namespace {
-#ifdef MACE_ENABLE_OPENCL
 std::string GetStoragePathFromEnv() {
   char *storage_path_str = getenv("MACE_INTERNAL_STORAGE_PATH");
   if (storage_path_str == nullptr) return "";
   return storage_path_str;
 }
-#endif
 }  // namespace
 
 OpTestContext *OpTestContext::Get(int num_threads,
@@ -120,41 +121,78 @@ OpTestContext *OpTestContext::Get(int num_threads,
   return &instance;
 }
 
+std::unique_ptr<OpTestContext> OpTestContext::New(
+    int num_threads, CPUAffinityPolicy cpu_affinity_policy) {
+  return make_unique<OpTestContext>(num_threads, cpu_affinity_policy, false);
+}
+
+
+std::string GetStoragePath(bool default_path) {
+  auto storage_path = GetStoragePathFromEnv();
+  if (!default_path) {
+    static int cache_count = 0;
+    cache_count++;
+    std::ostringstream os;
+    os << storage_path << "/" << cache_count;
+    storage_path = os.str();
+    mkdir(storage_path.c_str(), S_IRWXU);
+  }
+  return storage_path;
+}
+
 OpTestContext::OpTestContext(int num_threads,
-                             CPUAffinityPolicy cpu_affinity_policy)
+                             CPUAffinityPolicy cpu_affinity_policy,
+                             bool default_path) :
 #ifdef MACE_ENABLE_OPENCL
-    : gpu_context_(std::make_shared<GPUContext>(GetStoragePathFromEnv())),
-      opencl_mem_types_({MemoryType::GPU_IMAGE}),
-      thread_pool_(make_unique<utils::ThreadPool>(num_threads,
-                                                  cpu_affinity_policy)) {
-#else
-    : thread_pool_(make_unique<utils::ThreadPool>(num_threads,
-                                                  cpu_affinity_policy)) {
+    gpu_context_(std::make_shared<OpenclContext>(GetStoragePath(default_path))),
+    opencl_mem_types_({MemoryType::GPU_IMAGE}),
 #endif
+    thread_pool_(make_unique<utils::ThreadPool>(num_threads,
+                                                cpu_affinity_policy)),
+    rpcmem_(Rpcmem::IsRpcmemSupported() ? new Rpcmem() : nullptr),
+    runtime_context_(new QcIonRuntimeContext(thread_pool_.get(), rpcmem_)),
+    runtime_registry_(new RuntimeRegistry) {
   thread_pool_->Init();
+  RegisterAllRuntimes(runtime_registry_.get());
 
-  device_map_[DeviceType::CPU] = make_unique<CPUDevice>(
-      num_threads, cpu_affinity_policy, thread_pool_.get());
+  MaceEngineCfgImpl engine_config;
+  engine_config.SetCPUThreadPolicy(num_threads, cpu_affinity_policy);
+  auto cpu_runtime = SmartCreateRuntime(
+      runtime_registry_.get(), RuntimeType::RT_CPU, runtime_context_.get());
+  cpu_runtime->Init(&engine_config, CPU_BUFFER);
+  runtime_map_[RuntimeType::RT_CPU] = std::move(cpu_runtime);
 
 #ifdef MACE_ENABLE_OPENCL
-  device_map_[DeviceType::GPU] = make_unique<GPUDevice>(
-      gpu_context_->opencl_tuner(),
-      gpu_context_->opencl_cache_storage(),
-      GPUPriorityHint::PRIORITY_NORMAL,
-      GPUPerfHint::PERF_HIGH,
-      nullptr,
-      num_threads,
-      cpu_affinity_policy,
-      thread_pool_.get());
+  engine_config.SetOpenclContext(gpu_context_);
+  engine_config.SetGPUHints(GPUPerfHint::PERF_HIGH,
+                            GPUPriorityHint::PRIORITY_NORMAL);
+  auto opencl_runtime = SmartCreateRuntime(
+      runtime_registry_.get(), RuntimeType::RT_OPENCL, runtime_context_.get());
+  opencl_runtime->Init(&engine_config, GPU_IMAGE);
+  runtime_map_[RuntimeType::RT_OPENCL] = std::move(opencl_runtime);
 #endif
 }
 
-Device *OpTestContext::GetDevice(DeviceType device_type) {
-  return device_map_[device_type].get();
+std::unique_ptr<Runtime> OpTestContext::NewAndInitRuntime(
+    RuntimeType runtime_type, MemoryType mem_type,
+    MaceEngineCfgImpl *engine_config, RuntimeContext *runtime_context) {
+  if (runtime_context == nullptr) {
+    runtime_context = runtime_context_.get();
+  }
+
+  auto runtime = SmartCreateRuntime(
+      runtime_registry_.get(), runtime_type, runtime_context);
+  runtime->Init(engine_config, mem_type);
+
+  return runtime;
+}
+
+Runtime *OpTestContext::GetRuntime(RuntimeType runtime_type) {
+  return runtime_map_[runtime_type].get();
 }
 
 #ifdef MACE_ENABLE_OPENCL
-std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
+std::shared_ptr<OpenclContext> OpTestContext::gpu_context() const {
   return gpu_context_;
 }
 
@@ -175,7 +213,10 @@ void OpTestContext::SetOCLImageAndBufferTestFlag() {
 }
 #endif  // MACE_ENABLE_OPENCL
 
-bool OpsTestNet::Setup(mace::DeviceType device) {
+
+int OpsTestNet::ref_count_ = 0;
+std::mutex OpsTestNet::ref_mutex_;
+bool OpsTestNet::Setup(mace::RuntimeType runtime_type) {
   NetDef net_def;
   for (auto &op_def : op_defs_) {
     auto target_op = net_def.add_op();
@@ -192,7 +233,7 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
         auto input_info = net_def.add_input_info();
         input_info->set_name(input);
         if (has_data_format) {
-          if (is_quantized_op || device == DeviceType::GPU) {
+          if (is_quantized_op || runtime_type == RuntimeType::RT_OPENCL) {
             input_info->set_data_format(static_cast<int>(DataFormat::NHWC));
           } else {
             input_info->set_data_format(static_cast<int>(DataFormat::NCHW));
@@ -224,26 +265,18 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
       }
     }
   }
+
   NetDef adapted_net_def;
   NetDefAdapter net_def_adapter(op_registry_.get(), &ws_);
-  net_def_adapter.AdaptNetDef(&net_def,
-                              OpTestContext::Get()->GetDevice(device),
-                              &adapted_net_def);
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  auto *target_runtime = OpTestContext::Get()->GetRuntime(runtime_type);
+  net_def_adapter.AdaptNetDef(&net_def, target_runtime,
+                              cpu_runtime, &adapted_net_def);
 
-  MemoryOptimizerForTest mem_optimizer;
-  net_ = make_unique<SerialNet>(
-      op_registry_.get(),
-      &adapted_net_def,
-      &ws_,
-      OpTestContext::Get()->GetDevice(device),
-      &mem_optimizer);
-  MaceStatus status = (ws_.PreallocateOutputTensor(
-      adapted_net_def,
-      &mem_optimizer,
-      OpTestContext::Get()->GetDevice(device)));
-  if (status != MaceStatus::MACE_SUCCESS) return false;
-  status = net_->Init();
-  device_type_ = device;
+  net_ = make_unique<SerialNet>(op_registry_.get(), &adapted_net_def, &ws_,
+                                target_runtime, cpu_runtime);
+  MaceStatus status = net_->Init();
+  runtime_type_ = runtime_type;
   return status == MaceStatus::MACE_SUCCESS;
 }
 
@@ -254,14 +287,15 @@ MaceStatus OpsTestNet::Run() {
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus OpsTestNet::RunOp(mace::DeviceType device) {
-  if (device == DeviceType::GPU) {
+MaceStatus OpsTestNet::RunOp(mace::RuntimeType runtime_type) {
+  if (runtime_type == RuntimeType::RT_OPENCL) {
 #ifdef MACE_ENABLE_OPENCL
     auto opencl_mem_types = OpTestContext::Get()->opencl_mem_types();
     for (auto type : opencl_mem_types) {
-      OpTestContext::Get()->GetDevice(device)
-          ->gpu_runtime()->set_mem_type(type);
-      Setup(device);
+      auto* runtime = OpTestContext::Get()->GetRuntime(runtime_type);
+      auto *opencl_runtime = static_cast<OpenclRuntime *>(runtime);
+      opencl_runtime->SetUsedMemoryType(type);
+      Setup(runtime_type);
       MACE_RETURN_IF_ERROR(Run());
     }
     return MaceStatus::MACE_SUCCESS;
@@ -269,45 +303,54 @@ MaceStatus OpsTestNet::RunOp(mace::DeviceType device) {
     return MaceStatus::MACE_UNSUPPORTED;
 #endif  // MACE_ENABLE_OPENCL
   } else {
-    Setup(device);
+    Setup(runtime_type);
     return Run();
   }
 }
 
 MaceStatus OpsTestNet::RunOp() {
-  return RunOp(DeviceType::CPU);
+  return RunOp(RuntimeType::RT_CPU);
 }
 
 MaceStatus OpsTestNet::RunNet(const mace::NetDef &net_def,
-                              const mace::DeviceType device) {
-  device_type_ = device;
+                              const mace::RuntimeType runtime_type) {
+  runtime_type_ = runtime_type;
   NetDef adapted_net_def;
   NetDefAdapter net_def_adapter(op_registry_.get(), &ws_);
-  net_def_adapter.AdaptNetDef(&net_def,
-                              OpTestContext::Get()->GetDevice(device),
-                              &adapted_net_def);
-  MemoryOptimizerForTest mem_optimizer;
-  net_ = make_unique<SerialNet>(
-      op_registry_.get(),
-      &adapted_net_def,
-      &ws_,
-      OpTestContext::Get()->GetDevice(device),
-      &mem_optimizer);
-  MACE_RETURN_IF_ERROR(ws_.PreallocateOutputTensor(
-      adapted_net_def,
-      &mem_optimizer,
-      OpTestContext::Get()->GetDevice(device)));
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  auto *target_runtime = OpTestContext::Get()->GetRuntime(runtime_type);
+  net_def_adapter.AdaptNetDef(&net_def, target_runtime,
+                              cpu_runtime, &adapted_net_def);
+
+  net_ = make_unique<SerialNet>(op_registry_.get(), &adapted_net_def, &ws_,
+                                target_runtime, cpu_runtime);
   MACE_RETURN_IF_ERROR(net_->Init());
   return net_->Run();
 }
 
 void OpsTestNet::Sync() {
 #ifdef MACE_ENABLE_OPENCL
-  if (net_ && device_type_ == DeviceType::GPU) {
-      OpTestContext::Get()->GetDevice(DeviceType::GPU)->gpu_runtime()
-      ->opencl_runtime()->command_queue().finish();
-    }
+  if (net_ && runtime_type_ == RuntimeType::RT_OPENCL) {
+    auto *runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL);
+    auto *opencl_runtime = static_cast<OpenclRuntime *>(runtime);
+    opencl_runtime->GetOpenclExecutor()->command_queue().finish();
+  }
 #endif
+}
+
+OpsTestNet::~OpsTestNet() {
+  std::lock_guard<std::mutex> lock(ref_mutex_);
+  --ref_count_;
+  if (ref_count_ == 0) {
+    auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RT_CPU);
+    cpu_runtime->ReleaseAllBuffer(RENT_SHARE, true);
+    cpu_runtime->ReleaseAllBuffer(RENT_PRIVATE, true);
+#ifdef MACE_ENABLE_OPENCL
+    auto *target_runtime = OpTestContext::Get()->GetRuntime(RT_OPENCL);
+    target_runtime->ReleaseAllBuffer(RENT_SHARE, true);
+    target_runtime->ReleaseAllBuffer(RENT_PRIVATE, true);
+#endif  // MACE_ENABLE_OPENCL
+  }
 }
 
 }  // namespace test

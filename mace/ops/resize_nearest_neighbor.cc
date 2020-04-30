@@ -42,8 +42,7 @@ inline void ResizeImageNCHW(
     const bool align_corners,
     const CoordinateTransformationMode coordinate_transformation_mode,
     T *output) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -79,11 +78,11 @@ inline void ResizeImageNCHW(
   }, 0, batch_size, 1, 0, channels, 1);
 }
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class ResizeNearestNeighborOp;
 
 template<typename T>
-class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
+class ResizeNearestNeighborOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
       : Operation(context),
@@ -119,7 +118,6 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
       out_width = size_[1];
     } else {                         // for tensor (Tf)
       const Tensor *size = this->Input(1);
-      Tensor::MappingGuard size_mapper(size);
       MACE_CHECK(size->dim_size() == 1,
                  "size must be 1-dimensional.", size->dim_size());
       out_height = size->data<int32_t>()[0];
@@ -129,8 +127,6 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
     MACE_CHECK(out_height > 0 && out_width > 0, out_height, out_width);
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard output_mapper(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
@@ -176,7 +172,8 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
+class ResizeNearestNeighborOp<RuntimeType::RT_OPENCL, float>
+    : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
       : Operation(context), size_(Operation::GetRepeatedArgs<index_t>("size")),
@@ -208,7 +205,6 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
       out_width = static_cast<index_t>(width_scale_ * input->dim(2));
     } else if (size_.size() < 2) {  // for variable tensor (Tf)
       const Tensor *size = this->Input(1);
-      Tensor::MappingGuard size_mapper(size);
       MACE_CHECK(size->dim_size() == 1,
                  "size must be 1-dimensional.", size->dim_size());
       out_height = size->data<int32_t>()[0];
@@ -231,9 +227,9 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterResizeNearestNeighbor(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeNearestNeighbor",
-                   ResizeNearestNeighborOp, DeviceType::CPU, float);
+                   ResizeNearestNeighborOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ResizeNearestNeighbor",
-                        ResizeNearestNeighborOp, DeviceType::CPU);
+                        ResizeNearestNeighborOp, RuntimeType::RT_CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "ResizeNearestNeighbor",
                        ResizeNearestNeighborOp);

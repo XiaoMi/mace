@@ -32,8 +32,9 @@
 #include "mace/utils/math.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/deconv_2d.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
@@ -43,24 +44,24 @@ namespace {
 const std::vector<int> kDeconv2dStrides = {1, 1};
 }
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class Deconv2dOp;
 
 template<class T>
-class Deconv2dOp<DeviceType::CPU, T> : public Deconv2dOpBase {
+class Deconv2dOp<RuntimeType::RT_CPU, T> : public Deconv2dOpBase {
  public:
   explicit Deconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context),
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                                    T, kCpuImplType),
                 delegator::ActivationParam(
                     activation_, relux_max_limit_, activation_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -82,7 +83,8 @@ class Deconv2dOp<DeviceType::CPU, T> : public Deconv2dOpBase {
     MACE_CHECK_NOTNULL(output);
 
     if (deconv2d_delegator_ == nullptr) {
-      auto tag = MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, T, kCpuImplType);
+      auto tag = MACE_DELEGATOR_KEY(Deconv2d, RuntimeType::RT_CPU,
+                                    T, kCpuImplType);
       if (kCpuImplType == NEON) {
         const index_t kernel_h = filter->dim(2);
         const index_t kernel_w = filter->dim(3);
@@ -103,22 +105,22 @@ class Deconv2dOp<DeviceType::CPU, T> : public Deconv2dOpBase {
             strides_[0] == strides_[1] && strides_[0] == 2;
 
         if (use_neon_2x2_s1) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K2x2S1);
         } else if (use_neon_2x2_s2) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K2x2S2);
         } else if (use_neon_3x3_s1) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K3x3S1);
         } else if (use_neon_3x3_s2) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K3x3S2);
         } else if (use_neon_4x4_s1) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K4x4S1);
         } else if (use_neon_4x4_s2) {
-          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K4x4S2);
         }
       }
@@ -144,7 +146,7 @@ class Deconv2dOp<DeviceType::CPU, T> : public Deconv2dOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
+class Deconv2dOp<RuntimeType::RT_OPENCL, float> : public Deconv2dOpBase {
  public:
   explicit Deconv2dOp(OpConstructContext *context) : Deconv2dOpBase(context),
       dim_(Operation::GetRepeatedArgs<index_t>("dim")) {
@@ -159,7 +161,7 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
     if (filter_tensor != nullptr && filter_tensor->is_weight()) {
       MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 1,
-          OpenCLBufferType::CONV2D_FILTER, mem_type)
+          BufferContentType::CONV2D_FILTER, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
     if (model_type_ == FrameworkType::TENSORFLOW) {
@@ -168,17 +170,18 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
             context,
             operator_def_.get(),
             3,
-            OpenCLBufferType::ARGUMENT,
+            BufferContentType::ARGUMENT,
             mem_type) == MaceStatus::MACE_SUCCESS);
       }
     } else {
       if (operator_def_->input_size() >= 3) {
         MACE_CHECK(TransformFilter(
             context, operator_def_.get(), 2,
-            OpenCLBufferType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
+            BufferContentType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
       }
     }
   }
+
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
     const Tensor *filter = this->Input(1);
@@ -200,7 +203,6 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
     std::vector<index_t> out_shape;
     if (output_shape_tensor) {
       if (dim_.size() < 2) {
-        Tensor::MappingGuard out_shape_guard(output_shape_tensor);
         MACE_CHECK(output_shape_tensor->size() == 4,
                    "output shape should be 4-dims");
         out_shape =
@@ -232,6 +234,24 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
                             out_shape, output);
   }
 
+ protected:
+  BufferContentType GetInputTensorContentType(size_t idx) const override {
+    if (idx == 1) {
+      return BufferContentType::CONV2D_FILTER;
+    } else if (idx == 2) {
+      if (model_type_ != FrameworkType::TENSORFLOW) {
+        MACE_CHECK(operator_def_->input_size() >= 3);
+        return BufferContentType::ARGUMENT;
+      }
+    } else if (idx == 3) {
+      if (model_type_ == FrameworkType::TENSORFLOW) {
+        MACE_CHECK(operator_def_->input_size() >= 4);
+        return BufferContentType::ARGUMENT;
+      }
+    }
+    return Operation::GetInputTensorContentType(idx);
+  }
+
  private:
   std::vector<index_t> dim_;
   std::unique_ptr<OpenCLDeconv2dKernel> kernel_;
@@ -239,8 +259,10 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterDeconv2D(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Deconv2D", Deconv2dOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Deconv2D", Deconv2dOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Deconv2D", Deconv2dOp,
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Deconv2D",
+                        Deconv2dOp, RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "Deconv2D", Deconv2dOp);
 
 #ifdef MACE_ENABLE_OPENCL
@@ -248,8 +270,9 @@ void RegisterDeconv2D(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("Deconv2D").SetInputMemoryTypeSetter(
           [](OpConditionContext *context) -> void {
-            SetFilterMemoryType(context, OpenCLBufferType::CONV2D_FILTER);
-            if (context->device()->device_type() == DeviceType::GPU) {
+            SetFilterMemoryType(context, BufferContentType::CONV2D_FILTER);
+            auto *runtime = context->runtime();
+            if (runtime->GetRuntimeType() == RuntimeType::RT_OPENCL) {
               FrameworkType framework_type =
                   static_cast<FrameworkType>(
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(

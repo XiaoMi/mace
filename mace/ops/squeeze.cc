@@ -24,17 +24,17 @@ namespace ops {
 class SqueezeOpRaw : public Operation {
  public:
   explicit SqueezeOpRaw(OpConstructContext *context,
-                        DeviceType device_type,
+                        RuntimeType runtime_type,
                         DataType data_type)
       : Operation(context),
         axis_(Operation::GetRepeatedArgs<int>("axis", {})),
         checked_(false),
         data_type_(data_type),
-        device_type_(device_type) {}
+        runtime_type_(runtime_type) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    if (!checked_ && device_type_ == DeviceType::CPU
+    if (!checked_ && runtime_type_ == RuntimeType::RT_CPU
         && data_type_ != DT_UINT8) {
       auto has_df = Operation::GetOptionalArg<int>(
           "has_data_format", 0);
@@ -57,20 +57,29 @@ class SqueezeOpRaw : public Operation {
         output_shape.push_back(input->dim(i));
       }
     }
+
     output->ReuseTensorBuffer(*input);
     output->Reshape(output_shape);
 
     return MaceStatus::MACE_SUCCESS;
   }
 
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0) {
+      return 0;
+    } else {
+      return -1;
+    }
+  }
+
  private:
   std::vector<int> axis_;
   bool checked_;
   DataType data_type_;
-  DeviceType device_type_;
+  RuntimeType runtime_type_;
 };
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class SqueezeOp : public SqueezeOpRaw {
  public:
   explicit SqueezeOp(OpConstructContext *context)
@@ -79,27 +88,30 @@ class SqueezeOp : public SqueezeOpRaw {
 };
 
 void RegisterSqueeze(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU);
-  MACE_REGISTER_FP16_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp,
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Squeeze", SqueezeOp, RuntimeType::RT_CPU);
+  MACE_REGISTER_FP16_OP(op_registry, "Squeeze", SqueezeOp, RuntimeType::RT_CPU);
+
 #ifdef MACE_ENABLE_QUANTIZE
-  MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU, uint8_t);
+  MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp,
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
   MACE_REGISTER_GPU_OP(op_registry, "Squeeze", SqueezeOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Squeeze")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 if (op->output_shape(0).dims_size() != 2 &&
                     op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

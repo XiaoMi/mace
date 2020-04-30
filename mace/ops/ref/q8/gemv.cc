@@ -88,11 +88,6 @@ MaceStatus Gemv<uint8_t>::Compute(const OpContext *context,
                                   const bool rhs_batched,
                                   Tensor *output) {
   MACE_UNUSED(context);
-
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard bias_guard(bias);
-  Tensor::MappingGuard output_guard(output);
   const uint8_t *lhs_data = lhs->data<uint8_t>();
   const uint8_t *rhs_data = rhs->data<uint8_t>();
   const int32_t *bias_data = nullptr;
@@ -137,11 +132,6 @@ MaceStatus Gemv<int32_t>::Compute(const OpContext *context,
                                   const bool rhs_batched,
                                   Tensor *output) {
   MACE_UNUSED(context);
-
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard bias_guard(bias);
-  Tensor::MappingGuard output_guard(output);
   const uint8_t *lhs_data = lhs->data<uint8_t>();
   const uint8_t *rhs_data = rhs->data<uint8_t>();
   const int32_t *bias_data = nullptr;
@@ -174,10 +164,10 @@ MaceStatus Gemv<int32_t>::Compute(const OpContext *context,
 void RegisterGemvDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Gemv<uint8_t>, DelegatorParam,
-      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, uint8_t, ImplType::REF));
+      MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, uint8_t, ImplType::REF));
   MACE_REGISTER_DELEGATOR(
       registry, Gemv<int32_t>, DelegatorParam,
-      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, int32_t, ImplType::REF));
+      MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, int32_t, ImplType::REF));
 }
 
 }  // namespace q8

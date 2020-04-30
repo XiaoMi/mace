@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void Reverse(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -35,14 +35,15 @@ void Reverse(int iters, int batch, int channels, int height, int width) {
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -58,7 +59,7 @@ void Reverse(int iters, int batch, int channels, int height, int width) {
   MACE_BENCHMARK(MACE_BM_REVERSE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_REVERSE(N, C, H, W)                 \
-  MACE_BM_REVERSE_MACRO(N, C, H, W, float, CPU);
+  MACE_BM_REVERSE_MACRO(N, C, H, W, float, RT_CPU);
 
 MACE_BM_REVERSE(1, 1, 99, 256);
 MACE_BM_REVERSE(1, 30, 99, 256);

@@ -20,6 +20,9 @@
 
 #include "mace/core/ops/op_condition_builder.h"
 #include "mace/core/registry/ops_registry.h"
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/runtimes/opencl/opencl_runtime.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace ops {
@@ -440,18 +443,15 @@ void CalDeconvOutputShapeAndPadSize(const std::vector<index_t> &input_shape,
 
 #ifdef MACE_ENABLE_OPENCL
 void SetFilterMemoryType(OpConditionContext *context,
-                         OpenCLBufferType buffer_type) {
+                         BufferContentType buffer_type) {
   MemoryType mem_type = MemoryType::CPU_BUFFER;
-  if (context->device()->device_type() == DeviceType::GPU) {
-    if (context->device()->gpu_runtime()->UseImageMemory()) {
-      mem_type = MemoryType::GPU_IMAGE;
-    } else {
-      mem_type = MemoryType::GPU_BUFFER;
-    }
+  auto runtime = context->runtime();
+  if (runtime->GetRuntimeType() == RuntimeType::RT_OPENCL) {
+    mem_type = runtime->GetUsedMemoryType();
     auto filter_tensor = context->workspace()->GetTensor(
         context->operator_def()->input(1));
     if (filter_tensor == nullptr || !filter_tensor->is_weight()) {
-      context->SetInputOpenCLBufferType(1, buffer_type);
+      context->SetInputBufferContentType(1, buffer_type);
     }
   }
   context->set_output_mem_type(mem_type);

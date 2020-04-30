@@ -20,14 +20,14 @@ namespace opencl {
 namespace buffer {
 
 bool Conv2dKernel::CheckUseWinograd(
-    OpenCLRuntime *runtime,
+    OpenclExecutor *executor,
     const std::vector<index_t> &filter_shape,
     const std::vector<index_t> &output_shape,
     const int *strides,
     const int *dilations,
     int *wino_block_size) {
   MACE_UNUSED(kwg_size_);
-  MACE_UNUSED(runtime);
+  MACE_UNUSED(executor);
   MACE_UNUSED(output_shape);
   MACE_UNUSED(wino_block_size);
   return (filter_shape[2] == 3 && filter_shape[3] == 3 &&
@@ -114,29 +114,15 @@ MaceStatus Conv2dKernel::Compute(
       padded_input_shape[2] != input_width ||
       padded_input_shape[3] != input_channels) {
     // decide scratch size before allocate it
-    index_t total_scratch_size = 0;
-    index_t padded_input_size = 0;
-
-    padded_input_size =
+    index_t padded_input_size =
         std::accumulate(padded_input_shape.begin(),
                         padded_input_shape.end(),
-                        1,
-                        std::multiplies<index_t>())
-            * GetEnumTypeSize(input->dtype()) + MACE_EXTRA_BUFFER_PAD_SIZE;
-    total_scratch_size += padded_input_size;
-
-    // Init scratch buffer
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(total_scratch_size);
-    if (old_scratch_size_ != scratch->size()) {
-      input_changed |= scratch->size() != old_scratch_size_;
-      old_scratch_size_ = scratch->size();
-    }
-
-    padded_input = make_unique<Tensor>(scratch->Scratch(padded_input_size),
-                                       input->dtype());
-
+                        1, std::multiplies<index_t>()) +
+            MACE_EXTRA_BUFFER_PAD_SIZE / GetEnumTypeSize(input->dtype());
+    auto *runtime = context->runtime();
+    padded_input.reset(new Tensor(
+        runtime, input->dtype(), output->memory_type(), {padded_input_size}));
+    runtime->AllocateBufferForTensor(padded_input.get(), RENT_SCRATCH);
     padded_input->Resize(padded_input_shape);
     PadInput(context, &kernels_[0], input, pad_top, pad_left,
              input_changed, padded_input.get(), &pad_future);

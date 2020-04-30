@@ -30,8 +30,9 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
   // Add input data
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "Input", {1, 2, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -42,7 +43,7 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -59,8 +60,9 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   // Add input data
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    {1, 2, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -72,7 +74,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -82,7 +84,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestRandomResizeBilinear() {
   testing::internal::LogToStderr();
   static unsigned int seed = time(NULL);
@@ -104,7 +106,7 @@ void TestRandomResizeBilinear() {
     // Add input data
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels});
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -116,14 +118,14 @@ void TestRandomResizeBilinear() {
         .AddIntsArg("size", {height, width})
         .Finalize(net.NewOperatorDef());
     // Run on CPU
-    net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.RunOp(RuntimeType::RT_CPU);
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     auto expected = net.CreateTensor<float>();
     expected->Copy(*net.GetOutput("Output"));
 
-    if (D == DeviceType::GPU) {
+    if (D == RuntimeType::RT_OPENCL) {
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
           .Input("Input")
           .Output("Output")
@@ -160,14 +162,10 @@ void TestQuantizedResizeBilinear() {
     // Construct graph
     OpsTestNet net;
     // Add input data
-    net.AddRandomInput<CPU, float>("Input",
-                                   {batch, in_height, in_width, channels},
-                                   false,
-                                   false,
-                                   true,
-                                   -1.f,
-                                   1.f);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.AddRandomInput<RuntimeType::RT_CPU, float>(
+        "Input", {batch, in_height, in_width, channels},
+        false, false, true, -1.f, 1.f);
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -179,8 +177,8 @@ void TestQuantizedResizeBilinear() {
         .AddIntsArg("size", {height, width})
         .Finalize(net.NewOperatorDef());
     // Run on CPU
-    net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.RunOp(RuntimeType::RT_CPU);
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // run quantize
@@ -225,7 +223,7 @@ void TestQuantizedResizeBilinear() {
 }  // namespace
 
 TEST_F(ResizeBilinearTest, OPENCLRandomResizeBilinear) {
-  TestRandomResizeBilinear<DeviceType::GPU>();
+  TestRandomResizeBilinear<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(ResizeBilinearTest, QuantizedResizeBilinear) {

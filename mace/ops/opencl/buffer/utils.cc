@@ -18,8 +18,9 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 
 namespace mace {
 namespace ops {
@@ -47,7 +48,7 @@ MaceStatus PadInput(OpContext *context,
       static_cast<uint32_t>(padded_height * batch)
   };
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -58,7 +59,7 @@ MaceStatus PadInput(OpContext *context,
     built_options.emplace("-Dpad_input=" + kernel_name);
     built_options.emplace("-DIN_DATA_TYPE=" + DtToCLDt(input->dtype()));
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(input->dtype()));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel(
+    MACE_RETURN_IF_ERROR(executor->BuildKernel(
         "buffer_transform",
         kernel_name,
         built_options,
@@ -70,7 +71,7 @@ MaceStatus PadInput(OpContext *context,
     uint32_t idx = 0;
     MACE_BUFF_OUT_OF_RANGE_SET_ARGS(*kernel, padded_input->size());
     MACE_SET_2D_GWS_ARGS(*kernel, gws)
-    kernel->setArg(idx++, *(input->opencl_buffer()));
+    kernel->setArg(idx++, *(input->memory<cl::Buffer>()));
     kernel->setArg(idx++, static_cast<int32_t>(in_height));
     kernel->setArg(idx++, static_cast<int32_t>(in_width));
     kernel->setArg(idx++, static_cast<int32_t>(in_channel));
@@ -79,15 +80,15 @@ MaceStatus PadInput(OpContext *context,
     kernel->setArg(idx++, static_cast<int32_t>(padded_channel));
     kernel->setArg(idx++, pad_top);
     kernel->setArg(idx++, pad_left);
-    kernel->setArg(idx++, *(padded_input->opencl_buffer()));
+    kernel->setArg(idx++, *(padded_input->memory<cl::Buffer>()));
   }
   std::string tuning_key =
       Concat("pad_input", batch, in_height, in_width, in_channel,
              padded_height, padded_width, padded_channel);
   std::vector<uint32_t> lws = {8, 4, 0};
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
                                            gws, lws, future));
-  MACE_OUT_OF_RANGE_VALIDATION
+  MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
 

@@ -22,7 +22,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void GatherBenchmark(int iters,
                      index_t n,
                      index_t index_len,
@@ -48,16 +48,17 @@ void GatherBenchmark(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 2; ++i) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 
@@ -73,7 +74,7 @@ void GatherBenchmark(int iters,
       MACE_BM_GATHER##_##N##_##IND##_##VOC##_##EMBED##_##TYPE##_##DEVICE)
 
 #define MACE_BM_GATHER(N, INDEX, VOCAB, EMBEDDING) \
-  MACE_BM_GATHER_MACRO(N, INDEX, VOCAB, EMBEDDING, float, CPU);
+  MACE_BM_GATHER_MACRO(N, INDEX, VOCAB, EMBEDDING, float, RT_CPU);
 
 MACE_BM_GATHER(1, 7, 48165, 256);
 MACE_BM_GATHER(1, 20, 48165, 256);

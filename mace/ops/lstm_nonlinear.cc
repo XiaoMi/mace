@@ -25,11 +25,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class LSTMNonlinearOp;
 
 template<typename T>
-class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
+class LSTMNonlinearOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit LSTMNonlinearOp(OpConstructContext *context)
       : Operation(context) {}
@@ -67,9 +67,6 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
     output_shape[rank - 1] = output_dim;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard params_guard(params);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     const T *params_data = params->data<T>();
     T *output_data = output->mutable_data<T>();
@@ -103,9 +100,9 @@ class LSTMNonlinearOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterLSTMNonlinear(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LSTMNonlinear", LSTMNonlinearOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "LSTMNonlinear", LSTMNonlinearOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

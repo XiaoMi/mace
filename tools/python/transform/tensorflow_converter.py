@@ -1138,7 +1138,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         size_splits = tf_op.inputs[1].eval().astype(np.int32)
         del op.input[1]
         self._skip_tensor.add(tf_op.inputs[1].name)
-        # todo(luxuhui): support size_splits
+        # TODO(luxuhui): support size_splits
         for size in size_splits:
             mace_check(size == size_splits[0],
                        "SplitV Only support even distribution")

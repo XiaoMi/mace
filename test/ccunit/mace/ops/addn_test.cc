@@ -21,7 +21,7 @@ namespace test {
 class AddnOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleAdd2() {
   // Construct graph
   OpsTestNet net;
@@ -44,10 +44,10 @@ void SimpleAdd2() {
 }
 }  // namespace
 
-TEST_F(AddnOpTest, CPUSimpleAdd2) { SimpleAdd2<DeviceType::CPU>(); }
+TEST_F(AddnOpTest, CPUSimpleAdd2) { SimpleAdd2<RuntimeType::RT_CPU>(); }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleAdd3() {
   // Construct graph
   OpsTestNet net;
@@ -79,11 +79,11 @@ void SimpleAdd3() {
 }
 }  // namespace
 
-TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
-TEST_F(AddnOpTest, GPUSimpleAdd3) { SimpleAdd3<DeviceType::GPU>(); }
+TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<RuntimeType::RT_CPU>(); }
+TEST_F(AddnOpTest, GPUSimpleAdd3) { SimpleAdd3<RuntimeType::RT_OPENCL>(); }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void RandomTest() {
   testing::internal::LogToStderr();
   static unsigned int seed = time(NULL);
@@ -123,7 +123,7 @@ void RandomTest() {
 }
 }  // namespace
 
-TEST_F(AddnOpTest, OPENCLRandom) { RandomTest<DeviceType::GPU>(); }
+TEST_F(AddnOpTest, OPENCLRandom) { RandomTest<RuntimeType::RT_OPENCL>(); }
 
 }  // namespace test
 }  // namespace ops

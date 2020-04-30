@@ -17,7 +17,8 @@
 
 #include <cstdint>
 #include <string>
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) \
+    || defined(MACE_ENABLE_FP16)
 #include <arm_neon.h>
 #endif
 
@@ -66,12 +67,31 @@ MACE_MAPPING_DATA_TYPE_AND_ENUM(float, DT_FLOAT);
 MACE_MAPPING_DATA_TYPE_AND_ENUM(uint8_t, DT_UINT8);
 MACE_MAPPING_DATA_TYPE_AND_ENUM(int32_t, DT_INT32);
 
-enum FrameworkType {
+enum FrameworkType {  // should not > FRAMEWORK_MAX
   TENSORFLOW = 0,
   CAFFE = 1,
   ONNX = 2,
   MEGENGINE = 3,
-  PYTORCH = 4
+  PYTORCH = 4,
+
+  FRAMEWORK_MAX = 65535,
+};
+
+enum RuntimeSubType {  // should not > RT_SUB_MAX
+  RT_SUB_REF = 0,
+  RT_SUB_ION = 1,
+  RT_SUB_QC_ION = 2,
+  RT_SUB_WITH_OPENCL = 3,
+
+  RT_SUB_MAX = 65535,
+};
+
+enum FlowSubType {
+  FW_SUB_REF,
+  FW_SUB_BF16,
+  FW_SUB_FP16,
+
+  FW_SUB_MAX = 65535,
 };
 
 template <typename T>

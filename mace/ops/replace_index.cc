@@ -26,11 +26,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class ReplaceIndexOp;
 
 template<typename T>
-class ReplaceIndexOp<DeviceType::CPU, T> : public Operation {
+class ReplaceIndexOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ReplaceIndexOp(OpConstructContext *context)
       : Operation(context),
@@ -70,13 +70,10 @@ class ReplaceIndexOp<DeviceType::CPU, T> : public Operation {
     output_shape[rank - 2] = out_chunk;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
       for (index_t b = start0; b < end0; b += step0) {
@@ -97,9 +94,9 @@ class ReplaceIndexOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterReplaceIndex(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ReplaceIndex", ReplaceIndexOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ReplaceIndex", ReplaceIndexOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

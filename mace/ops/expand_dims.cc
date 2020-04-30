@@ -20,11 +20,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ExpandDimsOp;
 
 template<typename T>
-class ExpandDimsOp<DeviceType::CPU, T> : public Operation {
+class ExpandDimsOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ExpandDimsOp(OpConstructContext *context)
       : Operation(context),
@@ -50,18 +50,26 @@ class ExpandDimsOp<DeviceType::CPU, T> : public Operation {
     return MaceStatus::MACE_SUCCESS;
   }
 
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0) {
+      return 0;
+    } else {
+      return -1;
+    }
+  }
+
  private:
   int axis_;
 };
 
 void RegisterExpandDims(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ExpandDims", ExpandDimsOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 }
 
 }  // namespace ops

@@ -18,7 +18,7 @@
 #include <vector>
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_util.h"
+#include "mace/runtimes/opencl/core/opencl_util.h"
 #endif  // MACE_ENABLE_OPENCL
 #include "mace/core/tensor.h"
 
@@ -107,7 +107,7 @@ void CalDeconvOutputShapeAndPadSize(const std::vector<index_t> &input_shape,
 
 #ifdef MACE_ENABLE_OPENCL
 void SetFilterMemoryType(OpConditionContext *context,
-                         OpenCLBufferType buffer_type);
+                         BufferContentType buffer_type);
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterFilterDataFormat(OpRegistry *op_registry, const char *op_name);

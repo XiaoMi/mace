@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void BMSplitHelper(int iters,
                    const std::vector<index_t> &input_shape,
                    const index_t num_outputs) {
@@ -48,16 +48,17 @@ void BMSplitHelper(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 2; ++i) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 
@@ -75,12 +76,12 @@ void BMSplitHelper(int iters,
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_SPLIT(N, H, W, C, NO)                 \
-  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, CPU);    \
-  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, GPU);    \
-  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, half, GPU)
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, RT_CPU);    \
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, RT_OPENCL);    \
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, half, RT_OPENCL)
 #else
 #define MACE_BM_SPLIT(N, H, W, C, NO)                 \
-  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, CPU)
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, RT_CPU)
 #endif
 
 MACE_BM_SPLIT(1, 32, 32, 32, 2);

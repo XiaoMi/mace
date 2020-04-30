@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/pooling.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -49,12 +51,9 @@ MaceStatus PoolingKernel::Compute(
                    output_shape.data());
   }
 
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -75,13 +74,13 @@ MaceStatus PoolingKernel::Compute(
     if (pooling_type == AVG) {
       built_options.emplace("-DPOOL_AVG");
     }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("pooling",
-                                              kernel_name,
-                                              built_options,
-                                              &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("pooling",
+                                               kernel_name,
+                                               built_options,
+                                               &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const uint32_t gws[3] = {
@@ -95,7 +94,7 @@ MaceStatus PoolingKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(output->dim(1)));
@@ -105,16 +104,16 @@ MaceStatus PoolingKernel::Compute(
     kernel_.setArg(idx++, strides[1]);
     kernel_.setArg(idx++, kernels[0]);
     kernel_.setArg(idx++, kernels[1]);
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = pooling::LocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = pooling::LocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("pooling_opencl_kernel_", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

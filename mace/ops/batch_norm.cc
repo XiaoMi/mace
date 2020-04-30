@@ -22,19 +22,19 @@
 #include "mace/ops/delegator/activation.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/batch_norm.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 #include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class BatchNormOp;
 
 template<class T>
-class BatchNormOp<DeviceType::CPU, T> : public Operation {
+class BatchNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit BatchNormOp(OpConstructContext *context)
       : Operation(context),
@@ -43,7 +43,7 @@ class BatchNormOp<DeviceType::CPU, T> : public Operation {
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                                    T, kCpuImplType),
                 delegator::ActivationParam(
                     ops::StringToActivationType(
@@ -83,15 +83,9 @@ class BatchNormOp<DeviceType::CPU, T> : public Operation {
     const index_t height = input->dim(2);
     const index_t width = input->dim(3);
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     {
-      Tensor::MappingGuard input_mapper(input);
-      Tensor::MappingGuard scale_mapper(scale);
-      Tensor::MappingGuard offset_mapper(offset);
-      Tensor::MappingGuard output_mapper(output);
-
       const T *input_ptr = input->data<T>();
       const T *scale_ptr = scale->data<T>();
       const T *offset_ptr = offset->data<T>();
@@ -108,8 +102,6 @@ class BatchNormOp<DeviceType::CPU, T> : public Operation {
                    var->dim_size());
         new_scale.resize(channels);
         new_offset.resize(channels);
-        Tensor::MappingGuard mean_mapper(mean);
-        Tensor::MappingGuard var_mapper(var);
         const T *mean_ptr = mean->data<T>();
         const T *var_ptr = var->data<T>();
 
@@ -159,7 +151,7 @@ class BatchNormOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class BatchNormOp<DeviceType::GPU, float> : public Operation {
+class BatchNormOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit BatchNormOp(OpConstructContext *context)
       : Operation(context) {
@@ -188,7 +180,7 @@ class BatchNormOp<DeviceType::GPU, float> : public Operation {
           context,
           operator_def_.get(),
           i,
-          OpenCLBufferType::ARGUMENT,
+          BufferContentType::ARGUMENT,
           mem_type) == MaceStatus::MACE_SUCCESS);
     }
   }
@@ -220,6 +212,14 @@ class BatchNormOp<DeviceType::GPU, float> : public Operation {
                             var, output);
   }
 
+ protected:
+  BufferContentType GetInputTensorContentType(size_t idx) const override {
+    if (idx > 0) {
+      return BufferContentType::ARGUMENT;
+    }
+    return Operation::GetInputTensorContentType(idx);
+  }
+
  private:
   std::unique_ptr<OpenCLBatchNormKernel> kernel_;
 
@@ -231,8 +231,9 @@ class BatchNormOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterBatchNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchNorm", BatchNormOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "BatchNorm", BatchNormOp, DeviceType::CPU);
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "BatchNorm",
+                        BatchNormOp, RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "BatchNorm", BatchNormOp);
 }
 

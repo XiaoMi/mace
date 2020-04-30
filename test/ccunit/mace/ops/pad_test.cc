@@ -26,14 +26,14 @@ namespace test {
 class PadTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleConstant() {
   // Construct graph
   OpsTestNet net;
 
   // Add input data
   net.AddRepeatedInput<D, float>("Input", {1, 2, 3, 1}, 2);
-  if (D == DeviceType::GPU) {
+  if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Pad", "PadTest")
         .Input("Input")
         .Output("Output")
@@ -45,7 +45,7 @@ void SimpleConstant() {
     // Run
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
     OpDefBuilder("Pad", "PadTest")
         .Input("TInput")
@@ -58,7 +58,7 @@ void SimpleConstant() {
     // Run
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
@@ -73,7 +73,7 @@ void SimpleConstant() {
   ExpectTensorNear<float>(*expected, *output, 1e-5);
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void Result(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_data,
             const std::vector<index_t> &expected_shape,
@@ -90,10 +90,10 @@ void Result(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddInputFromArray<D, float>(input, input_shape, input_data);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     t_input = "TInput";
     t_output = "TOutput";
-    net.TransformDataFormat<DeviceType::CPU, T>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, T>(
         input, DataFormat::NHWC, t_input, DataFormat::NCHW);
   }
 
@@ -108,8 +108,8 @@ void Result(const std::vector<index_t> &input_shape,
   // Run
   net.RunOp(D);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, T>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, T>(
         t_output, DataFormat::NCHW, output, DataFormat::NHWC);
   }
 
@@ -133,18 +133,18 @@ void SimpleMirror(const std::vector<float> &expected_data,
     input_data.push_back(i);
   }
 
-  Result<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
+  Result<RuntimeType::RT_CPU, float>(input_shape, input_data, expected_shape,
       expected_data, paddings, pad_type);
-  Result<DeviceType::GPU, float>(input_shape, input_data, expected_shape,
+  Result<RuntimeType::RT_OPENCL, float>(input_shape, input_data, expected_shape,
       expected_data, paddings, pad_type);
-  Result<DeviceType::GPU, half>(input_shape, input_data, expected_shape,
+  Result<RuntimeType::RT_OPENCL, half>(input_shape, input_data, expected_shape,
       expected_data, paddings, pad_type);
 }
 }  // namespace
 
-TEST_F(PadTest, SimpleConstantCPU) { SimpleConstant<DeviceType::CPU>(); }
+TEST_F(PadTest, SimpleConstantCPU) { SimpleConstant<RuntimeType::RT_CPU>(); }
 
-TEST_F(PadTest, SimpleConstantGPU) { SimpleConstant<DeviceType::GPU>(); }
+TEST_F(PadTest, SimpleConstantGPU) { SimpleConstant<RuntimeType::RT_OPENCL>(); }
 
 TEST_F(PadTest, SimpleReflect) {
   SimpleMirror({
@@ -173,8 +173,8 @@ TEST_F(PadTest, ComplexCPU) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRepeatedInput<DeviceType::CPU, float>("Input", {1, 1, 1, 2}, 2);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddRepeatedInput<RuntimeType::RT_CPU, float>("Input", {1, 1, 1, 2}, 2);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
@@ -186,7 +186,7 @@ TEST_F(PadTest, ComplexCPU) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto output = net.GetTensor("Output");
@@ -209,9 +209,9 @@ void Complex(const std::vector<index_t> &input_shape,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input", input_shape);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
@@ -224,7 +224,7 @@ void Complex(const std::vector<index_t> &input_shape,
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
@@ -240,7 +240,7 @@ void Complex(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
 
   // Run
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   auto output = net.GetTensor("Output");
 
@@ -365,7 +365,7 @@ TEST_F(PadTest, ReflectCPU) {
     input_data.push_back(i);
   }
 
-  Result<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
+  Result<RuntimeType::RT_CPU, float>(input_shape, input_data, expected_shape,
       expected_data, paddings, PadType::REFLECT);
 }
 
@@ -466,7 +466,7 @@ TEST_F(PadTest, SymmetricCPU) {
     input_data.push_back(i);
   }
 
-  Result<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
+  Result<RuntimeType::RT_CPU, float>(input_shape, input_data, expected_shape,
       expected_data, paddings, PadType::SYMMETRIC);
 }
 
@@ -481,9 +481,9 @@ void TestQuantized(const std::vector<int> &paddings,
 
   OpsTestNet net;
   std::vector<index_t> input_shape{batch, height, width, channels};
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RT_CPU, float>(
       "Input", input_shape, false, false);
-  net.TransformDataFormat<CPU, float>(
+  net.TransformDataFormat<RT_CPU, float>(
       "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
@@ -496,7 +496,7 @@ void TestQuantized(const std::vector<int> &paddings,
       .Finalize(net.NewOperatorDef());
 
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeInput")
@@ -508,7 +508,8 @@ void TestQuantized(const std::vector<int> &paddings,
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
-  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>("QuantizedOutput",
+                                                   input_shape);
   OpDefBuilder("Pad", "QuantizedPadTest")
       .Input("QuantizedInput")
       .Output("QuantizedOutput")

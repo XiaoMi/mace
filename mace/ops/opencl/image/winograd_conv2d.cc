@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/ops/op_context.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 #include "mace/ops/common/activation_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
 
@@ -37,7 +37,9 @@ MaceStatus WinogradInputTransform(OpContext *context,
                                   Tensor *output_tensor,
                                   uint32_t *kwg_size,
                                   StatsFuture *future) {
-  OpenCLRuntime *runtime = context->device()->gpu_runtime()->opencl_runtime();
+  OpenclRuntime *opencl_runtime =
+      static_cast<OpenclRuntime *>(context->runtime());
+  auto *executor = opencl_runtime->GetOpenclExecutor();
   const index_t out_width = output_tensor->dim(2);
 
   MACE_OUT_OF_RANGE_DEFINITION;
@@ -63,13 +65,13 @@ MaceStatus WinogradInputTransform(OpContext *context,
     }
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("winograd_transform",
-                                              obfuscated_kernel_name,
-                                              built_options,
-                                              kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("winograd_transform",
+                                               obfuscated_kernel_name,
+                                               built_options,
+                                               kernel));
 
     *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const uint32_t gws[2] = {
@@ -81,8 +83,8 @@ MaceStatus WinogradInputTransform(OpContext *context,
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_2D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++, *(input_tensor->opencl_image()));
-    kernel->setArg(idx++, *(output_tensor->opencl_image()));
+    kernel->setArg(idx++, *(input_tensor->memory<cl::Image>()));
+    kernel->setArg(idx++, *(output_tensor->mutable_memory<cl::Image>()));
     kernel->setArg(idx++, static_cast<uint32_t>(input_tensor->dim(1)));
     kernel->setArg(idx++, static_cast<uint32_t>(input_tensor->dim(2)));
     kernel->setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
@@ -97,7 +99,7 @@ MaceStatus WinogradInputTransform(OpContext *context,
                                   output_tensor->dim(0),
                                   output_tensor->dim(1),
                                   output_tensor->dim(2));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
                                            gws, lws, future));
 
   MACE_OUT_OF_RANGE_VALIDATION;
@@ -118,7 +120,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
                                    Tensor *output_tensor,
                                    uint32_t *kwg_size,
                                    StatsFuture *future) {
-  OpenCLRuntime *runtime = context->device()->gpu_runtime()->opencl_runtime();
+  OpenclExecutor *executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   auto &output_shape = output_tensor->shape();
 
   MACE_OUT_OF_RANGE_DEFINITION;
@@ -182,13 +184,13 @@ MaceStatus WinogradOutputTransform(OpContext *context,
       }
     }
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("winograd_transform",
-                                              obfuscated_kernel_name,
-                                              built_options,
-                                              kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("winograd_transform",
+                                               obfuscated_kernel_name,
+                                               built_options,
+                                               kernel));
 
     *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const uint32_t gws[2] = {
@@ -201,13 +203,13 @@ MaceStatus WinogradOutputTransform(OpContext *context,
     MACE_SET_2D_GWS_ARGS(*kernel, gws);
     kernel->setArg(
         idx++,
-        *(static_cast<const cl::Image2D *>(input_tensor->opencl_image())));
+        *(static_cast<const cl::Image2D *>(input_tensor->memory<cl::Image>())));
     if (bias != nullptr) {
-      kernel->setArg(idx++,
-                     *(static_cast<const cl::Image2D *>(bias->opencl_image())));
+      kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(
+          bias->memory<cl::Image>())));
     }
-    kernel->setArg(
-        idx++, *(static_cast<cl::Image2D *>(output_tensor->opencl_image())));
+    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(
+        output_tensor->mutable_memory<cl::Image>())));
     kernel->setArg(idx++, static_cast<uint32_t>(output_shape[1]));
     kernel->setArg(idx++, static_cast<uint32_t>(output_shape[2]));
     kernel->setArg(idx++, static_cast<uint32_t>(round_h * round_w));
@@ -220,7 +222,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
       Concat("winograd_inverse_transform_kernel", output_tensor->dim(0),
              output_tensor->dim(1), output_tensor->dim(2),
              output_tensor->dim(3), input_tensor->dim(2));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
                                            gws, lws, future));
 
   MACE_OUT_OF_RANGE_VALIDATION;
@@ -242,9 +244,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
                                        std::vector<index_t> *prev_input_shape,
                                        Tensor *output,
                                        uint32_t *kwg_size[3]) {
-  OpenCLRuntime *runtime = context->device()->gpu_runtime()->opencl_runtime();
-  ScratchImageManager *scratch_manager =
-      context->device()->gpu_runtime()->scratch_image_manager();
+  auto *executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   StatsFuture t_input_future, mm_future, t_output_future;
   bool input_changed =
       IsResetArgsNeeded(context, *prev_input_shape, input->shape());
@@ -264,22 +264,14 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
 
   // 0. transform input
   // input(NHWC) -> t_input(blk_sqr, in_channel, out_width)
-  std::vector<index_t> t_input_shape =
-      {blk_sqr, in_channel, out_width};
-  std::vector<index_t> padded_t_input_shape = {
-      t_input_shape[0], t_input_shape[1], t_input_shape[2], 1
-  };
-  std::vector<size_t> t_input_image_shape;
-  OpenCLUtil::CalImage2DShape(padded_t_input_shape,
-                              OpenCLBufferType::IN_OUT_HEIGHT,
-                              &t_input_image_shape);
-  ScratchImage transformed_input_image(scratch_manager);
-  auto input_dt = input->dtype();
-  auto image = transformed_input_image.Scratch(context->device()->allocator(),
-                                               t_input_image_shape, input_dt);
-  auto transformed_input = make_unique<Tensor>(image, input_dt);
-  MACE_RETURN_IF_ERROR(transformed_input->ResizeImage(t_input_shape,
-                                                      t_input_image_shape));
+  std::vector<index_t> t_input_shape = {blk_sqr, in_channel, out_width};
+  auto *runtime = context->runtime();
+  auto transformed_input =
+      make_unique<Tensor>(runtime, input->dtype(), input->memory_type(),
+                          t_input_shape, false, "",
+                          BufferContentType::IN_OUT_HEIGHT);
+  runtime->AllocateBufferForTensor(transformed_input.get(), RENT_SCRATCH);
+
   MACE_RETURN_IF_ERROR(WinogradInputTransform(
       context, kernels[0], input, paddings,
       round_h, round_w, wino_blk_size,
@@ -291,21 +283,10 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   //     -> t_output (blk_sqr, out_chan, out_width)
   std::vector<index_t> mm_output_shape =
       {blk_sqr, out_channel, out_width};
-
-  std::vector<index_t> padded_mm_output_shape =
-      {mm_output_shape[0], mm_output_shape[1], mm_output_shape[2], 1};
-  std::vector<size_t> mm_output_image_shape;
-  OpenCLUtil::CalImage2DShape(padded_mm_output_shape,
-                              OpenCLBufferType::IN_OUT_HEIGHT,
-                              &mm_output_image_shape);
-
-  ScratchImage mm_output_image(scratch_manager);
-  auto output_dt = input->dtype();
   std::unique_ptr<Tensor> mm_output = make_unique<Tensor>(
-      mm_output_image.Scratch(context->device()->allocator(),
-                              mm_output_image_shape, output_dt), output_dt);
-  MACE_RETURN_IF_ERROR(mm_output->ResizeImage(mm_output_shape,
-                                              mm_output_image_shape));
+      runtime, input->dtype(), input->memory_type(), mm_output_shape,
+      false, "", BufferContentType::IN_OUT_HEIGHT);
+  runtime->AllocateBufferForTensor(mm_output.get(), RENT_SCRATCH);
 
   const index_t height_blocks = RoundUpDiv4(mm_output_shape[1]);
   const index_t width_blocks = RoundUpDiv4(mm_output_shape[2]);
@@ -324,19 +305,19 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
     built_options.emplace("-Dmatmul=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("matmul", kernel_name,
-                                              built_options, kernels[1]));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("matmul", kernel_name,
+                                               built_options, kernels[1]));
 
     *kwg_size[1] =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernels[1]));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernels[1]));
   }
   MACE_OUT_OF_RANGE_INIT(*kernels[1]);
   uint32_t idx = 0;
   MACE_OUT_OF_RANGE_SET_ARGS(*kernels[1]);
   MACE_SET_2D_GWS_ARGS(*kernels[1], gws);
-  kernels[1]->setArg(idx++, *(filter->opencl_image()));
-  kernels[1]->setArg(idx++, *(transformed_input->opencl_image()));
-  kernels[1]->setArg(idx++, *(mm_output->opencl_image()));
+  kernels[1]->setArg(idx++, *(filter->memory<cl::Image>()));
+  kernels[1]->setArg(idx++, *(transformed_input->memory<cl::Image>()));
+  kernels[1]->setArg(idx++, *(mm_output->mutable_memory<cl::Image>()));
   kernels[1]->setArg(idx++, static_cast<int>(mm_output_shape[1]));
   kernels[1]->setArg(idx++, static_cast<int>(mm_output_shape[2]));
   kernels[1]->setArg(idx++, static_cast<int>(in_channel));
@@ -346,7 +327,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   const std::vector<uint32_t> lws = {*kwg_size[1] / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", mm_output_shape[0],
                                   mm_output_shape[1], mm_output_shape[2]);
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernels[1], tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernels[1], tuning_key,
                                            gws, lws, &mm_future));
 
   MACE_OUT_OF_RANGE_VALIDATION;

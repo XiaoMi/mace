@@ -15,18 +15,11 @@
 #ifndef MACE_OPS_COMMON_UTILS_H_
 #define MACE_OPS_COMMON_UTILS_H_
 
-#include <vector>
-
 #include "mace/core/types.h"
-#include "mace/port/port.h"
 
 namespace mace {
 
 class Tensor;
-
-namespace utils {
-class ThreadPool;
-}  // namespace utils
 
 namespace ops {
 namespace common {
@@ -44,16 +37,6 @@ inline float CalculateResizeScale(index_t in_size,
 
 void GetSizeParamFromTensor(const Tensor *size_tensor, index_t *out_height,
                             index_t *out_width);
-
-void CopyDataBetweenType(mace::utils::ThreadPool *thread_pool,
-                         const void *src, DataType src_type, void *dst,
-                         DataType dst_type, index_t tensor_size);
-
-MaceStatus Transpose(mace::utils::ThreadPool *thread_pool, const void *input,
-                     DataType input_data_type,
-                     const std::vector<int64_t> &input_shape,
-                     const std::vector<int> &dst_dims,
-                     void *output, DataType output_data_type);
 
 }  // namespace utils
 }  // namespace common

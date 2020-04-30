@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void PriorBox(
     int iters, float min_size, float max_size, float aspect_ratio,
     int clip, float variance0, float variance1, float offset, int h) {
@@ -45,14 +45,15 @@ void PriorBox(
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   const int64_t tot = static_cast<int64_t>(iters) * (300 * 300 * 3 + h);
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
 }
 }  // namespace
@@ -60,7 +61,7 @@ void PriorBox(
 #define MACE_BM_PRIOR_BOX(MIN, MAX, AR, CLIP, V0, V1, OFFSET, H)              \
   static void MACE_BM_PRIOR_BOX_##MIN##_##MAX##_##AR##_##CLIP##_##V0##_##V1##_\
       ##OFFSET##_##H(int iters) {                                             \
-    PriorBox<DeviceType::CPU, float>(iters, MIN, MAX, AR, CLIP, V0, V1,       \
+    PriorBox<RuntimeType::RT_CPU, float>(iters, MIN, MAX, AR, CLIP, V0, V1,   \
         OFFSET, H);                                                           \
   }                                                                           \
   MACE_BENCHMARK(MACE_BM_PRIOR_BOX_##MIN##_##MAX##_##AR##_##CLIP##_##V0##_    \

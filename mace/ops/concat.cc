@@ -47,11 +47,11 @@ class ConcatOpBase : public Operation {
   int axis_;
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ConcatOp;
 
 template<typename T>
-class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
+class ConcatOp<RuntimeType::RT_CPU, T> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context),
@@ -95,13 +95,6 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard output_guard(output);
-    std::vector<Tensor::MappingGuard> mappers;
-
-    for (size_t i = 0; i < inputs_count; ++i) {
-      mappers.emplace_back(Tensor::MappingGuard(inputs[i]));
-    }
-
     T *output_ptr = output->mutable_data<T>();
     std::vector<const T *> input_ptrs(inputs.size(), nullptr);
     for (size_t i = 0; i < inputs_count; ++i) {
@@ -130,7 +123,7 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template <>
-class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
+class ConcatOp<RuntimeType::RT_CPU, uint8_t> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {}
@@ -202,7 +195,7 @@ class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ConcatOp<DeviceType::GPU, float> : public ConcatOpBase {
+class ConcatOp<RuntimeType::RT_OPENCL, float> : public ConcatOpBase {
  public:
   explicit ConcatOp(OpConstructContext *context)
       : ConcatOpBase(context) {
@@ -224,16 +217,16 @@ class ConcatOp<DeviceType::GPU, float> : public ConcatOpBase {
 
 void RegisterConcat(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Concat", ConcatOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Concat", ConcatOp);
@@ -242,14 +235,14 @@ void RegisterConcat(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("Concat")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 auto tensor_shape_info = context->tensor_shape_info();
                 if (op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 } else {
                   int has_data_format =
                       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
@@ -257,7 +250,7 @@ void RegisterConcat(OpRegistry *op_registry) {
                   int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                       *op, "axis", 3);
                   if (!has_data_format || axis != 3) {
-                    return {DeviceType::CPU};
+                    return {RuntimeType::RT_CPU};
                   }
                   bool divisible_four = true;
                   for (const std::string &input : op->input()) {
@@ -269,10 +262,10 @@ void RegisterConcat(OpRegistry *op_registry) {
                   }
                   // Only support not divisible 4 case with 2 inputs.
                   if (op->input_size() > 2 && !divisible_four) {
-                    return {DeviceType::CPU};
+                    return {RuntimeType::RT_CPU};
                   }
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

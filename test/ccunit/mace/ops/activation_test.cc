@@ -21,7 +21,7 @@ namespace test {
 class ActivationOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleRelu() {
   OpsTestNet net;
 
@@ -46,14 +46,16 @@ void TestSimpleRelu() {
 }
 }  // namespace
 
-TEST_F(ActivationOpTest, CPUSimpleRelu) { TestSimpleRelu<DeviceType::CPU>(); }
+TEST_F(ActivationOpTest, CPUSimpleRelu) {
+  TestSimpleRelu<RuntimeType::RT_CPU>();
+}
 
 TEST_F(ActivationOpTest, OPENCLSimpleRelu) {
-  TestSimpleRelu<DeviceType::GPU>();
+  TestSimpleRelu<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleLeakyRelu() {
   OpsTestNet net;
 
@@ -81,15 +83,15 @@ void TestSimpleLeakyRelu() {
 }  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleLeakyRelu) {
-  TestSimpleLeakyRelu<DeviceType::CPU>();
+  TestSimpleLeakyRelu<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ActivationOpTest, OPENCLSimpleLeakyRelu) {
-  TestSimpleLeakyRelu<DeviceType::GPU>();
+  TestSimpleLeakyRelu<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestUnalignedSimpleRelu() {
   OpsTestNet net;
 
@@ -112,15 +114,15 @@ void TestUnalignedSimpleRelu() {
 }  // namespace
 
 TEST_F(ActivationOpTest, CPUUnalignedSimpleRelu) {
-  TestUnalignedSimpleRelu<DeviceType::CPU>();
+  TestUnalignedSimpleRelu<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ActivationOpTest, OPENCLUnalignedSimpleRelu) {
-  TestUnalignedSimpleRelu<DeviceType::GPU>();
+  TestUnalignedSimpleRelu<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleRelux() {
   OpsTestNet net;
 
@@ -146,12 +148,14 @@ void TestSimpleRelux() {
 }
 }  // namespace
 
-TEST_F(ActivationOpTest, CPUSimple) { TestSimpleRelux<DeviceType::CPU>(); }
+TEST_F(ActivationOpTest, CPUSimple) { TestSimpleRelux<RuntimeType::RT_CPU>(); }
 
-TEST_F(ActivationOpTest, OPENCLSimple) { TestSimpleRelux<DeviceType::GPU>(); }
+TEST_F(ActivationOpTest, OPENCLSimple) {
+  TestSimpleRelux<RuntimeType::RT_OPENCL>();
+}
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleReluRelux() {
   OpsTestNet net;
 
@@ -178,15 +182,15 @@ void TestSimpleReluRelux() {
 }  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleRelux) {
-  TestSimpleReluRelux<DeviceType::CPU>();
+  TestSimpleReluRelux<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ActivationOpTest, OPENCLSimpleRelux) {
-  TestSimpleReluRelux<DeviceType::GPU>();
+  TestSimpleReluRelux<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimplePrelu() {
   OpsTestNet net;
 
@@ -196,7 +200,7 @@ void TestSimplePrelu() {
       {-7, 7, -6, 6, -5, -5, -4, -4, -3, 3, -2, 2, -1, -1, 0, 0});
   net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0}, true);
 
-  if (D == DeviceType::GPU) {
+  if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Activation", "PreluTest")
         .Input("Input")
         .Input("Alpha")
@@ -229,14 +233,16 @@ void TestSimplePrelu() {
 }
 }  // namespace
 
-TEST_F(ActivationOpTest, CPUSimplePrelu) { TestSimplePrelu<DeviceType::CPU>(); }
+TEST_F(ActivationOpTest, CPUSimplePrelu) {
+  TestSimplePrelu<RuntimeType::RT_CPU>();
+}
 
 TEST_F(ActivationOpTest, OPENCLSimplePrelu) {
-  TestSimplePrelu<DeviceType::GPU>();
+  TestSimplePrelu<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleElu() {
   OpsTestNet net;
 
@@ -245,7 +251,7 @@ void TestSimpleElu() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::GPU) {
+  if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Activation", "EluTest")
         .Input("Input")
         .Output("Output")
@@ -281,14 +287,14 @@ void TestSimpleElu() {
 }
 }  // namespace
 
-TEST_F(ActivationOpTest, CPUSimpleElu) { TestSimpleElu<DeviceType::CPU>(); }
+TEST_F(ActivationOpTest, CPUSimpleElu) { TestSimpleElu<RuntimeType::RT_CPU>(); }
 
 TEST_F(ActivationOpTest, OPENCLSimpleElu) {
-  TestSimpleElu<DeviceType::GPU>();
+  TestSimpleElu<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleTanh() {
   OpsTestNet net;
 
@@ -316,14 +322,16 @@ void TestSimpleTanh() {
 }
 }  // namespace
 
-TEST_F(ActivationOpTest, CPUSimpleTanh) { TestSimpleTanh<DeviceType::CPU>(); }
+TEST_F(ActivationOpTest, CPUSimpleTanh) {
+  TestSimpleTanh<RuntimeType::RT_CPU>();
+}
 
 TEST_F(ActivationOpTest, OPENCLSimpleTanh) {
-  TestSimpleTanh<DeviceType::GPU>();
+  TestSimpleTanh<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestSimpleSigmoid() {
   OpsTestNet net;
 
@@ -353,20 +361,20 @@ void TestSimpleSigmoid() {
 }  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleSigmoid) {
-  TestSimpleSigmoid<DeviceType::CPU>();
+  TestSimpleSigmoid<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ActivationOpTest, OPENCLSimpleSigmoid) {
-  TestSimpleSigmoid<DeviceType::GPU>();
+  TestSimpleSigmoid<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
 void TestQuantized(const index_t size, const char *type) {
   OpsTestNet net;
   std::vector<index_t> input_shape{size};
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RT_CPU, float>(
       "Input", input_shape, false, false);
-  net.AddRandomInput<DeviceType::CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Output", input_shape, false, true, true);
   OpDefBuilder("Activation", "ActivationTest")
       .Input("Input")
@@ -375,7 +383,7 @@ void TestQuantized(const index_t size, const char *type) {
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
 
-  net.RunOp(CPU);
+  net.RunOp(RT_CPU);
 
   OpDefBuilder("Quantize", "QuantizeInput")
       .Input("Input")
@@ -386,7 +394,8 @@ void TestQuantized(const index_t size, const char *type) {
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
-  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>("QuantizedOutput",
+                                                   input_shape);
   OpDefBuilder("Activation", "QuantizedActivationTest")
       .Input("QuantizedInput")
       .Output("QuantizedOutput")
@@ -428,10 +437,11 @@ void TestBFloat16(const char *activation) {
   index_t width = 3 + (rand_r(&seed) % 10);
 
   // Add input data
-  net.AddRandomInput<CPU, float>("Input", {batch, channels, height, width});
-  net.AddRandomInput<CPU, float>("Alpha", {channels}, true);
-  net.Cast<CPU, float, BFloat16>("Input", "BF16Input");
-  net.Cast<CPU, float, BFloat16>("Alpha", "BF16Alpha");
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
+      "Input", {batch, channels, height, width});
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Alpha", {channels}, true);
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Alpha", "BF16Alpha");
 
   OpDefBuilder("Activation", "ActivationTest")
       .Input("Input")
@@ -442,7 +452,7 @@ void TestBFloat16(const char *activation) {
       .AddFloatArg("max_limit", 6)
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("Activation", "BF16ActivationTest")
       .Input("BF16Input")
@@ -453,9 +463,9 @@ void TestBFloat16(const char *activation) {
       .AddFloatArg("max_limit", 6)
       .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
-  net.Cast<CPU, BFloat16, float>("BF16Output", "CastOutput");
+  net.Cast<RuntimeType::RT_CPU, BFloat16, float>("BF16Output", "CastOutput");
 
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("CastOutput"), 1e-5);

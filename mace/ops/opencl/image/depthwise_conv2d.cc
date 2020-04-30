@@ -18,6 +18,8 @@
 #include <set>
 #include <string>
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -27,7 +29,7 @@ namespace depthwise {
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (4 + 4 + 1) * 4 * 4;
-std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+std::vector<uint32_t> LocalWS(OpenclExecutor *executor,
                               const uint32_t *gws,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
@@ -35,7 +37,7 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = runtime->device_global_mem_cache_size();
+        cache_size = executor->device_global_mem_cache_size();
     uint32_t base = cache_size / kBaseGPUMemCacheSize;
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     if (lws[1] >= base) {
@@ -93,7 +95,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -112,22 +114,16 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     built_options.emplace(MakeString("-DSTRIDE=", stride));
     switch (activation) {
-      case NOOP:
+      case NOOP:break;
+      case RELU:built_options.emplace("-DUSE_RELU");
         break;
-      case RELU:
-        built_options.emplace("-DUSE_RELU");
+      case RELUX:built_options.emplace("-DUSE_RELUX");
         break;
-      case RELUX:
-        built_options.emplace("-DUSE_RELUX");
+      case TANH:built_options.emplace("-DUSE_TANH");
         break;
-      case TANH:
-        built_options.emplace("-DUSE_TANH");
+      case SIGMOID:built_options.emplace("-DUSE_SIGMOID");
         break;
-      case SIGMOID:
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      case LEAKYRELU:
-        built_options.emplace("-DUSE_LEAKYRELU");
+      case LEAKYRELU:built_options.emplace("-DUSE_LEAKYRELU");
         break;
       case ELU:
         built_options.emplace("-DUSE_ELU");
@@ -137,12 +133,13 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     }
 
     MACE_RETURN_IF_ERROR(
-        runtime->BuildKernel("depthwise_conv2d", kernel_name,
-                             built_options, kernel));
+        executor->BuildKernel("depthwise_conv2d", kernel_name,
+                              built_options, kernel));
 
     *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
+
   MACE_OUT_OF_RANGE_INIT(*kernel);
   if (IsResetArgsNeeded(context, *prev_input_shape, input->shape())) {
     const index_t input_height = input->dim(1);
@@ -151,19 +148,20 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     const index_t filter_height = filter->dim(2);
     const index_t filter_width = filter->dim(3);
     MACE_CHECK(multiplier == 1, "Multiplier > 1 not supported");
-    MACE_CHECK(multiplier * input_channels == channels);
+    MACE_CHECK(multiplier * input_channels == channels,
+               multiplier, ", ", input_channels, ", ", channels);
     MACE_CHECK(filter->dim(1) == input_channels, filter->dim(1), "!=",
                input_channels);
 
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_3D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++, *(input->opencl_image()));
-    kernel->setArg(idx++, *(filter->opencl_image()));
+    kernel->setArg(idx++, *(input->memory<cl::Image>()));
+    kernel->setArg(idx++, *(filter->memory<cl::Image>()));
     if (bias != nullptr) {
-      kernel->setArg(idx++, *(bias->opencl_image()));
+      kernel->setArg(idx++, *(bias->memory<cl::Image>()));
     }
-    kernel->setArg(idx++, *(output->opencl_image()));
+    kernel->setArg(idx++, *(output->mutable_memory<cl::Image>()));
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, activation_coefficient);
     kernel->setArg(idx++, static_cast<int16_t>(input_height));
@@ -183,10 +181,10 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
+  const std::vector<uint32_t> lws = LocalWS(executor, gws, *kwg_size);
   std::string tuning_key =
       Concat("depthwise_conv2d_ocl_kernel", gws[0], gws[1], gws[2], multiplier);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
@@ -239,10 +237,7 @@ MaceStatus DepthwiseConv2dKernel::Compute(
                    output_shape.data());
   }
 
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   return depthwise::DepthwiseConv2d(
       context, &kernel_, input, filter, bias, strides[0], paddings.data(),

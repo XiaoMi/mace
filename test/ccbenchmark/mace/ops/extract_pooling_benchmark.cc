@@ -19,7 +19,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 static void ExtractPooling(int iters,
                            int batch,
                            int chunk,
@@ -44,7 +44,7 @@ static void ExtractPooling(int iters,
   for (size_t i = 0; i < num_output_indexes; ++i) {
     output_indexes[i] = static_cast<int>(i * modulus);
     forward_indexes[2 * i] = 0;
-    forward_indexes[2 * i + 1] = static_cast<int>(num_input_indexes - 1);
+    forward_indexes[2 * i + 1] = static_cast<int>(num_input_indexes);
     counts[i] = static_cast<float>(num_input_indexes);
   }
 
@@ -67,8 +67,9 @@ static void ExtractPooling(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
@@ -91,7 +92,7 @@ _##DEVICE(                                                                     \
 ##_##DEVICE)
 
 #define MACE_BM_EXTRACTPOOLING(N, C, D, INP, M)                 \
-  MACE_BM_EXTRACTPOOLING_MACRO(N, C, D, INP, M, float, CPU);
+  MACE_BM_EXTRACTPOOLING_MACRO(N, C, D, INP, M, float, RT_CPU);
 
 MACE_BM_EXTRACTPOOLING(8, 40, 512, 2, 4);
 MACE_BM_EXTRACTPOOLING(16, 80, 100, 3, 9);

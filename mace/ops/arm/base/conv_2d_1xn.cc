@@ -21,22 +21,22 @@ namespace arm {
 void RegisterConv2dK1xNDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK1x7S1<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K1x7S1));
 
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK7x1S1<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K7x1S1));
 
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK1x15S1<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K1x15S1));
 
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK15x1S1<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K15x1S1));
 }
 

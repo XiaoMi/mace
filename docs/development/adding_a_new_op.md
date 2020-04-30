@@ -24,24 +24,24 @@ The structure of Op is like the following code.
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template <RuntimeType D, class T>
 class MyCustomOp;
 
 template <>
-class MyCustomOp<DeviceType::CPU, float> : public Operation {
+class MyCustomOp<RuntimeType::RT_CPU, float> : public Operation {
 ...
 }
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class MyCustomOp<DeviceType::GPU, float> : public Operation {
+class MyCustomOp<RuntimeType::RT_OPENCL, float> : public Operation {
 ...
 };
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterMyCustomOp(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "MyCustomOp", MyCustomOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
 
   MACE_REGISTER_GPU_OP(op_registry, "MyCustomOp", MyCustomOp);
 }

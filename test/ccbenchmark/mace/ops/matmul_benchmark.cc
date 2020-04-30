@@ -18,10 +18,12 @@
 #include <tuple>
 #include <vector>
 
+
 #include "public/gemmlowp.h"
-#include "mace/utils/statistics.h"
 #include "mace/benchmark_utils/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/runtimes/cpu/cpu_runtime.h"
+#include "mace/utils/statistics.h"
 
 namespace gemmlowp {
 
@@ -128,9 +130,10 @@ void MatmulBenchmark_gemmlowp_uint8(int iters, int rows, int depth, int cols) {
   const auto output_pipeline =
       std::make_tuple(quantize_down_stage, saturating_cast_stage);
 
-  auto gemm_context =
-      mace::ops::test::OpTestContext::Get()
-          ->GetDevice(CPU)->cpu_runtime()->GetGemmlowpContext();
+  auto *runtime = mace::ops::test::OpTestContext::Get()
+      ->GetRuntime(RuntimeType::RT_CPU);
+  auto *cpu_runtime = static_cast<CpuRuntime *>(runtime);
+  auto *gemm_context = cpu_runtime->GetGemmlowpContext();
   MACE_CHECK_NOTNULL(gemm_context);
 
   using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
@@ -163,9 +166,10 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
 
   const auto output_pipeline = std::make_tuple();
 
-  auto gemm_context =
-      mace::ops::test::OpTestContext::Get()
-          ->GetDevice(CPU)->cpu_runtime()->GetGemmlowpContext();
+  auto *runtime = mace::ops::test::OpTestContext::Get()
+      ->GetRuntime(RuntimeType::RT_CPU);
+  auto *cpu_runtime = static_cast<CpuRuntime *>(runtime);
+  auto *gemm_context = cpu_runtime->GetGemmlowpContext();
   MACE_CHECK_NOTNULL(gemm_context);
 
   using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
@@ -255,7 +259,7 @@ MACE_BM_MATMUL(512, 512, 196);
 MACE_BM_MATMUL(1024, 1024, 49);
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void MatMulBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
   mace::testing::StopTiming();
@@ -306,7 +310,7 @@ void MatMulBenchmark(
   net.Sync();
 }
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void MatMulTransposeBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
   mace::testing::StopTiming();
@@ -332,7 +336,7 @@ void MatMulTransposeBenchmark(
     net.GetTensor("B")->SetScale(0.1);
   }
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("MatMul", "MatMulBM")
         .Input("A")
         .Input("B")
@@ -377,11 +381,11 @@ void MatMulTransposeBenchmark(
 
 #ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL_OP(N, H, C, W)              \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, uint8_t, CPU)
+  MACE_BM_MATMUL_MACRO(N, H, C, W, float, RT_CPU);    \
+  MACE_BM_MATMUL_MACRO(N, H, C, W, uint8_t, RT_CPU)
 #else
 #define MACE_BM_MATMUL_OP(N, H, C, W)              \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU)
+  MACE_BM_MATMUL_MACRO(N, H, C, W, float, RT_CPU)
 #endif
 
 #define MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, TYPE, DEVICE)               \
@@ -398,11 +402,11 @@ void MatMulTransposeBenchmark(
 
 #ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, RT_CPU);     \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, RT_CPU);
 #else
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, RT_CPU);
 #endif
 
 MACE_BM_MATMUL_OP(1, 30000, 256, 1);
@@ -427,7 +431,7 @@ MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 3969);
 
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
 #define MACE_BM_MATMUL_TRANPOSE_FP16(N, H, C, W)              \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float16_t, CPU);
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float16_t, RT_CPU);
 
 MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 256, 30000);
 MACE_BM_MATMUL_TRANPOSE_FP16(1, 1, 256, 256);

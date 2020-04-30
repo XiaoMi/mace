@@ -26,7 +26,7 @@ class OpKeyBuilder {
  public:
   explicit OpKeyBuilder(const std::string &op_name);
 
-  OpKeyBuilder &Device(DeviceType device);
+  OpKeyBuilder &Runtime(RuntimeType runtime);
 
   OpKeyBuilder &TypeConstraint(const char *attr_name,
                                DataType allowed);
@@ -35,14 +35,14 @@ class OpKeyBuilder {
 
  private:
   std::string op_name_;
-  DeviceType device_type_;
+  RuntimeType runtime_type_;
   std::map<std::string, DataType> type_constraint_;
 };
 
 OpKeyBuilder::OpKeyBuilder(const std::string &op_name) : op_name_(op_name) {}
 
-OpKeyBuilder &OpKeyBuilder::Device(DeviceType device) {
-  device_type_ = device;
+OpKeyBuilder &OpKeyBuilder::Runtime(RuntimeType runtime) {
+  runtime_type_ = runtime;
   return *this;
 }
 
@@ -56,7 +56,7 @@ const std::string OpKeyBuilder::Build() {
   static const std::vector<std::string> type_order = {"T"};
   std::stringstream ss;
   ss << op_name_;
-  ss << device_type_;
+  ss << runtime_type_;
   for (auto type : type_order) {
     ss << type << "_" << DataTypeToString(type_constraint_[type]);
   }
@@ -65,19 +65,24 @@ const std::string OpKeyBuilder::Build() {
 }
 }  // namespace
 
+
+OpRegistry::~OpRegistry() {
+  VLOG(2) << "Destroy OpRegistry";
+}
+
 MaceStatus OpRegistry::Register(
     const std::string &op_type,
-    const DeviceType device_type,
+    const RuntimeType runtime_type,
     const DataType dt,
     OpRegistrationInfo::OpCreator creator) {
   if (registry_.count(op_type) == 0) {
     registry_[op_type] = std::unique_ptr<OpRegistrationInfo>(
         new OpRegistrationInfo);
   }
-  registry_[op_type]->AddDevice(device_type);
+  registry_[op_type]->AddRuntime(runtime_type);
 
   std::string op_key = OpKeyBuilder(op_type)
-      .Device(device_type)
+      .Runtime(runtime_type)
       .TypeConstraint("T", dt)
       .Build();
   registry_.at(op_type)->Register(op_key, creator);
@@ -95,12 +100,12 @@ MaceStatus OpRegistry::Register(
   return MaceStatus::MACE_SUCCESS;
 }
 
-const std::set<DeviceType> OpRegistry::AvailableDevices(
+const std::set<RuntimeType> OpRegistry::AvailableRuntimes(
     const std::string &op_type, OpConditionContext *context) const {
   MACE_CHECK(registry_.count(op_type) != 0,
              op_type, " operation is not registered.");
 
-  return registry_.at(op_type)->device_placer(context);
+  return registry_.at(op_type)->runtime_placer(context);
 }
 
 void OpRegistry::GetInOutMemoryTypes(
@@ -121,22 +126,22 @@ const std::vector<DataFormat> OpRegistry::InputsDataFormat(
 
 std::unique_ptr<Operation> OpRegistry::CreateOperation(
     OpConstructContext *context,
-    DeviceType device_type) const {
+    RuntimeType runtime_type) const {
   auto operator_def = context->operator_def();
   DataType dtype = static_cast<DataType>(
       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
           *operator_def, "T", static_cast<int>(DT_FLOAT)));
   VLOG(1) << "Creating operator " << operator_def->name() << "("
           << operator_def->type() << "<" << dtype << ">" << ") on "
-          << device_type;
+          << runtime_type;
   const std::string op_type = context->operator_def()->type();
   MACE_CHECK(registry_.count(op_type) != 0,
              op_type, " operation is not registered.");
 
-  auto key_dtype =
-      (device_type == DeviceType::GPU && dtype == DT_HALF) ? DT_FLOAT : dtype;
+  auto key_dtype = (runtime_type == RuntimeType::RT_OPENCL &&
+      dtype == DT_HALF) ? DT_FLOAT : dtype;
   std::string key = OpKeyBuilder(op_type)
-      .Device(device_type)
+      .Runtime(runtime_type)
       .TypeConstraint("T", key_dtype)
       .Build();
   if (registry_.at(op_type)->creators.count(key) == 0) {

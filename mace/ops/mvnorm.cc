@@ -27,11 +27,11 @@ namespace mace {
 namespace ops {
 
 // Mean-Variance Normalization (MVN)
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class MVNormOp;
 
 template<class T>
-class MVNormOp<DeviceType::CPU, T> : public Operation {
+class MVNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit MVNormOp(OpConstructContext *context)
       : Operation(context),
@@ -50,8 +50,6 @@ class MVNormOp<DeviceType::CPU, T> : public Operation {
     const std::vector<index_t> &input_shape = input->shape();
     MACE_RETURN_IF_ERROR(output->Resize(input_shape));
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_output(output);
     const auto *input_data = input->data<T>();
     auto *output_data = output->mutable_data<T>();
 
@@ -59,12 +57,12 @@ class MVNormOp<DeviceType::CPU, T> : public Operation {
     const auto outer_loop =
         across_channels_ ? input_shape[0] : input_shape[0] * input_shape[1];
     const auto inner_loop = input_size / outer_loop;
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
-    Buffer mean_buffer(context->device()->allocator());
-    MACE_RETURN_IF_ERROR(mean_buffer.Allocate(outer_loop * sizeof(float)));
-    auto *mean_ptr = mean_buffer.mutable_data<float>();
+    auto *runtime = context->runtime();
+    MemInfo mem_info(input->memory_type(), DataType::DT_FLOAT, {outer_loop});
+    auto mean_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+    auto *mean_ptr = mean_buffer->mutable_data<float>();
 
     // compute EX
     thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
@@ -96,10 +94,9 @@ class MVNormOp<DeviceType::CPU, T> : public Operation {
         }
       }, 0, input_size, 1);
 
-      auto mean_v_buffer = context->device()->scratch_buffer();
-      mean_v_buffer->Rewind();
-      MACE_RETURN_IF_ERROR(
-          mean_v_buffer->GrowSize(outer_loop * sizeof(float)));
+      auto *runtime = context->runtime();
+      MemInfo mem_info(input->memory_type(), DataType::DT_FLOAT, {outer_loop});
+      auto mean_v_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
       float *mean_v_ptr = mean_v_buffer->mutable_data<float>();
       // compute E((X - EX)^2)^0.5 + eps_
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
@@ -136,7 +133,7 @@ class MVNormOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class MVNormOp<DeviceType::GPU, float> : public Operation {
+class MVNormOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit MVNormOp(OpConstructContext *context) : Operation(context) {
     auto normalize_variance =
@@ -173,9 +170,9 @@ class MVNormOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterMVNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "MVNorm", MVNormOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "MVNorm", MVNormOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "MVNorm", MVNormOp);
 }
 

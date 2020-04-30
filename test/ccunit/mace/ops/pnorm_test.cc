@@ -21,7 +21,7 @@ namespace test {
 class PNormOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestPNorm(const std::vector<index_t> &input_shape,
                const std::vector<T> &input,
                const int p,
@@ -29,7 +29,7 @@ void TestPNorm(const std::vector<index_t> &input_shape,
                const std::vector<index_t> &output_shape,
                const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, T>(MakeString("Input"),
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>(MakeString("Input"),
                                 input_shape,
                                 input);
 
@@ -42,14 +42,15 @@ void TestPNorm(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, T>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>("ExpectedOutput",
+                                                output_shape, output);
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
                       *net.GetOutput("Output"));
 }
 }  // namespace
 
 TEST_F(PNormOpTest, SimpleTest) {
-  TestPNorm<DeviceType::CPU, float>(
+  TestPNorm<RuntimeType::RT_CPU, float>(
     {1, 5, 10},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
      3, 4, 5, 6, 7, 8, 9, 10, 11, 12,

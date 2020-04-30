@@ -16,17 +16,17 @@
 
 namespace mace {
 
-OpContext::OpContext(Workspace *ws, Device *device)
-    : device_(device), ws_(ws), future_(nullptr) {}
+OpContext::OpContext(Workspace *ws, Runtime *runtime)
+    : runtime_(runtime), ws_(ws), future_(nullptr) {}
 
 OpContext::~OpContext() = default;
 
-void OpContext::set_device(Device *device) {
-  device_ = device;
+void OpContext::set_runtime(Runtime *runtime) {
+  runtime_ = runtime;
 }
 
-Device* OpContext::device() const {
-  return device_;
+Runtime* OpContext::runtime() const {
+  return runtime_;
 }
 
 Workspace* OpContext::workspace() const {

@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void TransposeBenchmark(int iters,
                         std::vector<index_t> shape,
                         std::vector<int> dims) {
@@ -41,14 +41,15 @@ void TransposeBenchmark(int iters,
     .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -64,7 +65,7 @@ void TransposeBenchmark(int iters,
   MACE_BENCHMARK(MACE_BM_TRANSPOSE2D_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_TRANSPOSE2D(H, W)                                    \
-  MACE_BM_TRANSPOSE2D_MACRO(H, W, float, CPU);
+  MACE_BM_TRANSPOSE2D_MACRO(H, W, float, RT_CPU);
 
 #define MACE_BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, TYPE, DEVICE)   \
   static void                                                                 \
@@ -79,7 +80,7 @@ void TransposeBenchmark(int iters,
       DEVICE)
 
 #define MACE_BM_TRANSPOSE4D(N, C, H, W, D0, D1, D2, D3)                   \
-  MACE_BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, float, CPU);
+  MACE_BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, float, RT_CPU);
 
 MACE_BM_TRANSPOSE4D(1, 512, 512, 3, 0, 3, 1, 2);
 MACE_BM_TRANSPOSE4D(1, 2, 512, 512, 0, 2, 3, 1);

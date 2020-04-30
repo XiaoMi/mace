@@ -31,6 +31,8 @@ MaceStatus Operation::Init(OpInitContext *context) {
                ": Encountered a non-existing input tensor: ", input_str);
     inputs_.push_back(tensor);
   }
+  auto runtime = context->runtime();
+  auto cur_mem_type = runtime->GetUsedMemoryType();
   for (int i = 0; i < operator_def_->output_size(); ++i) {
     const std::string output_str = operator_def_->output(i);
     if (ws->HasTensor(output_str)) {
@@ -50,8 +52,14 @@ MaceStatus Operation::Init(OpInitContext *context) {
             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                 *operator_def_, "T", static_cast<int>(DT_FLOAT)));
       }
+
+      const auto mem_type = static_cast<MemoryType>(
+          ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+              *operator_def_, OutputMemoryTypeTagName(),
+              static_cast<int>(cur_mem_type)));
+
       outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
-          output_str, context->device()->allocator(), output_type)));
+          output_str, runtime, output_type, false, mem_type)));
     }
     if (i < operator_def_->output_shape_size()) {
       std::vector<index_t>
@@ -62,7 +70,66 @@ MaceStatus Operation::Init(OpInitContext *context) {
       ws->GetTensor(output_str)->SetShapeConfigured(shape_configured);
     }
   }
+
+  for (int i = 0; i < operator_def_->input_size(); ++i) {
+    const std::string input_str = operator_def_->input(i);
+    if (ws->HasTensor(input_str)) {
+      Tensor *input = ws->GetTensor(input_str);
+      const auto content_type = GetInputTensorContentType(i);
+      input->SetContentType(content_type);
+    }
+  }
+
   return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus Operation::Forward(OpContext *context) {
+  context->runtime()->ReleaseAllBuffer(RENT_SCRATCH);
+  if (runtime_type() != RuntimeType::RT_CPU) {
+    return Run(context);
+  }
+
+  for (auto iter = inputs_.begin(); iter != inputs_.end(); ++iter) {
+    const Tensor *input = *iter;
+    if (input->memory_type() != MemoryType::CPU_BUFFER) {
+      input->Map(true);
+    }
+  }
+
+  for (auto iter = outputs_.begin(); iter != outputs_.end(); ++iter) {
+    Tensor *output = *iter;
+    if (output->memory_type() != MemoryType::CPU_BUFFER) {
+      output->Map(true);
+    }
+  }
+
+  auto ret = Run(context);
+
+  for (auto iter = outputs_.begin(); iter != outputs_.end(); ++iter) {
+    Tensor *output = *iter;
+    if (output->memory_type() != MemoryType::CPU_BUFFER) {
+      output->UnMap();
+    }
+  }
+
+  for (auto iter = inputs_.begin(); iter != inputs_.end(); ++iter) {
+    const Tensor *input = *iter;
+    if (input->memory_type() != MemoryType::CPU_BUFFER) {
+      input->UnMap();
+    }
+  }
+
+  return ret;
+}
+
+int Operation::ReuseTensorMapId(size_t output_idx) const {
+  MACE_UNUSED(output_idx);
+  return -1;
+}
+
+BufferContentType Operation::GetInputTensorContentType(size_t idx) const {
+  MACE_UNUSED(idx);
+  return BufferContentType::IN_OUT_CHANNEL;
 }
 
 }  // namespace mace

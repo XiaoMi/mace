@@ -24,11 +24,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ChannelShuffleOp;
 
 template<typename T>
-class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
+class ChannelShuffleOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ChannelShuffleOp(OpConstructContext *context)
       : Operation(context),
@@ -43,8 +43,6 @@ class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
                input->dim(1));
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
-    Tensor::MappingGuard logits_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
@@ -77,7 +75,7 @@ class ChannelShuffleOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ChannelShuffleOp<DeviceType::GPU, float> : public Operation {
+class ChannelShuffleOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit ChannelShuffleOp(OpConstructContext *context)
       : Operation(context) {
@@ -101,9 +99,9 @@ class ChannelShuffleOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterChannelShuffle(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ChannelShuffle",
-                   ChannelShuffleOp, DeviceType::CPU, float);
+                   ChannelShuffleOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ChannelShuffle",
-                        ChannelShuffleOp, DeviceType::CPU);
+                        ChannelShuffleOp, RuntimeType::RT_CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "ChannelShuffle", ChannelShuffleOp);
 
@@ -111,22 +109,22 @@ void RegisterChannelShuffle(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("ChannelShuffle")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 int groups = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "group", 1);
                 if (op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
                 index_t channels = op->output_shape(0).dims(3);
                 index_t channels_per_group = channels / groups;
                 if (groups % 4 != 0 || channels_per_group % 4 != 0) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

@@ -15,9 +15,10 @@
 #define MACE_OPS_OPENCL_IMAGE_LPNORM_H_
 
 #include "mace/core/ops/op_context.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/ops/opencl/lpnorm.h"
 
 namespace mace {

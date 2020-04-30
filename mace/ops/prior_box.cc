@@ -24,7 +24,7 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class PriorBoxOp : public Operation {
  public:
   explicit PriorBoxOp(OpConstructContext *context)
@@ -71,7 +71,6 @@ class PriorBoxOp : public Operation {
     index_t dim = 4 * input_w * input_h * num_prior;
     std::vector<index_t> output_shape = {1, 2, dim};
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    Tensor::MappingGuard output_guard(output);
     T *output_data = output->mutable_data<T>();
     float box_w, box_h;
     for (index_t i = 0; i < input_h; ++i) {
@@ -147,9 +146,9 @@ class PriorBoxOp : public Operation {
 
 void RegisterPriorBox(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PriorBox", PriorBoxOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "PriorBox", PriorBoxOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

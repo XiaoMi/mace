@@ -1,0 +1,49 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "apu_version_select",
+)
+
+cc_library(
+    name = "apu_runtimes",
+    srcs = apu_version_select(
+        glob(["runtime/apu/v1v2v3/v1/*.cc"]),
+        glob(["runtime/apu/v1v2v3/v2v3/*.cc"]),
+        glob(["runtime/apu/v1v2v3/v2v3/*.cc"]),
+        glob(["runtime/apu/v4/*.cc"]),
+    ),
+    hdrs = apu_version_select(
+        glob([
+            "runtime/apu/*.h",
+            "runtime/apu/v1v2v3/*.h",
+        ]),
+        glob([
+            "runtime/apu/*.h",
+            "runtime/apu/v1v2v3/*.h",
+        ]),
+        glob([
+            "runtime/apu/*.h",
+            "runtime/apu/v1v2v3/*.h",
+        ]),
+        glob([
+            "runtime/apu/*.h",
+            "runtime/apu/v4/*.h",
+        ]),
+    ),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/core",
+        "//mace/runtimes/cpu:cpu_runtimes",
+        "//third_party/apu:libapu-frontend",
+    ],
+)

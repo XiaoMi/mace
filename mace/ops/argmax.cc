@@ -24,7 +24,7 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ArgMaxOp : public Operation {
  public:
   explicit ArgMaxOp(OpConstructContext *context)
@@ -49,8 +49,6 @@ class ArgMaxOp : public Operation {
     const auto axis_value = GetAxisValue(input_dim_size);
     MACE_RETURN_IF_ERROR(ResizeOutputTensor(output, input, axis_value));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     auto input_data = input->data<T>();
 
     int axis_dim = 0;
@@ -123,7 +121,6 @@ class ArgMaxOp : public Operation {
     if (axis != nullptr) {
       MACE_CHECK(axis->dim_size() == 0,
                  "Mace argmax only supports scalar axis");
-      Tensor::MappingGuard axis_guard(axis);
       axis_value = axis->data<int32_t>()[0];
     } else {
       axis_value = axis_;
@@ -188,8 +185,8 @@ class ArgMaxOp : public Operation {
 };
 
 void RegisterArgMax(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "ArgMax", ArgMaxOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "ArgMax", ArgMaxOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "ArgMax", ArgMaxOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "ArgMax", ArgMaxOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

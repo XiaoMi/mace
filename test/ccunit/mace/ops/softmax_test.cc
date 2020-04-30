@@ -29,7 +29,7 @@ class SoftmaxOpTest : public OpsTestBase {};
 class LogSoftmaxOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Simple(bool use_log = false) {
   // Construct graph
   OpsTestNet net;
@@ -48,9 +48,9 @@ void Simple(bool use_log = false) {
   auto expected = net.CreateTensor<float>(
       {1, 1, 2, 4}, expected_data);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     // test 4d softmax
-    net.TransformDataFormat<CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
@@ -61,7 +61,7 @@ void Simple(bool use_log = false) {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -79,7 +79,7 @@ void Simple(bool use_log = false) {
     net.RunOp(D);
     net.GetOutput("Output")->Reshape({1, 1, 2, 4});
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("Input")
         .Output("Output")
@@ -96,23 +96,23 @@ void Simple(bool use_log = false) {
 }
 }  // namespace
 
-TEST_F(SoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(); }
-TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::GPU>(); }
+TEST_F(SoftmaxOpTest, CPUSimple) { Simple<RuntimeType::RT_CPU>(); }
+TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<RuntimeType::RT_OPENCL>(); }
 
-TEST_F(LogSoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(true); }
-TEST_F(LogSoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::GPU>(true); }
+TEST_F(LogSoftmaxOpTest, CPUSimple) { Simple<RuntimeType::RT_CPU>(true); }
+TEST_F(LogSoftmaxOpTest, OPENCLSimple) { Simple<RuntimeType::RT_OPENCL>(true); }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Complex(const std::vector<index_t> &logits_shape,
              bool use_log = false) {
   // Construct graph
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<D, float>("Input", logits_shape);
+  net.AddRandomInput<RT_CPU, float>("Input", logits_shape);
 
   if (logits_shape.size() == 4) {
-    net.TransformDataFormat<CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("Softmax", "SoftmaxTest")
@@ -131,7 +131,7 @@ void Complex(const std::vector<index_t> &logits_shape,
   net.RunOp();
 
   if (logits_shape.size() == 4) {
-    net.TransformDataFormat<CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
@@ -152,50 +152,51 @@ void Complex(const std::vector<index_t> &logits_shape,
 }  // namespace
 
 TEST_F(SoftmaxOpTest, OPENCLAligned) {
-  Complex<DeviceType::GPU>({1, 256, 256, 3});
-  Complex<DeviceType::GPU>({1, 128, 128, 16});
+  Complex<RuntimeType::RT_OPENCL>({1, 256, 256, 3});
+  Complex<RuntimeType::RT_OPENCL>({1, 128, 128, 16});
 }
 
 TEST_F(SoftmaxOpTest, OPENCLMulBatchAligned) {
-  Complex<DeviceType::GPU>({5, 64, 64, 3});
-  Complex<DeviceType::GPU>({8, 128, 128, 8});
+  Complex<RuntimeType::RT_OPENCL>({5, 64, 64, 3});
+  Complex<RuntimeType::RT_OPENCL>({8, 128, 128, 8});
 }
 
 TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
-  Complex<DeviceType::GPU>({1, 113, 107, 13});
-  Complex<DeviceType::GPU>({5, 211, 107, 1});
+  Complex<RuntimeType::RT_OPENCL>({1, 113, 107, 13});
+  Complex<RuntimeType::RT_OPENCL>({5, 211, 107, 1});
 }
 
 TEST_F(SoftmaxOpTest, OPENCLAlignedRank2) {
-  Complex<DeviceType::GPU>({1, 1001});
-  Complex<DeviceType::GPU>({3, 1001});
+  Complex<RuntimeType::RT_OPENCL>({1, 1001});
+  Complex<RuntimeType::RT_OPENCL>({3, 1001});
 }
 
 TEST_F(LogSoftmaxOpTest, OPENCLAligned) {
-Complex<DeviceType::GPU>({1, 256, 256, 3}, true);
-Complex<DeviceType::GPU>({1, 128, 128, 16}, true);
+Complex<RuntimeType::RT_OPENCL>({1, 256, 256, 3}, true);
+Complex<RuntimeType::RT_OPENCL>({1, 128, 128, 16}, true);
 }
 
 TEST_F(LogSoftmaxOpTest, OPENCLMulBatchAligned) {
-Complex<DeviceType::GPU>({5, 64, 64, 3}, true);
-Complex<DeviceType::GPU>({8, 128, 128, 8}, true);
+Complex<RuntimeType::RT_OPENCL>({5, 64, 64, 3}, true);
+Complex<RuntimeType::RT_OPENCL>({8, 128, 128, 8}, true);
 }
 
 TEST_F(LogSoftmaxOpTest, OPENCLUnAligned) {
-Complex<DeviceType::GPU>({1, 113, 107, 13}, true);
-Complex<DeviceType::GPU>({5, 211, 107, 1}, true);
+Complex<RuntimeType::RT_OPENCL>({1, 113, 107, 13}, true);
+Complex<RuntimeType::RT_OPENCL>({5, 211, 107, 1}, true);
 }
 
 TEST_F(LogSoftmaxOpTest, OPENCLAlignedRank2) {
-Complex<DeviceType::GPU>({1, 1001}, true);
-Complex<DeviceType::GPU>({3, 1001}, true);
+Complex<RuntimeType::RT_OPENCL>({1, 1001}, true);
+Complex<RuntimeType::RT_OPENCL>({3, 1001}, true);
 }
 
 namespace {
 
 void TestQuantizedSoftmax(const std::vector<index_t> &input_shape) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input", input_shape, false, false, true);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", input_shape,
+                                                 false, false, true);
 
   OpDefBuilder("Softmax", "SoftmaxTest")
       .Input("Input")
@@ -215,7 +216,7 @@ void TestQuantizedSoftmax(const std::vector<index_t> &input_shape) {
       .OutputType({DT_UINT8})
       .AddIntArg("T", DT_UINT8)
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(1.0f / 255);
   q_output->SetZeroPoint(0);

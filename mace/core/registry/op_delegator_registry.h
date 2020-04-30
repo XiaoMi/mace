@@ -24,6 +24,7 @@
 #include "mace/core/bfloat16.h"
 #include "mace/core/fp16.h"
 #include "mace/core/ops/op_delegator.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/core/types.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
@@ -35,12 +36,12 @@ typedef std::function<std::unique_ptr<OpDelegator>(const DelegatorParam &)>
 struct DelegatorInfo {
   explicit DelegatorInfo(const char *delegator_name,
                          DataType data_type,
-                         DeviceType device,
+                         RuntimeType runtime,
                          ImplType impl_type,
                          const char *tag);
   explicit DelegatorInfo(const char *delegator_name,
                          DataType data_type,
-                         DeviceType device,
+                         RuntimeType device,
                          ImplType impl_type);
 
   std::string ToString() const;
@@ -49,7 +50,7 @@ struct DelegatorInfo {
 
   std::string delegator_name;
   DataType data_type;
-  DeviceType device;
+  RuntimeType runtime;
   ImplType impl_type;
   std::string tag;
 };
@@ -57,7 +58,7 @@ struct DelegatorInfo {
 class OpDelegatorRegistry {
  public:
   OpDelegatorRegistry() = default;
-  ~OpDelegatorRegistry() = default;
+  ~OpDelegatorRegistry();
 
   MaceStatus Register(const DelegatorInfo &key, DelegatorCreator creator);
   DelegatorCreator GetCreator(const DelegatorInfo &key) const;

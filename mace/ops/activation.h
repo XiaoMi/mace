@@ -58,8 +58,7 @@ void PReLUActivation(const OpContext *context,
                      const index_t inner_size,
                      const T *alpha_ptr,
                      T *output_ptr) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {

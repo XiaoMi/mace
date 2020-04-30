@@ -24,11 +24,11 @@ TEST_F(ChannelShuffleOpTest, C8G4_CPU) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 1, 2, 8},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   // Construct graph
@@ -40,7 +40,7 @@ TEST_F(ChannelShuffleOpTest, C8G4_CPU) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -55,7 +55,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::GPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_OPENCL, float>(
       "Input", {1, 1, 2, 16},
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
@@ -66,7 +66,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
       .Finalize(net.NewOperatorDef());
 
   // Run
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   // Check
   auto expected = net.CreateTensor<float>(

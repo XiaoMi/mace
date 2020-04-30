@@ -9,14 +9,9 @@ load(
     "apu_version_select",
     "if_android",
     "if_android_armv7",
-    "if_apu_enabled",
     "if_bfloat16_enabled",
     "if_fp16_enabled",
-    "if_hexagon_enabled",
-    "if_hexagon_or_hta_enabled",
-    "if_hta_enabled",
     "if_neon_enabled",
-    "if_not_hexagon_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
     "if_rpcmem_enabled",
@@ -27,95 +22,47 @@ cc_library(
     srcs = glob(
         [
             "*.cc",
+            "flow/*.cc",
             "ops/*.cc",
             "registry/*.cc",
-            "runtime/cpu/*.cc",
+            "runtime/*.cc",
+            "buffer/*.cc",
+            "memory/*.cc",
+            "proto/*.cc",
+            "net/*.cc",
         ],
-        exclude = [
-            "rpcmem.cc",
-        ],
-    ) + if_opencl_enabled(glob(
-        [
-            "runtime/opencl/*.cc",
-        ],
-    )) + if_hexagon_or_hta_enabled([
-        "runtime/hexagon/hexagon_allocator.h",
-        "runtime/hexagon/hexagon_allocator.cc",
-        "runtime/hexagon/hexagon_device.cc",
-    ]) + if_hexagon_enabled([
-        "runtime/hexagon/hexagon_dsp_wrapper.cc",
-    ]) + if_hta_enabled([
-        "runtime/hexagon/hexagon_hta_transformer.h",
-        "runtime/hexagon/hexagon_hta_transformer.cc",
-        "runtime/hexagon/hexagon_hta_wrapper.cc",
-    ]) + apu_version_select(
-        glob(["runtime/apu/v1v2v3/v1/*.cc"]),
-        glob(["runtime/apu/v1v2v3/v2v3/*.cc"]),
-        glob(["runtime/apu/v1v2v3/v2v3/*.cc"]),
-        glob(["runtime/apu/v4/*.cc"]),
     ) + if_rpcmem_enabled([
-        "rpcmem.cc",
+        "memory/rpcmem/rpcmem.cc",
     ]),
     hdrs = glob(
         [
             "*.h",
+            "flow/*.h",
             "ops/*.h",
             "registry/*.h",
-            "runtime/cpu/*.h",
+            "runtime/*.h",
+            "memory/*.h",
+            "proto/*.h",
+            "net/*.h",
         ],
-        exclude = [
-            "rpcmem.h",
-        ],
-    ) + if_opencl_enabled(glob([
-        "runtime/opencl/*.h",
-    ])) + if_hexagon_or_hta_enabled(glob([
-        "runtime/hexagon/hexagon_control_wrapper.h",
-        "runtime/hexagon/hexagon_device.h",
-    ])) + if_hexagon_enabled(glob([
-        "runtime/hexagon/*dsp*.h",
-    ])) + if_hta_enabled(glob([
-        "runtime/hexagon/*hta*.h",
-    ])) + apu_version_select(
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v1v2v3/*.h",
-        ]),
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v1v2v3/*.h",
-        ]),
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v1v2v3/*.h",
-        ]),
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v4/*.h",
-        ]),
     ) + if_rpcmem_enabled([
-        "rpcmem.h",
+        "memory/rpcmem/rpcmem.h",
     ]),
     copts = [
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_opencl_enabled([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_quantize_enabled([
+    ] + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
     ]) + if_fp16_enabled([
         "-DMACE_ENABLE_FP16",
         "-march=armv8.2-a+fp16",
-    ]) + if_hexagon_enabled([
-        "-DMACE_ENABLE_HEXAGON",
-    ]) + if_hta_enabled([
-        "-DMACE_ENABLE_HTA",
-    ]) + if_apu_enabled([
-        "-DMACE_ENABLE_MTK_APU",
     ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",
@@ -129,34 +76,9 @@ cc_library(
         "//mace/utils",
         "//mace/port",
         "@half//:half",
-    ] + if_opencl_enabled([
-        ":opencl_headers",
-        "//mace/codegen:generated_opencl",
-    ]) + if_quantize_enabled([
+    ] + if_quantize_enabled([
         "@gemmlowp",
-    ]) + if_hexagon_enabled([
-        "//third_party/nnlib:libhexagon",
-    ]) + if_hta_enabled([
-        "//third_party/hta",
-    ]) + if_apu_enabled([
-        "//third_party/apu:libapu-frontend",
     ]) + if_rpcmem_enabled([
         "//third_party/rpcmem",
     ]),
-)
-
-cc_library(
-    name = "opencl_headers",
-    hdrs = glob([
-        "runtime/opencl/*.h",
-    ]),
-    copts = [
-        "-Werror",
-        "-Wextra",
-        "-Wno-missing-field-initializers",
-    ],
-    deps = [
-        "@opencl_clhpp",
-        "@opencl_headers//:opencl20_headers",
-    ],
 )

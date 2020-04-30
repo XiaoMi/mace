@@ -21,7 +21,7 @@ namespace test {
 class SliceOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestSlice(const std::vector<index_t> &input_shape,
                const std::vector<T> &input,
                const int offset,
@@ -29,9 +29,8 @@ void TestSlice(const std::vector<index_t> &input_shape,
                const std::vector<index_t> &output_shape,
                const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, T>(MakeString("Input"),
-                                input_shape,
-                                input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>(
+      MakeString("Input"), input_shape, input);
 
   OpDefBuilder("Slice", "SliceTest")
       .Input("Input")
@@ -43,12 +42,13 @@ void TestSlice(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, T>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>("ExpectedOutput",
+                                                output_shape, output);
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
                       *net.GetOutput("Output"));
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestSliceWithInputs(const std::vector<index_t> &input_shape,
                          const std::vector<T> &input,
                          const int offset,
@@ -57,11 +57,14 @@ void TestSliceWithInputs(const std::vector<index_t> &input_shape,
                          const std::vector<index_t> &output_shape,
                          const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, T>(MakeString("Input"), input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(MakeString("starts"), {1}, {offset});
-  net.AddInputFromArray<CPU, int32_t>(MakeString("ends"), {1},
-                                      {offset + output_dim});
-  net.AddInputFromArray<CPU, int32_t>(MakeString("axes"), {1}, {axis});
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>(MakeString("Input"),
+                                                input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(MakeString("starts"),
+                                                      {1}, {offset});
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(MakeString("ends"), {1},
+                                                      {offset + output_dim});
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(MakeString("axes"),
+                                                      {1}, {axis});
 
   OpDefBuilder("Slice", "SliceTest")
       .Input("Input")
@@ -73,14 +76,15 @@ void TestSliceWithInputs(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, T>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>("ExpectedOutput",
+                                                output_shape, output);
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
                       *net.GetOutput("Output"));
 }
 }  // namespace
 
 TEST_F(SliceOpTest, Simple2Dim) {
-  TestSlice<DeviceType::CPU, float>(
+  TestSlice<RuntimeType::RT_CPU, float>(
     {3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
     2, 3, {3, 3},
@@ -88,7 +92,7 @@ TEST_F(SliceOpTest, Simple2Dim) {
 }
 
 TEST_F(SliceOpTest, Simple3Dim) {
-  TestSlice<DeviceType::CPU, float>(
+  TestSlice<RuntimeType::RT_CPU, float>(
     {2, 3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
@@ -97,12 +101,12 @@ TEST_F(SliceOpTest, Simple3Dim) {
 }
 
 TEST_F(SliceOpTest, Simple) {
-  TestSliceWithInputs<DeviceType::CPU, float>(
+  TestSliceWithInputs<RuntimeType::RT_CPU, float>(
     {3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
     1, 2, 0, {2, 5},
     {6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
-  TestSliceWithInputs<DeviceType::CPU, float>(
+  TestSliceWithInputs<RuntimeType::RT_CPU, float>(
     {2, 3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},

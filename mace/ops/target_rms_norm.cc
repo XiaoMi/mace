@@ -28,11 +28,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class TargetRMSNormOp;
 
 template <typename T>
-class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
+class TargetRMSNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit TargetRMSNormOp(OpConstructContext *context)
       : Operation(context),
@@ -111,9 +111,6 @@ class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
     output_shape[dim_size - 1] = output_dim;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_output(output);
-
     const float *input_data = input->data<float>();
     float *output_data = output->mutable_data<float>();
 
@@ -126,8 +123,7 @@ class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
     }
     const float d_scale = block_dim_ * target_rms_ * target_rms_;
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     thread_pool.Compute1D([=](index_t start0, index_t end0, index_t step0) {
       for (index_t i = start0; i < end0; i += step0) {
         const float *input_ptr = input_data + i * block_dim_;
@@ -151,9 +147,9 @@ class TargetRMSNormOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterTargetRMSNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "TargetRMSNorm", TargetRMSNormOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "TargetRMSNorm", TargetRMSNormOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

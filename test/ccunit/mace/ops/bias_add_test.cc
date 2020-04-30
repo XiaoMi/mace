@@ -21,7 +21,7 @@ namespace test {
 class BiasAddOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void BiasAddSimple() {
   OpsTestNet net;
 
@@ -30,8 +30,8 @@ void BiasAddSimple() {
                                   {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
   net.AddInputFromArray<D, float>("Bias", {1}, {0.5f}, true);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("InputNCHW")
@@ -41,9 +41,9 @@ void BiasAddSimple() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("Input")
         .Input("Bias")
@@ -63,7 +63,7 @@ void BiasAddSimple() {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void BiasAddSimple2D() {
   OpsTestNet net;
 
@@ -72,8 +72,8 @@ void BiasAddSimple2D() {
                                   {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
   net.AddInputFromArray<D, float>("Bias", {2, 2},
                                   {0.1f, 0.2f, 0.3f, 0.4f}, true);
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("InputNCHW")
@@ -83,9 +83,9 @@ void BiasAddSimple2D() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("Input")
         .Input("Bias")
@@ -107,14 +107,16 @@ void BiasAddSimple2D() {
 
 }  // namespace
 
-TEST_F(BiasAddOpTest, BiasAddSimpleCPU) { BiasAddSimple<DeviceType::CPU>(); }
+TEST_F(BiasAddOpTest, BiasAddSimpleCPU) {
+  BiasAddSimple<RuntimeType::RT_CPU>();
+}
 
 TEST_F(BiasAddOpTest, BiasAddSimple2DCPU) {
-  BiasAddSimple2D<DeviceType::CPU>();
+  BiasAddSimple2D<RuntimeType::RT_CPU>();
 }
 
 TEST_F(BiasAddOpTest, BiasAddSimpleOPENCL) {
-  BiasAddSimple<DeviceType::GPU>();
+  BiasAddSimple<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
@@ -128,11 +130,12 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Bias", {channels}, true, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Bias", {channels},
+                                                    true, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   // Construct graph
@@ -146,7 +149,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -161,7 +164,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -177,11 +180,12 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
-                                             {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Bias", {channels}, true, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>(
+      "Input", {batch, height, width, channels});
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Bias", {channels},
+                                                    true, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   // Construct graph
@@ -195,7 +199,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   // Check
   auto expected = net.CreateTensor<float>();
@@ -209,7 +213,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -225,16 +229,16 @@ void TestQuantized(const bool batched_bias,
 
   OpsTestNet net;
   std::vector<index_t> input_shape{batch, height, width, channels};
-  net.AddRandomInput<CPU, float>("Input", input_shape, false, false);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddRandomInput<RT_CPU, float>("Input", input_shape, false, false);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   if (batched_bias) {
-    net.AddRandomInput<CPU, float>("Bias", {batch, channels}, true);
+    net.AddRandomInput<RT_CPU, float>("Bias", {batch, channels}, true);
   } else {
-    net.AddRandomInput<CPU, float>("Bias", {channels}, true);
+    net.AddRandomInput<RT_CPU, float>("Bias", {channels}, true);
   }
 
-  net.AddRandomInput<DeviceType::CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "OutputNCHW", input_shape, false, true, true);
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("InputNCHW")
@@ -244,8 +248,8 @@ void TestQuantized(const bool batched_bias,
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
 
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeInput")
@@ -273,7 +277,8 @@ void TestQuantized(const bool batched_bias,
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
-  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>("QuantizedOutput",
+                                                   input_shape);
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("QuantizedInput")
       .Input("QuantizedBias")
@@ -281,7 +286,7 @@ void TestQuantized(const bool batched_bias,
       .AddIntArg("has_data_format", has_data_format)
       .AddIntArg("T", DT_UINT8)
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(eq_output->scale());
@@ -321,12 +326,12 @@ TEST_F(BiasAddOpTest, BFloat16) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input",
-                                             {batch, channels, height, width});
-  net.AddRandomInput<DeviceType::CPU, float>("Bias", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
+      "Input", {batch, channels, height, width});
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Bias", {channels}, true);
 
-  net.Cast<DeviceType::CPU, float, BFloat16>("Input", "BF16Input");
-  net.Cast<DeviceType::CPU, float, BFloat16>("Bias", "BF16Bias");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Bias", "BF16Bias");
 
   // Construct graph
   OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -347,7 +352,7 @@ TEST_F(BiasAddOpTest, BFloat16) {
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
-  net.Cast<DeviceType::CPU, BFloat16, float>("BF16Output", "CastOutput");
+  net.Cast<RuntimeType::RT_CPU, BFloat16, float>("BF16Output", "CastOutput");
 
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("CastOutput"), 1e-5);

@@ -23,7 +23,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<RuntimeType D, class T>
 class TileOp : public Operation {
  public:
   explicit TileOp(OpConstructContext *context)
@@ -37,8 +37,6 @@ class TileOp : public Operation {
     const Tensor *multiples = this->Input(1);
     const index_t input_dims = input->dim_size();
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard multiples_guard(multiples);
     const T *input_data = input->data<T>();
     const int32_t *multiples_data = multiples->data<int32_t>();
 
@@ -66,17 +64,13 @@ class TileOp : public Operation {
       output_shape.push_back(input->dim(i) * multiples_vec[i]);
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    Tensor::MappingGuard output_guard(output);
 
     T *output_data = output->mutable_data<T>();
 
-    const index_t output_byte_size = PadAlignSize(output->size() * sizeof(T));
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(output_byte_size);
-
-    Tensor fake_input(scratch->Scratch(output_byte_size),
-                      DataTypeToEnum<T>::value);
+    auto *runtime = context->runtime();
+    Tensor fake_input(runtime, DataTypeToEnum<T>::v(),
+                      input->memory_type(), output_shape);
+    runtime->AllocateBufferForTensor(&fake_input, RENT_SCRATCH);
     T *fake_input_data = fake_input.mutable_data<T>();
     std::memcpy(fake_input_data, input_data, input->size() * sizeof(T));
 
@@ -86,7 +80,7 @@ class TileOp : public Operation {
     const index_t total_multiples =
         std::accumulate(multiples_vec.begin(), multiples_vec.end(), 1,
                         std::multiplies<index_t>());
-    for (int64_t i = input_dims - 1; ; --i) {
+    for (int64_t i = input_dims - 1;; --i) {
       inner_dim *= input->dim(i);
       outer_dim /= input->dim(i);
       for (int64_t o = 0; o < outer_dim; ++o) {
@@ -112,17 +106,17 @@ class TileOp : public Operation {
 };
 
 void RegisterTile(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Tile", TileOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Tile", TileOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Tile", TileOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Tile", TileOp, RuntimeType::RT_CPU);
   MACE_REGISTER_OP_CONDITION(
       op_registry, OpConditionBuilder("Tile").SetDevicePlacerFunc(
-                       [](OpConditionContext *context) -> std::set<DeviceType> {
-                         auto op = context->operator_def();
-                         if (op->output_shape_size() != op->output_size()) {
-                           return {DeviceType::CPU};
-                         }
-                         return {DeviceType::CPU};
-                       }));
+      [](OpConditionContext *context) -> std::set<RuntimeType> {
+        auto op = context->operator_def();
+        if (op->output_shape_size() != op->output_size()) {
+          return {RuntimeType::RT_CPU};
+        }
+        return {RuntimeType::RT_CPU};
+      }));
 }
 
 }  // namespace ops

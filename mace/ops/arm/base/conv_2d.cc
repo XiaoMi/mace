@@ -160,33 +160,23 @@ MaceStatus Conv2dBase::ResizeOutAndPadInOut(const OpContext *context,
   const bool is_out_padded =
       padded_out_height != out_height || padded_out_width != out_width;
 
-  auto scratch_buffer = context->device()->scratch_buffer();
-  const index_t padded_in_size =
-      MACE_EXTRA_BUFFER_PAD_SIZE + (is_in_padded ? PadAlignSize(
-          type_size_ * batch * in_channels * padded_in_height
-              * padded_in_width) : 0);
-  const index_t padded_out_size = is_out_padded ? PadAlignSize(
-      type_size_ * batch * out_channels * padded_out_height
-          * padded_out_width) : 0;
-
-  scratch_buffer->Rewind();
-  scratch_buffer->GrowSize(padded_in_size + padded_out_size);
+  Runtime *runtime = context->runtime();
   if (is_in_padded) {
-    std::unique_ptr<Tensor>
-        padded_in =
-        make_unique<Tensor>(scratch_buffer->Scratch(padded_in_size),
-                            input->dtype());
-    padded_in->Resize({batch, in_channels, padded_in_height, padded_in_width});
+    std::vector<index_t> padded_in_shape =
+        {batch, in_channels, padded_in_height, padded_in_width};
+    std::unique_ptr<Tensor> padded_in = make_unique<Tensor>(
+        runtime, input->dtype(), MemoryType::CPU_BUFFER, padded_in_shape);
+    runtime->AllocateBufferForTensor(padded_in.get(), RENT_SCRATCH);
+    MACE_CHECK(padded_in->data<float>() != nullptr);
     PadInput(*input, in_pad_size[0], in_pad_size[2], padded_in.get());
     *padded_input = std::move(padded_in);
   }
   if (is_out_padded) {
-    std::unique_ptr<Tensor>
-        padded_out =
-        make_unique<Tensor>(scratch_buffer->Scratch(padded_out_size),
-                            output->dtype());
-    padded_out->Resize({batch, out_channels, padded_out_height,
-                        padded_out_width});
+    std::vector<index_t> padded_out_shape =
+        {batch, out_channels, padded_out_height, padded_out_width};
+    std::unique_ptr<Tensor> padded_out = make_unique<Tensor>(
+        runtime, output->dtype(), MemoryType::CPU_BUFFER, padded_out_shape);
+    runtime->AllocateBufferForTensor(padded_out.get(), RENT_SCRATCH);
     *padded_output = std::move(padded_out);
   }
   return MaceStatus::MACE_SUCCESS;
@@ -207,6 +197,8 @@ void Conv2dBase::PadInput(const Tensor &src,
   const int pad_right = static_cast<int>(padded_width - width - pad_left);
   auto in_data = src.data<uint8_t>();
   auto padded_in_data = dst->mutable_data<uint8_t>();
+  MACE_CHECK(padded_in_data != nullptr);
+  MACE_CHECK(in_data != nullptr);
 
   const index_t img_size = height * width;
   const index_t padded_img_size = padded_height * padded_width;
@@ -287,8 +279,7 @@ ConvComputeParam Conv2dBase::PreWorkAndGetConv2DParam(
   const index_t in_batch_size = in_channels * in_image_size;
   const index_t out_batch_size = out_channels * out_image_size;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   return ConvComputeParam(batch, in_channels, in_height, in_width,
                           out_channels, out_height, out_width,
@@ -333,8 +324,7 @@ DepthwiseConvComputeParam Conv2dBase::PreWorkAndGetDepthwiseConv2DParam(
   const index_t valid_w_start = out_bounds[2];
   const index_t valid_w_stop = out_bounds[3];
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   return DepthwiseConvComputeParam(
       batch, in_channels, in_height, in_width, out_channels, out_height,

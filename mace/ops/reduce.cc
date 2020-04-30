@@ -21,9 +21,9 @@
 #include "mace/core/ops/operator.h"
 #include "mace/core/quantize.h"
 #include "mace/core/registry/ops_registry.h"
-#include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/common/reduce_type.h"
+#include "mace/runtimes/cpu/cpu_runtime.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/reduce.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -61,11 +61,11 @@ class ReduceOpBase : public Operation {
   bool keep_dims_;
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ReduceOp;
 
 template<typename T>
-class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
+class ReduceOp<RuntimeType::RT_CPU, T> : public ReduceOpBase {
  public:
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {}
@@ -100,7 +100,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
                     axis_[i] + input->dim_size();
         auto has_df = Operation::GetOptionalArg<int>(
             "has_data_format", 0);
-        if (has_df && DataTypeToEnum<T>::value != DT_UINT8
+        if (has_df && DataTypeToEnum<T>::v() != DT_UINT8
             && input->dim_size() == 4) {
           if (index == 1 || index == 2) index = index + 1;
           else if (index == 3) index = 1;
@@ -192,8 +192,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
                    const Tensor *input_tensor,
                    ReduceType type,
                    Tensor *output_tensor) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     const T *input = input_tensor->data<T>();
     T *output = output_tensor->mutable_data<T>();
@@ -296,8 +295,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
                    const Tensor *input_tensor,
                    ReduceType type,
                    Tensor *output_tensor) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     const T *input = input_tensor->data<T>();
     T *output = output_tensor->mutable_data<T>();
@@ -432,8 +430,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
                    const Tensor *input_tensor,
                    ReduceType type,
                    Tensor *output_tensor) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     const T *input = input_tensor->data<T>();
     T *output = output_tensor->mutable_data<T>();
@@ -597,8 +594,6 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
   }
 
   void Compute(const OpContext *context, const Tensor *input, Tensor *output) {
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard output_map(output);
     T *output_ptr = output->mutable_data<T>();
     memset(static_cast<void *>(output_ptr), 0, output->size() * sizeof(T));
     switch (data_reshape_.size()) {
@@ -625,7 +620,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
+void ReduceOp<RuntimeType::RT_CPU, uint8_t>::Reduce1Dims(
     const OpContext *context,
     const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
   MACE_UNUSED(context);
@@ -670,11 +665,10 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
 }
 
 template<>
-void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
+void ReduceOp<RuntimeType::RT_CPU, uint8_t>::Reduce2Dims(
     const OpContext *context,
     const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   const uint8_t *input = input_tensor->data<uint8_t>();
   uint8_t *output = output_tensor->mutable_data<uint8_t>();
@@ -768,11 +762,10 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
 }
 
 template<>
-void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
+void ReduceOp<RuntimeType::RT_CPU, uint8_t>::Reduce3Dims(
     const OpContext *context,
     const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   const uint8_t *input = input_tensor->data<uint8_t>();
   uint8_t *output = output_tensor->mutable_data<uint8_t>();
@@ -895,11 +888,10 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
 }
 
 template<>
-void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
+void ReduceOp<RuntimeType::RT_CPU, uint8_t>::Reduce4Dims(
     const OpContext *context,
     const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   const uint8_t *input = input_tensor->data<uint8_t>();
   uint8_t *output = output_tensor->mutable_data<uint8_t>();
@@ -1053,7 +1045,7 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ReduceOp<DeviceType::GPU, float> : public ReduceOpBase {
+class ReduceOp<RuntimeType::RT_OPENCL, float> : public ReduceOpBase {
  public:
   explicit ReduceOp(OpConstructContext *context)
       : ReduceOpBase(context) {
@@ -1079,43 +1071,43 @@ class ReduceOp<DeviceType::GPU, float> : public ReduceOpBase {
 
 void RegisterReduce(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Reduce", ReduceOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
-                   DeviceType::CPU, int);
+                   RuntimeType::RT_CPU, int);
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Reduce", ReduceOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
   MACE_REGISTER_GPU_OP(op_registry, "Reduce", ReduceOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Reduce")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 bool keep_dims =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, bool>(
                         *op, "keepdims", false);
                 if (!keep_dims) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
                 auto axis =
                     ProtoArgHelper::GetRepeatedArgs<OperatorDef, int>(
                         *op, "axis");
                 if (axis.size() != 2 || axis[0] != 1 || axis[1] != 2) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
                 auto tensor_shape_info = context->tensor_shape_info();
                 if (tensor_shape_info->count(op->input(0)) == 0
                     || tensor_shape_info->at(op->input(0)).size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

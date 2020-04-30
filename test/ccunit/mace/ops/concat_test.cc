@@ -40,8 +40,10 @@ TEST_F(ConcatOpTest, CPUSimpleHorizon) {
   std::vector<float> input1;
   GenerateRandomRealTypeData(input_shape, &input1);
   // Add inputs
-  net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input0",
+                                                    input_shape, input0);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input1",
+                                                    input_shape, input1);
 
   // Run
   net.RunOp();
@@ -77,8 +79,10 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
   std::vector<float> input1;
   GenerateRandomRealTypeData(input_shape, &input1);
   // Add inputs
-  net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "Input0", input_shape, input0);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "Input1", input_shape, input1);
 
   // Run
   net.RunOp();
@@ -131,8 +135,8 @@ void CPURandomTest(int input_dim, int has_data_format) {
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], &inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::CPU, float>(MakeString("Input", i),
-                                                  input_shapes[i], inputs[i]);
+    net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+        MakeString("Input", i), input_shapes[i], inputs[i]);
   }
 
   // Run
@@ -185,12 +189,12 @@ TEST_F(ConcatOpTest, QuantizedCPURandom) {
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], &inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::CPU, float>(MakeString("Input", i),
-                                                  input_shapes[i], inputs[i]);
+    net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+        MakeString("Input", i), input_shapes[i], inputs[i]);
   }
   std::vector<index_t> output_shape = input_shapes[0];
   output_shape[axis] = concat_axis_size;
-  net.AddRandomInput<DeviceType::CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Output", output_shape, false, true, true);
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -225,7 +229,7 @@ TEST_F(ConcatOpTest, QuantizedCPURandom) {
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
-  net.AddRandomInput<DeviceType::CPU, uint8_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>(
       "QuantizedOutput", output_shape, false, true, true);
   auto q_builder = OpDefBuilder("Concat", "QuantizedConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
@@ -236,7 +240,7 @@ TEST_F(ConcatOpTest, QuantizedCPURandom) {
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(eq_output->scale());
@@ -273,8 +277,8 @@ void OpenCLRandomTest(const std::vector<std::vector<index_t>> &shapes,
     concat_axis_size += shapes[i][axis];
     GenerateRandomRealTypeData(shapes[i], &inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::GPU, float>(input_name, shapes[i],
-                                                  inputs[i]);
+    net.AddInputFromArray<RuntimeType::RT_OPENCL, float>(input_name, shapes[i],
+                                                         inputs[i]);
   }
   std::vector<index_t> expected_shape = shapes[0];
   expected_shape[axis] = concat_axis_size;
@@ -292,7 +296,7 @@ void OpenCLRandomTest(const std::vector<std::vector<index_t>> &shapes,
       .Finalize(net.NewOperatorDef());
 
   // Run
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   // Check
   auto output = net.GetOutput("Output");

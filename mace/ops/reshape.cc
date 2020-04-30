@@ -59,10 +59,10 @@ MaceStatus GetOutputShape(const Tensor *input,
 
   if (unknown_idx != -1) {
     MACE_CHECK(product != 0)
-        << "Cannot infer shape if there is zero shape size.";
+      << "Cannot infer shape if there is zero shape size.";
     const index_t missing = input->size() / product;
     MACE_CHECK(missing * product == input->size())
-        << "Input size not match reshaped tensor size";
+      << "Input size not match reshaped tensor size";
     (*out_shape)[unknown_idx] = missing;
   }
 
@@ -71,7 +71,7 @@ MaceStatus GetOutputShape(const Tensor *input,
 
 }  // namespace
 
-template <DeviceType D, class T>
+template<RuntimeType D, class T>
 class ReshapeOp : public Operation {
  public:
   explicit ReshapeOp(OpConstructContext *context)
@@ -82,7 +82,6 @@ class ReshapeOp : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(INPUT);
     const Tensor *shape = this->Input(SHAPE);
-    Tensor::MappingGuard shape_guard(shape);
     const int32_t *shape_data = shape->data<int32_t>();
     const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
     std::vector<index_t> out_shape;
@@ -90,11 +89,11 @@ class ReshapeOp : public Operation {
     // NHWC -> NCHW
     std::vector<int32_t> trans_shape_data(shape_data,
                                           shape_data + shape->size());
-    if (has_df_ && D == DeviceType::CPU && shape->dim_size() == 4 &&
+    if (has_df_ && D == RuntimeType::RT_CPU && shape->dim_size() == 4 &&
         out_shape.size() == 4 && dim_.size() == 4) {
       std::vector<int> dst_dims = {0, 3, 1, 2};
       std::vector<int32_t> tmp_shape =
-          TransposeShape<int32_t , int32_t>(trans_shape_data, dst_dims);
+          TransposeShape<int32_t, int32_t>(trans_shape_data, dst_dims);
       trans_shape_data = tmp_shape;
     }
 
@@ -108,6 +107,14 @@ class ReshapeOp : public Operation {
     return MaceStatus::MACE_SUCCESS;
   }
 
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0) {
+      return 0;
+    } else {
+      return Operation::ReuseTensorMapId(output_idx);
+    }
+  }
+
  private:
   std::vector<int> dim_;
   bool has_df_;
@@ -119,14 +126,23 @@ class ReshapeOp : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template <>
-class ReshapeOp<GPU, float> : public Operation {
+class ReshapeOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit ReshapeOp(OpConstructContext *context)
-      : Operation(context), dim_(Operation::GetRepeatedArgs<int>("dim")) {
-    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
+      : Operation(context), dim_(Operation::GetRepeatedArgs<int>("dim")),
+        mem_type_(context->GetOpMemoryType()) {
+    if (mem_type_ == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ReshapeKernel>(context);
     } else {
       kernel_ = make_unique<opencl::buffer::ReshapeKernel>();
+    }
+  }
+
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0 && mem_type_ == MemoryType::GPU_BUFFER) {
+      return 0;
+    } else {
+      return Operation::ReuseTensorMapId(output_idx);
     }
   }
 
@@ -145,51 +161,54 @@ class ReshapeOp<GPU, float> : public Operation {
  private:
   std::vector<int> dim_;
   std::unique_ptr<OpenCLReshapeKernel> kernel_;
+  MemoryType mem_type_;
   MACE_OP_INPUT_TAGS(INPUT, SHAPE);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 #endif
 
 void RegisterReshape(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Reshape", ReshapeOp, DeviceType::CPU);
-  MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp, DeviceType::CPU, int32_t);
+  MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Reshape", ReshapeOp, RuntimeType::RT_CPU);
+  MACE_REGISTER_OP(op_registry, "Reshape", ReshapeOp,
+                   RuntimeType::RT_CPU, int32_t);
   MACE_REGISTER_GPU_OP(op_registry, "Reshape", ReshapeOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry, OpConditionBuilder("Reshape").SetDevicePlacerFunc(
-                       [](OpConditionContext *context) -> std::set<DeviceType> {
-                         auto op = context->operator_def();
-                         if (op->output_shape_size() != op->output_size()) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+      [](OpConditionContext *context) -> std::set<RuntimeType> {
+        auto op = context->operator_def();
+        if (op->output_shape_size() != op->output_size()) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         // When transforming a model, has_data_format is set
-                         // to true only when the data dimension conforms to
-                         // specific rules, such as dimension == 4
-                         int has_data_format =
-                             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                                 *op, "has_data_format", 0);
-                         if (has_data_format && op->input_size() == 1) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+        // When transforming a model, has_data_format is set
+        // to true only when the data dimension conforms to
+        // specific rules, such as dimension == 4
+        int has_data_format =
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *op, "has_data_format", 0);
+        if (has_data_format && op->input_size() == 1) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         DataFormat op_data_format = static_cast<DataFormat>(
-                             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                                 *context->operator_def(), "data_format",
-                                 static_cast<int>(DataFormat::NONE)));
-                         auto tensor_shape_info = context->tensor_shape_info();
-                         const std::string &input_0 = op->input(0);
-                         const auto out_dims_size =
-                             op->output_shape(0).dims_size();
-                         if (op_data_format == DataFormat::NHWC &&
-                             4 == tensor_shape_info->at(input_0).size() &&
-                             (out_dims_size == 4 || out_dims_size == 2) &&
-                             op->input_size() == 1) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+        DataFormat op_data_format = static_cast<DataFormat>(
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *context->operator_def(), "data_format",
+                static_cast<int>(DataFormat::NONE)));
+        auto tensor_shape_info = context->tensor_shape_info();
+        const std::string &input_0 = op->input(0);
+        const auto out_dims_size =
+            op->output_shape(0).dims_size();
+        if (op_data_format == DataFormat::NHWC &&
+            4 == tensor_shape_info->at(input_0).size() &&
+            (out_dims_size == 4 || out_dims_size == 2) &&
+            op->input_size() == 1) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         return {DeviceType::CPU};
-                       }));
+        return {RuntimeType::RT_CPU};
+      }));
 }
 
 }  // namespace ops

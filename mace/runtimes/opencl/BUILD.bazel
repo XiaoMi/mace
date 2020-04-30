@@ -1,0 +1,43 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_rpcmem_enabled",
+)
+
+cc_library(
+    name = "opencl_runtimes",
+    srcs = glob([
+        "*.cc",
+        "core/*.cc",
+        "transform/*.cc",
+    ]) + if_rpcmem_enabled(glob([
+        "qc_ion/*.cc",
+    ])),
+    hdrs = glob([
+        "*.h",
+        "core/*.h",
+        "transform/*.h",
+    ]) + if_rpcmem_enabled(glob([
+        "qc_ion/*.h",
+    ])),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
+    ]),
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/codegen:generated_opencl",
+        "//mace/core",
+        "//mace/runtimes:opencl_headers",
+        "//mace/runtimes/cpu:cpu_runtimes",
+        "@half",
+    ],
+)

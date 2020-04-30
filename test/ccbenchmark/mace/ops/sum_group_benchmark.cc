@@ -22,7 +22,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void SumGroupBenchmark(int iters, int n, int h, int w) {
   mace::testing::StopTiming();
   OpsTestNet net;
@@ -38,14 +38,15 @@ void SumGroupBenchmark(int iters, int n, int h, int w) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 }
@@ -63,7 +64,7 @@ void SumGroupBenchmark(int iters, int n, int h, int w) {
       MACE_BM_SUMGROUP_##N##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_SUMGROUP(N, H, W)             \
-  MACE_BM_SUMGROUP_MACRO(N, H, W, float, CPU);
+  MACE_BM_SUMGROUP_MACRO(N, H, W, float, RT_CPU);
 
 MACE_BM_SUMGROUP(1, 10, 256);
 MACE_BM_SUMGROUP(1, 20, 128);

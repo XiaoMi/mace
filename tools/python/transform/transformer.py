@@ -28,11 +28,12 @@ from transform.base_converter import EltwiseType
 from transform.base_converter import FrameworkType
 from transform.base_converter import MaceKeyword
 from transform.base_converter import MaceOp
-from transform.base_converter import MaceFixedDataFormatOps  # noqa
-from transform.base_converter import MaceTransposableDataFormatOps  # noqa
+from transform.base_converter import MaceFixedDataFormatOps
+from transform.base_converter import MaceTransposableDataFormatOps
 from transform.base_converter import PaddingMode
 from transform.base_converter import ReduceType
 from transform.base_converter import TransformerRule
+from utils.config_parser import MemoryType
 from utils.config_parser import Platform
 from quantize import quantize_util
 from utils.util import mace_check
@@ -127,7 +128,9 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.QUANTIZE_FOLD_RELU:
                 self.quantize_fold_relu,
             TransformerRule.TRANSFORM_KERAS_QUANTIZE_INFO:
-                self.transform_keras_quantize_info
+                self.transform_keras_quantize_info,
+            TransformerRule.ADD_GENERRAL_INFO:
+                self.add_general_info
         }
 
         self._option = option
@@ -348,6 +351,10 @@ class Transformer(base_converter.ConverterInterface):
         for input_node in self._option.input_nodes.values():
             input_info = net.input_info.add()
             input_info.name = input_node.name
+            if input_node.alias is not None:
+                input_info.alias = input_node.alias
+            else:
+                input_info.alias = input_node.name
             input_info.data_format = input_node.data_format.value
             input_info.dims.extend(input_node.shape)
             input_info.data_type = input_node.data_type
@@ -357,6 +364,10 @@ class Transformer(base_converter.ConverterInterface):
         for output_node in output_nodes:
             output_info = net.output_info.add()
             output_info.name = output_node.name
+            if output_node.alias is not None:
+                output_info.alias = output_node.alias
+            else:
+                output_info.alias = output_node.name
             output_info.data_format = output_node.data_format.value
             output_info.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
@@ -2073,10 +2084,10 @@ class Transformer(base_converter.ConverterInterface):
 
         print("Add default quantize info for input")
         for i, input_node in enumerate(self._option.input_nodes.values()):
+            new_input_name = self.input_name_map[input_node.name]
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,
                                               str(input_node.range)))
-                new_input_name = self.input_name_map[input_node.name]
                 if quantize_schema == MaceKeyword.mace_apu_16bit_per_tensor:
                     maxval = max(abs(input_node.range[0]),
                                  abs(input_node.range[0]))
@@ -2102,6 +2113,9 @@ class Transformer(base_converter.ConverterInterface):
                 self._quantize_activation_info[new_input_name] = quantize_info
                 input_op = self._producer[input_node.name]
                 input_op.quantize_info.extend([quantize_info])
+            else:
+                self._quantize_activation_info[new_input_name] = \
+                    self._quantize_activation_info[input_node.name]
 
         print("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
@@ -2316,13 +2330,13 @@ class Transformer(base_converter.ConverterInterface):
 
     def add_opencl_informations(self):
         print("Add OpenCL informations")
-
         net = self._model
-
         arg = net.arg.add()
         arg.name = MaceKeyword.mace_opencl_mem_type
-        arg.i = mace_pb2.GPU_IMAGE if self._option.cl_mem_type == "image"\
-            else mace_pb2.GPU_BUFFER
+        if self._option.cl_mem_type == "image":
+            arg.i = MemoryType.GPU_IMAGE.value
+        else:
+            arg.i = MemoryType.GPU_BUFFER.value
 
     def transform_reshape_and_flatten(self):
         net = self._model
@@ -2744,4 +2758,14 @@ class Transformer(base_converter.ConverterInterface):
                 del op.input[1]
                 self._model.tensors.remove(scale)
                 op.type = MaceOp.BiasAdd.name
+        return False
+
+    def add_general_info(self):
+        # add runtime arg
+        runtime_arg = self._model.arg.add()
+        runtime_arg.name = MaceKeyword.mace_runtime_type_str
+        runtime_arg.i = self._option.device
+        # add net info
+        self._model.name = self._option.name
+        self._model.infer_order = self._option.order
         return False

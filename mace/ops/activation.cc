@@ -22,19 +22,19 @@
 #include "mace/ops/delegator/activation.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/activation.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 #include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ActivationOp;
 
 template<typename T>
-class ActivationOp<DeviceType::CPU, T> : public Operation {
+class ActivationOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ActivationOp(OpConstructContext *context)
       : Operation(context),
@@ -42,7 +42,8 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
             Operation::GetOptionalArg<std::string>("activation", "NOOP"))),
         activation_delegator_(delegator::Activation::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(
+                Activation, RuntimeType::RT_CPU, T, kCpuImplType),
             delegator::ActivationParam(
                 activation_type_,
                 Operation::GetOptionalArg<float>("max_limit", 0.f),
@@ -78,7 +79,7 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ActivationOp<DeviceType::GPU, float> : public Operation {
+class ActivationOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit ActivationOp(OpConstructContext *context)
       : Operation(context) {
@@ -96,10 +97,11 @@ class ActivationOp<DeviceType::GPU, float> : public Operation {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
+
     if (type == ActivationType::PRELU) {
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
-                     == MaceStatus::MACE_SUCCESS);
+      auto status = TransformFilter(context, operator_def_.get(), 1,
+                                    BufferContentType::ARGUMENT, mem_type);
+      MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     }
   }
   MaceStatus Run(OpContext *context) override {
@@ -118,31 +120,31 @@ class ActivationOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterActivation(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Activation",
-                        ActivationOp, DeviceType::CPU);
+                        ActivationOp, RuntimeType::RT_CPU);
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
   MACE_REGISTER_GPU_OP(op_registry, "Activation", ActivationOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Activation")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

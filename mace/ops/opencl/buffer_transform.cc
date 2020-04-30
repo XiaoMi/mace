@@ -16,35 +16,40 @@
 
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
-#include "mace/ops/opencl/buffer_transformer.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class BufferTransformOp;
 
-template<>
-class BufferTransformOp<DeviceType::GPU, float> : public Operation {
+template<RuntimeType D>
+class BufferTransformOp<D, float> : public Operation {
  public:
   explicit BufferTransformOp(OpConstructContext *context)
       : Operation(context),
         wino_blk_size_(Operation::GetOptionalArg<int>("wino_block_size", 0)),
         out_mem_type_(static_cast<MemoryType>(Operation::GetOptionalArg<int>(
-            "mem_type", static_cast<int>(MemoryType::GPU_IMAGE)))) {}
+            OutputMemoryTypeTagName(),
+            static_cast<int>(MemoryType::GPU_IMAGE)))) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
     auto type =
-        static_cast<OpenCLBufferType>(Operation::GetOptionalArg<int>(
-            "buffer_type", static_cast<int>(CONV2D_FILTER)));
+        static_cast<BufferContentType>(Operation::GetOptionalArg<int>(
+            "content_type", static_cast<int>(CONV2D_FILTER)));
 
     MemoryType in_mem_type = context->workspace()->GetTensor(
         operator_def_->input(0))->memory_type();
     return OpenCLBufferTransformer(in_mem_type, out_mem_type_).Transform(
         context, input, type, out_mem_type_, wino_blk_size_, output);
+  }
+
+  MaceStatus Forward(OpContext *context) override {
+    return Run(context);
   }
 
  private:
@@ -54,6 +59,10 @@ class BufferTransformOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterBufferTransform(OpRegistry *op_registry) {
   MACE_REGISTER_GPU_OP(op_registry, "BufferTransform", BufferTransformOp);
+#ifdef MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP(op_registry, "BufferTransform", BufferTransformOp,
+                   RuntimeType::RT_CPU, float);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

@@ -21,7 +21,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class UnstackOp : public Operation {
  public:
   explicit UnstackOp(OpConstructContext *context)
@@ -76,11 +76,11 @@ class UnstackOp : public Operation {
 
 void RegisterUnstack(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Unstack", UnstackOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Unstack", UnstackOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_OP(op_registry, "Unstack", UnstackOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 }
 
 }  // namespace ops

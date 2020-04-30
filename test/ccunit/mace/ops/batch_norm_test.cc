@@ -21,7 +21,7 @@ namespace test {
 class BatchNormOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Simple() {
   OpsTestNet net;
 
@@ -33,7 +33,7 @@ void Simple() {
   net.AddInputFromArray<D, float>("Mean", {1}, {10}, true);
   net.AddInputFromArray<D, float>("Var", {1}, {11.67f}, true);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.TransformDataFormat<D, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BatchNorm", "BatchNormTest")
@@ -50,7 +50,7 @@ void Simple() {
     net.RunOp(D);
     net.TransformDataFormat<D, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("BatchNorm", "BatchNormTest")
         .Input("Input")
         .Input("Scale")
@@ -73,9 +73,9 @@ void Simple() {
 }
 }  // namespace
 
-TEST_F(BatchNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
+TEST_F(BatchNormOpTest, SimpleCPU) { Simple<RuntimeType::RT_CPU>(); }
 
-TEST_F(BatchNormOpTest, SimpleOPENCL) { Simple<DeviceType::GPU>(); }
+TEST_F(BatchNormOpTest, SimpleOPENCL) { Simple<RuntimeType::RT_OPENCL>(); }
 
 TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   // generate random input
@@ -88,14 +88,16 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
-                                             {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true, false);
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true, false);
-  net.AddRandomInput<DeviceType::GPU, float>("Mean", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Var", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>(
+      "Input", {batch, height, width, channels});
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Scale", {channels},
+                                                    true, false);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Offset", {channels},
+                                                    true, false);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Mean", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Var", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   // Construct graph
@@ -114,7 +116,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -134,7 +136,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .AddFloatArg("activation_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::GPU);
+  net.Setup(RuntimeType::RT_OPENCL);
 
   // Tuning
   setenv("MACE_TUNING", "1", 1);
@@ -160,14 +162,14 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Mean", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Var", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Scale", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Offset", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Mean", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Var", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
@@ -183,7 +185,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -202,7 +204,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::GPU);
+  net.Setup(RuntimeType::RT_OPENCL);
 
   // Tuning
   setenv("MACE_TUNING", "1", 1);
@@ -228,14 +230,14 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Mean", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Var", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Scale", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Offset", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Mean", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Var", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
@@ -251,7 +253,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -269,7 +271,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::GPU);
+  net.Setup(RuntimeType::RT_OPENCL);
 
   // tuning
   setenv("MACE_TUNING", "1", 1);
@@ -295,14 +297,14 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Mean", {channels}, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Var", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Scale", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Offset", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Mean", {channels}, true);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Var", {channels}, true);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
@@ -318,7 +320,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -337,7 +339,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::GPU);
+  net.Setup(RuntimeType::RT_OPENCL);
 
   // tuning
   setenv("MACE_TUNING", "1", 1);

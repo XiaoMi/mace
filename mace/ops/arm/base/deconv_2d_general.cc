@@ -40,12 +40,7 @@ MaceStatus Deconv2dGeneral<T>::Compute(const OpContext *context,
   if (padded_out != nullptr) {
     out_tensor = padded_out.get();
   }
-
   out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
 
   auto input_data = input->data<T>();
   auto filter_data = filter->data<T>();
@@ -75,8 +70,7 @@ MaceStatus Deconv2dGeneral<T>::Compute(const OpContext *context,
   const index_t out_channels = out_shape[1];
   const index_t in_channels = in_shape[1];
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -114,7 +108,7 @@ MaceStatus Deconv2dGeneral<T>::Compute(const OpContext *context,
 void RegisterDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Deconv2dGeneral<float>, delegator::Deconv2dParam,
-      MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, float, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Deconv2d, RuntimeType::RT_CPU, float, ImplType::NEON));
 }
 
 }  // namespace arm

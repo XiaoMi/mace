@@ -36,9 +36,9 @@
 #include "mace/utils/memory.h"
 #include "mace/core/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/buffer/depthwise_conv2d.h"
 #include "mace/ops/opencl/image/depthwise_conv2d.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
@@ -60,24 +60,24 @@ class DepthwiseConv2dOpBase : public ConvPool2dOpBase {
   const float activation_coefficient_;
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class DepthwiseConv2dOp;
 
 template<class T>
-class DepthwiseConv2dOp<DeviceType::CPU, T> : public DepthwiseConv2dOpBase {
+class DepthwiseConv2dOp<RuntimeType::RT_CPU, T> : public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
       : DepthwiseConv2dOpBase(context),
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                                    T, kCpuImplType),
                 delegator::ActivationParam(
                     activation_, relux_max_limit_, activation_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -94,7 +94,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, T> : public DepthwiseConv2dOpBase {
     MACE_CHECK_NOTNULL(output);
 
     if (depthwise_conv2d_delegator_ == nullptr) {
-      auto tag = MACE_DELEGATOR_KEY(DepthwiseConv2d, DeviceType::CPU,
+      auto tag = MACE_DELEGATOR_KEY(DepthwiseConv2d, RuntimeType::RT_CPU,
                                     T, ImplType::REF);
       if (kCpuImplType == NEON) {
         const index_t filter_h = filter->dim(2);
@@ -105,12 +105,12 @@ class DepthwiseConv2dOp<DeviceType::CPU, T> : public DepthwiseConv2dOpBase {
         const index_t dilation_w = dilations_[1];
         if (filter_h == 3 && filter_w == 3 && stride_h == 1 && stride_w == 1
             && dilation_h == 1 && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K3x3S1);
         } else if (filter_h == 3 && filter_w == 3 && stride_h == 2
             && stride_w == 2
             && dilation_h == 1 && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K3x3S2);
         }
       }
@@ -139,7 +139,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, T> : public DepthwiseConv2dOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
+class DepthwiseConv2dOp<RuntimeType::RT_CPU, uint8_t>
     : public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
@@ -203,10 +203,6 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
     int pad_top = paddings[0] >> 1;
     int pad_left = paddings[1] >> 1;
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard filter_guard(filter);
-    Tensor::MappingGuard bias_guard(bias);
-    Tensor::MappingGuard output_guard(output);
     auto input_data = input->data<uint8_t>();
     auto filter_data = filter->data<uint8_t>();
     auto output_data = output->mutable_data<uint8_t>();
@@ -228,7 +224,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
       std::vector<index_t> bias_shape{out_channels};
 
       tflite::optimized_ops::DepthwiseConv(
-          &context->device()->cpu_runtime()->thread_pool(),
+          &context->runtime()->thread_pool(),
           input_data, ShapeToTfliteDims(input->shape()), -input->zero_point(),
           filter_data, ShapeToTfliteDims(filter_shape), -filter->zero_point(),
           bias_data, ShapeToTfliteDims(bias_shape), stride_w, stride_h,
@@ -264,8 +260,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
                               const int *dilation_hw,
                               const int *pad_hw,
                               uint8_t *output) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
@@ -348,7 +343,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class DepthwiseConv2dOp<DeviceType::GPU, float> :
+class DepthwiseConv2dOp<RuntimeType::RT_OPENCL, float> :
     public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
@@ -369,12 +364,12 @@ class DepthwiseConv2dOp<DeviceType::GPU, float> :
           context,
           operator_def_.get(),
           1,
-          OpenCLBufferType::DW_CONV2D_FILTER,
+          BufferContentType::DW_CONV2D_FILTER,
           mem_type) == MaceStatus::MACE_SUCCESS);
     }
     if (operator_def_->input_size() > 2) {
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
+      MACE_CHECK(TransformFilter(context, operator_def_.get(), 2,
+                                 BufferContentType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
   }
@@ -403,15 +398,15 @@ class DepthwiseConv2dOp<DeviceType::GPU, float> :
 
 void RegisterDepthwiseConv2d(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
-                   DepthwiseConv2dOp, DeviceType::CPU, float);
+                   DepthwiseConv2dOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "DepthwiseConv2d",
-                        DepthwiseConv2dOp, DeviceType::CPU);
+                        DepthwiseConv2dOp, RuntimeType::RT_CPU);
   MACE_REGISTER_FP16_OP(op_registry, "DepthwiseConv2d",
-                         DepthwiseConv2dOp, DeviceType::CPU);
+                        DepthwiseConv2dOp, RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
-                   DepthwiseConv2dOp, DeviceType::CPU, uint8_t);
+                   DepthwiseConv2dOp, RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "DepthwiseConv2d", DepthwiseConv2dOp);
@@ -421,7 +416,7 @@ void RegisterDepthwiseConv2d(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("DepthwiseConv2d").SetInputMemoryTypeSetter(
           [](OpConditionContext *context) -> void {
-            SetFilterMemoryType(context, OpenCLBufferType::DW_CONV2D_FILTER);
+            SetFilterMemoryType(context, BufferContentType::DW_CONV2D_FILTER);
           }));
 #endif  // MACE_ENABLE_OPENCL
 

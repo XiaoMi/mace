@@ -20,11 +20,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class CumsumOp;
 
 template <typename T>
-class CumsumOp<DeviceType::CPU, T> : public Operation {
+class CumsumOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit CumsumOp(OpConstructContext *context)
       : Operation(context),
@@ -61,9 +61,6 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
 
     Tensor *output = this->Output(0);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard output_mapper(output);
 
     const float *input_ptr = input->data<float>();
     float *output_ptr = output->mutable_data<float>();
@@ -143,8 +140,8 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
 };
 
 void RegisterCumsum(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Cumsum", CumsumOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Cumsum", CumsumOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Cumsum", CumsumOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Cumsum", CumsumOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

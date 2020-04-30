@@ -22,7 +22,9 @@ from __future__ import print_function
 import argparse
 import copy
 import sys
+
 from micro_converter import MicroConverter
+from py_proto import mace_pb2
 from utils import config_parser
 from utils.config_parser import DataFormat
 from utils.config_parser import DeviceType
@@ -44,69 +46,81 @@ def transpose_shape(shape, dst_order):
     return t_shape
 
 
+def convert_micro(model_name, net_confs, net_def,
+                  params, model_output):
+    mace_check(len(net_confs.items()) == 1,
+               "Multi graph not supported in Micro")
+    for graph_name, graph_conf in net_confs.items():
+        micro_converter = MicroConverter(graph_conf, copy.deepcopy(net_def),
+                                         copy.deepcopy(params), model_name)
+        micro_converter.gen_code()
+        micro_converter.package(model_output + "/" +
+                                model_name + "_micro.tar.gz")
+
+
+def add_input_output_tensor(multi_net_def, model_conf):
+    if len(model_conf[ModelKeys.subgraphs]) == 1:
+        model_conf = model_conf[ModelKeys.subgraphs][ModelKeys.default_graph]
+    for input_tensor in model_conf[ModelKeys.input_tensors]:
+        multi_net_def.input_tensor.append(input_tensor)
+    for output_tensor in model_conf[ModelKeys.output_tensors]:
+        multi_net_def.output_tensor.append(output_tensor)
+
+
 def convert(conf, output, enable_micro=False):
-    if ModelKeys.quantize_stat in conf:
-        quantize_stat = conf[ModelKeys.quantize_stat]
-    else:
-        quantize_stat = False
     for model_name, model_conf in conf["models"].items():
         model_output = output + "/" + model_name + "/model"
         org_model_dir = output + "/" + model_name + "/org_model"
         util.mkdir_p(model_output)
         util.mkdir_p(org_model_dir)
 
-        model_conf = normalize_model_config(model_conf)
+        model_conf = normalize_model_config(model_conf, model_output,
+                                            org_model_dir)
+        conf["models"][model_name] = model_conf
+        net_confs = model_conf[ModelKeys.subgraphs]
 
-        model_file = util.download_or_get_model(
-            model_conf[ModelKeys.model_file_path],  # noqa
-            model_conf[ModelKeys.model_sha256_checksum],  # noqa
-            output + "/" + model_name + "/org_model")
-        model_conf[ModelKeys.model_file_path] = model_file
-        if ModelKeys.weight_file_path in model_conf:
-            weight_file = util.download_or_get_model(
-                model_conf[ModelKeys.weight_file_path],
-                model_conf[ModelKeys.weight_sha256_checksum], "/tmp/")
-            model_conf[ModelKeys.weight_file_path] = weight_file
+        model = mace_pb2.MultiNetDef()
+        add_input_output_tensor(model, model_conf)
 
-        # TODO: remove the following after quantize tool is made
-        if ModelKeys.quantize_range_file in model_conf:
-            range_file = util.download_or_get_model(
-                model_conf[ModelKeys.quantize_range_file],
-                "", model_output)
-            model_conf[ModelKeys.quantize_range_file] = range_file
+        model_params = []
+        for net_name, net_conf in net_confs.items():
+            net_def_with_Data = convert_net(net_name, net_conf)
+            try:
+                visualizer = visualize_model.ModelVisualizer(
+                    net_name, net_def_with_Data, model_output)
+                visualizer.save_html()
+            except:  # noqa
+                print("Failed to visualize graph:", sys.exc_info())
+            net_def, params = merge_params(net_def_with_Data,
+                                           net_conf[ModelKeys.data_type])
+            if enable_micro:
+                convert_micro(model_name, net_confs, net_def,
+                              params, model_output,)
 
-        mace_model = convert_model(model_conf, quantize_stat)
-
-        try:
-            visualizer = visualize_model.ModelVisualizer(model_name,
-                                                         mace_model,
-                                                         model_output)
-            visualizer.save_html()
-        except:  # noqa
-            print("Failed to visualize model:", sys.exc_info())
-
-        model, params = merge_params(mace_model,
-                                     model_conf[ModelKeys.data_type])
-        if enable_micro:
-            micro_converter = MicroConverter(model_conf, copy.deepcopy(model),
-                                             copy.deepcopy(params), model_name)
-            micro_converter.gen_code()
-            micro_converter.package(model_output + "/" +
-                                    model_name + "_micro.tar.gz")
+            net_def.data_offset = len(model_params)
+            net_def.data_size = len(params)
+            model.net_def.extend([net_def])
+            model_params.extend(params)
+        # store model and weight to files
         output_model_file = model_output + "/" + model_name + ".pb"
         output_params_file = model_output + "/" + model_name + ".data"
         with open(output_model_file, "wb") as f:
             f.write(model.SerializeToString())
         with open(output_params_file, "wb") as f:
-            f.write(bytearray(params))
+            f.write(bytearray(model_params))
         with open(output_model_file + "_txt", "w") as f:
             f.write(str(model))
 
 
-def convert_model(conf, quantize_stat):
+def convert_net(net_name, conf):
     option = cvt.ConverterOption()
+    option.name = net_name
+    option.order = conf.get(ModelKeys.order, 0)
+    if ModelKeys.quantize_stat in conf:
+        option.quantize_stat = conf[ModelKeys.quantize_stat]
+    else:
+        option.quantize_stat = False
 
-    option.quantize_stat = quantize_stat
     if ModelKeys.graph_optimize_options in conf:
         option.transformer_option = conf[ModelKeys.graph_optimize_options]
     if ModelKeys.winograd in conf:
@@ -139,6 +153,10 @@ def convert_model(conf, quantize_stat):
     for i in range(len(conf[ModelKeys.input_tensors])):
         input_node = cvt.NodeInfo()
         input_node.name = conf[ModelKeys.input_tensors][i]
+        if ModelKeys.input_aliases in conf:
+            input_node.alias = conf[ModelKeys.input_aliases][i]
+        else:
+            input_node.alias = input_node.name
         input_node.shape = conf[ModelKeys.input_shapes][i]
         input_node.data_type = conf[ModelKeys.input_data_types][i]
         input_node.data_format = conf[ModelKeys.input_data_formats][i]
@@ -152,6 +170,10 @@ def convert_model(conf, quantize_stat):
     for i in range(len(conf[ModelKeys.output_tensors])):
         output_node = cvt.NodeInfo()
         output_node.name = conf[ModelKeys.output_tensors][i]
+        if ModelKeys.output_aliases in conf:
+            output_node.alias = conf[ModelKeys.output_aliases][i]
+        else:
+            output_node.alias = output_node.name
         output_node.shape = conf[ModelKeys.output_shapes][i]
         output_node.data_type = conf[ModelKeys.output_data_types][i]
         output_node.data_format = conf[ModelKeys.output_data_formats][i]
@@ -204,8 +226,7 @@ def convert_model(conf, quantize_stat):
         mace_check(False, "Mace do not support platorm %s yet." % platform)
 
     output_graph_def = converter.run()
-    mace_transformer = transformer.Transformer(
-        option, output_graph_def)
+    mace_transformer = transformer.Transformer(option, output_graph_def)
     output_graph_def, quantize_activation_info = mace_transformer.run()
 
     runtime = conf[ModelKeys.runtime]

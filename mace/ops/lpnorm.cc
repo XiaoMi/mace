@@ -32,11 +32,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class LpNormOp;
 
 template<class T>
-class LpNormOp<DeviceType::CPU, T> : public Operation {
+class LpNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit LpNormOp(OpConstructContext *context)
       : Operation(context),
@@ -56,13 +56,9 @@ class LpNormOp<DeviceType::CPU, T> : public Operation {
     const std::vector<index_t> &input_shape = input->shape();
     MACE_RETURN_IF_ERROR(output->Resize(input_shape));
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_output(output);
-
     const auto *input_data = input->data<T>();
     auto *output_data = output->mutable_data<T>();
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     auto outer_loop = std::accumulate(input_shape.begin(),
                                       input_shape.begin() + axis_, 1,
                                       std::multiplies<index_t>());
@@ -87,9 +83,9 @@ class LpNormOp<DeviceType::CPU, T> : public Operation {
     }
 
     const float power = 1 / static_cast<float>(p_);
-    auto norm_buffer = context->device()->scratch_buffer();
-    norm_buffer->Rewind();
-    MACE_RETURN_IF_ERROR(norm_buffer->GrowSize(outer_loop * sizeof(float)));
+    auto *runtime = context->runtime();
+    MemInfo mem_info(input->memory_type(), DataType::DT_FLOAT, {outer_loop});
+    auto norm_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
     float *norm_ptr = norm_buffer->mutable_data<float>();
     thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
       for (index_t i = start; i < end; i += step) {
@@ -122,7 +118,7 @@ class LpNormOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class LpNormOp<DeviceType::GPU, float> : public Operation {
+class LpNormOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit LpNormOp(OpConstructContext *context)
       : Operation(context) {
@@ -151,9 +147,9 @@ class LpNormOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterLpNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LpNorm", LpNormOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "LpNorm", LpNormOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "LpNorm", LpNormOp);
 }
 

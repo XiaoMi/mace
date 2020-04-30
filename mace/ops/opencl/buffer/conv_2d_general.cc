@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "mace/core/ops/op_context.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/ops/common/activation_type.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 
 namespace mace {
 namespace ops {
@@ -48,7 +49,7 @@ MaceStatus Conv2dGeneral(OpContext *context,
   const index_t filter_height = filter->dim(2);
   const index_t filter_width = filter->dim(3);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -64,22 +65,16 @@ MaceStatus Conv2dGeneral(OpContext *context,
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
-      case NOOP:
+      case NOOP:break;
+      case RELU:built_options.emplace("-DUSE_RELU");
         break;
-      case RELU:
-        built_options.emplace("-DUSE_RELU");
+      case RELUX:built_options.emplace("-DUSE_RELUX");
         break;
-      case RELUX:
-        built_options.emplace("-DUSE_RELUX");
+      case TANH:built_options.emplace("-DUSE_TANH");
         break;
-      case TANH:
-        built_options.emplace("-DUSE_TANH");
+      case SIGMOID:built_options.emplace("-DUSE_SIGMOID");
         break;
-      case SIGMOID:
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      case LEAKYRELU:
-        built_options.emplace("-DUSE_LEAKYRELU");
+      case LEAKYRELU:built_options.emplace("-DUSE_LEAKYRELU");
         break;
       case ELU:
         built_options.emplace("-DUSE_ELU");
@@ -88,9 +83,9 @@ MaceStatus Conv2dGeneral(OpContext *context,
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("conv_2d_buffer",
-                                              kernel_name,
-                                              built_options, kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("conv_2d_buffer",
+                                               kernel_name,
+                                               built_options, kernel));
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(
@@ -103,10 +98,10 @@ MaceStatus Conv2dGeneral(OpContext *context,
     uint32_t idx = 0;
     MACE_BUFF_OUT_OF_RANGE_SET_ARGS(*kernel, output->size());
     MACE_SET_2D_GWS_ARGS(*kernel, gws)
-    kernel->setArg(idx++, *(padded_input->opencl_buffer()));
-    kernel->setArg(idx++, *(filter->opencl_buffer()));
+    kernel->setArg(idx++, *(padded_input->memory<cl::Buffer>()));
+    kernel->setArg(idx++, *(filter->memory<cl::Buffer>()));
     if (bias != nullptr) {
-      kernel->setArg(idx++, *(bias->opencl_buffer()));
+      kernel->setArg(idx++, *(bias->memory<cl::Buffer>()));
     }
     kernel->setArg(idx++, static_cast<int32_t>(in_height));
     kernel->setArg(idx++, static_cast<int32_t>(in_width));
@@ -129,16 +124,16 @@ MaceStatus Conv2dGeneral(OpContext *context,
         dilations[1] * in_channel));
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, activation_coefficient);
-    kernel->setArg(idx++, *(output->opencl_buffer()));
+    kernel->setArg(idx++, *(output->memory<cl::Buffer>()));
   }
 
   std::string tuning_key =
       Concat("conv2d_general_buffer", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3), filter_height, filter_width);
   std::vector<uint32_t> lws = {16, 4, 0};
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key, gws,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key, gws,
                                            lws, future));
-  MACE_OUT_OF_RANGE_VALIDATION
+  MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
 

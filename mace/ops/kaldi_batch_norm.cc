@@ -21,15 +21,16 @@
 
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
+#include "mace/core/runtime/runtime.h"
 
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<RuntimeType D, class T>
 class KaldiBatchNormOp;
 
-template <class T>
-class KaldiBatchNormOp<DeviceType::CPU, T> : public Operation {
+template<class T>
+class KaldiBatchNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit KaldiBatchNormOp(OpConstructContext *context)
       : Operation(context),
@@ -82,13 +83,10 @@ class KaldiBatchNormOp<DeviceType::CPU, T> : public Operation {
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     if (test_mode_) {
       MACE_CHECK(this->InputSize() == 3, "KaldiBatchNorm should have 3 inputs");
@@ -100,8 +98,7 @@ class KaldiBatchNormOp<DeviceType::CPU, T> : public Operation {
                  offset->dim_size());
       MACE_CHECK(scale->size() == offset->size()
                      && scale->size() == block_dim_);
-      Tensor::MappingGuard scale_guard(scale);
-      Tensor::MappingGuard offset_guard(offset);
+
       const T *scale_data = scale->data<T>();
       const T *offset_data = offset->data<T>();
 
@@ -115,18 +112,16 @@ class KaldiBatchNormOp<DeviceType::CPU, T> : public Operation {
         }
       }, 0, num_rows, 1, 0, block_dim_, 1);
     } else {
-      const index_t buf_size =
-          PadAlignSize(block_dim_ * sizeof(T));
-      ScratchBuffer *scratch = context->device()->scratch_buffer();
-      scratch->Rewind();
-      scratch->GrowSize(2 * buf_size);
+      auto *runtime = context->runtime();
+      auto data_type = DataTypeToEnum<T>::v();
+      auto mem_type = input->memory_type();
 
-      Tensor mean(scratch->Scratch(buf_size), DataTypeToEnum<T>::v());
-      mean.Reshape({block_dim_});
+      Tensor mean(runtime, data_type, mem_type, {block_dim_});
+      runtime->AllocateBufferForTensor(&mean, RENT_SCRATCH);
       T *mean_data = mean.mutable_data<T>();
 
-      Tensor var(scratch->Scratch(buf_size), DataTypeToEnum<T>::v());
-      var.Reshape({block_dim_});
+      Tensor var(runtime, data_type, mem_type, {block_dim_});
+      runtime->AllocateBufferForTensor(&var, RENT_SCRATCH);
       T *var_data = var.mutable_data<T>();
 
       float var_scale = 1.0f / (target_rms_ * target_rms_);
@@ -170,9 +165,9 @@ class KaldiBatchNormOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterKaldiBatchNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "KaldiBatchNorm", KaldiBatchNormOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "KaldiBatchNorm", KaldiBatchNormOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

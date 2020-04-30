@@ -17,8 +17,8 @@
 #include <vector>
 #include <memory>
 
-#include "mace/ops/opencl/image/buffer_to_image.h"
-#include "mace/ops/opencl/image/image_to_buffer.h"
+#include "mace/runtimes/opencl/transform/buffer_to_image.h"
+#include "mace/runtimes/opencl/transform/image_to_buffer.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -26,12 +26,12 @@ namespace ops {
 namespace opencl {
 namespace image {
 
-ReshapeKernel::ReshapeKernel(OpConstructContext *context) {
-  i2bkernel_ = make_unique<opencl::image::ImageToBuffer>();
-  b2ikernel_ = make_unique<opencl::image::BufferToImage>();
-  inter_buffer_ =
-      make_unique<Tensor>(context->device()->allocator(), DT_FLOAT);
-  MACE_CHECK(inter_buffer_ != nullptr);
+ReshapeKernel::ReshapeKernel(OpConstructContext *context)
+    : i2bkernel_(make_unique<runtimes::opencl::ImageToBuffer>()),
+      b2ikernel_(make_unique<runtimes::opencl::BufferToImage>()),
+      inter_buffer_(make_unique<Tensor>(context->runtime(),
+                                        DT_FLOAT, GPU_BUFFER)) {
+  MACE_UNUSED(context);
 }
 
 MaceStatus ReshapeKernel::Compute(OpContext *context,
@@ -39,7 +39,7 @@ MaceStatus ReshapeKernel::Compute(OpContext *context,
                                   const std::vector<index_t> &new_shape,
                                   Tensor *output) {
   MaceStatus succ = i2bkernel_->Compute(context, input,
-                                        OpenCLBufferType::IN_OUT_CHANNEL,
+                                        BufferContentType::IN_OUT_CHANNEL,
                                         0, inter_buffer_.get());
   MACE_RETURN_IF_ERROR(succ);
 
@@ -47,7 +47,7 @@ MaceStatus ReshapeKernel::Compute(OpContext *context,
   MACE_RETURN_IF_ERROR(succ);
 
   succ = b2ikernel_->Compute(context, inter_buffer_.get(),
-                             OpenCLBufferType::IN_OUT_CHANNEL,
+                             BufferContentType::IN_OUT_CHANNEL,
                              0, output);
   MACE_RETURN_IF_ERROR(succ);
 

@@ -21,7 +21,7 @@ namespace arm {
 void RegisterConv2dK5x5Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK5x5S1<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K5x5S1));
 }
 

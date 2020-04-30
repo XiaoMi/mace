@@ -19,12 +19,6 @@ enum DataType {
   DT_INT8 = 8;
 }
 
-enum MemoryType {
-  CPU_BUFFER = 0;
-  GPU_BUFFER = 1;
-  GPU_IMAGE = 2;
-}
-
 message ConstTensor {
   repeated int64 dims = 1;
   optional DataType data_type = 2 [default = DT_FLOAT];
@@ -99,6 +93,8 @@ message InputOutputInfo {
   optional int32 data_format = 6 [default = 1];  // NHWC
   optional float scale = 7;
   optional int32 zero_point = 8;
+
+  optional string alias = 100;
 }
 
 message NetDef {
@@ -107,6 +103,21 @@ message NetDef {
   repeated ConstTensor tensors = 3;
   optional DataType data_type = 4 [default = DT_FLOAT];
 
+  // add by version 1
+  optional string name = 5;
+  optional int32 data_offset = 6 [default = 0];
+  optional int32 data_size = 7 [default = 0];
+  optional int32 infer_order = 8 [default = 0];
+
   repeated InputOutputInfo input_info = 100;
   repeated InputOutputInfo output_info = 101;
+}
+
+message MultiNetDef {
+  optional int32 version_code = 1 [default = 1]; // +1 if format changed
+  optional string name = 2;
+  repeated NetDef net_def = 3;
+
+  repeated string input_tensor = 100;
+  repeated string output_tensor = 101;
 }

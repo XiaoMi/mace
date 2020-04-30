@@ -34,8 +34,8 @@ void TestReshape(const std::vector<index_t> &org_shape,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", org_shape);
-  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", org_shape);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Shape",
       {static_cast<index_t>(output_shape.size())},
       output_shape);

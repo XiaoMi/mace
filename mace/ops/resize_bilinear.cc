@@ -99,8 +99,7 @@ inline void ResizeImageNCHW(const OpContext *context,
                             T *output) {
   const CachedInterpolation *xs = xs_vec.data();
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -148,8 +147,7 @@ inline void ResizeImageNHWC(const OpContext *context,
                             T *output) {
   const CachedInterpolation *xs = xs_vec.data();
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   for (index_t b = 0; b < batch_size; ++b) {
     const T *input_base = images + b * channels * in_height * in_width;
@@ -182,11 +180,11 @@ inline void ResizeImageNHWC(const OpContext *context,
   }
 }
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class ResizeBilinearOp;
 
 template<typename T>
-class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
+class ResizeBilinearOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ResizeBilinearOp(OpConstructContext *context)
       : Operation(context),
@@ -227,8 +225,6 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard output_mapper(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
@@ -283,7 +279,7 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template <>
-class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
+class ResizeBilinearOp<RuntimeType::RT_CPU, uint8_t> : public Operation {
  public:
   explicit ResizeBilinearOp(OpConstructContext *context)
       : Operation(context),
@@ -322,8 +318,6 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
     std::vector<index_t> out_shape{batch, out_height, out_width, channels};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard output_mapper(output);
     const uint8_t *input_data = input->data<uint8_t>();
     uint8_t *output_data = output->mutable_data<uint8_t>();
 
@@ -379,7 +373,7 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
+class ResizeBilinearOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit ResizeBilinearOp(OpConstructContext *context)
       : Operation(context),
@@ -434,13 +428,13 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterResizeBilinear(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "ResizeBilinear", ResizeBilinearOp);

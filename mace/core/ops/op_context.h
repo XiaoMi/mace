@@ -15,24 +15,24 @@
 #ifndef MACE_CORE_OPS_OP_CONTEXT_H_
 #define MACE_CORE_OPS_OP_CONTEXT_H_
 
-#include "mace/core/device.h"
-#include "mace/core/workspace.h"
 #include "mace/core/future.h"
+#include "mace/core/runtime/runtime.h"
+#include "mace/core/workspace.h"
 
 namespace mace {
 
 class OpContext {
  public:
-  OpContext(Workspace *ws, Device *device);
+  OpContext(Workspace *ws, Runtime *runtime);
   ~OpContext();
-  void set_device(Device *device);
-  Device *device() const;
+  void set_runtime(Runtime *runtime);
+  Runtime *runtime() const;
   Workspace *workspace() const;
 
   void set_future(StatsFuture *future);
   StatsFuture *future() const;
  private:
-  Device *device_;
+  Runtime *runtime_;
   Workspace *ws_;
   StatsFuture *future_;
 };

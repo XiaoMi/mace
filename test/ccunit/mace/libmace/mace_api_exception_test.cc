@@ -25,19 +25,20 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
   input_names.push_back(MakeString("input", 0));
   output_names.push_back(MakeString("output", 0));
 
-  MaceEngineConfig config(DeviceType::GPU);
-  config.SetGPUContext(
-      ops::test::OpTestContext::Get()->gpu_context());
+  MaceEngineConfig config;
+  config.SetGPUContext(ops::test::OpTestContext::Get()->gpu_context());
 
   std::shared_ptr<NetDef> net_def(new NetDef());
+  SetProtoArg(net_def.get(), "runtime_type", static_cast<int>(RT_OPENCL));
+  SetProtoArg(net_def.get(), "opencl_mem_type", static_cast<int>(GPU_IMAGE));
   for (size_t i = 0; i < input_names.size(); ++i) {
     InputOutputInfo *info = net_def->add_input_info();
     info->set_name(input_names[i]);
   }
 
   MaceEngine engine(config);
-  ASSERT_DEATH(engine.Init(net_def.get(), {"input"}, output_names, nullptr, 0),
-               "");
+  ASSERT_DEATH(engine.Init(net_def.get(), {"input"}, output_names,
+      nullptr, static_cast<const int64_t>(0)), "");
 }
 
 }  // namespace test

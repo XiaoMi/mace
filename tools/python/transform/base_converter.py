@@ -258,7 +258,6 @@ class MaceKeyword(object):
     mace_keepdims_str = 'keepdims'
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'
-    mace_device = 'device'
     mace_scalar_input_str = 'scalar_input'
     mace_wino_block_size = 'wino_block_size'
     mace_output_shape_str = 'output_shape'
@@ -276,6 +275,7 @@ class MaceKeyword(object):
     mace_scalar_input_index_str = 'scalar_input_index'
     mace_opencl_mem_type = "opencl_mem_type"
     mace_framework_type_str = "framework_type"
+    mace_runtime_type_str = "runtime_type"
     mace_group_str = "group"
     mace_group_num_str = "group_num"
     mace_wino_arg_str = "wino_block_size"
@@ -361,6 +361,7 @@ class TransformerRule(Enum):
     TRANSFORM_EXPAND_DIMS_TO_RESHAPE = 47
     QUANTIZE_FOLD_RELU = 48
     TRANSFORM_KERAS_QUANTIZE_INFO = 49
+    ADD_GENERRAL_INFO = 50
     FOLD_DIV_BN = 51
 
 
@@ -376,6 +377,7 @@ class NodeInfo(object):
 
     def __init__(self):
         self._name = None
+        self._alias = None
         self._data_type = mace_pb2.DT_FLOAT
         self._shape = []
         self._data_format = DataFormat.NHWC
@@ -384,6 +386,10 @@ class NodeInfo(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def alias(self):
+        return self._alias
 
     @property
     def data_type(self):
@@ -404,6 +410,10 @@ class NodeInfo(object):
     @name.setter
     def name(self, name):
         self._name = name
+
+    @alias.setter
+    def alias(self, alias):
+        self._alias = alias
 
     @data_type.setter
     def data_type(self, data_type):
@@ -429,6 +439,8 @@ class ConverterOption(object):
     """A class for specifying options passed to converter tool"""
 
     def __init__(self):
+        self._name = ""
+        self._order = 0
         self._input_nodes = {}
         self._output_nodes = {}
         self._check_nodes = {}
@@ -444,6 +456,14 @@ class ConverterOption(object):
         self._cl_mem_type = "image"
         self._quantize_stat = False
         self._platform = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def order(self):
+        return self._order
 
     @property
     def input_nodes(self):
@@ -504,6 +524,14 @@ class ConverterOption(object):
     @property
     def platform(self):
         return self._platform
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    @order.setter
+    def order(self, order):
+        self._order = order
 
     @input_nodes.setter
     def input_nodes(self, input_nodes):
@@ -637,7 +665,8 @@ class ConverterOption(object):
                 TransformerRule.UPDATE_DATA_FORMAT,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
                 # Need to be put after SORT_BY_EXECUTION
-                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE
+                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
+                TransformerRule.ADD_GENERRAL_INFO
             ]
             if self._device == DeviceType.APU.value:
                 self._transformer_option = self._transformer_option + [

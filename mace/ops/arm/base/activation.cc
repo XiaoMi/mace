@@ -36,10 +36,8 @@ extern template void Activation<uint8_t>::ActivateSigmoid(
 template<typename T>
 MaceStatus Activation<T>::Compute(const OpContext *context,
                                   const Tensor *input, Tensor *output) {
-  Tensor::MappingGuard input_guard(input);
   if (input != output) {
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-    Tensor::MappingGuard output_guard(output);
     DoActivation(context, input, output);
   } else {
     DoActivation(context, input, output);
@@ -52,9 +50,7 @@ template<typename T>
 void Activation<T>::DoActivation(const OpContext *context,
                                  const Tensor *input,
                                  Tensor *output) {
-  utils::ThreadPool &thread_pool =
-      context->device()->cpu_runtime()->thread_pool();
-
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   switch (type_) {
     case RELU: {
       ActivateRelu(&thread_pool, input, output);
@@ -256,17 +252,18 @@ void Activation<T>::ActivateElu(utils::ThreadPool *thread_pool,
 void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Activation<float>, delegator::ActivationParam,
-      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, float, ImplType::NEON));
-
+      MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
+                         float, ImplType::NEON));
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_DELEGATOR(
       registry, Activation<uint8_t>, delegator::ActivationParam,
-      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, uint8_t, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
+                         uint8_t, ImplType::NEON));
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Activation<BFloat16>, delegator::ActivationParam,
-      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, BFloat16,
+      MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU, BFloat16,
                          ImplType::NEON));
 }
 

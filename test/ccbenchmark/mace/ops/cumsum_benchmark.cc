@@ -22,7 +22,7 @@ namespace test {
 class CumsumOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void Cumsum(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -30,7 +30,7 @@ void Cumsum(int iters, int batch, int channels, int height, int width) {
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -46,14 +46,15 @@ void Cumsum(int iters, int batch, int channels, int height, int width) {
     .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -69,7 +70,7 @@ void Cumsum(int iters, int batch, int channels, int height, int width) {
   MACE_BENCHMARK(MACE_BM_CUMSUM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_CUMSUM(N, C, H, W)                 \
-  MACE_BM_CUMSUM_MACRO(N, C, H, W, float, CPU);
+  MACE_BM_CUMSUM_MACRO(N, C, H, W, float, RT_CPU);
 
 MACE_BM_CUMSUM(1, 1, 512, 512);
 MACE_BM_CUMSUM(1, 3, 128, 128);

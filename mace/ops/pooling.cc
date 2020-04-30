@@ -57,11 +57,11 @@ class PoolingOpBase : public ConvPool2dOpBase {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class PoolingOp;
 
 template<class T>
-class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
+class PoolingOp<RuntimeType::RT_CPU, T> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {}
@@ -91,8 +91,6 @@ class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
     }
     MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input_tensor);
-    Tensor::MappingGuard output_guard(output_tensor);
     const T *input = input_tensor->data<T>();
     MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<T>::value);
     T *output = output_tensor->mutable_data<T>();
@@ -149,8 +147,7 @@ class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
     const index_t in_batch_size = in_channels * in_image_size;
     const index_t out_batch_size = out_channels * out_image_size;
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
@@ -206,8 +203,7 @@ class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
     const index_t in_batch_size = in_channels * in_image_size;
     const index_t out_batch_size = out_channels * out_image_size;
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
@@ -249,7 +245,7 @@ class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
+class PoolingOp<RuntimeType::RT_CPU, uint8_t> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {}
@@ -297,8 +293,6 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
     const index_t in_channels = input_tensor->dim(3);
     MACE_CHECK(out_channels == in_channels);
 
-    Tensor::MappingGuard input_guard(input_tensor);
-    Tensor::MappingGuard output_guard(output_tensor);
     const uint8_t *input = input_tensor->data<uint8_t>();
     MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<uint8_t>::value);
     uint8_t *output = output_tensor->mutable_data<uint8_t>();
@@ -338,8 +332,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                   const int *stride_hw,
                   const int *pad_hw,
                   uint8_t *output) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1,
@@ -402,8 +395,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                   const int *stride_hw,
                   const int *pad_hw,
                   uint8_t *output) {
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1,
@@ -489,7 +481,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class PoolingOp<DeviceType::GPU, float> : public PoolingOpBase {
+class PoolingOp<RuntimeType::RT_OPENCL, float> : public PoolingOpBase {
  public:
   explicit PoolingOp(OpConstructContext *context)
       : PoolingOpBase(context) {
@@ -515,15 +507,15 @@ class PoolingOp<DeviceType::GPU, float> : public PoolingOpBase {
 
 void RegisterPooling(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Pooling", PoolingOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_FP16_OP(op_registry, "Pooling", PoolingOp,
-                         DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Pooling", PoolingOp);

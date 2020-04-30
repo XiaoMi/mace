@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/pad.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -51,11 +53,7 @@ MaceStatus PadKernel::Compute(
       input_shape[2] + this->paddings_[4] + this->paddings_[5],
       input_shape[3] + this->paddings_[6] + this->paddings_[7]};
 
-  std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape,
-                              OpenCLBufferType::IN_OUT_CHANNEL,
-                              &image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -64,7 +62,7 @@ MaceStatus PadKernel::Compute(
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -78,11 +76,11 @@ MaceStatus PadKernel::Compute(
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
 
     built_options.emplace(MakeString("-DPAD_TYPE=", type_));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("pad", kernel_name,
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("pad", kernel_name,
                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
@@ -94,8 +92,8 @@ MaceStatus PadKernel::Compute(
     int idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
     if (type_ == PadType::CONSTANT) {
       kernel_.setArg(idx++, this->constant_value_);
     }
@@ -108,10 +106,10 @@ MaceStatus PadKernel::Compute(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key = Concat("pad", output->dim(0), output->dim(1),
                                   output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

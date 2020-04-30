@@ -8,12 +8,13 @@ load(
     "//mace:mace.bzl",
     "if_android",
     "if_android_armv7",
-    "if_hexagon_enabled",
-    "if_neon_enabled",
     "if_bfloat16_enabled",
     "if_fp16_enabled",
+    "if_hexagon_enabled",
+    "if_neon_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
+    "if_rpcmem_enabled",
 )
 
 cc_library(
@@ -67,6 +68,8 @@ cc_test(
         "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
     ]),
     linkopts = [
         "-fopenmp",

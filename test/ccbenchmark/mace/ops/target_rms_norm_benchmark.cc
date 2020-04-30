@@ -22,7 +22,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TargetRMSNormBenchmark(int iters, int n, int h, int w, float target_rms) {
   mace::testing::StopTiming();
 
@@ -37,16 +37,17 @@ void TargetRMSNormBenchmark(int iters, int n, int h, int w, float target_rms) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 
@@ -62,7 +63,7 @@ void TargetRMSNormBenchmark(int iters, int n, int h, int w, float target_rms) {
       MACE_BM_TARGETRMSNORM_##N##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_TARGETRMSNORM(N, H, W, RMS)             \
-  MACE_BM_TARGETRMSNORM_MACRO(N, H, W, RMS, float, CPU);
+  MACE_BM_TARGETRMSNORM_MACRO(N, H, W, RMS, float, RT_CPU);
 
 MACE_BM_TARGETRMSNORM(1, 10, 256, 1.0);
 MACE_BM_TARGETRMSNORM(1, 20, 128, 2.0);

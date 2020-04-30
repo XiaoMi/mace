@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ResizeNearestNeighborBenchmark(int iters,
                                     int batch,
                                     int channels,
@@ -37,11 +37,11 @@ void ResizeNearestNeighborBenchmark(int iters,
 
   // Add input data
   std::vector<int32_t> size = {output_height, output_width};
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, channels, input_height, input_width});
     net.AddInputFromArray<D, int32_t>("Size", {2}, size);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, input_height, input_width, channels});
     net.AddInputFromArray<D, int32_t>("Size", {2}, size);
@@ -57,13 +57,14 @@ void ResizeNearestNeighborBenchmark(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -89,12 +90,13 @@ void ResizeNearestNeighborBenchmark(int iters,
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_RESIZE_NEAREST_NEIGHBOR(N, C, H0, W0, H1, W1)                 \
-  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
-  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, float, GPU);    \
-  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, half, GPU)
+  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, float, RT_CPU); \
+  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1,                     \
+                                        W1, float, RT_OPENCL);                \
+  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, half, RT_OPENCL)
 #else
 #define MACE_BM_RESIZE_NEAREST_NEIGHBOR(N, C, H0, W0, H1, W1)                 \
-  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, float, CPU)
+  MACE_BM_RESIZE_NEAREST_NEIGHBOR_MACRO(N, C, H0, W0, H1, W1, float, RT_CPU)
 #endif
 
 MACE_BM_RESIZE_NEAREST_NEIGHBOR(1, 128, 120, 120, 480, 480);

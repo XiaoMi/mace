@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/softmax.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -50,7 +52,7 @@ MaceStatus SoftmaxKernel::Compute(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -63,29 +65,29 @@ MaceStatus SoftmaxKernel::Compute(
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     if (use_log_)
       built_options.emplace("-DUSE_LOG");
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("softmax", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("softmax", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, logits->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(logits->opencl_image()));
+    kernel_.setArg(idx++, *(logits->memory<cl::Image>()));
     kernel_.setArg(idx++, static_cast<int>(channels));
     kernel_.setArg(idx++, remain_channels);
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = logits->shape();
   }
 
-  std::vector<uint32_t> lws = softmax::LocalWS(runtime, gws, kwg_size_);
+  std::vector<uint32_t> lws = softmax::LocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("softmax_opencl_kernel", batch, height, width, channels);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

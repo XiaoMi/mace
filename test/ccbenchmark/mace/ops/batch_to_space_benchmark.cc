@@ -20,15 +20,15 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void BMBatchToSpace(
     int iters, int batch, int channels, int height, int width, int arg) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
 
@@ -40,14 +40,15 @@ void BMBatchToSpace(
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -66,11 +67,11 @@ void BMBatchToSpace(
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_BATCH_TO_SPACE(N, H, W, C, ARG)              \
-  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, GPU); \
-  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, CPU);
+  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, RT_OPENCL); \
+  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, RT_CPU);
 #else
 #define MACE_BM_BATCH_TO_SPACE(N, H, W, C, ARG)              \
-  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, CPU);
+  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, RT_CPU);
 #endif
 
 MACE_BM_BATCH_TO_SPACE(128, 8, 8, 128, 2);

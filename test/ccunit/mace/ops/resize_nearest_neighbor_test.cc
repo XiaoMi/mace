@@ -31,10 +31,11 @@ TEST_F(ResizeNearestNeighborTest, CPUResizeNearestNeighborWOAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   std::vector<int32_t> size = {1, 2};
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    {1, 2, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("Size", {2}, size);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("Size", {2}, size);
 
   OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
       .Input("InputNCHW")
@@ -45,7 +46,7 @@ TEST_F(ResizeNearestNeighborTest, CPUResizeNearestNeighborWOAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -63,10 +64,11 @@ TEST_F(ResizeNearestNeighborTest, ResizeNearestNeighborWAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   std::vector<int32_t> size = {1, 2};
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    {1, 2, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("Size", {2}, size);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("Size", {2}, size);
 
   OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
       .Input("InputNCHW")
@@ -78,7 +80,7 @@ TEST_F(ResizeNearestNeighborTest, ResizeNearestNeighborWAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -88,7 +90,7 @@ TEST_F(ResizeNearestNeighborTest, ResizeNearestNeighborWAlignCorners) {
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestRandomResizeNearestNeighbor() {
   testing::internal::LogToStderr();
   static unsigned int seed = time(NULL);
@@ -109,7 +111,7 @@ void TestRandomResizeNearestNeighbor() {
     std::vector<int32_t> size = {20, 40};
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels});
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     net.AddInputFromArray<D, int32_t>("Size", {2}, size);
     OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
@@ -121,14 +123,14 @@ void TestRandomResizeNearestNeighbor() {
                    coordinate_transformation_mode)
         .Finalize(net.NewOperatorDef());
     // Run on CPU
-    net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.RunOp(RuntimeType::RT_CPU);
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     auto expected = net.CreateTensor<float>();
     expected->Copy(*net.GetOutput("Output"));
 
-    if (D == DeviceType::GPU) {
+    if (D == RuntimeType::RT_OPENCL) {
       OpDefBuilder("ResizeNearestNeighbor", "ResizeNearestNeighborTest")
           .Input("Input")
           .Input("Size")
@@ -149,7 +151,7 @@ void TestRandomResizeNearestNeighbor() {
 }  // namespace
 
 TEST_F(ResizeNearestNeighborTest, RandomResizeNearestNeighbor) {
-  TestRandomResizeNearestNeighbor<DeviceType::CPU>();
+  TestRandomResizeNearestNeighbor<RuntimeType::RT_CPU>();
 }
 
 }  // namespace test

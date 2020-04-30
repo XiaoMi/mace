@@ -18,7 +18,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class ShapeOp : public Operation {
  public:
   explicit ShapeOp(OpConstructContext *context)
@@ -33,7 +33,7 @@ class ShapeOp : public Operation {
     } else {
       output->Resize({});
     }
-    Tensor::MappingGuard output_guard(output);
+
     int32_t *output_data = output->mutable_data<int32_t>();
 
     auto has_df = Operation::GetOptionalArg<int>(
@@ -46,6 +46,7 @@ class ShapeOp : public Operation {
       output_data[2] = static_cast<int32_t>(input->dim(3));
       output_data[3] = static_cast<int32_t>(input->dim(1));
     } else {
+      output_data[0] = 0;
       for (unsigned int i = 0; i < input->dim_size(); ++i) {
         output_data[i] = static_cast<int32_t>(input->dim(i));
       }
@@ -61,9 +62,9 @@ class ShapeOp : public Operation {
 
 void RegisterShape(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Shape", ShapeOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Shape", ShapeOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

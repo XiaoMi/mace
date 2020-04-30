@@ -1,0 +1,828 @@
+// Copyright 2018 The MACE Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+
+#include <cstdlib>
+#include <fstream>
+#include <memory>
+#include <mutex>  // NOLINT(build/c++11)
+#include <sstream>
+#include <string>
+#include <vector>
+#include <utility>
+
+#include "mace/codegen/opencl/encrypt_opencl_kernel.h"
+#include "mace/core/kv_storage.h"
+#include "mace/runtimes/opencl/core/opencl_extension.h"
+#include "mace/utils/macros.h"
+#include "mace/utils/tuner.h"
+
+namespace mace {
+
+const std::string OpenCLErrorToString(cl_int error) {
+  switch (error) {
+    case CL_SUCCESS:
+      return "CL_SUCCESS";
+    case CL_DEVICE_NOT_FOUND:
+      return "CL_DEVICE_NOT_FOUND";
+    case CL_DEVICE_NOT_AVAILABLE:
+      return "CL_DEVICE_NOT_AVAILABLE";
+    case CL_COMPILER_NOT_AVAILABLE:
+      return "CL_COMPILER_NOT_AVAILABLE";
+    case CL_MEM_OBJECT_ALLOCATION_FAILURE:
+      return "CL_MEM_OBJECT_ALLOCATION_FAILURE";
+    case CL_OUT_OF_RESOURCES:
+      return "CL_OUT_OF_RESOURCES";
+    case CL_OUT_OF_HOST_MEMORY:
+      return "CL_OUT_OF_HOST_MEMORY";
+    case CL_PROFILING_INFO_NOT_AVAILABLE:
+      return "CL_PROFILING_INFO_NOT_AVAILABLE";
+    case CL_MEM_COPY_OVERLAP:
+      return "CL_MEM_COPY_OVERLAP";
+    case CL_IMAGE_FORMAT_MISMATCH:
+      return "CL_IMAGE_FORMAT_MISMATCH";
+    case CL_IMAGE_FORMAT_NOT_SUPPORTED:
+      return "CL_IMAGE_FORMAT_NOT_SUPPORTED";
+    case CL_BUILD_PROGRAM_FAILURE:
+      return "CL_BUILD_PROGRAM_FAILURE";
+    case CL_MAP_FAILURE:
+      return "CL_MAP_FAILURE";
+    case CL_MISALIGNED_SUB_BUFFER_OFFSET:
+      return "CL_MISALIGNED_SUB_BUFFER_OFFSET";
+    case CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST:
+      return "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
+    case CL_COMPILE_PROGRAM_FAILURE:
+      return "CL_COMPILE_PROGRAM_FAILURE";
+    case CL_LINKER_NOT_AVAILABLE:
+      return "CL_LINKER_NOT_AVAILABLE";
+    case CL_LINK_PROGRAM_FAILURE:
+      return "CL_LINK_PROGRAM_FAILURE";
+    case CL_DEVICE_PARTITION_FAILED:
+      return "CL_DEVICE_PARTITION_FAILED";
+    case CL_KERNEL_ARG_INFO_NOT_AVAILABLE:
+      return "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";
+    case CL_INVALID_VALUE:
+      return "CL_INVALID_VALUE";
+    case CL_INVALID_DEVICE_TYPE:
+      return "CL_INVALID_DEVICE_TYPE";
+    case CL_INVALID_PLATFORM:
+      return "CL_INVALID_PLATFORM";
+    case CL_INVALID_DEVICE:
+      return "CL_INVALID_DEVICE";
+    case CL_INVALID_CONTEXT:
+      return "CL_INVALID_CONTEXT";
+    case CL_INVALID_QUEUE_PROPERTIES:
+      return "CL_INVALID_QUEUE_PROPERTIES";
+    case CL_INVALID_COMMAND_QUEUE:
+      return "CL_INVALID_COMMAND_QUEUE";
+    case CL_INVALID_HOST_PTR:
+      return "CL_INVALID_HOST_PTR";
+    case CL_INVALID_MEM_OBJECT:
+      return "CL_INVALID_MEM_OBJECT";
+    case CL_INVALID_IMAGE_FORMAT_DESCRIPTOR:
+      return "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
+    case CL_INVALID_IMAGE_SIZE:
+      return "CL_INVALID_IMAGE_SIZE";
+    case CL_INVALID_SAMPLER:
+      return "CL_INVALID_SAMPLER";
+    case CL_INVALID_BINARY:
+      return "CL_INVALID_BINARY";
+    case CL_INVALID_BUILD_OPTIONS:
+      return "CL_INVALID_BUILD_OPTIONS";
+    case CL_INVALID_PROGRAM:
+      return "CL_INVALID_PROGRAM";
+    case CL_INVALID_PROGRAM_EXECUTABLE:
+      return "CL_INVALID_PROGRAM_EXECUTABLE";
+    case CL_INVALID_KERNEL_NAME:
+      return "CL_INVALID_KERNEL_NAME";
+    case CL_INVALID_KERNEL_DEFINITION:
+      return "CL_INVALID_KERNEL_DEFINITION";
+    case CL_INVALID_KERNEL:
+      return "CL_INVALID_KERNEL";
+    case CL_INVALID_ARG_INDEX:
+      return "CL_INVALID_ARG_INDEX";
+    case CL_INVALID_ARG_VALUE:
+      return "CL_INVALID_ARG_VALUE";
+    case CL_INVALID_ARG_SIZE:
+      return "CL_INVALID_ARG_SIZE";
+    case CL_INVALID_KERNEL_ARGS:
+      return "CL_INVALID_KERNEL_ARGS";
+    case CL_INVALID_WORK_DIMENSION:
+      return "CL_INVALID_WORK_DIMENSION";
+    case CL_INVALID_WORK_GROUP_SIZE:
+      return "CL_INVALID_WORK_GROUP_SIZE";
+    case CL_INVALID_WORK_ITEM_SIZE:
+      return "CL_INVALID_WORK_ITEM_SIZE";
+    case CL_INVALID_GLOBAL_OFFSET:
+      return "CL_INVALID_GLOBAL_OFFSET";
+    case CL_INVALID_EVENT_WAIT_LIST:
+      return "CL_INVALID_EVENT_WAIT_LIST";
+    case CL_INVALID_EVENT:
+      return "CL_INVALID_EVENT";
+    case CL_INVALID_OPERATION:
+      return "CL_INVALID_OPERATION";
+    case CL_INVALID_GL_OBJECT:
+      return "CL_INVALID_GL_OBJECT";
+    case CL_INVALID_BUFFER_SIZE:
+      return "CL_INVALID_BUFFER_SIZE";
+    case CL_INVALID_MIP_LEVEL:
+      return "CL_INVALID_MIP_LEVEL";
+    case CL_INVALID_GLOBAL_WORK_SIZE:
+      return "CL_INVALID_GLOBAL_WORK_SIZE";
+    case CL_INVALID_PROPERTY:
+      return "CL_INVALID_PROPERTY";
+    case CL_INVALID_IMAGE_DESCRIPTOR:
+      return "CL_INVALID_IMAGE_DESCRIPTOR";
+    case CL_INVALID_COMPILER_OPTIONS:
+      return "CL_INVALID_COMPILER_OPTIONS";
+    case CL_INVALID_LINKER_OPTIONS:
+      return "CL_INVALID_LINKER_OPTIONS";
+    case CL_INVALID_DEVICE_PARTITION_COUNT:
+      return "CL_INVALID_DEVICE_PARTITION_COUNT";
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+    case CL_INVALID_PIPE_SIZE:
+      return "CL_INVALID_PIPE_SIZE";
+    case CL_INVALID_DEVICE_QUEUE:
+      return "CL_INVALID_DEVICE_QUEUE";
+#endif
+    default:
+      return MakeString("UNKNOWN: ", error);
+  }
+}
+
+namespace {
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+void OpenCLPrintfCallback(const char *buffer,
+                          size_t length,
+                          size_t final,
+                          void *user_data) {
+  MACE_UNUSED(final);
+  MACE_UNUSED(user_data);
+  fwrite(buffer, 1, length, stdout);
+}
+#endif
+
+void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
+                                GPUPerfHint gpu_perf_hint,
+                                GPUPriorityHint gpu_priority_hint) {
+  MACE_CHECK_NOTNULL(properties);
+  switch (gpu_perf_hint) {
+    case GPUPerfHint::PERF_LOW:
+      properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+      properties->push_back(CL_PERF_HINT_LOW_QCOM);
+      break;
+    case GPUPerfHint::PERF_NORMAL:
+      properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+      properties->push_back(CL_PERF_HINT_NORMAL_QCOM);
+      break;
+    case GPUPerfHint::PERF_HIGH:
+      properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+      properties->push_back(CL_PERF_HINT_HIGH_QCOM);
+      break;
+    default:
+      break;
+  }
+  switch (gpu_priority_hint) {
+    case GPUPriorityHint::PRIORITY_LOW:
+      properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+      properties->push_back(CL_PRIORITY_HINT_LOW_QCOM);
+      break;
+    case GPUPriorityHint::PRIORITY_NORMAL:
+      properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+      properties->push_back(CL_PRIORITY_HINT_NORMAL_QCOM);
+      break;
+    case GPUPriorityHint::PRIORITY_HIGH:
+      properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+      properties->push_back(CL_PRIORITY_HINT_HIGH_QCOM);
+      break;
+    default:
+      break;
+  }
+  // The properties list should be terminated with 0
+  properties->push_back(0);
+}
+
+GPUType ParseGPUType(const std::string &device_name) {
+  constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+  constexpr const char *kMaliGPUStr = "Mali";
+  constexpr const char *kPowerVRGPUStr = "PowerVR";
+
+  if (device_name == kQualcommAdrenoGPUStr) {
+    return GPUType::QUALCOMM_ADRENO;
+  } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
+    return GPUType::MALI;
+  } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
+    return GPUType::PowerVR;
+  } else {
+    return GPUType::UNKNOWN;
+  }
+}
+
+cl::Platform FindGpuPlatform() {
+  std::vector<cl::Platform> all_platforms;
+  cl::Platform::get(&all_platforms);
+  MACE_CHECK(!all_platforms.empty(), "No OpenCL platforms found");
+  return all_platforms[0];
+}
+
+std::shared_ptr<cl::Device> FindGpuDevice(
+    const cl::Platform &default_platform) {
+  // get default device (CPUs, GPUs) of the default platform
+  std::vector<cl::Device> all_devices;
+  default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+  MACE_CHECK(!all_devices.empty(), "No OpenCL devices found");
+
+  for (auto device : all_devices) {
+    if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
+      return std::make_shared<cl::Device>(device);
+    }
+  }
+
+  LOG(ERROR) << "No GPU device found";
+  return nullptr;
+}
+
+const char *kOpenCLPlatformInfoKey =
+    "mace_opencl_precompiled_platform_info_key";
+}  // namespace
+
+void OpenCLProfilingTimer::StartTiming() {}
+
+void OpenCLProfilingTimer::StopTiming() {
+  runtime_->command_queue().finish();
+  start_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
+  stop_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
+}
+
+double OpenCLProfilingTimer::ElapsedMicros() {
+  return (stop_nanos_ - start_nanos_) / 1000.0;
+}
+
+double OpenCLProfilingTimer::AccumulatedMicros() { return accumulated_micros_; }
+
+void OpenCLProfilingTimer::AccumulateTiming() {
+  StopTiming();
+  accumulated_micros_ += (stop_nanos_ - start_nanos_) / 1000.0;
+}
+
+void OpenCLProfilingTimer::ClearTiming() {
+  start_nanos_ = 0;
+  stop_nanos_ = 0;
+  accumulated_micros_ = 0;
+}
+
+OpenclExecutor::OpenclExecutor(
+    std::shared_ptr<KVStorage> cache_storage,
+    std::shared_ptr<KVStorage> precompiled_binary_storage,
+    std::shared_ptr<Tuner<uint32_t>> tuner) :
+    cache_storage_(cache_storage),
+    precompiled_binary_storage_(precompiled_binary_storage),
+    tuner_(tuner),
+    is_opencl_avaliable_(false),
+    is_profiling_enabled_(false),
+    opencl_version_(CL_VER_UNKNOWN),
+    gpu_type_(UNKNOWN) {}
+
+MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
+                                const GPUPerfHint perf_hint) {
+  auto default_platform = FindGpuPlatform();
+  std::stringstream ss;
+  ss << default_platform.getInfo<CL_PLATFORM_NAME>()
+     << ", " << default_platform.getInfo<CL_PLATFORM_PROFILE>() << ", "
+     << default_platform.getInfo<CL_PLATFORM_VERSION>() << ", "
+     << MaceVersion();
+  platform_info_ = ss.str();
+  VLOG(1) << "Using platform: " << platform_info_;
+
+  device_ = FindGpuDevice(default_platform);
+  InitGpuDeviceProperty(*device_);
+
+  cl_command_queue_properties properties = 0;
+
+  const char *profiling = getenv("MACE_OPENCL_PROFILING");
+  if (tuner_->IsTuning() ||
+      (profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1')) {
+    properties |= CL_QUEUE_PROFILING_ENABLE;
+    is_profiling_enabled_ = true;
+  }
+
+  cl_int err;
+  if (gpu_type_ == GPUType::QUALCOMM_ADRENO
+      && opencl_version_ >= OpenCLVersion::CL_VER_2_0) {
+    std::vector<cl_context_properties> context_properties;
+    context_properties.reserve(5);
+    GetAdrenoContextProperties(&context_properties,
+                               perf_hint,
+                               priority_hint);
+    context_ = std::shared_ptr<cl::Context>(
+        new cl::Context({*device_}, context_properties.data(),
+                        nullptr, nullptr, &err));
+  } else {
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+    if (is_profiling_enabled_ && gpu_type_ == GPUType::MALI) {
+      std::vector<cl_context_properties> context_properties = {
+          CL_CONTEXT_PLATFORM, (cl_context_properties) default_platform(),
+          CL_PRINTF_CALLBACK_ARM, (cl_context_properties) OpenCLPrintfCallback,
+          CL_PRINTF_BUFFERSIZE_ARM, 0x1000, 0
+      };
+      context_ = std::shared_ptr<cl::Context>(
+          new cl::Context({*device_}, context_properties.data(),
+                          nullptr, nullptr, &err));
+    } else {
+      context_ = std::shared_ptr<cl::Context>(
+          new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
+    }
+#else
+    context_ = std::shared_ptr<cl::Context>(
+          new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
+#endif
+  }
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "Failed to create OpenCL Context: "
+               << OpenCLErrorToString(err);
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+
+  command_queue_ = std::make_shared<cl::CommandQueue>(*context_,
+                                                      *device_,
+                                                      properties,
+                                                      &err);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "Failed to create OpenCL CommandQueue: "
+               << OpenCLErrorToString(err);
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+
+  std::string cached_binary_platform_info;
+  if (cache_storage_ != nullptr) {
+    if (cache_storage_->Load() != 0) {
+      LOG(WARNING) << "Load OpenCL cached compiled kernel file failed. "
+                   << "Please make sure the storage directory exist "
+                   << "and you have Write&Read permission";
+    }
+    auto platform_info_array = cache_storage_->Find(kOpenCLPlatformInfoKey);
+    if (platform_info_array != nullptr) {
+      cached_binary_platform_info =
+          std::string(platform_info_array->begin(),
+                      platform_info_array->end());
+      if (cached_binary_platform_info != platform_info_) {
+        cache_storage_->Clear();
+      }
+    }
+  }
+
+  if (cached_binary_platform_info != platform_info_) {
+    if (precompiled_binary_storage_ == nullptr) {
+      VLOG(1) << "There is no precompiled OpenCL binary in"
+                 " all OpenCL binary paths.";
+    } else {
+      if (precompiled_binary_storage_->Load() != 0) {
+        LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
+                     << "Please make sure the storage directory exist "
+                     << "and you have Write&Read permission";
+      }
+
+      auto platform_info_array =
+          this->precompiled_binary_storage_->Find(kOpenCLPlatformInfoKey);
+      if (platform_info_array != nullptr) {
+        precompiled_binary_platform_info_ =
+            std::string(platform_info_array->begin(),
+                        platform_info_array->end());
+      }
+    }
+  }
+
+  device_->getInfo(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,
+                   &device_global_mem_cache_size_);
+
+  device_->getInfo(CL_DEVICE_MAX_COMPUTE_UNITS,
+                   &device_compute_units_);
+  const char *out_of_range_check = getenv("MACE_OUT_OF_RANGE_CHECK");
+  if (out_of_range_check != nullptr && strlen(out_of_range_check) == 1
+      && out_of_range_check[0] == '1') {
+    this->out_of_range_check_ = true;
+  } else {
+    this->out_of_range_check_ = false;
+  }
+
+  is_opencl_avaliable_ = true;
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
+OpenclExecutor::~OpenclExecutor() {
+  if (command_queue_ != nullptr) {
+    command_queue_->finish();
+  }
+  built_program_map_.clear();
+  // We need to control the destruction order, which has dependencies
+  command_queue_.reset();
+  context_.reset();
+  device_.reset();
+}
+
+void OpenclExecutor::InitGpuDeviceProperty(const cl::Device &device) {
+  const std::string device_name = device.getInfo<CL_DEVICE_NAME>();
+  VLOG(1) << "Using device: " << device_name;
+  gpu_type_ = ParseGPUType(device_name);
+
+  const std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+  opencl_version_ = ParseDeviceVersion(device_version);
+  MACE_CHECK(opencl_version_ != OpenCLVersion::CL_VER_UNKNOWN);
+}
+
+bool OpenclExecutor::is_opencl_avaliable() {
+  static const uint64_t kMinWorkGroupSize = 64;
+  return is_opencl_avaliable_
+      && GetDeviceMaxWorkGroupSize() >= kMinWorkGroupSize;
+}
+
+cl::Context &OpenclExecutor::context() { return *context_; }
+
+cl::Device &OpenclExecutor::device() { return *device_; }
+
+cl::CommandQueue &OpenclExecutor::command_queue() { return *command_queue_; }
+
+Tuner<uint32_t> *OpenclExecutor::tuner() { return tuner_.get(); }
+
+uint64_t OpenclExecutor::device_global_mem_cache_size() const {
+  return device_global_mem_cache_size_;
+}
+
+uint32_t OpenclExecutor::device_compute_units() const {
+  return device_compute_units_;
+}
+
+bool OpenclExecutor::BuildProgramFromCache(
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  // Find from binary
+  if (this->cache_storage_ == nullptr) return false;
+  auto content = this->cache_storage_->Find(built_program_key);
+  if (content == nullptr) {
+    return false;
+  }
+
+  *program = cl::Program(context(), {device()}, {*content});
+  cl_int ret = program->build({device()}, build_options_str.c_str());
+  if (ret != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(WARNING) << "Build program "
+                 << built_program_key << " from Cache failed:"
+                 << MakeString(ret);
+    return false;
+  }
+  VLOG(3) << "Program from Cache: " << built_program_key;
+  return true;
+}
+
+bool OpenclExecutor::BuildProgramFromPrecompiledBinary(
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  // Find from binary
+  if (this->precompiled_binary_storage_ == nullptr) return false;
+  if (precompiled_binary_platform_info_ != platform_info_) {
+    VLOG(3) << "precompiled OpenCL binary version "
+            << precompiled_binary_platform_info_
+            << " is not same with current version";
+    return false;
+  }
+  auto content = this->precompiled_binary_storage_->Find(built_program_key);
+  if (content == nullptr) {
+    return false;
+  }
+
+  *program = cl::Program(context(), {device()}, {*content});
+  cl_int ret = program->build({device()}, build_options_str.c_str());
+  if (ret != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(WARNING) << "Build program "
+                 << built_program_key << " from precompiled binary failed:"
+                 << MakeString(ret);
+    return false;
+  }
+  VLOG(3) << "Program from precompiled binary: " << built_program_key;
+  return true;
+}
+
+MaceStatus GetProgramSourceByName(const std::string &program_name,
+                                  std::string *source) {
+  MACE_CHECK_NOTNULL(source);
+  std::stringstream source_stream;
+  const auto &kEncryptedProgramMap = mace::codegen::kEncryptedProgramMap;
+  const auto &it_program = kEncryptedProgramMap.find(program_name);
+  if (it_program == kEncryptedProgramMap.end()) {
+    LOG(ERROR) << "Find program " << program_name << " failed.";
+    return MaceStatus::MACE_RUNTIME_ERROR;
+  }
+
+  const std::vector<std::string> &headers = it_program->second.headers_;
+  for (const std::string &header : headers) {
+    const auto &header_program = kEncryptedProgramMap.find(header);
+    if (header_program == kEncryptedProgramMap.end()) {
+      LOG(WARNING) << "Program header(" << header << ") is empty.";
+      continue;
+    }
+
+    const auto &header_source = header_program->second.encrypted_code_;
+    source_stream << ObfuscateString(
+        std::string(header_source.begin(), header_source.end()));
+  }
+
+  const auto &it_source = it_program->second.encrypted_code_;
+  source_stream << ObfuscateString(
+      std::string(it_source.begin(), it_source.end()));
+  *source = source_stream.str();
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
+bool OpenclExecutor::BuildProgramFromSource(
+    const std::string &program_name,
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  std::string kernel_source;
+  MaceStatus status = GetProgramSourceByName(program_name, &kernel_source);
+  if (status == MaceStatus::MACE_SUCCESS && !kernel_source.empty()) {
+    cl::Program::Sources sources;
+    sources.push_back(kernel_source);
+    *program = cl::Program(context(), sources);
+    cl_int ret = program->build({device()}, build_options_str.c_str());
+    if (ret != CL_SUCCESS) {
+      if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+          CL_BUILD_ERROR) {
+        std::string build_log =
+            program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+        LOG(INFO) << "Program build log: " << build_log;
+      }
+      LOG(WARNING) << "Build program "
+                   << program_name << " from source failed: "
+                   << MakeString(ret);
+      return false;
+    }
+
+    // Keep built program binary
+    size_t device_list_size = 1;
+    std::unique_ptr<size_t[]> program_binary_sizes(
+        new size_t[device_list_size]);
+    cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
+                                  sizeof(size_t) * device_list_size,
+                                  program_binary_sizes.get(), nullptr);
+    if (err != CL_SUCCESS) {
+      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+      return false;
+    }
+    std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
+        new std::unique_ptr<unsigned char[]>[device_list_size]);
+    for (cl_uint i = 0; i < device_list_size; ++i) {
+      program_binaries[i] = std::unique_ptr<unsigned char[]>(
+          new unsigned char[program_binary_sizes[i]]);
+    }
+
+    err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
+                           sizeof(unsigned char *) * device_list_size,
+                           program_binaries.get(), nullptr);
+    if (err != CL_SUCCESS) {
+      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+      return false;
+    }
+    std::vector<unsigned char> content(
+        reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
+        reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
+            program_binary_sizes[0]);
+
+    if (this->cache_storage_ != nullptr) {
+      this->cache_storage_->Insert(built_program_key, content);
+      // update platform info
+      this->cache_storage_->Insert(
+          kOpenCLPlatformInfoKey,
+          std::vector<unsigned char>(platform_info_.begin(),
+                                     platform_info_.end()));
+    }
+
+    VLOG(3) << "Program from source: " << built_program_key;
+  }
+  return true;
+}
+
+bool OpenclExecutor::BuildProgram(const std::string &program_name,
+                                  const std::string &built_program_key,
+                                  const std::string &build_options,
+                                  cl::Program *program) {
+  MACE_CHECK_NOTNULL(program);
+
+  std::string build_options_str =
+      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math";
+  // Build flow: cache -> precompiled binary -> source
+  bool ret = BuildProgramFromCache(built_program_key,
+                                   build_options_str, program);
+  if (!ret) {
+    ret = BuildProgramFromPrecompiledBinary(built_program_key,
+                                            build_options_str, program);
+    if (!ret) {
+      ret = BuildProgramFromSource(program_name, built_program_key,
+                                   build_options_str, program);
+    }
+  }
+  return ret;
+}
+
+MaceStatus OpenclExecutor::BuildKernel(
+    const std::string &program_name,
+    const std::string &kernel_name,
+    const std::set<std::string> &build_options,
+    cl::Kernel *kernel) {
+  std::string build_options_str;
+  for (auto &option : build_options) {
+    build_options_str += " " + option;
+  }
+  std::string built_program_key = program_name + build_options_str;
+
+  std::lock_guard<std::mutex> lock(program_build_mutex_);
+  auto built_program_it = built_program_map_.find(built_program_key);
+  cl::Program program;
+  if (built_program_it != built_program_map_.end()) {
+    program = built_program_it->second;
+  } else {
+    bool ret = this->BuildProgram(program_name, built_program_key,
+                                  build_options_str, &program);
+    if (!ret) {
+      return MaceStatus::MACE_OUT_OF_RESOURCES;
+    }
+    built_program_map_.emplace(built_program_key, program);
+  }
+  cl_int err;
+  *kernel = cl::Kernel(program, kernel_name.c_str(), &err);
+  MACE_CL_RET_STATUS(err);
+  return MaceStatus::MACE_SUCCESS;
+}
+
+void OpenclExecutor::SaveBuiltCLProgram() {
+  if (cache_storage_ != nullptr) {
+    if (cache_storage_->Flush() != 0) {
+      LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
+                 << "Please make sure the storage directory exist "
+                 << "and you have Write&Read permission";
+    }
+  }
+}
+
+void OpenclExecutor::GetCallStats(const cl::Event &event, CallStats *stats) {
+  if (stats != nullptr) {
+    stats->start_micros =
+        event.getProfilingInfo<CL_PROFILING_COMMAND_START>() / 1000;
+    stats->end_micros =
+        event.getProfilingInfo<CL_PROFILING_COMMAND_END>() / 1000;
+  }
+}
+
+uint64_t OpenclExecutor::GetDeviceMaxWorkGroupSize() {
+  uint64_t size = 0;
+  cl_int err = device_->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
+  return size;
+}
+
+uint64_t OpenclExecutor::GetDeviceMaxMemAllocSize() {
+  uint64_t size = 0;
+  cl_int err = device_->getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
+  return size;
+}
+
+bool OpenclExecutor::IsImageSupport() {
+  cl_bool res;
+  cl_int err = device_->getInfo(CL_DEVICE_IMAGE_SUPPORT, &res);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return false;
+  }
+  return res == CL_TRUE;
+}
+std::vector<uint64_t> OpenclExecutor::GetMaxImage2DSize() {
+  size_t max_height, max_width;
+  cl_int err = device_->getInfo(CL_DEVICE_IMAGE2D_MAX_HEIGHT, &max_height);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return {};
+  }
+  err = device_->getInfo(CL_DEVICE_IMAGE2D_MAX_WIDTH, &max_width);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return {};
+  }
+  return {max_width, max_height};
+}
+
+uint64_t OpenclExecutor::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
+  uint64_t size = 0;
+  cl_int err = kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE,
+                                       &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
+  return size;
+}
+
+uint64_t OpenclExecutor::GetKernelWaveSize(const cl::Kernel &kernel) {
+  uint64_t size = 0;
+  cl_int err = kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM,
+                                       &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
+  return size;
+}
+
+bool OpenclExecutor::IsNonUniformWorkgroupsSupported() const {
+  return (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
+      opencl_version_ >= OpenCLVersion::CL_VER_2_0);
+}
+
+GPUType OpenclExecutor::gpu_type() const {
+  return gpu_type_;
+}
+
+IONType OpenclExecutor::FindCurDeviceIonType() {
+  constexpr const char *kQualcommIONStr = "cl_qcom_ion_host_ptr";
+  std::shared_ptr<cl::Device> device = FindGpuDevice(FindGpuPlatform());
+  const auto device_extensions = device->getInfo<CL_DEVICE_EXTENSIONS>();
+  if (device_extensions.find(kQualcommIONStr) != std::string::npos) {
+    return IONType::QUALCOMM_ION;
+  } else {
+    return IONType::NONE_ION;
+  }
+}
+
+IONType OpenclExecutor::ion_type() const {
+  return IONType::NONE_ION;
+}
+
+const std::string OpenclExecutor::platform_info() const {
+  return platform_info_;
+}
+
+OpenCLVersion OpenclExecutor::ParseDeviceVersion(
+    const std::string &device_version) {
+  // OpenCL Device version string format:
+  // OpenCL<space><major_version.minor_version><space>
+  // <vendor-specific information>
+  auto words = Split(device_version, ' ');
+  if (words[1] == "2.1") {
+    return OpenCLVersion::CL_VER_2_1;
+  } else if (words[1] == "2.0") {
+    return OpenCLVersion::CL_VER_2_0;
+  } else if (words[1] == "1.2") {
+    return OpenCLVersion::CL_VER_1_2;
+  } else if (words[1] == "1.1") {
+    return OpenCLVersion::CL_VER_1_1;
+  } else if (words[1] == "1.0") {
+    return OpenCLVersion::CL_VER_1_0;
+  } else {
+    LOG(ERROR) << "Do not support OpenCL version: " << words[1];
+    return OpenCLVersion::CL_VER_UNKNOWN;
+  }
+}
+
+bool OpenclExecutor::IsOutOfRangeCheckEnabled() const {
+  return out_of_range_check_;
+}
+
+bool OpenclExecutor::is_profiling_enabled() const {
+  return is_profiling_enabled_;
+}
+
+}  // namespace mace

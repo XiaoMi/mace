@@ -61,10 +61,10 @@ class NetDefAdapter {
   //                       and add transpose if necessary.
   // 4. Adapt memory type: Add BufferTransform if necessary
   //                       for transforming memory type between ops.
-  MaceStatus AdaptNetDef(
-      const NetDef *net_def,
-      Device *target_device,
-      NetDef *target_net_def);
+  MaceStatus AdaptNetDef(const NetDef *net_def,
+                         Runtime *target_runtime,
+                         Runtime *cpu_runtime,
+                         NetDef *target_net_def);
 
  public:
   NetDefAdapter(const NetDefAdapter &) = delete;
@@ -95,8 +95,8 @@ class NetDefAdapter {
 
  private:
   MaceStatus AdaptDevice(OpConditionContext *context,
-                         Device *target_device,
-                         Device *cpu_device,
+                         Runtime *target_runtime,
+                         Runtime *cpu_runtime,
                          const TensorInfoMap &output_map,
                          const NetDef *net_def,
                          OperatorDef *op);
@@ -124,11 +124,12 @@ class NetDefAdapter {
   std::vector<int> GetDstDimsFromTransposeRuler(
       TensorInfoMap *output_map, const OperatorDef *op_def, const int input_idx,
       const DataFormat src_df, const DataFormat dst_df);
+
   MaceStatus AddTranposeOpForDataFormat(
       TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
       std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
-      MemoryType target_mem_type, OperatorDef *op_def, const int i,
-      const DataFormat dst_df, const std::vector<int> &dst_dims);
+      RuntimeType runtime_type, MemoryType target_mem_type, OperatorDef *op_def,
+      const int i, const DataFormat dst_df, const std::vector<int> &dst_dims);
 
   std::string DebugString(const NetDef *net_def);
 

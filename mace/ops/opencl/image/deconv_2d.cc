@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/deconv_2d.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -32,10 +34,7 @@ MaceStatus Deconv2dKernel::Compute(
     const float activation_coefficient,
     const std::vector<index_t> &output_shape,
     Tensor *output) {
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -60,7 +59,7 @@ MaceStatus Deconv2dKernel::Compute(
   const int align_w = stride_w - 1 - padding_w;
   const int kernel_size = filter->dim(2) * filter->dim(3);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -97,11 +96,11 @@ MaceStatus Deconv2dKernel::Compute(
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("deconv_2d", kernel_name,
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("deconv_2d", kernel_name,
                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
@@ -113,12 +112,12 @@ MaceStatus Deconv2dKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(filter->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(filter->memory<cl::Image>()));
     if (bias != nullptr) {
-      kernel_.setArg(idx++, *(bias->opencl_image()));
+      kernel_.setArg(idx++, *(bias->memory<cl::Image>()));
     }
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
     kernel_.setArg(idx++, relux_max_limit);
     kernel_.setArg(idx++, activation_coefficient);
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
@@ -144,11 +143,11 @@ MaceStatus Deconv2dKernel::Compute(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

@@ -28,7 +28,7 @@ from utils.util import mace_check
 from utils.util import MaceLogger
 from utils import config_parser
 from utils.config_parser import CPP_KEYWORDS
-from utils.config_parser import ModelKeys
+from transform.base_converter import MaceKeyword
 
 
 def generate_obfuscated_name(namespace, name, model_names_set):
@@ -79,20 +79,20 @@ def stringfy(value):
     return ', '.join('"{0}"'.format(w) for w in value)
 
 
-def obfuscate_name(model):
+def obfuscate_name(net_def):
     input_nodes = set()
-    for input_node in model.input_info:
+    for input_node in net_def.input_info:
         input_nodes.add(input_node.name)
     output_nodes = set()
-    for output_node in model.output_info:
+    for output_node in net_def.output_info:
         output_nodes.add(output_node.name)
-    model_names_set = set()
-    tensor_map = generate_tensor_map(model.tensors, model_names_set)
-    in_out_map = generate_in_out_map(model.op, tensor_map, model_names_set)
-    for t in model.tensors:
+    net_def_names_set = set()
+    tensor_map = generate_tensor_map(net_def.tensors, net_def_names_set)
+    in_out_map = generate_in_out_map(net_def.op, tensor_map, net_def_names_set)
+    for t in net_def.tensors:
         if t.name not in input_nodes and t.name not in output_nodes:
             t.name = tensor_map[t.name]
-    for op in model.op:
+    for op in net_def.op:
         for i in range(len(op.input)):
             if (op.input[i] not in input_nodes) and \
                     (op.input[i] not in output_nodes):
@@ -102,66 +102,90 @@ def obfuscate_name(model):
                 op.output[i] = in_out_map[op.output[i]]
 
 
+def save_graph_to_code(j2_env, model_tag, graph_idx, graph, output):
+    graph_tag = graph.name
+    template_name = "tensor_source.jinja2"
+    counter = 0
+    for tensor in graph.tensors:
+        # convert tensor
+        source = j2_env.get_template(template_name).render(
+            tensor=tensor,
+            tensor_id=counter,
+            model_tag=model_tag,
+            graph_tag=graph_tag,
+        )
+        cc_path = output + "/" + graph_tag + "_tensor" + str(counter) + ".cc"
+        with open(cc_path, "w") as f:
+            f.write(source)
+        counter += 1
+
+    template_name = "operator.jinja2"
+    counter = 0
+    op_size = len(graph.op)
+    device = 0
+    for arg in graph.arg:
+        if arg.name == MaceKeyword.mace_runtime_type_str:
+            device = arg.i
+    for start in range(0, op_size, 10):
+        source = j2_env.get_template(template_name).render(
+            start=start,
+            end=min(start + 10, op_size),
+            net=graph,
+            model_tag=model_tag,
+            graph_tag=graph_tag,
+            device=device,
+        )
+        cc_path = output + "/" + graph_tag + "_op" + str(counter) + ".cc"
+        with open(cc_path, "w") as f:
+            f.write(source)
+        counter += 1
+
+    template_name = "graph.jinja2"
+    source = j2_env.get_template(template_name).render(
+        net=graph,
+        graph_id=graph_idx,
+        model_tag=model_tag,
+        graph_tag=graph_tag,
+    )
+    with open(output + "/" + graph_tag + "_graph.cc", "w") as f:
+        f.write(source)
+
+
 def save_model_to_code(namespace, model, params, model_checksum,
-                       params_checksum, device, output, gencode_params):
+                       params_checksum, output, gencode_params):
     util.mkdir_p(output)
     cwd = os.path.dirname(__file__)
     j2_env = Environment(
         loader=FileSystemLoader(cwd + "/template"), trim_blocks=True)
     j2_env.filters["stringfy"] = stringfy
 
-    template_name = "tensor_source.jinja2"
-    counter = 0
-    for tensor in model.tensors:
-        # convert tensor
-        source = j2_env.get_template(template_name).render(
-            tensor=tensor,
-            tensor_id=counter,
-            tag=namespace,
-        )
-        with open(output + "/tensor" + str(counter) + ".cc", "w") as f:
-            f.write(source)
-        counter += 1
+    graph_size = len(model.net_def)
+    for i in range(graph_size):
+        save_graph_to_code(j2_env, namespace, i, model.net_def[i], output)
 
     if gencode_params:
         template_name = "tensor_data.jinja2"
         source = j2_env.get_template(template_name).render(
-            tag=namespace,
+            model_tag=namespace,
             model_data_size=len(params),
             model_data=params)
         with open(output + "/tensor_data.cc", "w") as f:
             f.write(source)
-
-    template_name = "operator.jinja2"
-    counter = 0
-    op_size = len(model.op)
-
-    for start in range(0, op_size, 10):
-        source = j2_env.get_template(template_name).render(
-            start=start,
-            end=min(start + 10, op_size),
-            net=model,
-            tag=namespace,
-            device=device.value,
-        )
-        with open(output + "/op" + str(counter) + ".cc", "w") as f:
-            f.write(source)
-        counter += 1
 
     # generate model source files
     build_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     template_name = "model.jinja2"
     checksum = "{},{}".format(model_checksum, params_checksum)
     source = j2_env.get_template(template_name).render(
-        net=model,
-        tag=namespace,
+        multi_net=model,
+        model_tag=namespace,
         checksum=checksum,
         build_time=build_time)
     with open(output + "/model.cc", "w") as f:
         f.write(source)
 
     template_name = 'model_header.jinja2'
-    source = j2_env.get_template(template_name).render(tag=namespace, )
+    source = j2_env.get_template(template_name).render(model_tag=namespace)
     with open(output + "/" + namespace + '.h', "w") as f:
         f.write(source)
 
@@ -174,23 +198,24 @@ def save_model_to_file(model_name, model, params, output):
         f.write(params)
 
 
-def encrypt(model_name, model_file, params_file, device, output,
+def encrypt(model_name, model_file, params_file, output,
             is_obfuscate=False, gencode_model=False, gencode_params=False):
     model_checksum = util.file_checksum(model_file)
     params_checksum = util.file_checksum(params_file)
 
     with open(model_file, "rb") as model_file:
         with open(params_file, "rb") as params_file:
-            model = mace_pb2.NetDef()
+            model = mace_pb2.MultiNetDef()
             model.ParseFromString(model_file.read())
             params = bytearray(params_file.read())
 
             if is_obfuscate:
-                obfuscate_name(model)
+                for net_def in model.net_def:
+                    obfuscate_name(net_def)
             save_model_to_file(model_name, model, params, output)
             if gencode_model:
                 save_model_to_code(model_name, model, params, model_checksum,
-                                   params_checksum, device, output + "/code/",
+                                   params_checksum, output + "/code/",
                                    gencode_params)
 
 
@@ -273,7 +298,6 @@ if __name__ == '__main__':
                 encrypt(name,
                         "build/%s/model/%s.pb" % (name, name),
                         "build/%s/model/%s.data" % (name, name),
-                        model_conf[ModelKeys.runtime],
                         codegen_dir + "/" + name,
                         not flags.no_obfuscate,
                         flags.gencode_model,
@@ -286,7 +310,7 @@ if __name__ == '__main__':
     else:
         device_type = config_parser.parse_device_type(flags.device)
         encrypt(flags.model_name, flags.model_file, flags.params_file,
-                device_type, codegen_dir, not flags.no_obfuscate,
+                codegen_dir, not flags.no_obfuscate,
                 flags.gencode_model, flags.gencode_param)
         models.append(flags.model_name)
         os.rename(

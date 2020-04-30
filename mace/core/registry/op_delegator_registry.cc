@@ -26,25 +26,25 @@ const char *kDefaultTag = "general";
 }
 
 DelegatorInfo::DelegatorInfo(const char *in_name, DataType in_data_type,
-                             DeviceType in_device, ImplType in_impl_type,
+                             RuntimeType in_runtime, ImplType in_impl_type,
                              const char *in_tag)
     : delegator_name(in_name), data_type(in_data_type),
-      device(in_device), impl_type(in_impl_type), tag(in_tag) {}
+      runtime(in_runtime), impl_type(in_impl_type), tag(in_tag) {}
 
 DelegatorInfo::DelegatorInfo(const char *in_name, DataType in_data_type,
-                             DeviceType in_device, ImplType in_impl_type)
+                             RuntimeType in_runtime, ImplType in_impl_type)
     : DelegatorInfo(in_name, in_data_type,
-                    in_device, in_impl_type, kDefaultTag) {}
+                    in_runtime, in_impl_type, kDefaultTag) {}
 
 std::string DelegatorInfo::ToString() const {
   std::stringstream ss;
   ss << delegator_name << "_" << data_type << "_"
-     << device << "_" << impl_type << "_" << tag;
+     << runtime << "_" << impl_type << "_" << tag;
   return ss.str();
 }
 
 bool DelegatorInfo::operator==(const DelegatorInfo &info) const {
-  return device == info.device && impl_type == info.impl_type &&
+  return runtime == info.runtime && impl_type == info.impl_type &&
       data_type == info.data_type &&
       delegator_name == info.delegator_name && tag == info.tag;
 }
@@ -55,6 +55,10 @@ MaceStatus OpDelegatorRegistry::Register(const DelegatorInfo &key,
              "Register an exist key: ", key.ToString());
   registry_[key] = std::move(creator);
   return MaceStatus::MACE_SUCCESS;
+}
+
+OpDelegatorRegistry::~OpDelegatorRegistry() {
+  VLOG(2) << "Destroy OpDelegatorRegistry";
 }
 
 DelegatorCreator OpDelegatorRegistry::GetCreator(

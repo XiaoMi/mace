@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ResizeBilinearBenchmark(int iters,
                              int batch,
                              int channels,
@@ -36,7 +36,7 @@ void ResizeBilinearBenchmark(int iters,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     if (DataTypeToEnum<T>::value != DT_UINT8) {
       net.AddRandomInput<D, float>("Input",
                                    {batch, channels, input_height,
@@ -46,7 +46,7 @@ void ResizeBilinearBenchmark(int iters,
                                    {batch, input_height, input_width,
                                     channels});
     }
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, input_height, input_width, channels});
   } else {
@@ -60,13 +60,14 @@ void ResizeBilinearBenchmark(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -90,22 +91,22 @@ void ResizeBilinearBenchmark(int iters,
 
 #if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, uint8_t, CPU);    \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, GPU);    \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, half, GPU)
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, RT_CPU);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, uint8_t, RT_CPU);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, RT_OPENCL);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, half, RT_OPENCL)
 #elif defined(MACE_ENABLE_OPENCL)
 #define MACE_BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, GPU);    \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, half, GPU)
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, RT_CPU);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, RT_OPENCL);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, half, RT_OPENCL)
 #elif defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, uint8_t, CPU)
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, RT_CPU);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, uint8_t, RT_CPU)
 #else
 #define MACE_BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
-  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU)
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, RT_CPU)
 #endif
 
 MACE_BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480);

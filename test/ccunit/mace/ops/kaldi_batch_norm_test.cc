@@ -21,7 +21,7 @@ namespace test {
 class KaldiBatchNormOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_value,
             const int block_dim,
@@ -39,7 +39,7 @@ void Simple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Scale", {scale_dim}, scale, true);
   net.AddInputFromArray<D, float>("Offset", {scale_dim}, offset, true);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("KaldiBatchNorm", "KaldiBatchNormOpTest")
         .Input("Input")
         .Input("Scale")
@@ -51,7 +51,7 @@ void Simple(const std::vector<index_t> &input_shape,
     // Run
 
     net.RunOp(D);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     MACE_NOT_IMPLEMENTED;
   }
 
@@ -61,7 +61,7 @@ void Simple(const std::vector<index_t> &input_shape,
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleNotTestMode(const std::vector<index_t> &input_shape,
                        const std::vector<float> &input_value,
                        const int block_dim,
@@ -72,7 +72,7 @@ void SimpleNotTestMode(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Input", input_shape,
                                   input_value);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("KaldiBatchNorm", "KaldiBatchNormOpTest")
         .Input("Input")
         .AddIntArg("block_dim", block_dim)
@@ -82,7 +82,7 @@ void SimpleNotTestMode(const std::vector<index_t> &input_shape,
     // Run
 
     net.RunOp(D);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     MACE_NOT_IMPLEMENTED;
   }
 
@@ -94,7 +94,7 @@ void SimpleNotTestMode(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(KaldiBatchNormOpTest, SimpleTestModeCPUOneBlock) {
-  Simple<DeviceType::CPU>(
+  Simple<RuntimeType::RT_CPU>(
     {1, 6, 2},
     {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15},
     -1, 2,
@@ -104,7 +104,7 @@ TEST_F(KaldiBatchNormOpTest, SimpleTestModeCPUOneBlock) {
     {22, 31, 30, 43, 38, 55, 46, 67, 54, 79, 62, 91}); }
 
 TEST_F(KaldiBatchNormOpTest, SimpleTestModeCPUTwoBlock) {
-  Simple<DeviceType::CPU>(
+  Simple<RuntimeType::RT_CPU>(
     {1, 6, 4},
     {5, 5, 5, 5, 7, 7, 7, 7, 9, 9, 9, 9,
     11, 11, 11, 11, 13, 13, 13, 13, 15, 15, 15, 15},
@@ -117,7 +117,7 @@ TEST_F(KaldiBatchNormOpTest, SimpleTestModeCPUTwoBlock) {
 }
 
 TEST_F(KaldiBatchNormOpTest, SimpleNotTestModeCPUTwoBlock) {
-  SimpleNotTestMode<DeviceType::CPU>(
+  SimpleNotTestMode<RuntimeType::RT_CPU>(
     {1, 6, 4},
     {5, 5, 5, 5, 7, 7, 7, 7, 9, 9, 9, 9,
     11, 11, 11, 11, 13, 13, 13, 13, 15, 15, 15, 15},

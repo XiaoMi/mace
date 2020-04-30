@@ -24,7 +24,7 @@ const std::string OpConditionBuilder::type() const {
 }
 
 OpConditionBuilder &OpConditionBuilder::SetDevicePlacerFunc(
-    OpRegistrationInfo::DevicePlacer placer) {
+    OpRegistrationInfo::RuntimePlacer placer) {
   placer_ = placer;
   return *this;
 }
@@ -44,7 +44,7 @@ OpConditionBuilder &OpConditionBuilder::SetInputsDataFormatSelector(
 void OpConditionBuilder::Finalize(OpRegistrationInfo *info) const {
   if (info != nullptr) {
     if (placer_) {
-      info->device_placer = placer_;
+      info->runtime_placer = placer_;
     }
     if (memory_type_setter_) {
       info->memory_type_setter = memory_type_setter_;

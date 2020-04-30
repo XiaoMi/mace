@@ -32,7 +32,7 @@ class Conv2dOpTest : public OpsTestBase {
 };
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
   OpsTestNet net;
   // Add input data
@@ -47,8 +47,8 @@ void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>("Bias", {1}, {0.1f}, true);
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -61,9 +61,9 @@ void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -90,7 +90,7 @@ void TestNHWCSimple3x3VALID(int wino_blk_size = 0) {
   }
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
   OpsTestNet net;
 
@@ -106,8 +106,8 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>("Bias", {1}, {0.1f}, true);
   const std::vector<index_t> output_shape = {1, 3, 3, 1};
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -120,9 +120,9 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -152,7 +152,7 @@ void TestNHWCSimple3x3SAME(int wino_blk_size = 0) {
   }
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestNHWCSimple3x3NeqStride(int wino_blk_size = 0) {
   OpsTestNet net;
   // Add input data
@@ -167,8 +167,8 @@ void TestNHWCSimple3x3NeqStride(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>("Bias", {1}, {0.1f}, true);
   const std::vector<index_t> output_shape = {1, 3, 2, 1};
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -181,9 +181,9 @@ void TestNHWCSimple3x3NeqStride(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -213,35 +213,35 @@ void TestNHWCSimple3x3NeqStride(int wino_blk_size = 0) {
 }  // namespace
 
 TEST_F(Conv2dOpTest, CPUSimple) {
-  TestNHWCSimple3x3VALID<DeviceType::CPU, float>();
-  TestNHWCSimple3x3SAME<DeviceType::CPU, float>();
+  TestNHWCSimple3x3VALID<RuntimeType::RT_CPU, float>();
+  TestNHWCSimple3x3SAME<RuntimeType::RT_CPU, float>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLSimple) {
-  TestNHWCSimple3x3VALID<DeviceType::GPU, float>();
-  TestNHWCSimple3x3SAME<DeviceType::GPU, float>();
+  TestNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, float>();
+  TestNHWCSimple3x3SAME<RuntimeType::RT_OPENCL, float>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfSimple) {
-  TestNHWCSimple3x3VALID<DeviceType::GPU, half>();
-  TestNHWCSimple3x3SAME<DeviceType::GPU, half>();
+  TestNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, half>();
+  TestNHWCSimple3x3SAME<RuntimeType::RT_OPENCL, half>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLSimpleWinograd) {
-  TestNHWCSimple3x3SAME<DeviceType::GPU, float>(4);
-  TestNHWCSimple3x3VALID<DeviceType::GPU, float>(2);
-  TestNHWCSimple3x3VALID<DeviceType::GPU, half>(2);
+  TestNHWCSimple3x3SAME<RuntimeType::RT_OPENCL, float>(4);
+  TestNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, float>(2);
+  TestNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, half>(2);
   // TODO(liutuo): the precision of the last value is not normal.
-  //  TestNHWCSimple3x3SAME<DeviceType::GPU, half>(4);
+  //  TestNHWCSimple3x3SAME<RuntimeType::RT_OPENCL, half>(4);
 }
 
 TEST_F(Conv2dOpTest, NotEqualStrideSimple) {
-  TestNHWCSimple3x3NeqStride<DeviceType::CPU, float>();
-  TestNHWCSimple3x3NeqStride<DeviceType::GPU, float>();
+  TestNHWCSimple3x3NeqStride<RuntimeType::RT_CPU, float>();
+  TestNHWCSimple3x3NeqStride<RuntimeType::RT_OPENCL, float>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestNHWCSimple3x3WithoutBias() {
   OpsTestNet net;
 
@@ -255,8 +255,8 @@ void TestNHWCSimple3x3WithoutBias() {
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
       true);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -270,9 +270,9 @@ void TestNHWCSimple3x3WithoutBias() {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -296,15 +296,15 @@ void TestNHWCSimple3x3WithoutBias() {
 }  // namespace
 
 TEST_F(Conv2dOpTest, CPUWithoutBias) {
-  TestNHWCSimple3x3WithoutBias<DeviceType::CPU, float>();
+  TestNHWCSimple3x3WithoutBias<RuntimeType::RT_CPU, float>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLWithoutBias) {
-  TestNHWCSimple3x3WithoutBias<DeviceType::GPU, float>();
+  TestNHWCSimple3x3WithoutBias<RuntimeType::RT_OPENCL, float>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestNHWCCombined3x3() {
   // Construct graph
   OpsTestNet net;
@@ -322,8 +322,8 @@ void TestNHWCCombined3x3() {
       true);
   net.AddInputFromArray<D, T>("Bias", {2}, {0.1f, 0.2f}, true);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
@@ -337,9 +337,9 @@ void TestNHWCCombined3x3() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -365,15 +365,15 @@ void TestNHWCCombined3x3() {
 }  // namespace
 
 TEST_F(Conv2dOpTest, CPUStride2) {
-  TestNHWCCombined3x3<DeviceType::CPU, float>();
+  TestNHWCCombined3x3<RuntimeType::RT_CPU, float>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLStride2) {
-  TestNHWCCombined3x3<DeviceType::GPU, float>();
+  TestNHWCCombined3x3<RuntimeType::RT_OPENCL, float>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
   OpsTestNet net;
   // Add input data
@@ -388,8 +388,8 @@ void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
   net.AddInputFromArray<D, float>("Bias", {1}, {-0.1f}, true);
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
@@ -404,9 +404,9 @@ void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -429,7 +429,7 @@ void TestFusedNHWCSimple3x3VALID(int wino_blk_size = 0) {
   auto expected = net.CreateTensor<float>(output_shape, {0.0f});
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
   OpsTestNet net;
 
@@ -444,8 +444,8 @@ void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
       true);
   const std::vector<index_t> output_shape = {1, 1, 1, 1};
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
@@ -460,9 +460,9 @@ void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -490,24 +490,24 @@ void TestFusedNHWCSimple3x3WithoutBias(int wino_blk_size = 0) {
 }  // namespace
 
 TEST_F(Conv2dOpTest, FusedCPUSimple) {
-  TestFusedNHWCSimple3x3VALID<DeviceType::CPU, float>();
-  TestFusedNHWCSimple3x3WithoutBias<DeviceType::CPU, float>();
+  TestFusedNHWCSimple3x3VALID<RuntimeType::RT_CPU, float>();
+  TestFusedNHWCSimple3x3WithoutBias<RuntimeType::RT_CPU, float>();
 }
 
 TEST_F(Conv2dOpTest, FusedOPENCLSimple) {
-  TestFusedNHWCSimple3x3VALID<DeviceType::GPU, float>();
-  TestFusedNHWCSimple3x3WithoutBias<DeviceType::GPU, float>();
+  TestFusedNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, float>();
+TestFusedNHWCSimple3x3WithoutBias<RuntimeType::RT_OPENCL, float>();
 }
 
 TEST_F(Conv2dOpTest, FusedOPENCLSimpleWinograd) {
-  TestFusedNHWCSimple3x3VALID<DeviceType::GPU, float>(2);
-  TestFusedNHWCSimple3x3WithoutBias<DeviceType::GPU, float>(2);
-  TestFusedNHWCSimple3x3VALID<DeviceType::GPU, float>(4);
-  TestFusedNHWCSimple3x3WithoutBias<DeviceType::GPU, float>(4);
+  TestFusedNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, float>(2);
+  TestFusedNHWCSimple3x3WithoutBias<RuntimeType::RT_OPENCL, float>(2);
+  TestFusedNHWCSimple3x3VALID<RuntimeType::RT_OPENCL, float>(4);
+  TestFusedNHWCSimple3x3WithoutBias<RuntimeType::RT_OPENCL, float>(4);
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestConv1x1() {
   // Construct graph
   OpsTestNet net;
@@ -527,8 +527,8 @@ void TestConv1x1() {
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, true);
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f}, true);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
@@ -541,9 +541,9 @@ void TestConv1x1() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -572,7 +572,7 @@ void TestConv1x1() {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestConv1x1NeqStride() {
   // Construct graph
   OpsTestNet net;
@@ -592,8 +592,8 @@ void TestConv1x1NeqStride() {
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, true);
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f}, true);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
@@ -606,9 +606,9 @@ void TestConv1x1NeqStride() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -635,20 +635,20 @@ void TestConv1x1NeqStride() {
 }
 }  // namespace
 
-TEST_F(Conv2dOpTest, CPUConv1x1) { TestConv1x1<DeviceType::CPU>(); }
+TEST_F(Conv2dOpTest, CPUConv1x1) { TestConv1x1<RuntimeType::RT_CPU>(); }
 
-TEST_F(Conv2dOpTest, OPENCLConv1x1) { TestConv1x1<DeviceType::GPU>(); }
+TEST_F(Conv2dOpTest, OPENCLConv1x1) { TestConv1x1<RuntimeType::RT_OPENCL>(); }
 
 TEST_F(Conv2dOpTest, CPUConv1x1NotEqualStride) {
-  TestConv1x1NeqStride<DeviceType::CPU>();
+  TestConv1x1NeqStride<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLConv1x1NotEqualStride) {
-  TestConv1x1NeqStride<DeviceType::GPU>();
+  TestConv1x1NeqStride<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestComplexConvNxN(const std::vector<index_t> &shape,
                         const std::vector<int> strides,
                         const int wino_blk_size = 0) {
@@ -666,12 +666,14 @@ void TestComplexConvNxN(const std::vector<index_t> &shape,
     OpsTestNet net;
 
     // Add input data
-    net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
+    net.AddRandomInput<D, T>("Input",
+                             {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true,
         false);
     net.AddRandomInput<D, T>("Bias", {output_channels}, true, false);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+
+    net.TransformDataFormat<RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     // Construct graph
@@ -686,12 +688,13 @@ void TestComplexConvNxN(const std::vector<index_t> &shape,
         .AddStringArg("activation", "LEAKYRELU")
         .AddFloatArg("activation_coefficient", 0.1)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .AddIntArg("wino_block_size", wino_blk_size)
         .Finalize(net.NewOperatorDef());
 
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
@@ -727,37 +730,39 @@ void TestComplexConvNxN(const std::vector<index_t> &shape,
 }  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
-  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {1, 1});
-  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {2, 2});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({32, 16, 16, 32}, {1, 1});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({32, 16, 16, 32}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNWinograd) {
-  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {1, 1}, 2);
-  TestComplexConvNxN<DeviceType::GPU, float>({32, 16, 16, 32}, {1, 1}, 4);
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({32, 16, 16, 32},
+                                                    {1, 1}, 2);
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({32, 16, 16, 32},
+                                                    {1, 1}, 4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
-  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {1, 1});
-  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {2, 2});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({17, 113, 5, 7}, {1, 1});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({17, 113, 5, 7}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNWinograd) {
-  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {1, 1}, 4);
-  TestComplexConvNxN<DeviceType::GPU, float>({17, 113, 5, 7}, {1, 1}, 2);
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({17, 113, 5, 7}, {1, 1}, 4);
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({17, 113, 5, 7}, {1, 1}, 2);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS34) {
-  TestComplexConvNxN<DeviceType::GPU, float>({31, 113, 13, 17}, {3, 3});
-  TestComplexConvNxN<DeviceType::GPU, float>({32, 32, 13, 17}, {4, 4});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({31, 113, 13, 17}, {3, 3});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({32, 32, 13, 17}, {4, 4});
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNWithNotEqualStride) {
-  TestComplexConvNxN<DeviceType::GPU, float>({31, 113, 13, 17}, {1, 2});
-  TestComplexConvNxN<DeviceType::GPU, float>({32, 32, 13, 17}, {3, 4});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({31, 113, 13, 17}, {1, 2});
+  TestComplexConvNxN<RuntimeType::RT_OPENCL, float>({32, 32, 13, 17}, {3, 4});
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
                                const std::vector<index_t> &filter_shape,
                                const std::vector<int> &dilations,
@@ -790,10 +795,10 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     net.AddInputFromArray<D, float>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w},
         float_filter_data, true);
-    net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data,
-                                    true);
+    net.AddInputFromArray<D, float>("Bias", {output_channels},
+                                    float_bias_data, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -809,7 +814,7 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
@@ -847,90 +852,104 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x1S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {1, 1, 32, 64}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>({32, 32},
+                                                    {1, 1, 32, 64}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>({32, 32},
+                                                    {3, 3, 32, 64}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3Winograd) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64}, {1, 1},
-                                             2);
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {32, 32}, {3, 3, 32, 64}, {1, 1}, 2);
   // TODO(liutuo) : the precision error is large.
-  //  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {3, 3, 32, 64},
-  //                                             {1, 1}, 4);
+  //  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+  //      {32, 32}, {3, 3, 32, 64}, {1, 1}, 4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv5x5S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {5, 5, 3, 64}, {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {5, 5, 3, 63}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>({32, 32},
+                                                    {5, 5, 3, 64}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>({32, 32},
+                                                    {5, 5, 3, 63}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x7S1) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {1, 7, 192, 192},
-                                             {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {1, 7, 192, 191},
-                                             {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {17, 17}, {1, 7, 192, 192}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {17, 17}, {1, 7, 192, 191}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x1S1) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {7, 1, 192, 192},
-                                             {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {7, 1, 160, 192},
-                                             {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {7, 1, 160, 191},
-                                             {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {17, 17}, {7, 1, 192, 192}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {17, 17}, {7, 1, 160, 192}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>({17, 17}, {7, 1, 160, 191},
+                                                    {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x7S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {7, 7, 3, 64}, {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {7, 7, 3, 63}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {32, 32}, {7, 7, 3, 64}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {32, 32}, {7, 7, 3, 63}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv15x1S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {15, 1, 256, 2}, {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({64, 64}, {15, 1, 64, 2}, {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({256, 256}, {15, 1, 32, 2},
-                                             {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {32, 32}, {15, 1, 256, 2}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {64, 64}, {15, 1, 64, 2}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {256, 256}, {15, 1, 32, 2}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x15S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {1, 15, 256, 2}, {1, 1});
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({256, 256}, {1, 15, 32, 2},
-                                             {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {32, 32}, {1, 15, 256, 2}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {256, 256}, {1, 15, 32, 2}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv1x1S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {1, 1, 5, 7}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {107, 113}, {1, 1, 5, 7}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv3x3S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7}, {1, 1});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {107, 113}, {3, 3, 5, 7}, {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv3x3Winograd) {
   // TODO(liutuo) : the precision error is large.
-  //  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7},
-  //                                             {1, 1}, 4);
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({107, 113}, {3, 3, 5, 7}, {1, 1},
-                                             2);
+  //  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+  //      {107, 113}, {3, 3, 5, 7}, {1, 1}, 4);
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {107, 113}, {3, 3, 5, 7}, {1, 1}, 2);
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfConv5x5Dilation2) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({64, 64}, {5, 5, 16, 16}, {2, 2});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {64, 64}, {5, 5, 16, 16}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfConv7x7Dilation2) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({64, 64}, {7, 7, 16, 16}, {2, 2});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {64, 64}, {7, 7, 16, 16}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfConv7x7Dilation4) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({63, 67}, {7, 7, 16, 16}, {4, 4});
+  TestHalfComplexConvNxNS12<RuntimeType::RT_OPENCL>(
+      {63, 67}, {7, 7, 16, 16}, {4, 4});
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestDilationConvNxN(const std::vector<index_t> &shape,
                          const int dilation_rate) {
   testing::internal::LogToStderr();
@@ -948,12 +967,13 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
     OpsTestNet net;
 
     // Add input data
-    net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
+    net.AddRandomInput<D, T>("Input",
+                             {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
     net.AddRandomInput<D, T>("Bias", {output_channels}, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     // Construct graph
@@ -970,7 +990,7 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
 
     // run on cpu
     net.RunOp();
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
@@ -1004,19 +1024,19 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
 }  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedDilation2) {
-  TestDilationConvNxN<DeviceType::GPU, float>({32, 32, 32, 64}, 2);
+  TestDilationConvNxN<RuntimeType::RT_OPENCL, float>({32, 32, 32, 64}, 2);
 }
 
 TEST_F(Conv2dOpTest, OPENCLAligned2Dilation4) {
-  TestDilationConvNxN<DeviceType::GPU, float>({128, 128, 16, 16}, 4);
+  TestDilationConvNxN<RuntimeType::RT_OPENCL, float>({128, 128, 16, 16}, 4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedDilation4) {
-  TestDilationConvNxN<DeviceType::GPU, float>({107, 113, 5, 7}, 4);
+  TestDilationConvNxN<RuntimeType::RT_OPENCL, float>({107, 113, 5, 7}, 4);
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
                                const std::vector<index_t> &filter_shape,
                                const std::vector<int> &dilations) {
@@ -1042,7 +1062,7 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
     net.AddRandomInput<D, float>("Bias", {output_channels}, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -1058,7 +1078,7 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
     // Check
     auto expected = net.CreateTensor<float>();
@@ -1088,16 +1108,17 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
 }  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLHalf7X7AtrousConvD2) {
-  TestGeneralHalfAtrousConv<DeviceType::GPU>({32, 32}, {7, 7, 16, 3}, {2, 2});
+  TestGeneralHalfAtrousConv<RuntimeType::RT_OPENCL>(
+      {32, 32}, {7, 7, 16, 3}, {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalf15X15AtrousConvD4) {
-  TestGeneralHalfAtrousConv<DeviceType::GPU>({63, 71}, {15, 15, 16, 16},
-                                             {2, 2});
+  TestGeneralHalfAtrousConv<RuntimeType::RT_OPENCL>(
+      {63, 71}, {15, 15, 16, 16}, {2, 2});
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
                              const std::vector<int> &paddings,
                              const int wino_blk_size = 0) {
@@ -1121,7 +1142,7 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
     net.AddRandomInput<D, float>("Bias", {output_channels}, true);
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -1136,7 +1157,7 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
@@ -1179,31 +1200,39 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
 }  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedPad1) {
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({32, 32, 32, 64}, {1, 1});
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({32, 32, 32, 64},
+                                                         {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedPad2) {
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16}, {2, 2});
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({128, 128, 16, 16},
+                                                         {2, 2});
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedPad2Winograd) {
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16}, {2, 2},
-                                                  2);
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({128, 128, 16, 16}, {2, 2},
-                                                  4);
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({128, 128, 16, 16},
+                                                         {2, 2}, 2);
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({128, 128, 16, 16},
+                                                         {2, 2}, 4);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedPad4) {
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({107, 113, 5, 7}, {4, 4});
-  TestArbitraryPadConvNxN<DeviceType::GPU, half>({107, 113, 5, 7}, {4, 4});
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({107, 113, 5, 7},
+                                                         {4, 4});
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, half>({107, 113, 5, 7},
+                                                        {4, 4});
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedPad4Winograd) {
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({107, 113, 5, 7}, {1, 1}, 2);
-  TestArbitraryPadConvNxN<DeviceType::GPU, half>({107, 113, 5, 7}, {1, 1}, 2);
-  TestArbitraryPadConvNxN<DeviceType::GPU, float>({107, 113, 5, 7}, {4, 4}, 4);
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({107, 113, 5, 7},
+                                                         {1, 1}, 2);
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, half>({107, 113, 5, 7},
+                                                        {1, 1}, 2);
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, float>({107, 113, 5, 7},
+                                                         {4, 4}, 4);
   // TODO(liutuo) : the precision error is large.
-  TestArbitraryPadConvNxN<DeviceType::GPU, half>({107, 113, 5, 7}, {4, 4}, 4);
+  TestArbitraryPadConvNxN<RuntimeType::RT_OPENCL, half>({107, 113, 5, 7},
+                                                        {4, 4}, 4);
 }
 
 namespace {
@@ -1212,16 +1241,16 @@ void TestQuantSimple3x3() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>(
       "Filter", {1, 3, 3, 2}, {102, 150, 123, 135, 1, 216, 137, 47, 53, 75, 145,
                                130, 171, 62, 255, 122, 72, 211},
       true, 0.0226, 127);
-  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>(
       "Input", {1, 3, 3, 2}, {1, 75, 117, 161, 127, 119, 94, 151, 203, 151, 84,
                               61, 55, 142, 113, 139, 3, 255},
       false, 0.0204, 93);
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("Bias", {1}, {2}, true,
-                                                  0.00046104, 0);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("Bias", {1}, {2}, true,
+                                                      0.00046104, 0);
 
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
@@ -1234,7 +1263,7 @@ void TestQuantSimple3x3() {
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *output = net.GetTensor("Output");
   output->SetScale(0.000711);
   output->SetZeroPoint(1);
@@ -1255,14 +1284,14 @@ void TestQuant(const index_t batch,
                enum Padding padding_type,
                const std::vector<int> &strides) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input",
-                                 {batch, in_height, in_width, in_channels});
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
+      "Input", {batch, in_height, in_width, in_channels});
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Filter", {out_channels, k_height, k_width, in_channels}, true);
-  net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Bias", {out_channels}, true);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-  net.TransformFilterDataFormat<DeviceType::CPU, float>(
+  net.TransformFilterDataFormat<RuntimeType::RT_CPU, float>(
       "Filter", DataFormat::OHWI, "FilterOIHW", DataFormat::OIHW);
 
   OpDefBuilder("Conv2D", "Conv2dTest")
@@ -1275,8 +1304,8 @@ void TestQuant(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeFilter")
@@ -1316,7 +1345,7 @@ void TestQuant(const index_t batch,
       OpTestContext::Get()->thread_pool());
   quantize_util.QuantizeWithScaleAndZeropoint(bias_data, bias->size(),
                                               bias_scale, 0, q_bias.data());
-  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "QuantizedBias", {out_channels}, q_bias, true, bias_scale, 0);
 
   OpDefBuilder("Conv2D", "QuantizeConv2dTest")
@@ -1329,7 +1358,7 @@ void TestQuant(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(eq_output->scale());
@@ -1379,14 +1408,14 @@ void TestBFloat16(const index_t batch,
                   enum Padding padding_type,
                   const std::vector<int> &strides) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input",
-                                 {batch, in_channels, in_height, in_width});
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
+      "Input", {batch, in_channels, in_height, in_width});
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Filter", {out_channels, in_channels, k_height, k_width}, true);
-  net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
-  net.Cast<CPU, float, BFloat16>("Input", "BF16Input");
-  net.Cast<CPU, float, BFloat16>("Filter", "BF16Filter");
-  net.Cast<CPU, float, BFloat16>("Bias", "BF16Bias");
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Bias", {out_channels}, true);
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Filter", "BF16Filter");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Bias", "BF16Bias");
 
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
@@ -1398,7 +1427,7 @@ void TestBFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("Conv2D", "BF16Conv2dTest")
       .Input("BF16Input")
@@ -1410,9 +1439,9 @@ void TestBFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
-  net.Cast<CPU, BFloat16, float>("BF16Output", "CastOutput");
+  net.Cast<RuntimeType::RT_CPU, BFloat16, float>("BF16Output", "CastOutput");
 
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("CastOutput"), 1e-4);
@@ -1447,14 +1476,15 @@ void TestFloat16(const index_t batch,
                  enum Padding padding_type,
                  const std::vector<int> &strides) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float16_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float16_t>(
       "Input", {batch, in_channels, in_height, in_width});
-  net.AddRandomInput<CPU, float16_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float16_t>(
       "Filter", {out_channels, in_channels, k_height, k_width}, true);
-  net.AddRandomInput<CPU, float16_t>("Bias", {out_channels}, true);
-  net.Cast<CPU, float, float16_t>("Input", "FP16Input");
-  net.Cast<CPU, float, float16_t>("Filter", "FP16Filter");
-  net.Cast<CPU, float, float16_t>("Bias", "FP16Bias");
+  net.AddRandomInput<RuntimeType::RT_CPU, float16_t>("Bias", {out_channels},
+                                                     true);
+  net.Cast<RuntimeType::RT_CPU, float, float16_t>("Input", "FP16Input");
+  net.Cast<RuntimeType::RT_CPU, float, float16_t>("Filter", "FP16Filter");
+  net.Cast<RuntimeType::RT_CPU, float, float16_t>("Bias", "FP16Bias");
 
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
@@ -1466,7 +1496,7 @@ void TestFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("Conv2D", "FP16Conv2dTest")
       .Input("FP16Input")
@@ -1478,9 +1508,9 @@ void TestFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT16))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
-  net.Cast<CPU, float16_t, float>("FP16Output", "CastOutput");
+  net.Cast<RuntimeType::RT_CPU, float16_t, float>("FP16Output", "CastOutput");
 
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("CastOutput"), 1e-4);

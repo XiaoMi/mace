@@ -18,11 +18,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class ReverseOp;
 
 template <typename T>
-class ReverseOp<DeviceType::CPU, T> : public Operation {
+class ReverseOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ReverseOp(OpConstructContext *context)
       : Operation(context) {}
@@ -77,9 +77,9 @@ class ReverseOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterReverse(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Reverse", ReverseOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Reverse", ReverseOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

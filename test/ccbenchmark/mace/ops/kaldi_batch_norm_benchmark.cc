@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void KaldiBatchNorm(
     int iters, int batch, int chunk, int dim, int block_dim) {
   mace::testing::StopTiming();
@@ -28,7 +28,7 @@ void KaldiBatchNorm(
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, chunk, dim});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -47,14 +47,15 @@ void KaldiBatchNorm(
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -73,7 +74,7 @@ void KaldiBatchNorm(
 ##_##DEVICE)
 
 #define MACE_BM_KALDI_BATCH_NORM(N, C, D, BD)                 \
-  MACE_BM_KALDI_BATCH_NORM_MACRO(N, C, D, BD, float, CPU);
+  MACE_BM_KALDI_BATCH_NORM_MACRO(N, C, D, BD, float, RT_CPU);
 
 MACE_BM_KALDI_BATCH_NORM(1, 1, 512, 512);
 MACE_BM_KALDI_BATCH_NORM(1, 3, 128, 128);

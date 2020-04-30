@@ -18,6 +18,8 @@
 #include <utility>
 #include <vector>
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -26,23 +28,23 @@ namespace image {
 namespace {
 const index_t TILE_SIZE = 16;
 
-cl::Image *InitScratchImageAndGetPointer(OpContext *context, DataType dtype,
-                                         ScratchImage *scratch_image,
-                                         const std::vector<index_t> &shape) {
+cl::Image *GetScratchImage(OpContext *context, MemoryType mem_type,
+                           DataType dtype, const std::vector<index_t> &shape) {
   std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(shape, OpenCLBufferType::IN_OUT_CHANNEL,
+  OpenCLUtil::CalImage2DShape(shape, BufferContentType::IN_OUT_CHANNEL,
                               &image_shape);
 
-  auto mace_image = scratch_image->Scratch(
-      context->device()->allocator(), image_shape, dtype);
-  cl::Image *image = static_cast<cl::Image *>(mace_image->buffer());
+  auto *runtime = context->runtime();
+  MemInfo mem_info(mem_type, dtype, MemInfo::IndexT(image_shape));
+  auto mace_image = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  cl::Image *image = mace_image->mutable_memory<cl::Image>();
 
   return image;
 }
 
 }  // namespace
 
-MaceStatus ReduceKernel::BuildReduceKernel(OpenCLRuntime *runtime) {
+MaceStatus ReduceKernel::BuildReduceKernel(OpenclExecutor *executor) {
   std::set<std::string> built_options;
   MACE_OUT_OF_RANGE_CONFIG;
   MACE_NON_UNIFORM_WG_CONFIG;
@@ -51,10 +53,10 @@ MaceStatus ReduceKernel::BuildReduceKernel(OpenCLRuntime *runtime) {
   built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
   built_options.emplace(MakeString("-DREDUCE_TYPE=", reduce_type_));
-  MACE_RETURN_IF_ERROR(runtime->BuildKernel(
+  MACE_RETURN_IF_ERROR(executor->BuildKernel(
       "reduce", kernel_name, built_options, &kernel_));
   kwg_size_ =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+      static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
 
   return MaceStatus::MACE_SUCCESS;
 }
@@ -66,15 +68,15 @@ MaceStatus ReduceKernel::GraduallyComputeReduce(
     const index_t org_height, const index_t org_width,
     const cl::Image *input, cl::Image *output) {
   MACE_OUT_OF_RANGE_DEFINITION;
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto *executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   if (kernel_.get() == nullptr) {
-    MACE_RETURN_IF_ERROR(BuildReduceKernel(runtime));
+    MACE_RETURN_IF_ERROR(BuildReduceKernel(executor));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(out_width),
                            static_cast<uint32_t>(out_height),
                            static_cast<uint32_t>(batch * channel_blocks)};
-  std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
   uint32_t idx = 0;
@@ -93,7 +95,7 @@ MaceStatus ReduceKernel::GraduallyComputeReduce(
   std::string tuning_key = Concat(
       "reduce_opencl_kernel", gws[0], gws[1], gws[2]);
 
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
 
@@ -114,31 +116,27 @@ MaceStatus ReduceKernel::Compute(
   const index_t channel_blocks = RoundUpDiv4(channels);
 
   std::vector<index_t> output_shape{batch, 1, 1, channels};
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   MaceStatus result = MaceStatus::MACE_RUNTIME_ERROR;
+  auto *input_image = input->memory<cl::Image>();
+  auto *output_image = output->mutable_memory<cl::Image>();
   if (in_height <= TILE_SIZE && in_width <= TILE_SIZE) {
     result = GraduallyComputeReduce(context, batch, channel_blocks, in_height,
                                     in_width, 1, 1, org_height, org_width,
-                                    input->opencl_image(),
-                                    output->opencl_image());
+                                    input_image, output_image);
   } else {
-    ScratchImageManager *scratch_manager =
-        context->device()->gpu_runtime()->scratch_image_manager();
-    ScratchImage scratch_inter_image(scratch_manager);
     auto out_height = RoundUpDiv(in_height, TILE_SIZE);
     auto out_width = RoundUpDiv(in_width, TILE_SIZE);
     const std::vector<index_t> inter_shape =
         {{batch, out_height, out_width, channels}};
-    cl::Image *inter_image = InitScratchImageAndGetPointer(
-        context, input->dtype(), &scratch_inter_image, inter_shape);
+    cl::Image *inter_image = GetScratchImage(context, input->memory_type(),
+                                             input->dtype(), inter_shape);
+
     result = GraduallyComputeReduce(context, batch, channel_blocks, in_height,
                                     in_width, out_height, out_width,
                                     org_height, org_width,
-                                    input->opencl_image(), inter_image);
+                                    input_image, inter_image);
     MACE_RETURN_IF_ERROR(result);
 
     in_height = out_height;
@@ -147,11 +145,10 @@ MaceStatus ReduceKernel::Compute(
     out_width = RoundUpDiv(in_width, TILE_SIZE);
 
     if (in_height > TILE_SIZE || in_width > TILE_SIZE) {
-      ScratchImage scratch_inter2_image(scratch_manager);
       const std::vector<index_t> inter2_shape =
           {{batch, out_height, out_width, channels}};
-      cl::Image *inter2_image = InitScratchImageAndGetPointer(
-          context, input->dtype(), &scratch_inter2_image, inter2_shape);
+      cl::Image *inter2_image = GetScratchImage(context, input->memory_type(),
+                                                input->dtype(), inter2_shape);
 
       while (out_height > 1 || out_width > 1) {
         result = GraduallyComputeReduce(context, batch, channel_blocks,
@@ -169,7 +166,7 @@ MaceStatus ReduceKernel::Compute(
 
     result = GraduallyComputeReduce(context, batch, channel_blocks, in_height,
                                     in_width, 1, 1, org_height, org_width,
-                                    inter_image, output->opencl_image());
+                                    inter_image, output_image);
   }
 
   return result;

@@ -21,15 +21,14 @@ namespace test {
 class TargetRMSNormOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestTargetRMSNorm(const std::vector<index_t> &input_shape,
                        const std::vector<T> &input,
                        const float target_rms,
                        const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, T>(MakeString("Input"),
-                                input_shape,
-                                input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>(
+      MakeString("Input"), input_shape, input);
 
   OpDefBuilder("TargetRMSNorm", "TargetRMSNormTest")
       .Input("Input")
@@ -39,14 +38,15 @@ void TestTargetRMSNorm(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, T>("ExpectedOutput", input_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>("ExpectedOutput",
+                                                input_shape, output);
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
                       *net.GetOutput("Output"));
 }
 }  // namespace
 
 TEST_F(TargetRMSNormOpTest, SimpleTest) {
-  TestTargetRMSNorm<DeviceType::CPU, float>(
+  TestTargetRMSNorm<RuntimeType::RT_CPU, float>(
     {1, 3, 3},
     {1, 2, 3,
      2, 3, 4,

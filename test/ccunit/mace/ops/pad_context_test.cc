@@ -21,7 +21,7 @@ namespace test {
 class PadContextOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestPadContext(const std::vector<index_t> &input_shape,
                const std::vector<T> &input,
                const int left_context,
@@ -29,9 +29,8 @@ void TestPadContext(const std::vector<index_t> &input_shape,
                const std::vector<index_t> &output_shape,
                const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, T>(MakeString("Input"),
-                                input_shape,
-                                input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>(MakeString("Input"),
+                                                input_shape, input);
 
   OpDefBuilder("PadContext", "PadContextTest")
       .Input("Input")
@@ -48,7 +47,7 @@ void TestPadContext(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(PadContextOpTest, Simple2Dim) {
-  TestPadContext<DeviceType::CPU, float>(
+  TestPadContext<RuntimeType::RT_CPU, float>(
     {3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
     2, 3, {8, 5},
@@ -63,7 +62,7 @@ TEST_F(PadContextOpTest, Simple2Dim) {
 }
 
 TEST_F(PadContextOpTest, Simple3Dim) {
-  TestPadContext<DeviceType::CPU, float>(
+  TestPadContext<RuntimeType::RT_CPU, float>(
     {2, 3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},

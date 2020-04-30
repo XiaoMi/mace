@@ -35,13 +35,14 @@ void TestStridedSlice(const std::vector<index_t> &input_shape,
                       const std::vector<index_t> &output_shape,
                       const std::vector<float> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "BeginIndices", {static_cast<int32_t>(begin_indices.size())},
       begin_indices);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "EndIndices", {static_cast<int32_t>(end_indices.size())}, end_indices);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Strides", {static_cast<int32_t>(strides.size())}, strides);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
@@ -59,7 +60,8 @@ void TestStridedSlice(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }
@@ -77,16 +79,17 @@ void TestStridedSliceWithDataFormat(const std::vector<index_t> &input_shape,
                                     const std::vector<index_t> &output_shape,
                                     const std::vector<float> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "BeginIndices", {static_cast<int32_t>(begin_indices.size())},
       begin_indices);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "EndIndices", {static_cast<int32_t>(end_indices.size())}, end_indices);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Strides", {static_cast<int32_t>(strides.size())}, strides);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
@@ -105,9 +108,10 @@ void TestStridedSliceWithDataFormat(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }
@@ -119,11 +123,12 @@ void TestSlice(const std::vector<index_t> &input_shape,
                const std::vector<index_t> &output_shape,
                const std::vector<float> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "BeginIndices", {static_cast<int32_t>(input_shape.size())},
       begin_indices);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "IndicesSize", {static_cast<int32_t>(indices_size.size())}, indices_size);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
@@ -135,7 +140,8 @@ void TestSlice(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
 
   net.RunOp();
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }
@@ -147,14 +153,15 @@ void TestSliceWithDataFormat(const std::vector<index_t> &input_shape,
                              const std::vector<index_t> &output_shape,
                              const std::vector<float> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "BeginIndices", {static_cast<int32_t>(input_shape.size())},
       begin_indices);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "IndicesSize", {static_cast<int32_t>(indices_size.size())}, indices_size);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
@@ -168,9 +175,10 @@ void TestSliceWithDataFormat(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }

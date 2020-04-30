@@ -22,7 +22,7 @@ namespace test {
 class MVNormOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestMVNorm(const std::vector<index_t> &input_shape,
                 const std::vector<T> &input,
                 bool normalize_variance,
@@ -31,21 +31,21 @@ void TestMVNorm(const std::vector<index_t> &input_shape,
   OpsTestNet net;
   net.AddInputFromArray<D, T>(MakeString("Input"), input_shape, input);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   }
   OpDefBuilder("MVNorm", "MVNormTest")
-      .Input(D == DeviceType::CPU ? "InputNCHW" : "Input")
+      .Input(D == RuntimeType::RT_CPU ? "InputNCHW" : "Input")
       .AddIntArg("normalize_variance", normalize_variance)
       .AddIntArg("across_channels", across_channels)
-      .Output(D == DeviceType::CPU ? "OutputNCHW" : "Output")
+      .Output(D == RuntimeType::RT_CPU ? "OutputNCHW" : "Output")
       .Finalize(net.NewOperatorDef());
 
   net.RunOp(D);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
@@ -56,7 +56,7 @@ void TestMVNorm(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(MVNormOpTest, SimpleTestMean) {
-  TestMVNorm<DeviceType::CPU, float>(
+  TestMVNorm<RuntimeType::RT_CPU, float>(
     {1, 1, 5, 12},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
@@ -79,7 +79,7 @@ TEST_F(MVNormOpTest, SimpleTestMean) {
 }
 
 TEST_F(MVNormOpTest, SimpleTestVariance) {
-  TestMVNorm<DeviceType::CPU, float>(
+  TestMVNorm<RuntimeType::RT_CPU, float>(
     {1, 1, 5, 12},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
@@ -102,7 +102,7 @@ TEST_F(MVNormOpTest, SimpleTestVariance) {
 }
 
 TEST_F(MVNormOpTest, SimpleTestVariance2) {
-  TestMVNorm<DeviceType::CPU, float>(
+  TestMVNorm<RuntimeType::RT_CPU, float>(
     {1, 1, 1, 16},
     {-0.63984936, -0.5024374 , -2.1083345,  2.6399455,
      -0.63989604, -0.63280314,  2.905462,  1.0263479,
@@ -116,7 +116,7 @@ TEST_F(MVNormOpTest, SimpleTestVariance2) {
 }
 
 TEST_F(MVNormOpTest, SimpleTestMeanOpenCL) {
-  TestMVNorm<DeviceType::GPU, float>(
+  TestMVNorm<RuntimeType::RT_OPENCL, float>(
     {1, 1, 5, 12},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
@@ -140,7 +140,7 @@ TEST_F(MVNormOpTest, SimpleTestMeanOpenCL) {
 
 
 TEST_F(MVNormOpTest, SimpleTestVarianceOpenCL) {
-  TestMVNorm<DeviceType::GPU, float>(
+  TestMVNorm<RuntimeType::RT_OPENCL, float>(
     {1, 1, 5, 12},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
@@ -163,7 +163,7 @@ TEST_F(MVNormOpTest, SimpleTestVarianceOpenCL) {
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestMVNormRandom(const std::vector<index_t> &input_shape,
                       bool normalize_variance,
                       bool across_channels) {
@@ -171,9 +171,9 @@ void TestMVNormRandom(const std::vector<index_t> &input_shape,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", input_shape);
+  net.AddRandomInput<RT_CPU, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("MVNorm", "MVNormTest")
@@ -186,7 +186,7 @@ void TestMVNormRandom(const std::vector<index_t> &input_shape,
   // run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
@@ -210,11 +210,11 @@ void TestMVNormRandom(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(MVNormOpTest, SimpleTestMeanHalfOpenCL) {
-  TestMVNormRandom<DeviceType::GPU, half>({1, 1, 5, 12}, false, true);
+  TestMVNormRandom<RuntimeType::RT_OPENCL, half>({1, 1, 5, 12}, false, true);
 }
 
 TEST_F(MVNormOpTest, SimpleTestVarianceHalfOpenCL) {
-  TestMVNormRandom<DeviceType::GPU, half>({1, 1, 5, 12}, true, true);
+  TestMVNormRandom<RuntimeType::RT_OPENCL, half>({1, 1, 5, 12}, true, true);
 }
 
 }  // namespace test

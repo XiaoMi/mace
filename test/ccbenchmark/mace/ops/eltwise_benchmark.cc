@@ -23,14 +23,14 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void EltwiseBenchmark(
     int iters, ops::EltwiseType type, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
   // Add input data
-  if (D == DeviceType::CPU && DataTypeToEnum<T>::value != DT_UINT8) {
+  if (D == RuntimeType::RT_CPU && DataTypeToEnum<T>::value != DT_UINT8) {
     net.AddRandomInput<D, T>("Input0", {n, c, h, w});
     net.AddRandomInput<D, T>("Input1", {n, c, h, w});
   } else {
@@ -50,7 +50,7 @@ void EltwiseBenchmark(
 
   net.Setup(D);
 
-  if (D == DeviceType::CPU && DataTypeToEnum<T>::value == DT_UINT8) {
+  if (D == RuntimeType::RT_CPU && DataTypeToEnum<T>::value == DT_UINT8) {
     net.GetTensor("Output")->SetScale(0.1);
   }
 
@@ -82,12 +82,12 @@ void EltwiseBenchmark(
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
-  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU);    \
-  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, GPU);    \
-  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, GPU)
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, RT_CPU);    \
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, RT_OPENCL);    \
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, RT_OPENCL)
 #else
 #define MACE_BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
-  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU)
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, RT_CPU)
 #endif
 
 MACE_BM_ELTWISE(2, 1, 128, 128, 32);
@@ -99,8 +99,8 @@ MACE_BM_ELTWISE(5, 1, 128, 128, 32);
 MACE_BM_ELTWISE(5, 1, 240, 240, 256);
 
 #ifdef MACE_ENABLE_QUANTIZE
-MACE_BM_ELTWISE_MACRO(0, 1, 128, 128, 32, uint8_t, CPU);
-MACE_BM_ELTWISE_MACRO(1, 1, 128, 128, 32, uint8_t, CPU);
+MACE_BM_ELTWISE_MACRO(0, 1, 128, 128, 32, uint8_t, RT_CPU);
+MACE_BM_ELTWISE_MACRO(1, 1, 128, 128, 32, uint8_t, RT_CPU);
 #endif
 
 }  // namespace test

@@ -59,7 +59,8 @@ void UpdateOp(mace::OperatorDef *op,
 }  // namespace mace
 
 namespace mace {
-namespace {{tag}} {
+namespace {{model_tag}} {
+namespace {{graph_tag}} {
 
 {% for i in range(start, end) %}
 
@@ -179,5 +180,6 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
 
 {% endfor %}
 
-}  // namespace {{tag}}
+}  // namespace {{graph_tag}}
+}  // namespace {{model_tag}}
 }  // namespace mace

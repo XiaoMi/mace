@@ -22,7 +22,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void SoftmaxBenchmark(int iters, int batch, int channels,
                       int height, int width, DataFormat data_format) {
   mace::testing::StopTiming();
@@ -30,9 +30,9 @@ void SoftmaxBenchmark(int iters, int batch, int channels,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU && data_format == DataFormat::NCHW) {
+  if (D == RuntimeType::RT_CPU && data_format == DataFormat::NCHW) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU || data_format == DataFormat::NHWC) {
+  } else if (D == RuntimeType::RT_OPENCL || data_format == DataFormat::NHWC) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -46,21 +46,22 @@ void SoftmaxBenchmark(int iters, int batch, int channels,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-void SoftmaxBenchmark<CPU, uint8_t>(
+void SoftmaxBenchmark<RT_CPU, uint8_t>(
     int iters, int batch, int channels, int height,
     int width, DataFormat data_format) {
   mace::testing::StopTiming();
@@ -69,7 +70,7 @@ void SoftmaxBenchmark<CPU, uint8_t>(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, uint8_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>(
       "Input", {batch, height, width, channels});
 
   OpDefBuilder("Softmax", "SoftmaxBM")
@@ -78,7 +79,7 @@ void SoftmaxBenchmark<CPU, uint8_t>(
       .AddIntArg("T", DT_UINT8)
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
 
   Tensor *output = net.GetTensor("Output");
   output->SetScale(0);
@@ -116,26 +117,26 @@ void SoftmaxBenchmark<CPU, uint8_t>(
 
 #if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_SOFTMAX(N, C, H, W)                       \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NCHW);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NHWC);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, CPU, NHWC);  \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, GPU, NHWC);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU, NHWC)
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NCHW);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NHWC);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, RT_CPU, NHWC);  \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_OPENCL, NHWC);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, RT_OPENCL, NHWC)
 #elif defined(MACE_ENABLE_OPENCL)
 #define MACE_BM_SOFTMAX(N, C, H, W)                       \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NCHW);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NHWC);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, GPU, NHWC);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU, NHWC)
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NCHW);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NHWC);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_OPENCL, NHWC);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, RT_OPENCL, NHWC)
 #elif defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_SOFTMAX(N, C, H, W)                       \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NCHW);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NHWC);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, CPU, NHWC)
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NCHW);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NHWC);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, RT_CPU, NHWC)
 #else
 #define MACE_BM_SOFTMAX(N, C, H, W)                       \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NCHW);    \
-  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU, NHWC)
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NCHW);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, RT_CPU, NHWC)
 #endif
 
 MACE_BM_SOFTMAX(1, 2, 512, 512);

@@ -21,8 +21,8 @@
 #include <memory>
 
 #include "mace/core/ops/operator.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
-#include "mace/ops/opencl/buffer_transform_kernel.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
+#include "mace/runtimes/opencl/transform/buffer_transform_kernel.h"
 
 namespace mace {
 namespace ops {
@@ -39,9 +39,9 @@ class ReshapeKernel : public OpenCLReshapeKernel {
                      Tensor *output) override;
 
  private:
+  std::unique_ptr<OpenCLBufferTransformKernel> i2bkernel_;
+  std::unique_ptr<OpenCLBufferTransformKernel> b2ikernel_;
   std::unique_ptr<Tensor> inter_buffer_;
-  std::unique_ptr<ops::OpenCLBufferTransformKernel> i2bkernel_;
-  std::unique_ptr<ops::OpenCLBufferTransformKernel> b2ikernel_;
 };
 
 }  // namespace image

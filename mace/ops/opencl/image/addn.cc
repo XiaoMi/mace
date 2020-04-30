@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/addn.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -31,7 +33,7 @@ MaceStatus AddNKernel::Compute(
   const index_t width = input_tensors[0]->dim(2);
   const index_t channels = input_tensors[0]->dim(3);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   for (size_t i = 1; i < size; ++i) {
@@ -55,11 +57,11 @@ MaceStatus AddNKernel::Compute(
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("addn", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("addn", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   std::vector<index_t> output_shape = input_tensors[0]->shape();
@@ -73,19 +75,15 @@ MaceStatus AddNKernel::Compute(
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input_tensors[0]->shape())) {
-    std::vector<size_t> output_image_shape;
-    OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                                &output_image_shape);
-    MACE_RETURN_IF_ERROR(
-        output_tensor->ResizeImage(output_shape, output_image_shape));
+    MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
 
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_2D_GWS_ARGS(kernel_, gws);
     for (auto input : input_tensors) {
-      kernel_.setArg(idx++, *(input->opencl_image()));
+      kernel_.setArg(idx++, *(input->memory<cl::Image>()));
     }
-    kernel_.setArg(idx++, *(output_tensor->opencl_image()));
+    kernel_.setArg(idx++, *(output_tensor->mutable_memory<cl::Image>()));
 
     input_shape_ = input_tensors[0]->shape();
   }
@@ -94,7 +92,7 @@ MaceStatus AddNKernel::Compute(
   std::string tuning_key =
       Concat("addn_opencl_kernel", output_tensor->dim(0), output_tensor->dim(1),
              output_tensor->dim(2), output_tensor->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

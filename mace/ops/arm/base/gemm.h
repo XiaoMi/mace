@@ -15,6 +15,8 @@
 #ifndef MACE_OPS_ARM_BASE_GEMM_H_
 #define MACE_OPS_ARM_BASE_GEMM_H_
 
+#include <memory>
+
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/common/matrix.h"
@@ -35,7 +37,7 @@ template<typename T>
 class Gemm : public delegator::Gemm {
  public:
   explicit Gemm(const delegator::GemmParam &param)
-      : delegator::Gemm(param), pack_cache_(GetCPUAllocator()),
+      : delegator::Gemm(param),
         should_cache_pack_(param.should_cache_pack_),
         cached_(0) {}
   ~Gemm() {}
@@ -122,7 +124,7 @@ class Gemm : public delegator::Gemm {
                T *packed_matrix);
 
  private:
-  Buffer pack_cache_;
+  std::unique_ptr<Buffer> pack_cache_;
   bool should_cache_pack_;
   int cached_;
 };

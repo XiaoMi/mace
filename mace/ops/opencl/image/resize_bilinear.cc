@@ -15,6 +15,7 @@
 #include "mace/ops/opencl/image/resize_bilinear.h"
 
 #include "mace/ops/common/utils.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 
 
 namespace mace {
@@ -39,7 +40,7 @@ MaceStatus ResizeBilinearKernel::Compute(
                            static_cast<uint32_t>(out_width),
                            static_cast<uint32_t>(out_height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -53,23 +54,19 @@ MaceStatus ResizeBilinearKernel::Compute(
     built_options.emplace(
         MakeString("-DCT_MODE=", coordinate_transformation_mode_));
     MACE_RETURN_IF_ERROR(
-        runtime->BuildKernel("resize_bilinear",
-                             kernel_name,
-                             built_options,
-                             &kernel_));
+        executor->BuildKernel("resize_bilinear",
+                              kernel_name,
+                              built_options,
+                              &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> output_shape{batch, out_height, out_width, channels};
-
-    std::vector<size_t> output_image_shape;
-    OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                                &output_image_shape);
-    MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
     float height_scale =
         common::utils::CalculateResizeScale(in_height,
@@ -83,8 +80,10 @@ MaceStatus ResizeBilinearKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    MACE_CHECK(input->memory_type() == MemoryType::GPU_IMAGE);
+    MACE_CHECK(output->memory_type() == MemoryType::GPU_IMAGE);
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
     kernel_.setArg(idx++, height_scale);
     kernel_.setArg(idx++, width_scale);
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
@@ -95,11 +94,11 @@ MaceStatus ResizeBilinearKernel::Compute(
   }
 
   const std::vector<uint32_t>
-      lws = resize_bilinear::LocalWS(runtime, gws, kwg_size_);
+      lws = resize_bilinear::LocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("resize_bilinear_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

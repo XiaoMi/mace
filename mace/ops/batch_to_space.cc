@@ -81,11 +81,11 @@ class BatchToSpaceOpBase : public Operation {
   }
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class BatchToSpaceNDOp;
 
 template<class T>
-class BatchToSpaceNDOp<DeviceType::CPU, T> : public BatchToSpaceOpBase {
+class BatchToSpaceNDOp<RuntimeType::RT_CPU, T> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {}
@@ -99,9 +99,6 @@ class BatchToSpaceNDOp<DeviceType::CPU, T> : public BatchToSpaceOpBase {
                                      DataFormat::NCHW,
                                      output_shape.data());
     MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
-
-    Tensor::MappingGuard input_guard(batch_tensor);
-    Tensor::MappingGuard output_guard(space_tensor);
 
     int pad_top = paddings_[0];
     int pad_left = paddings_[2];
@@ -178,7 +175,8 @@ class BatchToSpaceNDOp<DeviceType::CPU, T> : public BatchToSpaceOpBase {
 };
 
 template<>
-class BatchToSpaceNDOp<DeviceType::CPU, uint8_t> : public BatchToSpaceOpBase {
+class BatchToSpaceNDOp<RuntimeType::RT_CPU,
+                       uint8_t> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {}
@@ -192,9 +190,6 @@ class BatchToSpaceNDOp<DeviceType::CPU, uint8_t> : public BatchToSpaceOpBase {
                                      DataFormat::NHWC,
                                      output_shape.data());
     MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
-
-    Tensor::MappingGuard input_guard(batch_tensor);
-    Tensor::MappingGuard output_guard(space_tensor);
 
     int pad_top = paddings_[0];
     int pad_left = paddings_[2];
@@ -262,7 +257,8 @@ class BatchToSpaceNDOp<DeviceType::CPU, uint8_t> : public BatchToSpaceOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class BatchToSpaceNDOp<DeviceType::GPU, float> : public BatchToSpaceOpBase {
+class BatchToSpaceNDOp<RuntimeType::RT_OPENCL,
+                       float> : public BatchToSpaceOpBase {
  public:
   explicit BatchToSpaceNDOp(OpConstructContext *context)
       : BatchToSpaceOpBase(context) {
@@ -289,13 +285,13 @@ class BatchToSpaceNDOp<DeviceType::GPU, float> : public BatchToSpaceOpBase {
 
 void RegisterBatchToSpaceND(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
-                   BatchToSpaceNDOp, DeviceType::CPU, float);
+                   BatchToSpaceNDOp, RuntimeType::RT_CPU, float);
 
   MACE_REGISTER_BF16_OP(op_registry, "BatchToSpaceND",
-                        BatchToSpaceNDOp, DeviceType::CPU);
+                        BatchToSpaceNDOp, RuntimeType::RT_CPU);
 
   MACE_REGISTER_OP(op_registry, "BatchToSpaceND",
-                   BatchToSpaceNDOp, DeviceType::CPU, uint8_t);
+                   BatchToSpaceNDOp, RuntimeType::RT_CPU, uint8_t);
 
   MACE_REGISTER_GPU_OP(op_registry, "BatchToSpaceND", BatchToSpaceNDOp);
 }

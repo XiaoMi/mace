@@ -7,7 +7,7 @@ file(GLOB MACE_CC_TEST_SRCS
 )
 
 if(MACE_ENABLE_HTA)
-  set(MACE_CC_TEST_SRCS ${MACE_CC_TEST_SRCS} mace/core/runtime/hexagon/hta_transform_test.cc)
+  set(MACE_CC_TEST_SRCS ${MACE_CC_TEST_SRCS})
 endif(MACE_ENABLE_HTA)
 
 add_executable(mace_cc_test ${MACE_CC_TEST_SRCS})

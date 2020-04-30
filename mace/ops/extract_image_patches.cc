@@ -32,16 +32,17 @@
 #include "mace/ops/conv_pool_2d_base.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/extract_image_patches.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ExtractImagePatchesOp;
 
 template<class T>
-class ExtractImagePatchesOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
+class ExtractImagePatchesOp<RuntimeType::RT_CPU, T> : public ConvPool2dOpBase {
  public:
   explicit ExtractImagePatchesOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
@@ -66,13 +67,10 @@ class ExtractImagePatchesOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
                          RoundType::FLOOR, output_shape.data());
     }
     output_shape[1] *= kernels_[0] * kernels_[1];
-
     MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input_tensor);
-    Tensor::MappingGuard output_guard(output_tensor);
     const T *input = input_tensor->data<T>();
-    MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<T>::value);
+    MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<T>::v());
     T *output = output_tensor->mutable_data<T>();
     const index_t *input_shape = input_tensor->shape().data();
     int pad_hw[2] = {paddings[0] / 2, paddings[1] / 2};
@@ -105,8 +103,7 @@ class ExtractImagePatchesOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
     const index_t in_batch_size = in_channels * in_image_size;
     const index_t out_batch_size = out_channels * out_image_size;
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
       for (index_t b = start0; b < end0; b += step0) {
@@ -147,7 +144,8 @@ class ExtractImagePatchesOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ExtractImagePatchesOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
+class ExtractImagePatchesOp<RuntimeType::RT_OPENCL, float>
+    : public ConvPool2dOpBase {
  public:
   explicit ExtractImagePatchesOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
@@ -176,19 +174,19 @@ class ExtractImagePatchesOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
 
 void RegisterExtractImagePatches(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExtractImagePatches", ExtractImagePatchesOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ExtractImagePatches",
-                        ExtractImagePatchesOp, DeviceType::CPU);
+                        ExtractImagePatchesOp, RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "ExtractImagePatches",
                        ExtractImagePatchesOp);
 
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("ExtractImagePatches").SetDevicePlacerFunc(
-          [](OpConditionContext *context) -> std::set<DeviceType> {
+          [](OpConditionContext *context) -> std::set<RuntimeType> {
             auto op = context->operator_def();
             if (op->output_shape_size() != op->output_size()) {
-              return {DeviceType::CPU, DeviceType::GPU};
+              return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
             }
             auto kernels = ProtoArgHelper::GetRepeatedArgs<OperatorDef, int>(
                 *op, "kernels");
@@ -196,21 +194,21 @@ void RegisterExtractImagePatches(OpRegistry *op_registry) {
             auto &output_dims = output_shape.dims();
             auto in_channel = output_dims[3] / kernels[0] / kernels[1];
             if (output_shape.dims_size() != 4 || in_channel % 4 != 0) {
-              return {DeviceType::CPU};
+              return {RuntimeType::RT_CPU};
             }
 #ifdef MACE_ENABLE_OPENCL
-            if (context->device()->device_type() == DeviceType::GPU) {
-              auto opencl_runtime =
-                  context->device()->gpu_runtime()->opencl_runtime();
-              auto max_2d_size = opencl_runtime->GetMaxImage2DSize();
+            auto runtime = context->runtime();
+            if (runtime->GetRuntimeType() == RuntimeType::RT_OPENCL) {
+              auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
+              auto max_2d_size = executor->GetMaxImage2DSize();
               auto image_width = output_dims[2] * output_dims[3] / 4;
               if (image_width > static_cast<index_t>(max_2d_size[0])) {
-                return {DeviceType::CPU};
+                return {RuntimeType::RT_CPU};
               }
             }
 #endif  // MACE_ENABLE_OPENCL
 
-            return {DeviceType::CPU, DeviceType::GPU};
+            return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
           }));
 }
 

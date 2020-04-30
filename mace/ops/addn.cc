@@ -30,11 +30,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class AddNOp;
 
 template<class T>
-class AddNOp<DeviceType::CPU, T> : public Operation {
+class AddNOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit AddNOp(OpConstructContext *context)
       : Operation(context) {}
@@ -45,12 +45,10 @@ class AddNOp<DeviceType::CPU, T> : public Operation {
     MACE_RETURN_IF_ERROR(output->ResizeLike(inputs_[0]));
     const index_t size = output->size();
 
-    Tensor::MappingGuard output_guard(output);
     auto output_data = output->mutable_data<T>();
     memset(static_cast<void *>(output_data), 0, size * sizeof(T));
 
     for (auto &input : inputs_) {
-      Tensor::MappingGuard input_guard(input);
       auto input_data = input->template data<T>();
 
       for (index_t j = 0; j < size; ++j) {
@@ -64,7 +62,7 @@ class AddNOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class AddNOp<DeviceType::GPU, float> : public Operation {
+class AddNOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit AddNOp(OpConstructContext *context)
       : Operation(context) {
@@ -94,26 +92,26 @@ class AddNOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterAddN(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "AddN", AddNOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "AddN", AddNOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "AddN", AddNOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "AddN", AddNOp, RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "AddN", AddNOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("AddN")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

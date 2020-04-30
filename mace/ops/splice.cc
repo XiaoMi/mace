@@ -36,11 +36,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class SpliceOp;
 
 template<typename T>
-class SpliceOp<DeviceType::CPU, T> : public Operation {
+class SpliceOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit SpliceOp(OpConstructContext *context)
       : Operation(context),
@@ -93,8 +93,7 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
 
     const index_t num_splice = static_cast<index_t>(context_.size());
     const index_t dim = input_dim - const_dim_;
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     const index_t out_chunk = forward_indexes_.size() / num_splice;
     const index_t output_dim = dim * num_splice + const_dim_;
@@ -105,8 +104,6 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
     output_shape[rank - 1] = output_dim;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
@@ -156,9 +153,9 @@ class SpliceOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterSplice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Splice", SpliceOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Splice", SpliceOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

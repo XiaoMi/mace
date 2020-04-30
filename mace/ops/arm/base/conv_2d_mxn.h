@@ -53,10 +53,6 @@ class Conv2dKMxN : public Conv2dBase {
     }
     out_tensor->Clear();
 
-    Tensor::MappingGuard in_guard(input);
-    Tensor::MappingGuard filter_guard(filter);
-    Tensor::MappingGuard out_guard(output);
-
     const T *filter_data = filter->data<T>();
     const T *input_data = in_tensor->data<T>();
     T *output_data = out_tensor->mutable_data<T>();

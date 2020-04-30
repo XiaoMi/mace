@@ -24,8 +24,8 @@ class PriorBoxOpTest : public OpsTestBase {};
 TEST_F(PriorBoxOpTest, Simple) {
   OpsTestNet net;
   //  Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("INPUT", {1, 128, 1, 1});
-  net.AddRandomInput<DeviceType::CPU, float>("DATA", {1, 3, 300, 300});
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("INPUT", {1, 128, 1, 1});
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("DATA", {1, 3, 300, 300});
   OpDefBuilder("PriorBox", "PriorBoxTest")
       .Input("INPUT")
       .Input("DATA")
@@ -39,7 +39,7 @@ TEST_F(PriorBoxOpTest, Simple) {
       .Finalize(net.NewOperatorDef());
 
   //  Run
-  net.RunOp(DeviceType::CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   //  Check
   auto expected_tensor = net.CreateTensor<float>({1, 2, 24},

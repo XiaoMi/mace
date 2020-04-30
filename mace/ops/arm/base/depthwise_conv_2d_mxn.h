@@ -39,9 +39,6 @@ class DepthwiseConv2dKMxN : public Conv2dBase {
     DepthwiseConvComputeParam p =
         PreWorkAndGetDepthwiseConv2DParam(context, input, filter, output);
 
-    Tensor::MappingGuard in_guard(input);
-    Tensor::MappingGuard filter_guard(filter);
-    Tensor::MappingGuard out_guard(output);
     const T *filter_data = filter->data<T>();
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();

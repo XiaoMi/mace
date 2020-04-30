@@ -22,23 +22,23 @@ void RegisterDepthwiseDeconv2dK3x3Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, DepthwiseDeconv2dK3x3S1<float>,
       delegator::DepthwiseDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3S1));
   MACE_REGISTER_DELEGATOR(
       registry, DepthwiseDeconv2dK3x3S2<float>,
       delegator::DepthwiseDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3S2));
 }
 
 void RegisterGroupDeconv2dK3x3Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, GroupDeconv2dK3x3S1<float>, delegator::GroupDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3S1));
   MACE_REGISTER_DELEGATOR(
       registry, GroupDeconv2dK3x3S2<float>, delegator::GroupDeconv2dParam,
-      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(GroupDeconv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3S2));
 }
 

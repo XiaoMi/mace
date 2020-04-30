@@ -29,12 +29,12 @@ TEST_F(PoolingOpTest, MAX_VALID) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 4, 4, 2},
       {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
        8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -50,7 +50,7 @@ TEST_F(PoolingOpTest, MAX_VALID) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -65,10 +65,10 @@ TEST_F(PoolingOpTest, MAX_SAME) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 3, 1},
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input", {1, 3, 3, 1},
                                                 {0, 1, 2, 3, 4, 5, 6, 7, 8});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -84,7 +84,7 @@ TEST_F(PoolingOpTest, MAX_SAME) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -98,11 +98,11 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 4, 4, 1},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -118,7 +118,7 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -132,11 +132,11 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 2, 9, 1},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -152,7 +152,7 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -162,7 +162,7 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMaxPooling3S2() {
   // Construct graph
   OpsTestNet net;
@@ -172,9 +172,10 @@ void SimpleMaxPooling3S2() {
       "Input", {1, 3, 9, 1},
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
        14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26});
+  auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {20, 22, 24, 26});
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     // Run
     OpDefBuilder("Pooling", "PoolingTest")
@@ -187,12 +188,13 @@ void SimpleMaxPooling3S2() {
         .AddIntsArg("dilations", {1, 1})
         .Finalize(net.NewOperatorDef());
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("Pooling", "PoolingTest")
         .Input("Input")
         .Output("Output")
+        .OutputShape(expected->shape())
         .AddIntArg("pooling_type", PoolingType::MAX)
         .AddIntsArg("kernels", {3, 3})
         .AddIntsArg("strides", {2, 2})
@@ -203,18 +205,20 @@ void SimpleMaxPooling3S2() {
   }
 
   // Check
-  auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {20, 22, 24, 26});
-
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
-TEST_F(PoolingOpTest, CPUSimpleMaxPooling3S2) { SimpleMaxPooling3S2<CPU>(); }
+TEST_F(PoolingOpTest, CPUSimpleMaxPooling3S2) {
+  SimpleMaxPooling3S2<RuntimeType::RT_CPU>();
+}
 
-TEST_F(PoolingOpTest, OPENCLSimpleMaxPooling3S2) { SimpleMaxPooling3S2<GPU>(); }
+TEST_F(PoolingOpTest, OPENCLSimpleMaxPooling3S2) {
+  SimpleMaxPooling3S2<RT_OPENCL>();
+}
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void MaxPooling3S2(const std::vector<index_t> &input_shape,
                    const std::vector<int> &strides,
                    Padding padding) {
@@ -224,7 +228,7 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddRandomInput<D, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -240,7 +244,7 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
   // run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
@@ -268,30 +272,30 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(PoolingOpTest, OPENCLAlignedMaxPooling3S2) {
-  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
-  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
-  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
-  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
-  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
-  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, float>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, float>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, float>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, float>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, float>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, float>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLHalfAlignedMaxPooling3S2) {
-  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
-  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
-  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
-  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
-  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
-  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, half>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, half>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, half>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, half>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, half>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, half>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnalignedMaxPooling3S2) {
-  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {1, 1}, Padding::VALID);
-  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {2, 2}, Padding::VALID);
-  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {1, 2}, Padding::VALID);
-  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {1, 1}, Padding::SAME);
-  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {2, 2}, Padding::SAME);
-  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {2, 1}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, half>({3, 41, 43, 47}, {1, 1}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, half>({3, 41, 43, 47}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, half>({3, 41, 43, 47}, {1, 2}, Padding::VALID);
+  MaxPooling3S2<RT_OPENCL, half>({3, 41, 43, 47}, {1, 1}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, half>({3, 41, 43, 47}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<RT_OPENCL, half>({3, 41, 43, 47}, {2, 1}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, AVG_VALID) {
@@ -299,12 +303,12 @@ TEST_F(PoolingOpTest, AVG_VALID) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 4, 4, 2},
       {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
        8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -320,7 +324,7 @@ TEST_F(PoolingOpTest, AVG_VALID) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -331,7 +335,7 @@ TEST_F(PoolingOpTest, AVG_VALID) {
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleAvgPoolingTest() {
   // Construct graph
   OpsTestNet net;
@@ -340,10 +344,12 @@ void SimpleAvgPoolingTest() {
   net.AddInputFromArray<D, float>(
       "Input", {1, 2, 8, 1},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+  auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
 
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
+      .OutputShape(expected->shape())
       .AddIntArg("pooling_type", PoolingType::AVG)
       .AddIntsArg("kernels", {2, 2})
       .AddIntsArg("strides", {2, 2})
@@ -352,17 +358,18 @@ void SimpleAvgPoolingTest() {
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(D);
-  // Check
-  auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
 
+  // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
-TEST_F(PoolingOpTest, OPENCLSimpleAvgPooling) { SimpleAvgPoolingTest<GPU>(); }
+TEST_F(PoolingOpTest, OPENCLSimpleAvgPooling) {
+  SimpleAvgPoolingTest<RT_OPENCL>();
+}
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void AvgPoolingTest(const std::vector<index_t> &shape,
                     const std::vector<int> &kernels,
                     const std::vector<int> &strides,
@@ -373,7 +380,7 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
   // Add input data
   net.AddRandomInput<D, float>("Input", shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -389,7 +396,7 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
   // run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
@@ -417,45 +424,57 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
 }  // namespace
 
 TEST_F(PoolingOpTest, OPENCLAlignedAvgPooling) {
-  AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
-  AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::VALID);
-  AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
-  AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, float>({3, 15, 15, 128}, {4, 4},
+                                   {4, 4}, Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, float>({3, 15, 15, 128}, {3, 4},
+                                   {1, 2}, Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, float>({3, 15, 15, 128}, {4, 4},
+                                   {4, 4}, Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, float>({3, 15, 15, 128}, {3, 4},
+                                   {1, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLHalfAlignedAvgPooling) {
-  AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
-  AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::VALID);
-  AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
-  AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, half>({3, 15, 15, 128}, {4, 4},
+                                  {4, 4}, Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, half>({3, 15, 15, 128}, {3, 4},
+                                  {1, 2}, Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, half>({3, 15, 15, 128}, {4, 4},
+                                  {4, 4}, Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, half>({3, 15, 15, 128}, {3, 4},
+                                  {1, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLAlignedLargeKernelAvgPooling) {
-  AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {16, 16}, {16, 16},
-                             Padding::VALID);
-  AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {12, 16}, {12, 8},
-                             Padding::VALID);
-  AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {16, 16}, {16, 16},
-                             Padding::SAME);
-  AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {8, 16}, {8, 16},
-                             Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, float>({3, 64, 64, 128}, {16, 16}, {16, 16},
+                                   Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, float>({3, 64, 64, 128}, {12, 16}, {12, 8},
+                                   Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, float>({3, 64, 64, 128}, {16, 16}, {16, 16},
+                                   Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, float>({3, 64, 64, 128}, {8, 16}, {8, 16},
+                                   Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLHalfAlignedLargeKernelAvgPooling) {
-  AvgPoolingTest<GPU, half>({3, 64, 64, 128}, {16, 16}, {16, 16},
-                            Padding::VALID);
-  AvgPoolingTest<GPU, half>({3, 64, 64, 128}, {16, 16}, {16, 16},
-                            Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, half>({3, 64, 64, 128}, {16, 16}, {16, 16},
+                                  Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, half>({3, 64, 64, 128}, {16, 16}, {16, 16},
+                                  Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnAlignedAvgPooling) {
-  AvgPoolingTest<GPU, float>({3, 31, 37, 128}, {2, 2}, {2, 2}, Padding::VALID);
-  AvgPoolingTest<GPU, float>({3, 31, 37, 128}, {2, 2}, {2, 2}, Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, float>({3, 31, 37, 128},
+                                   {2, 2}, {2, 2}, Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, float>({3, 31, 37, 128}, {2, 2},
+                                   {2, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
-  AvgPoolingTest<GPU, float>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::VALID);
-  AvgPoolingTest<GPU, float>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::SAME);
+  AvgPoolingTest<RT_OPENCL, float>({3, 31, 37, 128}, {8, 8},
+                                   {8, 8}, Padding::VALID);
+  AvgPoolingTest<RT_OPENCL, float>({3, 31, 37, 128}, {8, 8},
+                                   {8, 8}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, QUANT_MAX_VALID) {
@@ -463,7 +482,7 @@ TEST_F(PoolingOpTest, QUANT_MAX_VALID) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>(
       "Input", {1, 4, 4, 2},
       {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
        8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
@@ -494,7 +513,7 @@ TEST_F(PoolingOpTest, QUANT_MAX_SAME) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, uint8_t>("Input", {1, 3, 3, 1},
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>("Input", {1, 3, 3, 1},
                                                   {0, 1, 2, 3, 4, 5, 6, 7, 8});
 
   OpDefBuilder("Pooling", "PoolingTest")
@@ -522,7 +541,7 @@ TEST_F(PoolingOpTest, QUANT_AVG_VALID) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>(
       "Input", {1, 4, 4, 2},
       {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
        8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
@@ -560,12 +579,12 @@ void TestQuant(const index_t batch,
                PoolingType pooling) {
   OpsTestNet net;
   std::vector<index_t> input_shape{batch, in_height, in_width, channels};
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Input", input_shape, false, false);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
-  net.AddRandomInput<DeviceType::CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "OutputNCHW", input_shape, false, true, true);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputNCHW")
@@ -578,8 +597,8 @@ void TestQuant(const index_t batch,
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
 
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeInput")
@@ -591,7 +610,8 @@ void TestQuant(const index_t batch,
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
-  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>("QuantizedOutput",
+                                                   input_shape);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("QuantizedInput")
       .Output("QuantizedOutput")

@@ -35,7 +35,7 @@ void TestSqueeze(const std::vector<index_t> &org_shape,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", org_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", org_shape);
 
   // Run
   net.RunOp();

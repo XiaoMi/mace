@@ -50,7 +50,6 @@ MaceStatus Deconv2d<T>::Compute(const OpContext *context,
 
   std::vector<index_t> out_shape;
   if (output_shape) {
-    Tensor::MappingGuard out_shape_guard(output_shape);
     MACE_CHECK(output_shape->size() == 4, "output shape should be 4-dims");
     out_shape =
         std::vector<index_t>(output_shape->data<int32_t>(),
@@ -79,20 +78,11 @@ MaceStatus Deconv2d<T>::Compute(const OpContext *context,
 
   std::unique_ptr<Tensor> padded_output(nullptr);
   if (is_out_padded) {
-    index_t padded_out_size =
-        std::accumulate(padded_out_shape.begin(),
-                        padded_out_shape.end(),
-                        1,
-                        std::multiplies<index_t>()) * sizeof(T);
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    index_t scratch_size = PadAlignSize(padded_out_size);
-    scratch->GrowSize(scratch_size);
-
-    std::unique_ptr<Tensor> padded_out(make_unique<Tensor>(
-        scratch->Scratch(scratch_size), DataTypeToEnum<T>::v()));
-    padded_out->Reshape(padded_out_shape);
-    padded_output = std::move(padded_out);
+    auto *runtime = context->runtime();
+    padded_output = make_unique<Tensor>(
+        runtime, DataTypeToEnum<T>::v(),
+        output->memory_type(), padded_out_shape);
+    runtime->AllocateBufferForTensor(padded_output.get(), RENT_SCRATCH);
   }
   Tensor *out_tensor = output;
   if (padded_output != nullptr) {
@@ -100,10 +90,6 @@ MaceStatus Deconv2d<T>::Compute(const OpContext *context,
   }
 
   out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
 
   auto input_data = input->data<T>();
   auto filter_data = filter->data<T>();
@@ -182,10 +168,12 @@ MaceStatus Deconv2d<T>::Compute(const OpContext *context,
 void RegisterDeconv2dDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Deconv2d<float>, delegator::Deconv2dParam,
-      MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, float, ImplType::REF));
+      MACE_DELEGATOR_KEY(Deconv2d, RuntimeType::RT_CPU, float, ImplType::REF));
+
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Deconv2d<BFloat16>, delegator::Deconv2dParam,
-      MACE_DELEGATOR_KEY(Deconv2d, DeviceType::CPU, BFloat16, ImplType::REF));
+      MACE_DELEGATOR_KEY(Deconv2d, RuntimeType::RT_CPU,
+                         BFloat16, ImplType::REF));
 }
 
 }  // namespace ref

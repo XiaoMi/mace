@@ -23,139 +23,49 @@
 #include "mace/utils/logging.h"
 
 namespace mace {
-namespace {{tag}} {
+namespace {{model_tag}} {
 
-{% for i in range(net.tensors|length) %}
-extern void CreateTensor{{ i }}(mace::ConstTensor *tensor);
+{% for i in range(multi_net.net_def|length) %}
+extern void CreateNet{{i}}(mace::NetDef *net);
 {% endfor %}
 
-
-{% for i in range(net.op|length) %}
-extern void CreateOperator{{i}}(mace::OperatorDef *op);
-{% endfor %}
-
-}  // namespace {{ tag }}
+}  // namespace {{ model_tag }}
 
 namespace {
 
-{% if net.arg|length != 0 %}
-void CreateNetArg(NetDef *net_def) {
-  net_def->mutable_arg()->Reserve({{ net.arg|length }});
-  mace::Argument *arg = nullptr;
-  {% for i in range(net.arg|length) %}
-
-  arg = net_def->add_arg();
-  arg->set_name({{ net.arg[i].name|tojson }});
-
-  {%- if net.arg[i].HasField('f') %}
-  arg->set_f({{ net.arg[i].f }});
-  {% endif %}
-
-  {%- if net.arg[i].HasField('i') %}
-  arg->set_i({{ net.arg[i].i }});
-  {% endif %}
-
-  {%- if net.arg[i].HasField('s') %}
-  arg->set_s({{ net.arg[i].s|tojson }});
-  {% endif %}
-
-  arg->mutable_floats()->Reserve({{ net.arg[i].floats|length }});
-  {% for float_value in net.arg[i].floats %}
-  arg->add_floats({{ float_value }});
-  {% endfor %}
-  arg->mutable_ints()->Reserve({{ net.arg[i].ints|length }});
-  {% for int_value in net.arg[i].ints %}
-  arg->add_ints({{ int_value }});
-  {% endfor %}
-
-  {% endfor %}
-}
-{% endif %}
-
-{% if net.input_info | length > 0 %}
-void CreateInputInfo(NetDef *net_def) {
-  net_def->mutable_input_info()->Reserve({{ net.input_info | length }});
-  InputOutputInfo *input_info = nullptr;
-  {% for idx in range(net.input_info|length) %}
-  input_info = net_def->add_input_info();
-  input_info->set_name({{ net.input_info[idx].name|tojson }});
-  input_info->set_node_id({{net.input_info[idx].node_id }});
-  input_info->set_data_type(static_cast<DataType>({{ net.input_info[idx].data_type }}));
-  input_info->set_data_format({{ net.input_info[idx].data_format }});
-  input_info->set_scale({{ net.input_info[idx].scale }});
-  input_info->set_zero_point({{ net.input_info[idx].zero_point }});
-  input_info->mutable_dims()->Reserve({{ net.input_info[idx].dims|length }});
-  {% for dim in net.input_info[idx].dims %}
-  input_info->add_dims({{ dim }});
-  {% endfor %}
-  {% endfor %}
-}
-{% endif %}
-
-{% if net.output_info | length > 0 %}
-void CreateOutputInfo(NetDef *net_def) {
-  net_def->mutable_output_info()->Reserve({{ net.output_info | length }});
-  InputOutputInfo *output_info = nullptr;
-  {% for idx in range(net.output_info|length) %}
-  output_info = net_def->add_output_info();
-  output_info->set_name({{ net.output_info[idx].name|tojson }});
-  output_info->set_node_id({{ net.output_info[idx].node_id }});
-  output_info->set_data_type(static_cast<DataType>({{ net.output_info[idx].data_type }}));
-  output_info->set_data_format({{ net.output_info[idx].data_format }});
-  output_info->set_scale({{ net.output_info[idx].scale }});
-  output_info->set_zero_point({{ net.output_info[idx].zero_point }});
-  output_info->mutable_dims()->Reserve({{ net.output_info[idx].dims|length }});
-  {% for dim in net.output_info[idx].dims %}
-  output_info->add_dims({{dim}});
-  {% endfor %}
-  {% endfor %}
-}
-{% endif %}
-
-void CreateOperators(NetDef *net_def) {
-  MACE_LATENCY_LOGGER(1, "Create operators");
-
-  net_def->mutable_op()->Reserve({{ net.op|length }});
-  {% for i in range(net.op|length) %}
-  mace::{{tag}}::CreateOperator{{i}}(net_def->add_op());
-  {% endfor %}
-}
-
-void CreateTensors(NetDef *net_def) {
+void CreateNets(MultiNetDef *multi_net_def) {
   MACE_LATENCY_LOGGER(1, "Create tensors");
 
-  net_def->mutable_tensors()->Reserve({{ net.tensors|length }});
-  {% for i in range(net.tensors|length) %}
-  mace::{{tag}}::CreateTensor{{ i }}(net_def->add_tensors());
+  multi_net_def->mutable_net_def()->Reserve({{ multi_net.net_def|length }});
+  {% for i in range(multi_net.net_def|length) %}
+  mace::{{model_tag}}::CreateNet{{i}}(multi_net_def->add_net_def());
   {% endfor %}
 }
 }  // namespace
 
-namespace {{tag}} {
+namespace {{model_tag}} {
 
-MACE_API const std::shared_ptr<NetDef> CreateNet() {
-  MACE_LATENCY_LOGGER(1, "Create net ", {{ net.name|default("undefined")|tojson }});
+MACE_API const std::shared_ptr<MultiNetDef> CreateMultiNet() {
+  MACE_LATENCY_LOGGER(1, "Create multi net ", {{ multi_net.name|default("undefined")|tojson }});
 
-  std::shared_ptr<NetDef> net_def(new NetDef());
+  std::shared_ptr<MultiNetDef> multi_net_def(new MultiNetDef());
+  multi_net_def->set_version_code({{ multi_net.version_code }});
+  multi_net_def->set_name({{ multi_net.name|tojson }});
+  CreateNets(multi_net_def.get());
 
-  CreateOperators(net_def.get());
-  CreateTensors(net_def.get());
+  {% for idx in range(multi_net.input_tensor|length) %}
+  multi_net_def->add_input_tensor({{ multi_net.input_tensor[idx]|tojson }});
+  {% endfor %}
 
-  {% if net.arg|length != 0 %}
-  CreateNetArg(net_def.get());
-  {% endif %}
-  {% if net.input_info | length > 0 %}
-  CreateInputInfo(net_def.get());
-  {% endif %}
-  {% if net.output_info | length > 0 %}
-  CreateOutputInfo(net_def.get());
-  {% endif %}
+  {% for idx in range(multi_net.output_tensor|length) %}
+  multi_net_def->add_output_tensor({{ multi_net.output_tensor[idx]|tojson }});
+  {% endfor %}
 
-  return net_def;
+  return multi_net_def;
 }
 
 MACE_API const std::string ModelName() {
-  return {{ tag|tojson }};
+  return {{ model_tag|tojson }};
 }
 
 MACE_API const std::string ModelChecksum() {
@@ -166,5 +76,5 @@ MACE_API const std::string ModelBuildTime() {
   return {{ build_time|tojson }};
 }
 
-}  // namespace {{tag}}
+}  // namespace {{model_tag}}
 }  // namespace mace

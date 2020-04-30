@@ -22,7 +22,7 @@ namespace test {
 class ScalarMathOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T, typename DstType>
+template <RuntimeType D, typename T, typename DstType>
 void ScalarMathTest(const ops::EltwiseType type,
                     const T input0,
                     const T input1,
@@ -55,31 +55,31 @@ void ScalarMathTest(const ops::EltwiseType type,
 }  // namespace
 
 TEST_F(ScalarMathOpTest, SimpleCPU) {
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::SUM, 1, 2, 3, 3);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::SUB, 1, 2, 3, -1);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::PROD, 3, -2, 3, -6);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::DIV, 3, -2, 1, -1.5);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::FLOOR_DIV, 3, -2, 1, -2);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::FLOOR_DIV, 3, 2, 1, 1);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::MIN, 3, -2, 1, -2);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::MAX, 3, -2, 1, 3);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::NEG, 3, -2, 1, -3);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::ABS, 3, -2, 1, 3);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::SQR_DIFF, 3, -2, 1, 25);
-  ScalarMathTest<DeviceType::CPU, float, float>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, float>(
       ops::EltwiseType::POW, 3, 1, 1, 3);
-  ScalarMathTest<DeviceType::CPU, float, int32_t>(
+  ScalarMathTest<RuntimeType::RT_CPU, float, int32_t>(
       ops::EltwiseType::EQUAL, 3, 3, 1, 1);
 }
 

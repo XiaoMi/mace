@@ -38,6 +38,12 @@ NetDefExcludeFields = {
         'node_input',
         'out_max_byte_size',
     ],
+    'NetDef': [
+        'name',
+        'data_offset',
+        'data_size',
+        'infer_order',
+    ],
 }
 
 

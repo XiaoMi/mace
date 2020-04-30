@@ -17,6 +17,9 @@
 #include <set>
 #include <string>
 
+#include "mace/core/memory/allocator.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -48,7 +51,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
   const index_t filter_height = filter->dim(2);
   const index_t filter_width = filter->dim(3);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION
 
   if (kernel->get() == nullptr) {
@@ -62,22 +65,16 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
-      case NOOP:
+      case NOOP:break;
+      case RELU:built_options.emplace("-DUSE_RELU");
         break;
-      case RELU:
-        built_options.emplace("-DUSE_RELU");
+      case RELUX:built_options.emplace("-DUSE_RELUX");
         break;
-      case RELUX:
-        built_options.emplace("-DUSE_RELUX");
+      case TANH:built_options.emplace("-DUSE_TANH");
         break;
-      case TANH:
-        built_options.emplace("-DUSE_TANH");
+      case SIGMOID:built_options.emplace("-DUSE_SIGMOID");
         break;
-      case SIGMOID:
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      case LEAKYRELU:
-        built_options.emplace("-DUSE_LEAKYRELU");
+      case LEAKYRELU:built_options.emplace("-DUSE_LEAKYRELU");
         break;
       case ELU:
         built_options.emplace("-DUSE_ELU");
@@ -87,8 +84,8 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     }
 
     MACE_RETURN_IF_ERROR(
-        runtime->BuildKernel("depthwise_conv2d_buffer", kernel_name,
-                             built_options, kernel));
+        executor->BuildKernel("depthwise_conv2d_buffer", kernel_name,
+                              built_options, kernel));
   }
 
   const uint32_t gws[2] = {
@@ -101,10 +98,10 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     uint32_t idx = 0;
     MACE_BUFF_OUT_OF_RANGE_SET_ARGS(*kernel, output->size());
     MACE_SET_2D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++, *(padded_input->opencl_buffer()));
-    kernel->setArg(idx++, *(filter->opencl_buffer()));
+    kernel->setArg(idx++, *(padded_input->memory<cl::Buffer>()));
+    kernel->setArg(idx++, *(filter->memory<cl::Buffer>()));
     if (bias != nullptr) {
-      kernel->setArg(idx++, *(bias->opencl_buffer()));
+      kernel->setArg(idx++, *(bias->memory<cl::Buffer>()));
     }
     kernel->setArg(idx++, static_cast<uint32_t>(in_height));
     kernel->setArg(idx++, static_cast<uint32_t>(in_width));
@@ -123,17 +120,17 @@ MaceStatus DepthwiseConv2d(OpContext *context,
         dilations[1] * in_channel));
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, activation_coefficient);
-    kernel->setArg(idx++, *(output->opencl_buffer()));
+    kernel->setArg(idx++, *(output->memory<cl::Buffer>()));
   }
 
   std::vector<uint32_t> lws = {16, 4, 0};
   std::string tuning_key =
       Concat("depthwise_conv2d_buffer_kernel", in_height, in_width, in_channel,
              filter_height, filter_width, channel);
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
                                            gws, lws, future));
 
-  MACE_OUT_OF_RANGE_VALIDATION
+  MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -212,29 +209,17 @@ MaceStatus DepthwiseConv2dKernel::Compute(
   if (padded_input_shape[1] != input_height ||
       padded_input_shape[2] != input_width ||
       padded_input_shape[3] != input_channels) {
-    index_t total_scratch_size = 0;
-    index_t padded_input_size = 0;
-
-    padded_input_size =
+    index_t padded_input_size =
         std::accumulate(padded_input_shape.begin(),
                         padded_input_shape.end(),
-                        1,
-                        std::multiplies<index_t>())
-            * GetEnumTypeSize(input->dtype()) + MACE_EXTRA_BUFFER_PAD_SIZE;
-    total_scratch_size += padded_input_size;
+                        1, std::multiplies<index_t>()) +
+            MACE_EXTRA_BUFFER_PAD_SIZE / GetEnumTypeSize(input->dtype());
 
     // Init scratch buffer
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(total_scratch_size);
-    if (old_scratch_size_ != scratch->size()) {
-      input_changed |= scratch->size() != old_scratch_size_;
-      old_scratch_size_ = scratch->size();
-    }
-
-    padded_input = make_unique<Tensor>(scratch->Scratch(padded_input_size),
-                                       input->dtype());
-
+    auto *runtime = context->runtime();
+    padded_input.reset(new Tensor(
+        runtime, input->dtype(), output->memory_type(), {padded_input_size}));
+    runtime->AllocateBufferForTensor(padded_input.get(), RENT_SCRATCH);
     padded_input->Resize(padded_input_shape);
     PadInput(context, &kernels_[0], input, pad_top, pad_left,
              input_changed, padded_input.get(), &pad_future);

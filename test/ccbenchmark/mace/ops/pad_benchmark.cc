@@ -21,7 +21,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void Pad(int iters, int batch, int height,
          int width, int channels, int pad, int pad_type) {
   mace::testing::StopTiming();
@@ -29,7 +29,7 @@ void Pad(int iters, int batch, int height,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
@@ -47,8 +47,9 @@ void Pad(int iters, int batch, int height,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
@@ -73,12 +74,12 @@ void Pad(int iters, int batch, int height,
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_PAD_MODE(N, H, W, C, PAD, MODE)            \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, CPU);    \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, GPU);    \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, half, GPU)
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, RT_CPU);    \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, RT_OPENCL);    \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, half, RT_OPENCL)
 #else
 #define MACE_BM_PAD_MODE(N, H, W, C, PAD, MODE)            \
-  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, CPU)
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, MODE, float, RT_CPU)
 #endif
 
 #define MACE_BM_PAD(N, H, W, C, PAD)              \

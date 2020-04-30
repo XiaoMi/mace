@@ -20,12 +20,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "mace/core/arg_helper.h"
+#include "mace/core/proto/arg_helper.h"
 #include "mace/core/types.h"
 #include "mace/proto/mace.pb.h"
+#include "mace/public/mace.h"
 
 namespace mace {
-class Device;
+class Runtime;
 class Workspace;
 
 // memory_optimizer, device
@@ -46,12 +47,12 @@ class OpConstructContext {
     return ws_;
   }
 
-  void set_device(Device *device) {
-    device_ = device;
+  void set_runtime(Runtime *runtime) {
+    runtime_ = runtime;
   }
 
-  Device *device() const {
-    return device_;
+  Runtime *runtime() const {
+    return runtime_;
   }
 #ifdef MACE_ENABLE_OPENCL
   inline MemoryType GetOpMemoryType() const {
@@ -70,7 +71,7 @@ class OpConstructContext {
  private:
   std::shared_ptr<OperatorDef> operator_def_;
   Workspace *ws_;
-  Device *device_;
+  Runtime *runtime_;
 };
 
 }  // namespace mace

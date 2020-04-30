@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/matmul.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -39,12 +41,10 @@ MaceStatus MatMulKernel::Compute(
   std::vector<index_t> c_shape = A->shape();
   c_shape[rank - 2] = height;
   c_shape[rank - 1] = width;
-  std::vector<size_t> c_image_shape;
   std::vector<index_t> padded_c_shape = {batch, height, width, 1};
-  OpenCLUtil::CalImage2DShape(padded_c_shape,
-                              OpenCLBufferType::IN_OUT_HEIGHT,
-                              &c_image_shape);
-  MACE_RETURN_IF_ERROR(C->ResizeImage(c_shape, c_image_shape));
+  C->SetContentType(BufferContentType::IN_OUT_HEIGHT);
+  MACE_RETURN_IF_ERROR(C->Resize(padded_c_shape));
+  C->Reshape(c_shape);
 
   const index_t height_blocks = RoundUpDiv4(height);
   const index_t width_blocks = RoundUpDiv4(width);
@@ -53,7 +53,7 @@ MaceStatus MatMulKernel::Compute(
       static_cast<uint32_t>(height_blocks * batch),
   };
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -64,19 +64,19 @@ MaceStatus MatMulKernel::Compute(
     built_options.emplace("-Dmatmul=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("matmul", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("matmul", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   uint32_t idx = 0;
   MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
   MACE_SET_2D_GWS_ARGS(kernel_, gws);
-  kernel_.setArg(idx++, *(A->opencl_image()));
-  kernel_.setArg(idx++, *(B->opencl_image()));
-  kernel_.setArg(idx++, *(C->opencl_image()));
+  kernel_.setArg(idx++, *(A->memory<cl::Image>()));
+  kernel_.setArg(idx++, *(B->memory<cl::Image>()));
+  kernel_.setArg(idx++, *(C->memory<cl::Image>()));
   kernel_.setArg(idx++, static_cast<int>(height));
   kernel_.setArg(idx++, static_cast<int>(width));
   kernel_.setArg(idx++, static_cast<int>(K));
@@ -85,7 +85,7 @@ MaceStatus MatMulKernel::Compute(
 
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

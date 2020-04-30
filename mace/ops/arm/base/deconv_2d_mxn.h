@@ -50,10 +50,6 @@ class Deconv2dKMxN : public Deconv2dBase {
     }
     out_tensor->Clear();
 
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard filter_mapper(filter);
-    Tensor::MappingGuard output_mapper(output);
-
     const T *input_data = input->data<T>();
     const T *filter_data = filter->data<T>();
     T *padded_out_data = out_tensor->mutable_data<T>();

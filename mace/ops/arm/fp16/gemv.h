@@ -54,8 +54,7 @@ void FP16Gemv<float16_t, float, float>(OpContext *context,
                                        const index_t height,
                                        const index_t width,
                                        float *out_ptr) {
-  utils::ThreadPool &thread_pool =
-      context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute1D([=](index_t start0, index_t end0, index_t step0) {
     for (index_t h = start0; h < end0; h += step0) {

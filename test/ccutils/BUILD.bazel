@@ -12,6 +12,7 @@ load(
     "if_neon_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
+    "if_rpcmem_enabled",
 )
 
 cc_library(
@@ -24,7 +25,6 @@ cc_library(
         "mace/ops/*.h",
         "mace/ops/testing/*.h",
     ]),
-    strip_include_prefix = "",
     copts = [
         "-Werror",
         "-Wextra",
@@ -38,9 +38,12 @@ cc_library(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
     ]),
+    strip_include_prefix = "",
     deps = [
-        "//mace/ops",
+        "//mace/libmace",
         "@gtest",
     ],
 )

@@ -30,8 +30,8 @@
 #include "mace/utils/memory.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/depthwise_deconv2d.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
@@ -41,11 +41,11 @@ namespace {
 const std::vector<int> kDepthwiseStrides = {1, 1};
 }
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class DepthwiseDeconv2dOp;
 
 template<class T>
-class DepthwiseDeconv2dOp<DeviceType::CPU, T>
+class DepthwiseDeconv2dOp<RuntimeType::RT_CPU, T>
     : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
@@ -53,13 +53,13 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, T>
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                                    T, kCpuImplType),
                 delegator::ActivationParam(
                     activation_, relux_max_limit_, activation_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -89,20 +89,20 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, T>
             strides_[0] == strides_[1] && strides_[0] == 2;
 
         if (is_depthwise) {
-          auto tag = MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU, T,
-                                        kCpuImplType);
+          auto tag = MACE_DELEGATOR_KEY(DepthwiseDeconv2d, RuntimeType::RT_CPU,
+                                        T, kCpuImplType);
           if (use_neon_3x3_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
-                                        kCpuImplType, K3x3S1);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, RuntimeType::RT_CPU,
+                                        T, kCpuImplType, K3x3S1);
           } else if (use_neon_3x3_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
-                                        kCpuImplType, K3x3S2);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, RuntimeType::RT_CPU,
+                                        T, kCpuImplType, K3x3S2);
           } else if (use_neon_4x4_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
-                                        kCpuImplType, K4x4S1);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, RuntimeType::RT_CPU,
+                                        T, kCpuImplType, K4x4S1);
           } else if (use_neon_4x4_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, DeviceType::CPU, T,
-                                        kCpuImplType, K4x4S2);
+            tag = MACE_DELEGATOR_KEY_EX(DepthwiseDeconv2d, RuntimeType::RT_CPU,
+                                        T, kCpuImplType, K4x4S2);
           }
           delegator::DepthwiseDeconv2dParam param(strides_, kDepthwiseStrides,
                                                   paddings_, padding_type_,
@@ -110,19 +110,19 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, T>
           depthwise_deconv2d_delegator_ = delegator::DepthwiseDeconv2d::Create(
               context->workspace(), tag, param);
         } else {
-          auto tag = MACE_DELEGATOR_KEY(GroupDeconv2d, DeviceType::CPU, T,
+          auto tag = MACE_DELEGATOR_KEY(GroupDeconv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType);
           if (use_neon_3x3_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType, K3x3S1);
           } else if (use_neon_3x3_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType, K3x3S2);
           } else if (use_neon_4x4_s1) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType, K4x4S1);
           } else if (use_neon_4x4_s2) {
-            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, DeviceType::CPU, T,
+            tag = MACE_DELEGATOR_KEY_EX(GroupDeconv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType, K4x4S2);
           }
           delegator::GroupDeconv2dParam param(strides_, kDepthwiseStrides,
@@ -150,7 +150,8 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, T>
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
+class DepthwiseDeconv2dOp<RuntimeType::RT_OPENCL, float>
+    : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
@@ -164,13 +165,13 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
         context->workspace()->GetTensor(operator_def_->input(1));
     if (filter_tensor != nullptr && filter_tensor->is_weight()) {
       auto ret = TransformFilter(context, operator_def_.get(), 1,
-                                 OpenCLBufferType::DW_CONV2D_FILTER, mem_type);
+                                 BufferContentType::DW_CONV2D_FILTER, mem_type);
       MACE_CHECK(ret == MaceStatus::MACE_SUCCESS);
     }
     if (operator_def_->input_size() >= 3) {
       MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 2,
-          OpenCLBufferType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
+          BufferContentType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
     }
   }
 
@@ -214,6 +215,18 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
                             output);
   }
 
+ protected:
+  BufferContentType GetInputTensorContentType(size_t idx) const override {
+    if (idx == 1) {
+      return BufferContentType::DW_CONV2D_FILTER;
+    } else if (idx == 2) {
+      if (operator_def_->input_size() >= 3) {
+        return BufferContentType::ARGUMENT;
+      }
+    }
+    return Operation::GetInputTensorContentType(idx);
+  }
+
  private:
   std::unique_ptr<OpenCLDepthwiseDeconv2dKernel> kernel_;
 };
@@ -221,9 +234,9 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 
 void RegisterDepthwiseDeconv2d(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseDeconv2d",
-                   DepthwiseDeconv2dOp, DeviceType::CPU, float);
+                   DepthwiseDeconv2dOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "DepthwiseDeconv2d",
-                        DepthwiseDeconv2dOp, DeviceType::CPU);
+                        DepthwiseDeconv2dOp, RuntimeType::RT_CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "DepthwiseDeconv2d", DepthwiseDeconv2dOp);
 
@@ -232,7 +245,7 @@ void RegisterDepthwiseDeconv2d(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("DepthwiseDeconv2d").SetInputMemoryTypeSetter(
           [](OpConditionContext *context) -> void {
-            SetFilterMemoryType(context, OpenCLBufferType::DW_CONV2D_FILTER);
+            SetFilterMemoryType(context, BufferContentType::DW_CONV2D_FILTER);
           }));
 #endif  // MACE_ENABLE_OPENCL
 

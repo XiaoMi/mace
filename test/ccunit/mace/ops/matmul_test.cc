@@ -24,7 +24,7 @@ namespace test {
 class MatMulOpTest : public OpsTestBase {};
 
 namespace {
-template<DeviceType D>
+template<RuntimeType D>
 void Simple(const std::vector<index_t> &A_shape,
             const std::vector<float> &A_value,
             const std::vector<index_t> &B_shape,
@@ -53,9 +53,9 @@ void Simple(const std::vector<index_t> &A_shape,
 }  // namespace
 
 TEST_F(MatMulOpTest, SimpleCPU) {
-  Simple<DeviceType::CPU>({1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 3, 2},
+  Simple<RuntimeType::RT_CPU>({1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 3, 2},
                           {1, 2, 3, 4, 5, 6}, {1, 2, 2}, {22, 28, 49, 64});
-  Simple<DeviceType::CPU>(
+  Simple<RuntimeType::RT_CPU>(
       {1, 5, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
                   14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
       {1, 5, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
@@ -66,14 +66,14 @@ TEST_F(MatMulOpTest, SimpleCPU) {
 }
 
 TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
-  Simple<DeviceType::CPU>({2, 2, 3}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
+  Simple<RuntimeType::RT_CPU>({2, 2, 3}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
                           {2, 3, 2}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
                           {2, 2, 2}, {22, 28, 49, 64, 22, 28, 49, 64});
 }
 
 namespace {
 
-template<DeviceType D>
+template<RuntimeType D>
 void Complex(const std::vector<index_t> &batch,
              const index_t rows,
              const index_t depth,
@@ -98,8 +98,8 @@ void Complex(const std::vector<index_t> &batch,
   if (rhs_batched) {
     rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
-  net.AddRandomInput<CPU, float>("A", lhs_shape);
-  net.AddRandomInput<CPU, float>("B", rhs_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("A", lhs_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("B", rhs_shape);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
@@ -109,12 +109,14 @@ void Complex(const std::vector<index_t> &batch,
       .Output("Output")
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   std::unique_ptr<delegator::Gemm> gemm = delegator::Gemm::Create(
-      net.ws(), MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float, ImplType::REF),
+      net.ws(),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float, ImplType::REF),
       delegator::GemmParam());
-  Tensor expected_output_tensor;
+  auto cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  Tensor expected_output_tensor(cpu_runtime, DT_FLOAT);
   std::vector<index_t> expected_output_shape({rows, cols});
   expected_output_shape.insert(expected_output_shape.begin(),
                                batch.begin(),
@@ -143,17 +145,17 @@ void Complex(const std::vector<index_t> &batch,
 }  // namespace
 
 TEST_F(MatMulOpTest, ComplexCPUWithBatch) {
-  Complex<DeviceType::CPU>({1}, 3, 3, 3, false, false, true, true);
-  Complex<DeviceType::CPU>({}, 3, 3, 3, false, false, true, true);
-  Complex<DeviceType::CPU>({16}, 31, 61, 67, false, true, true, true);
-  Complex<DeviceType::CPU>({31}, 31, 61, 67, true, false, true, true);
-  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, true, true);
-  Complex<DeviceType::CPU>({1}, 1, 30001, 253, false, true, true, true);
-  Complex<DeviceType::CPU>({2}, 253, 300, 1, false, false, true, true);
+  Complex<RuntimeType::RT_CPU>({1}, 3, 3, 3, false, false, true, true);
+  Complex<RuntimeType::RT_CPU>({}, 3, 3, 3, false, false, true, true);
+  Complex<RuntimeType::RT_CPU>({16}, 31, 61, 67, false, true, true, true);
+  Complex<RuntimeType::RT_CPU>({31}, 31, 61, 67, true, false, true, true);
+  Complex<RuntimeType::RT_CPU>({2, 3}, 31, 61, 67, true, true, true, true);
+  Complex<RuntimeType::RT_CPU>({1}, 1, 30001, 253, false, true, true, true);
+  Complex<RuntimeType::RT_CPU>({2}, 253, 300, 1, false, false, true, true);
   // test one-side batched
-  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, false, true);
-  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, true, false);
-  Complex<DeviceType::CPU>({2, 3}, 31, 61, 67, true, true, false, true);
+  Complex<RuntimeType::RT_CPU>({2, 3}, 31, 61, 67, true, true, false, true);
+  Complex<RuntimeType::RT_CPU>({2, 3}, 31, 61, 67, true, true, true, false);
+  Complex<RuntimeType::RT_CPU>({2, 3}, 31, 61, 67, true, true, false, true);
 }
 
 namespace {
@@ -182,8 +184,8 @@ void QuantOutputUint8(const std::vector<index_t> &batch,
   if (rhs_batched) {
     rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
-  net.AddRandomInput<CPU, float>("A", lhs_shape, false, false);
-  net.AddRandomInput<CPU, float>("B", rhs_shape, false, false);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("A", lhs_shape, false, false);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("B", rhs_shape, false, false);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
@@ -193,7 +195,7 @@ void QuantOutputUint8(const std::vector<index_t> &batch,
       .Output("Output")
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("Quantize", "QuantizeA")
       .Input("A")
@@ -231,7 +233,7 @@ void QuantOutputUint8(const std::vector<index_t> &batch,
       .AddIntArg("T", DT_UINT8)
       .OutputType({DT_UINT8})
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(eq_output->scale());
@@ -276,8 +278,8 @@ void QuantOutputInt32(const std::vector<index_t> &batch,
   if (rhs_batched) {
     rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
-  net.AddRandomInput<CPU, float>("A", lhs_shape, false, false);
-  net.AddRandomInput<CPU, float>("B", rhs_shape, false, false);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("A", lhs_shape, false, false);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("B", rhs_shape, false, false);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
@@ -287,7 +289,7 @@ void QuantOutputInt32(const std::vector<index_t> &batch,
       .Output("Output")
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("Quantize", "QuantizeA")
       .Input("A")
@@ -357,8 +359,8 @@ void FloatOutput16(const std::vector<index_t> &batch,
   if (rhs_batched) {
     rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
-  net.AddRandomInput<CPU, float>("A", lhs_shape);
-  net.AddRandomInput<CPU, float>("B", rhs_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("A", lhs_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("B", rhs_shape);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
@@ -368,7 +370,7 @@ void FloatOutput16(const std::vector<index_t> &batch,
       .Output("Output")
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("Cast", "CastTest")
       .Input("B")
@@ -465,6 +467,7 @@ TEST_F(MatMulOpTest, FloatOutput16) {
   FloatOutput16({1}, 1, 2048, 512, false, true, false, false);
 }
 #endif  // MACE_ENABLE_NEON
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

@@ -1,88 +1,41 @@
 set(CORE_SRCS
-  allocator.cc
-  arg_helper.cc
-  device.cc
-  device_context.cc
   kv_storage.cc
-  memory_optimizer.cc
-  net.cc
   net_def_adapter.cc
   net_optimizer.cc
-  ops/op_condition_builder.cc
-  ops/op_condition_context.cc
-  ops/op_construct_context.cc
-  ops/op_context.cc
-  ops/operator.cc
-  ops/op_init_context.cc
   quantize.cc
-  registry/op_delegator_registry.cc
-  registry/op_registration_info.cc
-  registry/ops_registry.cc
   runtime_failure_mock.cc
+  tensor.cc
   types.cc
   workspace.cc
-  runtime/cpu/cpu_runtime.cc
+  flow/base_flow.cc
+  flow/common_fp32_flow.cc
+  flow/flow_registry.cc
+  memory/general_memory_manager.cc
+  net/allocate_opt_strategy.cc
+  net/allocate_ref_strategy.cc
+  net/serial_net.cc
+  ops/op_construct_context.cc
+  ops/op_condition_builder.cc
+  ops/ops_utils.cc
+  ops/operator.cc
+  ops/op_init_context.cc
+  ops/op_condition_context.cc
+  ops/op_context.cc
+  proto/net_def_helper.cc
+  proto/arg_helper.cc
+  registry/ops_registry.cc
+  registry/op_registration_info.cc
+  registry/op_delegator_registry.cc
+  runtime/runtime.cc
+  runtime/runtime_registry.cc
 )
 
 add_library(extra_link_libs_target INTERFACE)
 
 if(MACE_ENABLE_RPCMEM)
-  set(CORE_SRCS ${CORE_SRCS} rpcmem.cc)
+  set(CORE_SRCS ${CORE_SRCS} memory/rpcmem/rpcmem.cc)
   target_link_libraries(extra_link_libs_target INTERFACE rpcmem)
 endif(MACE_ENABLE_RPCMEM)
-
-if(MACE_ENABLE_OPENCL)
-  set(CORE_SRCS ${CORE_SRCS}
-    runtime/opencl/gpu_device.cc
-    runtime/opencl/gpu_runtime.cc
-    runtime/opencl/opencl_allocator.cc
-    runtime/opencl/opencl_helper.cc
-    runtime/opencl/opencl_runtime.cc
-    runtime/opencl/opencl_util.cc
-    runtime/opencl/opencl_wrapper.cc
-    runtime/opencl/scratch_image.cc
-  )
-  target_link_libraries(extra_link_libs_target INTERFACE generated_opencl_kernel dl)
-endif(MACE_ENABLE_OPENCL)
-
-if(MACE_ENABLE_HEXAGON_DSP OR MACE_ENABLE_HEXAGON_HTA)
-  set(CORE_SRCS ${CORE_SRCS}
-    runtime/hexagon/hexagon_allocator.cc
-    runtime/hexagon/hexagon_device.cc
-  )
-endif(MACE_ENABLE_HEXAGON_DSP OR MACE_ENABLE_HEXAGON_HTA)
-
-if(MACE_ENABLE_HEXAGON_DSP)
-  set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_dsp_wrapper.cc)
-  target_link_libraries(extra_link_libs_target INTERFACE hexagon_controller)
-endif(MACE_ENABLE_HEXAGON_DSP)
-
-if(MACE_ENABLE_HEXAGON_HTA)
-  set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_hta_transformer.cc)
-  set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_hta_wrapper.cc)
-  target_link_libraries(extra_link_libs_target INTERFACE hta_hexagon_runtime)
-endif(MACE_ENABLE_HEXAGON_HTA)
-
-if(MACE_ENABLE_MTK_APU)
-  if(MACE_MTK_APU_VERSION EQUAL 1)
-    set(CORE_SRCS ${CORE_SRCS} runtime/apu/v1v2v3/v1/apu_wrapper.cc)
-    target_link_libraries(extra_link_libs_target INTERFACE apu-frontend)
-  elseif(MACE_MTK_APU_VERSION EQUAL 2)
-    set(CORE_SRCS ${CORE_SRCS} runtime/apu/v1v2v3/v2v3/apu_wrapper.cc)
-    target_link_libraries(extra_link_libs_target INTERFACE apu-frontend)
-  elseif(MACE_MTK_APU_VERSION EQUAL 3)
-    set(CORE_SRCS ${CORE_SRCS} runtime/apu/v1v2v3/v2v3/apu_wrapper.cc)
-    target_link_libraries(extra_link_libs_target INTERFACE apu-frontend)
-  elseif(MACE_MTK_APU_VERSION EQUAL 4)
-    set(CORE_SRCS ${CORE_SRCS}
-      runtime/apu/v4/apu_wrapper.cc
-      runtime/apu/v4/neuron_delegate_kernel.cc
-      runtime/apu/v4/neuron_implementation.cc
-    )
-  else()
-    message(FATAL_ERROR "Invalid MTK APU version.")
-  endif()
-endif(MACE_ENABLE_MTK_APU)
 
 add_library(core STATIC ${CORE_SRCS})
 target_link_libraries(core PRIVATE
@@ -94,10 +47,6 @@ target_link_libraries(core PRIVATE
 )
 
 add_dependencies(core half)
-
-if(MACE_ENABLE_OPENCL)
-  add_dependencies(core opencl_clhpp)
-endif(MACE_ENABLE_OPENCL)
 
 if(MACE_ENABLE_QUANTIZE)
   add_dependencies(core gemmlowp)

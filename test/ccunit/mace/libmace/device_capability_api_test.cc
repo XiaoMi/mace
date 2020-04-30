@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "mace/ops/ops_test_util.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace test {

@@ -21,7 +21,7 @@ namespace test {
 class OneHotTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestOneHot(const std::vector<index_t> &input_shape,
                 const std::vector<float> &input_data,
                 const std::vector<index_t> &expected_shape,
@@ -74,8 +74,8 @@ TEST_F(OneHotTest, Dim1) {
     0, 0, 1, 0, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 5, -1);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 5, -1);
 
   expected_shape = {5, 10};
   expected_data  = {
@@ -86,8 +86,8 @@ TEST_F(OneHotTest, Dim1) {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 5, 0);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 5, 0);
 }
 
 TEST_F(OneHotTest, OnOffValue) {
@@ -100,8 +100,8 @@ TEST_F(OneHotTest, OnOffValue) {
     8, 8, 8, 8, 8, 7,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 6, -1, 7, 8);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 6, -1, 7, 8);
 }
 
 TEST_F(OneHotTest, Dim2) {
@@ -125,8 +125,8 @@ TEST_F(OneHotTest, Dim2) {
     0, 0, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 0);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 0);
 
   expected_shape = {2, 4, 3};
   expected_data = {
@@ -141,8 +141,8 @@ TEST_F(OneHotTest, Dim2) {
     0, 0, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 1);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 1);
 
   expected_shape = {2, 3, 4};
   expected_data = {
@@ -155,8 +155,8 @@ TEST_F(OneHotTest, Dim2) {
     0, 1, 0, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 2);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 2);
 }
 
 TEST_F(OneHotTest, Dim3) {
@@ -208,8 +208,8 @@ TEST_F(OneHotTest, Dim3) {
     0, 0, 1, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 0);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 0);
 
   expected_shape = {2, 4, 3, 4};
   expected_data = {
@@ -247,8 +247,8 @@ TEST_F(OneHotTest, Dim3) {
     0, 0, 1, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 1);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 1);
 
   expected_shape = {2, 3, 4, 4};
   expected_data = {
@@ -284,8 +284,8 @@ TEST_F(OneHotTest, Dim3) {
     0, 0, 1, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 2);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 2);
 
   expected_shape = {2, 3, 4, 4};
   expected_data = {
@@ -321,8 +321,8 @@ TEST_F(OneHotTest, Dim3) {
     1, 0, 0, 0,
   };
 
-  TestOneHot<DeviceType::CPU, float>(input_shape, input_data, expected_shape,
-                                     expected_data, 4, 3);
+  TestOneHot<RuntimeType::RT_CPU, float>(
+      input_shape, input_data, expected_shape, expected_data, 4, 3);
 }
 
 TEST_F(OneHotTest, CPUFallback) {
@@ -331,7 +331,7 @@ TEST_F(OneHotTest, CPUFallback) {
     std::vector<index_t> shape_out(dim + 1, 1);
     OpsTestNet net;
 
-    net.AddRepeatedInput<DeviceType::GPU, float>("Input", shape_in, 0);
+    net.AddRepeatedInput<RuntimeType::RT_OPENCL, float>("Input", shape_in, 0);
 
     OpDefBuilder("OneHot", "OneHotTest")
     .Input("Input")
@@ -340,7 +340,7 @@ TEST_F(OneHotTest, CPUFallback) {
     .AddIntArg("depth", 1)
     .Finalize(net.NewOperatorDef());
 
-    net.RunOp(DeviceType::GPU);
+    net.RunOp(RuntimeType::RT_OPENCL);
   }
 }
 

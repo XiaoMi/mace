@@ -20,14 +20,14 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void BiasAdd(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU && DataTypeToEnum<T>::value != DT_UINT8) {
+  if (D == RuntimeType::RT_CPU && DataTypeToEnum<T>::value != DT_UINT8) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
@@ -48,6 +48,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   net.GetTensor("Output")->SetScale(0.1);
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
     net.Run();
   }
@@ -70,26 +71,26 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
 
 #ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_BIAS_ADD_Q8_MACRO(N, C, H, W)      \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, CPU)
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, RT_CPU)
 #else
 #define MACE_BM_BIAS_ADD_Q8_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_QUANTIZE
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_BM_BIAS_ADD_BF16_MACRO(N, C, H, W)      \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, BFloat16, CPU)
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, BFloat16, RT_CPU)
 #else
 #define MACE_BM_BIAS_ADD_BF16_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_BIAS_ADD_GPU_MACRO(N, C, H, W)       \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU)
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, RT_OPENCL);    \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_BIAS_ADD_GPU_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_OPENCL
 
 #define MACE_BM_BIAS_ADD(N, C, H, W)                 \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, RT_CPU);    \
   MACE_BM_BIAS_ADD_Q8_MACRO(N, C, H, W);             \
   MACE_BM_BIAS_ADD_BF16_MACRO(N, C, H, W);           \
   MACE_BM_BIAS_ADD_GPU_MACRO(N, C, H, W)

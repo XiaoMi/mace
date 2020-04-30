@@ -4,6 +4,8 @@ load(
     "//mace:mace.bzl",
     "if_android",
     "if_apu_enabled",
+    "if_bfloat16_enabled",
+    "if_fp16_enabled",
     "if_hexagon_enabled",
     "if_opencl_enabled",
 )
@@ -25,6 +27,10 @@ cc_binary(
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_apu_enabled([
         "-DMACE_ENABLE_MTK_APU",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]),
     linkstatic = 1,
     deps = [
@@ -51,6 +57,10 @@ cc_binary(
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_apu_enabled([
         "-DMACE_ENABLE_MTK_APU",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]),
     linkopts = [
         "-lm",

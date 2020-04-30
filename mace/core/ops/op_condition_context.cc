@@ -14,7 +14,7 @@
 
 #include "mace/core/ops/op_condition_context.h"
 
-#include "mace/core/arg_helper.h"
+#include "mace/core/proto/arg_helper.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/utils/logging.h"
 
@@ -25,7 +25,7 @@ OpConditionContext::OpConditionContext(
     OpConditionContext::TensorShapeMap *info)
     : operator_def_(nullptr),
       ws_(ws),
-      device_(nullptr),
+      runtime_(nullptr),
       tensor_shape_info_(info) {}
 
 void OpConditionContext::set_operator_def(
@@ -79,26 +79,22 @@ DataType OpConditionContext::GetInputDataType(size_t idx) const {
   return input_data_types_[idx];
 }
 
-#ifdef MACE_ENABLE_OPENCL
-void OpConditionContext::SetInputOpenCLBufferType(
-    size_t idx, OpenCLBufferType buffer_type) {
-  if (input_opencl_buffer_types_.empty()) {
+void OpConditionContext::SetInputBufferContentType(
+    size_t idx, BufferContentType buffer_type) {
+  if (input_buffer_types_.empty()) {
     // the default inputs' memory types are same as output memory type.
-    input_opencl_buffer_types_.resize(operator_def_->input_size(),
-                                      OpenCLBufferType::IN_OUT_CHANNEL);
+    input_buffer_types_.resize(operator_def_->input_size());
   }
-  MACE_CHECK(idx < input_opencl_buffer_types_.size());
-  input_opencl_buffer_types_[idx] = buffer_type;
+  MACE_CHECK(idx < input_buffer_types_.size());
+  input_buffer_types_[idx] = buffer_type;
 }
-
-OpenCLBufferType OpConditionContext::GetInputOpenCLBufferType(
+BufferContentType OpConditionContext::GetInputBufferContentType(
     size_t idx) const {
-  if (input_opencl_buffer_types_.empty()) {
-    return OpenCLBufferType::IN_OUT_CHANNEL;
+  if (input_buffer_types_.empty()) {
+    return BufferContentType::IN_OUT_CHANNEL;
   }
-  MACE_CHECK(idx < input_opencl_buffer_types_.size());
-  return input_opencl_buffer_types_[idx];
+  MACE_CHECK(idx < input_buffer_types_.size());
+  return input_buffer_types_[idx];
 }
-#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace mace

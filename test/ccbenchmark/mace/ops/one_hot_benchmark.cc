@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void OneHot(int iters, int batch, int depth, int axis) {
   mace::testing::StopTiming();
 
@@ -38,8 +38,9 @@ void OneHot(int iters, int batch, int depth, int axis) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
@@ -61,7 +62,7 @@ void OneHot(int iters, int batch, int depth, int axis) {
   MACE_BENCHMARK(MACE_BM_ONE_HOT_##N##_##DEPTH##_##AXIS##_##TYPE##_##DEVICE)
 
 #define MACE_BM_ONE_HOT(N, DEPTH, AXIS)                 \
-  MACE_BM_ONE_HOT_MACRO(N, DEPTH, AXIS, float, CPU);
+  MACE_BM_ONE_HOT_MACRO(N, DEPTH, AXIS, float, RT_CPU);
 
 MACE_BM_ONE_HOT(512, 16, 0);
 MACE_BM_ONE_HOT(512, 16, 1);

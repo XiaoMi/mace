@@ -19,6 +19,9 @@
 #include <string>
 #include <vector>
 
+#include "mace/runtimes/opencl/core/cl2_header.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -26,7 +29,7 @@ namespace image {
 
 namespace {
 
-MaceStatus BuildMVNKernel(OpenCLRuntime *runtime, cl::Kernel *kernel,
+MaceStatus BuildMVNKernel(OpenclExecutor *executor, cl::Kernel *kernel,
                           const char *kernel_name,
                           std::set<std::string> *built_options,
                           MeanType mean_type_) {
@@ -40,8 +43,8 @@ MaceStatus BuildMVNKernel(OpenCLRuntime *runtime, cl::Kernel *kernel,
   } else if (mean_type_ == MeanType::GROUP_CHANNELS) {
     built_options->emplace("-DGROUP_CHANNELS");
   }
-  MACE_RETURN_IF_ERROR(runtime->BuildKernel("mvnorm", kernel_name,
-                                            *built_options, kernel));
+  MACE_RETURN_IF_ERROR(executor->BuildKernel("mvnorm", kernel_name,
+                                             *built_options, kernel));
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -81,57 +84,57 @@ MaceStatus MVNormKernel::DoCompute(
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
 
-  const std::vector<index_t > mean_shape = {batch, 1, 1, channels};
+  const std::vector<index_t> mean_shape = {batch, 1, 1, channels};
   std::vector<size_t> mean_image_shape;
-  OpenCLUtil::CalImage2DShape(mean_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+  OpenCLUtil::CalImage2DShape(mean_shape, BufferContentType::IN_OUT_CHANNEL,
                               &mean_image_shape);
-  ScratchImageManager *scratch_manager =
-      context->device()->gpu_runtime()->scratch_image_manager();
-  ScratchImage scratch_mean_image(scratch_manager);
-  auto mace_mean_image = scratch_mean_image.Scratch(
-      context->device()->allocator(), mean_image_shape, input->dtype());
-  cl::Image *mean_image = static_cast<cl::Image *>(mace_mean_image->buffer());
+
+  auto *runtime = context->runtime();
+  MemInfo mem_info(input->memory_type(), input->dtype(),
+                   MemInfo::IndexT(mean_image_shape));
+  auto mace_mean_img_buf = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  cl::Image *mean_image = mace_mean_img_buf->mutable_memory<cl::Image>();
 
   if (normalize_variance_) {
-    ScratchImage scratch_mean_image_sqr(scratch_manager);
-    auto mace_mean_image_sqr = scratch_mean_image_sqr.Scratch(
-        context->device()->allocator(), mean_image_shape, input->dtype());
-    cl::Image *mean_image_sqr =
-        static_cast<cl::Image *>(mace_mean_image_sqr->buffer());
+    auto mace_mean_sqr_buf = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+    cl::Image *mean_image_sqr = mace_mean_sqr_buf->mutable_memory<cl::Image>();
     // compute the EX
     MACE_RETURN_IF_ERROR(ExecuteMeanValueKernel(
-        context, runtime, batch, height, width, channel_blocks, group_blocks,
-        input->opencl_image(), mean_image));
+        context, executor, batch, height, width, channel_blocks, group_blocks,
+        input->memory<cl::Image>(), mean_image));
     // compute (X - EX)^2 to output
     MACE_RETURN_IF_ERROR(ExecuteVarianceNormStep1Kernel(
-        context, runtime, gws, height, group_blocks, input->opencl_image(),
-        mean_image, output->opencl_image()));
+        context, executor, gws, height, group_blocks,
+        input->memory<cl::Image>(),
+        mean_image, output->mutable_memory<cl::Image>()));
     // compute E((X - EX)^2) to mean_image_sqr_
     MACE_RETURN_IF_ERROR(ExecuteMeanValueKernel(
-        context, runtime, batch, height, width, channel_blocks, group_blocks,
-        output->opencl_image(), mean_image_sqr));
+        context, executor, batch, height, width, channel_blocks, group_blocks,
+        output->memory<cl::Image>(), mean_image_sqr));
     // compute the compute (X - EX) / (E((X - EX)^2)^0.5 + eps_)
     MACE_RETURN_IF_ERROR(ExecuteVarianceNormStep2Kernel(
-        context, runtime, gws, height, group_blocks, input->opencl_image(),
-        mean_image, mean_image_sqr, output->opencl_image()));
+        context, executor, gws, height, group_blocks,
+        input->memory<cl::Image>(),
+        mean_image, mean_image_sqr, output->mutable_memory<cl::Image>()));
   } else {
     // compute the EX
     MACE_RETURN_IF_ERROR(ExecuteMeanValueKernel(
-        context, runtime, batch, height, width, channel_blocks, group_blocks,
-        input->opencl_image(), mean_image));
+        context, executor, batch, height, width, channel_blocks, group_blocks,
+        input->memory<cl::Image>(), mean_image));
     // compute the (X - EX)
     MACE_RETURN_IF_ERROR(ExecuteMeanNormKernel(
-        context, runtime, gws, height, group_blocks, input->opencl_image(),
-        mean_image, output->opencl_image()));
+        context, executor, gws, height, group_blocks,
+        input->memory<cl::Image>(),
+        mean_image, output->mutable_memory<cl::Image>()));
   }
 
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MVNormKernel::ExecuteMeanValueKernel(OpContext *context,
-                                                OpenCLRuntime *runtime,
+                                                OpenclExecutor *executor,
                                                 const index_t batch,
                                                 const index_t height,
                                                 const index_t width,
@@ -145,10 +148,10 @@ MaceStatus MVNormKernel::ExecuteMeanValueKernel(OpContext *context,
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
     MACE_RETURN_IF_ERROR(
-        BuildMVNKernel(runtime, &kernel_mean_, "mvnorm_compute_mean_value",
+        BuildMVNKernel(executor, &kernel_mean_, "mvnorm_compute_mean_value",
                        &built_options, mean_type_));
     kwg_size_mean_ = static_cast<uint32_t>(
-        runtime->GetKernelMaxWorkGroupSize(kernel_mean_));
+        executor->GetKernelMaxWorkGroupSize(kernel_mean_));
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(channel_blocks),
@@ -169,14 +172,14 @@ MaceStatus MVNormKernel::ExecuteMeanValueKernel(OpContext *context,
       "mvnorm_compute_mean_opencl_kernel", gws[0],
       gws[1], normalize_variance_, mean_type_);
 
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_mean_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_mean_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MVNormKernel::ExecuteMeanNormKernel(OpContext *context,
-                                               OpenCLRuntime *runtime,
+                                               OpenclExecutor *executor,
                                                const uint32_t (&gws)[3],
                                                const index_t height,
                                                const index_t group_blocks,
@@ -188,10 +191,10 @@ MaceStatus MVNormKernel::ExecuteMeanNormKernel(OpContext *context,
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
-    MACE_RETURN_IF_ERROR(BuildMVNKernel(runtime, &kernel_step1_, "mvnorm_mean",
+    MACE_RETURN_IF_ERROR(BuildMVNKernel(executor, &kernel_step1_, "mvnorm_mean",
                                         &built_options, mean_type_));
     kwg_size_step1_ = static_cast<uint32_t>(
-        runtime->GetKernelMaxWorkGroupSize(kernel_step1_));
+        executor->GetKernelMaxWorkGroupSize(kernel_step1_));
   }
 
   MACE_OUT_OF_RANGE_INIT(kernel_step1_);
@@ -204,12 +207,12 @@ MaceStatus MVNormKernel::ExecuteMeanNormKernel(OpContext *context,
   kernel_step1_.setArg(idx++, static_cast<int>(group_blocks));
   kernel_step1_.setArg(idx++, *output);
 
-  std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_step1_);
+  std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_step1_);
   std::string tuning_key = Concat("mvnorm_mean_opencl_kernel", gws[0], gws[1],
                                   gws[2], normalize_variance_,
                                   mean_type_, group_blocks);
 
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_step1_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_step1_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
@@ -217,7 +220,7 @@ MaceStatus MVNormKernel::ExecuteMeanNormKernel(OpContext *context,
 
 // compute the (X - EX)^2
 MaceStatus MVNormKernel::ExecuteVarianceNormStep1Kernel(
-    OpContext *context, OpenCLRuntime *runtime,
+    OpContext *context, OpenclExecutor *executor,
     const uint32_t (&gws)[3], const index_t height, const index_t group_blocks,
     const cl::Image *input, const cl::Image *mean_image, cl::Image *output) {
   MACE_OUT_OF_RANGE_DEFINITION;
@@ -225,11 +228,11 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep1Kernel(
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
-    MACE_RETURN_IF_ERROR(BuildMVNKernel(runtime, &kernel_step1_,
+    MACE_RETURN_IF_ERROR(BuildMVNKernel(executor, &kernel_step1_,
                                         "mvnorm_vn_step1",
                                         &built_options, mean_type_));
     kwg_size_step1_ = static_cast<uint32_t>(
-        runtime->GetKernelMaxWorkGroupSize(kernel_step1_));
+        executor->GetKernelMaxWorkGroupSize(kernel_step1_));
   }
 
   MACE_OUT_OF_RANGE_INIT(kernel_step1_);
@@ -242,13 +245,13 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep1Kernel(
   kernel_step1_.setArg(idx++, static_cast<int>(height));
   kernel_step1_.setArg(idx++, static_cast<int>(group_blocks));
 
-  std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_step1_);
+  std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_step1_);
   std::string
       tuning_key = Concat("mvnorm_v_step1_opencl_kernel", gws[0], gws[1],
                           gws[2], normalize_variance_,
                           mean_type_);
 
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_step1_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_step1_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
@@ -256,7 +259,7 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep1Kernel(
 
 // compute (X - EX) / (E((X - EX)^2)^0.5 + eps_)
 MaceStatus MVNormKernel::ExecuteVarianceNormStep2Kernel(
-    OpContext *context, OpenCLRuntime *runtime, const uint32_t (&gws)[3],
+    OpContext *context, OpenclExecutor *executor, const uint32_t (&gws)[3],
     const index_t height, const index_t group_blocks,
     const cl::Image *input, const cl::Image *mean_image,
     const cl::Image *mean_image_sqr, cl::Image *output) {
@@ -265,11 +268,11 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep2Kernel(
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
-    MACE_RETURN_IF_ERROR(BuildMVNKernel(runtime, &kernel_step2_,
+    MACE_RETURN_IF_ERROR(BuildMVNKernel(executor, &kernel_step2_,
                                         "mvnorm_vn_step2",
                                         &built_options, mean_type_));
     kwg_size_step2_ = static_cast<uint32_t>(
-        runtime->GetKernelMaxWorkGroupSize(kernel_step2_));
+        executor->GetKernelMaxWorkGroupSize(kernel_step2_));
   }
 
   MACE_OUT_OF_RANGE_INIT(kernel_step2_);
@@ -284,13 +287,13 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep2Kernel(
   kernel_step2_.setArg(idx++, static_cast<float>(eps_));
   kernel_step2_.setArg(idx++, *output);
 
-  std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_step2_);
+  std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_step2_);
   std::string
       tuning_key = Concat("mvnorm_v_step2_opencl_kernel", gws[0], gws[1],
                           gws[2], normalize_variance_,
                           mean_type_);
 
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_step2_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_step2_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

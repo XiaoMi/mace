@@ -21,7 +21,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void LSTMNonlinear(int iters,
                    int batch,
                    int input_dim) {
@@ -36,7 +36,7 @@ void LSTMNonlinear(int iters,
   net.AddRandomInput<D, float>("Params",
                                {3, cell_dim},
                                true);
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("LSTMNonlinear", "LSTMNonlinearTest")
         .Input("Input")
         .Input("Params")
@@ -48,14 +48,15 @@ void LSTMNonlinear(int iters,
   }
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -74,7 +75,7 @@ void LSTMNonlinear(int iters,
       MACE_BM_LSTM_NONLIN_##N##_##IN_DIM##_##TYPE##_##DEVICE)
 
 #define MACE_BM_LSTM_NONLIN(N, IN_DIM)                 \
-  MACE_BM_LSTM_NONLIN_MACRO(N, IN_DIM, float, CPU);
+  MACE_BM_LSTM_NONLIN_MACRO(N, IN_DIM, float, RT_CPU);
 
 MACE_BM_LSTM_NONLIN(50, 200);
 MACE_BM_LSTM_NONLIN(50, 920);

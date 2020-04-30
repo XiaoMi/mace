@@ -23,7 +23,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 static void Deconv2d(int iters,
                    int batch,
                    int channels,
@@ -41,7 +41,7 @@ static void Deconv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
@@ -50,7 +50,7 @@ static void Deconv2d(int iters,
                                {output_channels, channels, kernel_h,
                                 kernel_w}, true);
   net.AddRandomInput<D, float>("Bias", {output_channels}, true);
-  net.AddInputFromArray<D, int32_t>("OutputShape", {4},
+  net.AddInputFromArray<RT_CPU, int32_t>("OutputShape", {4},
                                     {batch, out_h, out_w, output_channels},
                                     true);
   OpDefBuilder("Deconv2D", "Deconv2dTest")
@@ -68,14 +68,14 @@ static void Deconv2d(int iters,
   // Warm-up
   for (int i = 0; i < 2; ++i) {
     net.Run();
-    net.Sync();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
     net.Run();
-    net.Sync();
   }
+  net.Sync();
 }
 
 // In common network, there are usually more than 1 layers, this is used to
@@ -103,13 +103,15 @@ static void Deconv2d(int iters,
 
 // TODO(liutuo): add cpu benchmark when optimized.
 #ifdef MACE_ENABLE_OPENCL
-#define MACE_BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC)              \
-  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, CPU); \
-  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, GPU); \
-  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, GPU)
+#define MACE_BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC) \
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH,            \
+                          OW, P, OC, float, RT_CPU);            \
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH,            \
+                          OW, P, OC, float, RT_OPENCL);         \
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, RT_OPENCL)
 #else
 #define MACE_BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC)              \
-  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, CPU)
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, RT_CPU)
 #endif
 
 MACE_BM_DECONV_2D(1, 32, 60, 60, 1, 1, 1, 60, 60, VALID, 128);

@@ -29,20 +29,29 @@ class IdentityOp : public Operation {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
     output->ReuseTensorBuffer(*input);
+    output->Reshape(input->shape());
     return MaceStatus::MACE_SUCCESS;
+  }
+
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0) {
+      return 0;
+    } else {
+      return -1;
+    }
   }
 };
 
 void RegisterIdentity(OpRegistry *op_registry) {
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
-                            DeviceType::CPU, float);
+                            RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
-                                 DeviceType::CPU);
+                                 RuntimeType::RT_CPU);
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
-                            DeviceType::CPU, int32_t);
+                            RuntimeType::RT_CPU, int32_t);
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP_BY_CLASS(op_registry, "Identity", IdentityOp,
-                            DeviceType::GPU, float);
+                            RuntimeType::RT_OPENCL, float);
 #endif  // MACE_ENABLE_OPENCL
 }
 

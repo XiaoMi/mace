@@ -21,7 +21,7 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 
 namespace mace {
 namespace ops {
@@ -93,7 +93,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
 class Conv2dKernel : public OpenCLConv2dKernel {
  public:
   bool CheckUseWinograd(
-      OpenCLRuntime *runtime,
+      OpenclExecutor *executor,
       const std::vector<index_t> &filter_shape,
       const std::vector<index_t> &output_shape,
       const int *strides,

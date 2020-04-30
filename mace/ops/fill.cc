@@ -19,11 +19,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template <RuntimeType D, class T>
 class FillOp;
 
 template <class T>
-class FillOp<DeviceType::CPU, T> : public Operation {
+class FillOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit FillOp(OpConstructContext *context)
       : Operation(context) {}
@@ -35,7 +35,6 @@ class FillOp<DeviceType::CPU, T> : public Operation {
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(shape->dim_size() == 1, "Shape must be 1-D");
     const index_t num_dims = shape->dim(0);
-    Tensor::MappingGuard shape_guard(shape);
     const int32_t *shape_data = shape->data<int32_t>();
 
     std::vector<index_t> output_shape;
@@ -45,11 +44,8 @@ class FillOp<DeviceType::CPU, T> : public Operation {
       output_shape.push_back(shape_data[i]);
     }
 
-    Tensor::MappingGuard value_guard(value);
     const T *value_data = value->data<T>();
-
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    Tensor::MappingGuard output_guard(output);
     T *output_data = output->mutable_data<T>();
 
     std::fill(output_data, output_data + output->size(), *value_data);
@@ -64,8 +60,8 @@ class FillOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterFill(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Fill", FillOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Fill", FillOp, DeviceType::CPU);
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Fill", FillOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

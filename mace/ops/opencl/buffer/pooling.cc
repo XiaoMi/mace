@@ -14,6 +14,7 @@
 
 #include "mace/ops/opencl/buffer/pooling.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
 
 namespace mace {
 namespace ops {
@@ -59,8 +60,7 @@ MaceStatus PoolingKernel::Compute(
   // Mark whether input changed or not
   bool input_changed = IsResetArgsNeeded(context, input_shape_, input->shape());
   input_shape_ = input->shape();
-
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
 
   // pad input
   std::vector<index_t> padded_input_shape = input->shape();
@@ -70,28 +70,17 @@ MaceStatus PoolingKernel::Compute(
   // pad input
   std::unique_ptr<Tensor> padded_input;
   if (padded_input_shape[3] != input_channels) {
-    index_t total_scratch_size = 0;
-    index_t padded_input_size = 0;
-
-    padded_input_size =
+    index_t padded_input_size =
         std::accumulate(padded_input_shape.begin(),
                         padded_input_shape.end(),
-                        1,
-                        std::multiplies<index_t>())
-            * GetEnumTypeSize(input->dtype()) + MACE_EXTRA_BUFFER_PAD_SIZE;
-    total_scratch_size += padded_input_size;
+                        1, std::multiplies<index_t>()) +
+            MACE_EXTRA_BUFFER_PAD_SIZE / GetEnumTypeSize(input->dtype());
 
     // Init scratch buffer
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(total_scratch_size);
-    if (old_scratch_size_ != scratch->size()) {
-      input_changed |= scratch->size() != old_scratch_size_;
-      old_scratch_size_ = scratch->size();
-    }
-
-    padded_input = make_unique<Tensor>(scratch->Scratch(padded_input_size),
-                                       input->dtype());
+    auto *runtime = context->runtime();
+    padded_input.reset(new Tensor(
+        runtime, input->dtype(), output->memory_type(), {padded_input_size}));
+    runtime->AllocateBufferForTensor(padded_input.get(), RENT_SCRATCH);
 
     padded_input->Resize(padded_input_shape);
     PadInput(context, &kernels_[0], input, 0, 0,
@@ -121,13 +110,13 @@ MaceStatus PoolingKernel::Compute(
     if (pooling_type == AVG) {
       built_options.emplace("-DPOOL_AVG");
     }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("pooling_buffer",
-                                              kernel_name,
-                                              built_options,
-                                              kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("pooling_buffer",
+                                               kernel_name,
+                                               built_options,
+                                               kernel));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const uint32_t gws[3] = {
@@ -141,7 +130,7 @@ MaceStatus PoolingKernel::Compute(
     uint32_t idx = 0;
     MACE_BUFF_OUT_OF_RANGE_SET_ARGS(*kernel, output->size());
     MACE_SET_3D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++, *(padded_input_ptr->opencl_buffer()));
+    kernel->setArg(idx++, *(padded_input_ptr->memory<cl::Buffer>()));
     kernel->setArg(idx++, static_cast<int32_t>(padded_input_ptr->dim(1)));
     kernel->setArg(idx++, static_cast<int32_t>(padded_input_ptr->dim(2)));
     kernel->setArg(idx++, static_cast<int32_t>(padded_input_ptr->dim(3)));
@@ -153,16 +142,16 @@ MaceStatus PoolingKernel::Compute(
     kernel->setArg(idx++, strides[1]);
     kernel->setArg(idx++, kernels[0]);
     kernel->setArg(idx++, kernels[1]);
-    kernel->setArg(idx++, *(output->opencl_buffer()));
+    kernel->setArg(idx++, *(output->memory<cl::Buffer>()));
   }
 
   const std::vector<uint32_t> lws = {4, 4, 4, 0};
   std::string tuning_key =
       Concat("pooling_opencl_kernel_", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
                                            gws, lws, &pooling_future));
-  MACE_OUT_OF_RANGE_VALIDATION
+  MACE_OUT_OF_RANGE_VALIDATION;
   MergeMultipleFutureWaitFn({pad_future, pooling_future}, context->future());
 
   return MaceStatus::MACE_SUCCESS;
