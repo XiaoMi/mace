@@ -20,8 +20,8 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/arm/fp32/conv_2d.h"
-#include "mace/ops/arm/fp32/gemm.h"
+#include "mace/ops/arm/base/conv_2d.h"
+#include "mace/ops/arm/base/gemm.h"
 #include "mace/public/mace.h"
 
 namespace mace {
@@ -32,7 +32,7 @@ namespace fp32 {
 class Conv2dK3x3Winograd : public Conv2dBase {
  public:
   explicit Conv2dK3x3Winograd(const delegator::Conv2dParam &param)
-      : Conv2dBase(param),
+      : Conv2dBase(param, sizeof(float)),
         gemm_(delegator::GemmParam()),
         transformed_filter_(nullptr),
         out_tile_size_(0) {}
@@ -94,7 +94,7 @@ class Conv2dK3x3Winograd : public Conv2dBase {
                           index_t tile_count,
                           float *output);
 
-  Gemm gemm_;
+  Gemm<float> gemm_;
   std::unique_ptr<Tensor> transformed_filter_;
   index_t out_tile_size_;
 };

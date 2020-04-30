@@ -38,13 +38,15 @@ extern void RegisterGemvDelegator(OpDelegatorRegistry *registry);
 #ifdef MACE_ENABLE_NEON
 namespace arm {
 namespace fp32 {
+extern void RegisterConv2dK3x3WinogradDelegator(OpDelegatorRegistry *registry);
+}  // namespace fp32
+
 extern void RegisterActivationDelegator(OpDelegatorRegistry *registry);
 extern void RegisterBiasAddDelegator(OpDelegatorRegistry *registry);
 
 extern void RegisterConv2dK1x1Delegator(OpDelegatorRegistry *registry);
 extern void RegisterConv2dK1xNDelegator(OpDelegatorRegistry *registry);
 extern void RegisterConv2dK3x3Delegator(OpDelegatorRegistry *registry);
-extern void RegisterConv2dK3x3WinogradDelegator(OpDelegatorRegistry *registry);
 extern void RegisterConv2dK5x5Delegator(OpDelegatorRegistry *registry);
 extern void RegisterConv2dK7x7Delegator(OpDelegatorRegistry *registry);
 extern void RegisterConv2dGeneralDelegator(OpDelegatorRegistry *registry);
@@ -69,7 +71,6 @@ extern void RegisterGroupDeconv2dGeneralDelegator(
 
 extern void RegisterGemmDelegator(OpDelegatorRegistry *registry);
 extern void RegisterGemvDelegator(OpDelegatorRegistry *registry);
-}  // namespace fp32
 
 #ifdef MACE_ENABLE_QUANTIZE
 namespace q8 {
@@ -97,32 +98,33 @@ void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_NEON
-  arm::fp32::RegisterActivationDelegator(registry);
-  arm::fp32::RegisterBiasAddDelegator(registry);
-
-  arm::fp32::RegisterConv2dK1x1Delegator(registry);
-  arm::fp32::RegisterConv2dK1xNDelegator(registry);
-  arm::fp32::RegisterConv2dK3x3Delegator(registry);
   arm::fp32::RegisterConv2dK3x3WinogradDelegator(registry);
-  arm::fp32::RegisterConv2dK5x5Delegator(registry);
-  arm::fp32::RegisterConv2dK7x7Delegator(registry);
-  arm::fp32::RegisterConv2dGeneralDelegator(registry);
 
-  arm::fp32::RegisterDeconv2dK2x2Delegator(registry);
-  arm::fp32::RegisterDeconv2dK3x3Delegator(registry);
-  arm::fp32::RegisterDeconv2dK4x4Delegator(registry);
-  arm::fp32::RegisterDeconv2dGeneralDelegator(registry);
+  arm::RegisterActivationDelegator(registry);
+  arm::RegisterBiasAddDelegator(registry);
 
-  arm::fp32::RegisterDepthwiseConv2dK3x3Delegator(registry);
-  arm::fp32::RegisterDepthwiseDeconv2dK3x3Delegator(registry);
-  arm::fp32::RegisterGroupDeconv2dK3x3Delegator(registry);
-  arm::fp32::RegisterDepthwiseDeconv2dK4x4Delegator(registry);
-  arm::fp32::RegisterGroupDeconv2dK4x4Delegator(registry);
-  arm::fp32::RegisterDepthwiseDeconv2dGeneralDelegator(registry);
-  arm::fp32::RegisterGroupDeconv2dGeneralDelegator(registry);
+  arm::RegisterConv2dK1x1Delegator(registry);
+  arm::RegisterConv2dK1xNDelegator(registry);
+  arm::RegisterConv2dK3x3Delegator(registry);
+  arm::RegisterConv2dK5x5Delegator(registry);
+  arm::RegisterConv2dK7x7Delegator(registry);
+  arm::RegisterConv2dGeneralDelegator(registry);
 
-  arm::fp32::RegisterGemmDelegator(registry);
-  arm::fp32::RegisterGemvDelegator(registry);
+  arm::RegisterDeconv2dK2x2Delegator(registry);
+  arm::RegisterDeconv2dK3x3Delegator(registry);
+  arm::RegisterDeconv2dK4x4Delegator(registry);
+  arm::RegisterDeconv2dGeneralDelegator(registry);
+
+  arm::RegisterDepthwiseConv2dK3x3Delegator(registry);
+  arm::RegisterDepthwiseDeconv2dK3x3Delegator(registry);
+  arm::RegisterGroupDeconv2dK3x3Delegator(registry);
+  arm::RegisterDepthwiseDeconv2dK4x4Delegator(registry);
+  arm::RegisterGroupDeconv2dK4x4Delegator(registry);
+  arm::RegisterDepthwiseDeconv2dGeneralDelegator(registry);
+  arm::RegisterGroupDeconv2dGeneralDelegator(registry);
+
+  arm::RegisterGemmDelegator(registry);
+  arm::RegisterGemvDelegator(registry);
 
 #ifdef MACE_ENABLE_QUANTIZE
   arm::q8::RegisterEltwiseDelegator(registry);

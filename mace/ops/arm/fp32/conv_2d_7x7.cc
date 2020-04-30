@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/conv_2d_7x7.h"
-
 #include <arm_neon.h>
 #include <memory>
 
+#include "mace/ops/arm/base/conv_2d_7x7.h"
 #include "mace/ops/delegator/conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
 #define MACE_Conv2dArmv8NeonK7x7SnLoadCalc4        \
   /* load filter (4 outch x 1 height x 4 width) */ \
@@ -156,88 +154,43 @@ namespace fp32 {
   vo0 = vmlaq_lane_f32(vo0, vi5, vget_high_f32(vf01), 0); \
   vo0 = vmlaq_lane_f32(vo0, vi6, vget_high_f32(vf01), 1);
 
-MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
-                                 const Tensor *input,
-                                 const Tensor *filter,
-                                 Tensor *output) {
-  std::unique_ptr<const Tensor> padded_input;
-  std::unique_ptr<Tensor> padded_output;
-  ResizeOutAndPadInOut(context,
-                       input,
-                       filter,
-                       output,
-                       1,
-                       4,
-                       &padded_input,
-                       &padded_output);
-  const Tensor *in_tensor = input;
-  if (padded_input != nullptr) {
-    in_tensor = padded_input.get();
-  }
-  Tensor *out_tensor = output;
-  if (padded_output != nullptr) {
-    out_tensor = padded_output.get();
-  }
-  out_tensor->Clear();
+template<>
+MaceStatus Conv2dK7x7S1<float>::DoCompute(
+    const ConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
 
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = in_tensor->data<float>();
-  auto output_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = in_tensor->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        if (m + 3 < out_channels) {
+        if (m + 3 < p.out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + m * out_image_size;
+              output_data + b * p.out_batch_size + m * p.out_image_size;
           float *out_ptr1_base =
-              output_data + b * out_batch_size + (m + 1) * out_image_size;
+              output_data + b * p.out_batch_size + (m + 1) * p.out_image_size;
           float *out_ptr2_base =
-              output_data + b * out_batch_size + (m + 2) * out_image_size;
+              output_data + b * p.out_batch_size + (m + 2) * p.out_image_size;
           float *out_ptr3_base =
-              output_data + b * out_batch_size + (m + 3) * out_image_size;
-          for (index_t c = 0; c < in_channels; ++c) {
+              output_data + b * p.out_batch_size + (m + 3) * p.out_image_size;
+          for (index_t c = 0; c < p.in_channels; ++c) {
             const float *in_ptr_base =
-                input_data + b * in_batch_size + c * in_image_size;
+                input_data + b * p.in_batch_size + c * p.in_image_size;
             const float
-                *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
+                *filter_ptr0 = filter_data + m * p.in_channels * 49 + c * 49;
             const float *filter_ptr1 =
-                filter_data + (m + 1) * in_channels * 49 + c * 49;
+                filter_data + (m + 1) * p.in_channels * 49 + c * 49;
             const float *filter_ptr2 =
-                filter_data + (m + 2) * in_channels * 49 + c * 49;
+                filter_data + (m + 2) * p.in_channels * 49 + c * 49;
             const float *filter_ptr3 =
-                filter_data + (m + 3) * in_channels * 49 + c * 49;
-            for (index_t h = 0; h < out_height; ++h) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
+                filter_data + (m + 3) * p.in_channels * 49 + c * 49;
+            for (index_t h = 0; h < p.out_height; ++h) {
+              for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                 // input offset
-                index_t in_offset = h * in_width + w;
+                index_t in_offset = h * p.in_width + w;
                 // output (4 outch x 1 height x 4 width): vo_outch_height
                 float32x4_t vo0, vo1, vo2, vo3;
                 // load output
-                index_t out_offset = h * out_width + w;
+                index_t out_offset = h * p.out_width + w;
                 vo0 = vld1q_f32(out_ptr0_base + out_offset);
                 vo1 = vld1q_f32(out_ptr1_base + out_offset);
                 vo2 = vld1q_f32(out_ptr2_base + out_offset);
@@ -262,7 +215,7 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
                   MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
-                  in_offset += in_width;
+                  in_offset += p.in_width;
                   filter_ptr0 += 7;
                   filter_ptr1 += 7;
                   filter_ptr2 += 7;
@@ -282,22 +235,22 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
             }    // h
           }  // c
         } else {
-          for (index_t mm = m; mm < out_channels; ++mm) {
+          for (index_t mm = m; mm < p.out_channels; ++mm) {
             float *out_ptr0_base =
-                output_data + b * out_batch_size + mm * out_image_size;
-            for (index_t c = 0; c < in_channels; ++c) {
+                output_data + b * p.out_batch_size + mm * p.out_image_size;
+            for (index_t c = 0; c < p.in_channels; ++c) {
               const float *in_ptr_base =
-                  input_data + b * in_batch_size + c * in_image_size;
+                  input_data + b * p.in_batch_size + c * p.in_image_size;
               const float
-                  *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
-              for (index_t h = 0; h < out_height; ++h) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
+                  *filter_ptr0 = filter_data + mm * p.in_channels * 49 + c * 49;
+              for (index_t h = 0; h < p.out_height; ++h) {
+                for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                   // input offset
-                  index_t in_offset = h * in_width + w;
+                  index_t in_offset = h * p.in_width + w;
                   // output (1 outch x 1 height x 4 width): vo_outch_height
                   float32x4_t vo0;
                   // load output
-                  index_t out_offset = h * out_width + w;
+                  index_t out_offset = h * p.out_width + w;
                   vo0 = vld1q_f32(out_ptr0_base + out_offset);
                   for (index_t r = 0; r < 7; ++r) {
                     // input (3 slide)
@@ -319,7 +272,7 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
                     MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
 #endif
 
-                    in_offset += in_width;
+                    in_offset += p.in_width;
                     filter_ptr0 += 7;
                   }  // r
 
@@ -332,96 +285,49 @@ MaceStatus Conv2dK7x7S1::Compute(const OpContext *context,
         }      // if
       }        // m
     }          // b
-  }, 0, batch, 1, 0, out_channels, 4);
+  }, 0, p.batch, 1, 0, p.out_channels, 4);
 
-  UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
-                                 const Tensor *input,
-                                 const Tensor *filter,
-                                 Tensor *output) {
-  std::unique_ptr<const Tensor> padded_input;
-  std::unique_ptr<Tensor> padded_output;
-  ResizeOutAndPadInOut(context,
-                       input,
-                       filter,
-                       output,
-                       1,
-                       4,
-                       &padded_input,
-                       &padded_output);
-  const Tensor *in_tensor = input;
-  if (padded_input != nullptr) {
-    in_tensor = padded_input.get();
-  }
-  Tensor *out_tensor = output;
-  if (padded_output != nullptr) {
-    out_tensor = padded_output.get();
-  }
-  out_tensor->Clear();
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = in_tensor->data<float>();
-  auto output_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = in_tensor->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus Conv2dK7x7S2<float>::DoCompute(
+    const ConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        if (m + 3 < out_channels) {
+        if (m + 3 < p.out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + m * out_image_size;
+              output_data + b * p.out_batch_size + m * p.out_image_size;
           float *out_ptr1_base =
-              output_data + b * out_batch_size + (m + 1) * out_image_size;
+              output_data + b * p.out_batch_size + (m + 1) * p.out_image_size;
           float *out_ptr2_base =
-              output_data + b * out_batch_size + (m + 2) * out_image_size;
+              output_data + b * p.out_batch_size + (m + 2) * p.out_image_size;
           float *out_ptr3_base =
-              output_data + b * out_batch_size + (m + 3) * out_image_size;
-          for (index_t c = 0; c < in_channels; ++c) {
+              output_data + b * p.out_batch_size + (m + 3) * p.out_image_size;
+          for (index_t c = 0; c < p.in_channels; ++c) {
             const float *in_ptr_base =
-                input_data + b * in_batch_size + c * in_image_size;
+                input_data + b * p.in_batch_size + c * p.in_image_size;
             const float
-                *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
+                *filter_ptr0 = filter_data + m * p.in_channels * 49 + c * 49;
             const float *filter_ptr1 =
-                filter_data + (m + 1) * in_channels * 49 + c * 49;
+                filter_data + (m + 1) * p.in_channels * 49 + c * 49;
             const float *filter_ptr2 =
-                filter_data + (m + 2) * in_channels * 49 + c * 49;
+                filter_data + (m + 2) * p.in_channels * 49 + c * 49;
             const float *filter_ptr3 =
-                filter_data + (m + 3) * in_channels * 49 + c * 49;
-            for (index_t h = 0; h < out_height; ++h) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
+                filter_data + (m + 3) * p.in_channels * 49 + c * 49;
+            for (index_t h = 0; h < p.out_height; ++h) {
+              for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                 // input offset
                 index_t in_h = h * 2;
                 index_t in_w = w * 2;
-                index_t in_offset = in_h * in_width + in_w;
+                index_t in_offset = in_h * p.in_width + in_w;
                 // output (4 outch x 1 height x 4 width): vo_outch_height
                 float32x4_t vo0, vo1, vo2, vo3;
                 // load output
-                index_t out_offset = h * out_width + w;
+                index_t out_offset = h * p.out_width + w;
                 vo0 = vld1q_f32(out_ptr0_base + out_offset);
                 vo1 = vld1q_f32(out_ptr1_base + out_offset);
                 vo2 = vld1q_f32(out_ptr2_base + out_offset);
@@ -449,7 +355,7 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
                   MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
-                  in_offset += in_width;
+                  in_offset += p.in_width;
                   filter_ptr0 += 7;
                   filter_ptr1 += 7;
                   filter_ptr2 += 7;
@@ -469,24 +375,24 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
             }    // h
           }  // c
         } else {
-          for (index_t mm = m; mm < out_channels; ++mm) {
+          for (index_t mm = m; mm < p.out_channels; ++mm) {
             float *out_ptr0_base =
-                output_data + b * out_batch_size + mm * out_image_size;
-            for (index_t c = 0; c < in_channels; ++c) {
+                output_data + b * p.out_batch_size + mm * p.out_image_size;
+            for (index_t c = 0; c < p.in_channels; ++c) {
               const float *in_ptr_base =
-                  input_data + b * in_batch_size + c * in_image_size;
+                  input_data + b * p.in_batch_size + c * p.in_image_size;
               const float
-                  *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
-              for (index_t h = 0; h < out_height; ++h) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
+                  *filter_ptr0 = filter_data + mm * p.in_channels * 49 + c * 49;
+              for (index_t h = 0; h < p.out_height; ++h) {
+                for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                   // input offset
                   index_t in_h = h * 2;
                   index_t in_w = w * 2;
-                  index_t in_offset = in_h * in_width + in_w;
+                  index_t in_offset = in_h * p.in_width + in_w;
                   // output (1 outch x 1 height x 4 width): vo_outch_height
                   float32x4_t vo0;
                   // load ouput
-                  index_t out_offset = h * out_width + w;
+                  index_t out_offset = h * p.out_width + w;
                   vo0 = vld1q_f32(out_ptr0_base + out_offset);
                   for (index_t r = 0; r < 7; ++r) {
                     // input (3 slide)
@@ -511,7 +417,7 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
                     MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
 #endif
 
-                    in_offset += in_width;
+                    in_offset += p.in_width;
                     filter_ptr0 += 7;
                   }  // r
 
@@ -524,96 +430,49 @@ MaceStatus Conv2dK7x7S2::Compute(const OpContext *context,
         }      // if
       }        // m
     }          // b
-  }, 0, batch, 1, 0, out_channels, 4);
+  }, 0, p.batch, 1, 0, p.out_channels, 4);
 
-  UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
-                                 const Tensor *input,
-                                 const Tensor *filter,
-                                 Tensor *output) {
-  std::unique_ptr<const Tensor> padded_input;
-  std::unique_ptr<Tensor> padded_output;
-  ResizeOutAndPadInOut(context,
-                       input,
-                       filter,
-                       output,
-                       1,
-                       4,
-                       &padded_input,
-                       &padded_output);
-  const Tensor *in_tensor = input;
-  if (padded_input != nullptr) {
-    in_tensor = padded_input.get();
-  }
-  Tensor *out_tensor = output;
-  if (padded_output != nullptr) {
-    out_tensor = padded_output.get();
-  }
-  out_tensor->Clear();
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = in_tensor->data<float>();
-  auto output_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = in_tensor->shape();
-  auto &out_shape = out_tensor->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus Conv2dK7x7S3<float>::DoCompute(
+    const ConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        if (m + 3 < out_channels) {
+        if (m + 3 < p.out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + m * out_image_size;
+              output_data + b * p.out_batch_size + m * p.out_image_size;
           float *out_ptr1_base =
-              output_data + b * out_batch_size + (m + 1) * out_image_size;
+              output_data + b * p.out_batch_size + (m + 1) * p.out_image_size;
           float *out_ptr2_base =
-              output_data + b * out_batch_size + (m + 2) * out_image_size;
+              output_data + b * p.out_batch_size + (m + 2) * p.out_image_size;
           float *out_ptr3_base =
-              output_data + b * out_batch_size + (m + 3) * out_image_size;
-          for (index_t c = 0; c < in_channels; ++c) {
+              output_data + b * p.out_batch_size + (m + 3) * p.out_image_size;
+          for (index_t c = 0; c < p.in_channels; ++c) {
             const float *in_ptr_base =
-                input_data + b * in_batch_size + c * in_image_size;
+                input_data + b * p.in_batch_size + c * p.in_image_size;
             const float
-                *filter_ptr0 = filter_data + m * in_channels * 49 + c * 49;
+                *filter_ptr0 = filter_data + m * p.in_channels * 49 + c * 49;
             const float *filter_ptr1 =
-                filter_data + (m + 1) * in_channels * 49 + c * 49;
+                filter_data + (m + 1) * p.in_channels * 49 + c * 49;
             const float *filter_ptr2 =
-                filter_data + (m + 2) * in_channels * 49 + c * 49;
+                filter_data + (m + 2) * p.in_channels * 49 + c * 49;
             const float *filter_ptr3 =
-                filter_data + (m + 3) * in_channels * 49 + c * 49;
-            for (index_t h = 0; h < out_height; ++h) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
+                filter_data + (m + 3) * p.in_channels * 49 + c * 49;
+            for (index_t h = 0; h < p.out_height; ++h) {
+              for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                 // input offset
                 index_t in_h = h * 3;
                 index_t in_w = w * 3;
-                index_t in_offset = in_h * in_width + in_w;
+                index_t in_offset = in_h * p.in_width + in_w;
                 // output (4 outch x 1 height x 4 width): vo_outch_height
                 float32x4_t vo0, vo1, vo2, vo3;
                 // load output
-                index_t out_offset = h * out_width + w;
+                index_t out_offset = h * p.out_width + w;
                 vo0 = vld1q_f32(out_ptr0_base + out_offset);
                 vo1 = vld1q_f32(out_ptr1_base + out_offset);
                 vo2 = vld1q_f32(out_ptr2_base + out_offset);
@@ -641,7 +500,7 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
                   MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
-                  in_offset += in_width;
+                  in_offset += p.in_width;
                   filter_ptr0 += 7;
                   filter_ptr1 += 7;
                   filter_ptr2 += 7;
@@ -661,24 +520,24 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
             }    // h
           }  // c
         } else {
-          for (index_t mm = m; mm < out_channels; ++mm) {
+          for (index_t mm = m; mm < p.out_channels; ++mm) {
             float *out_ptr0_base =
-                output_data + b * out_batch_size + mm * out_image_size;
-            for (index_t c = 0; c < in_channels; ++c) {
+                output_data + b * p.out_batch_size + mm * p.out_image_size;
+            for (index_t c = 0; c < p.in_channels; ++c) {
               const float *in_ptr_base =
-                  input_data + b * in_batch_size + c * in_image_size;
+                  input_data + b * p.in_batch_size + c * p.in_image_size;
               const float
-                  *filter_ptr0 = filter_data + mm * in_channels * 49 + c * 49;
-              for (index_t h = 0; h < out_height; ++h) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
+                  *filter_ptr0 = filter_data + mm * p.in_channels * 49 + c * 49;
+              for (index_t h = 0; h < p.out_height; ++h) {
+                for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                   // input offset
                   index_t in_h = h * 3;
                   index_t in_w = w * 3;
-                  index_t in_offset = in_h * in_width + in_w;
+                  index_t in_offset = in_h * p.in_width + in_w;
                   // output (1 outch x 1 height x 4 width): vo_outch_height
                   float32x4_t vo0;
                   // load output
-                  index_t out_offset = h * out_width + w;
+                  index_t out_offset = h * p.out_width + w;
                   vo0 = vld1q_f32(out_ptr0_base + out_offset);
                   for (index_t r = 0; r < 7; ++r) {
                     // input (3 slide)
@@ -703,7 +562,7 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
                     MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
 #endif
 
-                    in_offset += in_width;
+                    in_offset += p.in_width;
                     filter_ptr0 += 7;
                   }  // r
 
@@ -716,28 +575,11 @@ MaceStatus Conv2dK7x7S3::Compute(const OpContext *context,
         }      // if
       }        // m
     }          // b
-  }, 0, batch, 1, 0, out_channels, 4);
+  }, 0, p.batch, 1, 0, p.out_channels, 4);
 
-  UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
 
-void RegisterConv2dK7x7Delegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK7x7S1, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K7x7S1));
-  MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK7x7S2, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K7x7S2));
-  MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK7x7S3, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K7x7S3));
-}
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

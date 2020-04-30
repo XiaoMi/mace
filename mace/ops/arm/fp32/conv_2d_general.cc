@@ -12,118 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/conv_2d.h"
-
 #include <memory>
 
+#include "mace/ops/arm/base/conv_2d_general.h"
 #include "mace/ops/delegator/conv_2d.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-class Conv2dGeneral : public Conv2dBase {
- public:
-  explicit Conv2dGeneral(const delegator::Conv2dParam &param)
-      : Conv2dBase(param) {}
-  virtual ~Conv2dGeneral() {}
-
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      Tensor *output) override;
-};
-
-MaceStatus Conv2dGeneral::Compute(const OpContext *context,
-                                  const Tensor *input,
-                                  const Tensor *filter,
-                                  Tensor *output) {
-  std::unique_ptr<const Tensor> padded_input;
-  std::unique_ptr<Tensor> padded_output;
-
-  ResizeOutAndPadInOut(context,
-                       input,
-                       filter,
-                       output,
-                       1,
-                       4,
-                       &padded_input,
-                       &padded_output);
-
-  const Tensor *in_tensor = input;
-  if (padded_input != nullptr) {
-    in_tensor = padded_input.get();
-  }
-  Tensor *out_tensor = output;
-  if (padded_output != nullptr) {
-    out_tensor = padded_output.get();
-  }
-  out_tensor->Clear();
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = in_tensor->data<float>();
-  auto output_data = out_tensor->mutable_data<float>();
-
-  auto &in_shape = in_tensor->shape();
-  auto &out_shape = out_tensor->shape();
-  auto &filter_shape = filter->shape();
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
+template<>
+MaceStatus Conv2dGeneral<float>::DoCompute(
+    const ConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data,
+    const std::vector<index_t> &filter_shape) {
   const index_t filter_height = filter_shape[2];
   const index_t filter_width = filter_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
   const index_t filter_size = filter_height * filter_width;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
         const int stride_h = strides_[0];
         const int stride_w = strides_[1];
         const int dilation_h = dilations_[0];
         const int dilation_w = dilations_[1];
-        if (m + 3 < out_channels) {
+        if (m + 3 < p.out_channels) {
           float *out_ptr0_base =
-              output_data + b * out_batch_size + m * out_image_size;
-          float *out_ptr1_base = out_ptr0_base + out_image_size;
-          float *out_ptr2_base = out_ptr1_base + out_image_size;
-          float *out_ptr3_base = out_ptr2_base + out_image_size;
-          for (index_t c = 0; c < in_channels; ++c) {
+              output_data + b * p.out_batch_size + m * p.out_image_size;
+          float *out_ptr1_base = out_ptr0_base + p.out_image_size;
+          float *out_ptr2_base = out_ptr1_base + p.out_image_size;
+          float *out_ptr3_base = out_ptr2_base + p.out_image_size;
+          for (index_t c = 0; c < p.in_channels; ++c) {
             const float *in_ptr_base =
-                input_data + b * in_batch_size + c * in_image_size;
+                input_data + b * p.in_batch_size + c * p.in_image_size;
             const float *filter_ptr0 =
-                filter_data + m * in_channels * filter_size + c * filter_size;
-            const float *filter_ptr1 = filter_ptr0 + in_channels * filter_size;
-            const float *filter_ptr2 = filter_ptr1 + in_channels * filter_size;
-            const float *filter_ptr3 = filter_ptr2 + in_channels * filter_size;
-            for (index_t h = 0; h < out_height; ++h) {
-              for (index_t w = 0; w + 3 < out_width; w += 4) {
+                filter_data + m * p.in_channels * filter_size + c * filter_size;
+            const float *filter_ptr1 =
+                filter_ptr0 + p.in_channels * filter_size;
+            const float *filter_ptr2 =
+                filter_ptr1 + p.in_channels * filter_size;
+            const float *filter_ptr3 =
+                filter_ptr2 + p.in_channels * filter_size;
+            for (index_t h = 0; h < p.out_height; ++h) {
+              for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                 // input offset
                 index_t ih = h * stride_h;
                 index_t iw = w * stride_w;
-                index_t in_offset = ih * in_width + iw;
+                index_t in_offset = ih * p.in_width + iw;
                 // output (4 outch x 1 height x 4 width): vo_outch_height
                 float vo0[4], vo1[4], vo2[4], vo3[4];
                 // load output
-                index_t out_offset = h * out_width + w;
+                index_t out_offset = h * p.out_width + w;
                 for (index_t ow = 0; ow < 4; ++ow) {
                   vo0[ow] = out_ptr0_base[out_offset + ow];
                   vo1[ow] = out_ptr1_base[out_offset + ow];
@@ -171,7 +112,7 @@ MaceStatus Conv2dGeneral::Compute(const OpContext *context,
                         + kw * dilation_w] * filter_ptr3[kw];
                   }  // kw
 
-                  in_offset += dilation_h * in_width;
+                  in_offset += dilation_h * p.in_width;
                   filter_ptr0 += filter_width;
                   filter_ptr1 += filter_width;
                   filter_ptr2 += filter_width;
@@ -193,26 +134,26 @@ MaceStatus Conv2dGeneral::Compute(const OpContext *context,
             }  // h
           }  // c
         } else {
-          for (index_t mm = m; mm < out_channels; ++mm) {
+          for (index_t mm = m; mm < p.out_channels; ++mm) {
             float *out_ptr0_base =
-                output_data + b * out_batch_size + mm * out_image_size;
-            for (index_t c = 0; c < in_channels; ++c) {
+                output_data + b * p.out_batch_size + mm * p.out_image_size;
+            for (index_t c = 0; c < p.in_channels; ++c) {
               const float *in_ptr_base =
-                  input_data + b * in_batch_size + c * in_image_size;
+                  input_data + b * p.in_batch_size + c * p.in_image_size;
               const float *filter_ptr0 =
-                  filter_data + mm * in_channels * filter_size
+                  filter_data + mm * p.in_channels * filter_size
                       + c * filter_size;
 
-              for (index_t h = 0; h < out_height; ++h) {
-                for (index_t w = 0; w + 3 < out_width; w += 4) {
+              for (index_t h = 0; h < p.out_height; ++h) {
+                for (index_t w = 0; w + 3 < p.out_width; w += 4) {
                   // input offset
                   index_t ih = h * stride_h;
                   index_t iw = w * stride_w;
-                  index_t in_offset = ih * in_width + iw;
+                  index_t in_offset = ih * p.in_width + iw;
                   // output (1 outch x 1 height x 4 width): vo_outch_height
                   float vo0[4];
                   // load output
-                  index_t out_offset = h * out_width + w;
+                  index_t out_offset = h * p.out_width + w;
                   for (index_t ow = 0; ow < 4; ++ow) {
                     vo0[ow] = out_ptr0_base[out_offset + ow];
                   }
@@ -231,7 +172,7 @@ MaceStatus Conv2dGeneral::Compute(const OpContext *context,
                           + kw * dilation_w] * filter_ptr0[kw];
                     }  // kw
 
-                    in_offset += dilation_h * in_width;
+                    in_offset += dilation_h * p.in_width;
                     filter_ptr0 += filter_width;
                   }  // kh
 
@@ -246,19 +187,11 @@ MaceStatus Conv2dGeneral::Compute(const OpContext *context,
         }  // if
       }  // m
     }  // b
-  }, 0, batch, 1, 0, out_channels, 4);
+  }, 0, p.batch, 1, 0, p.out_channels, 4);
 
-  UnPadOutput(*out_tensor, output);
   return MaceStatus::MACE_SUCCESS;
 }
 
-void RegisterConv2dGeneralDelegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, Conv2dGeneral, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, float, ImplType::NEON));
-}
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

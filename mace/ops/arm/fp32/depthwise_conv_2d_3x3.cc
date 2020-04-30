@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/depthwise_conv_2d_3x3.h"
-
 #include <arm_neon.h>
+
+#include "mace/ops/arm/base/depthwise_conv_2d_3x3.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
 namespace {
 void DepthwiseConv2dPixel(const float *in_base,
@@ -48,79 +47,36 @@ void DepthwiseConv2dPixel(const float *in_base,
 }
 }  // namespace
 
-MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
-                                          const mace::Tensor *input,
-                                          const mace::Tensor *filter,
-                                          mace::Tensor *output) {
-  MACE_UNUSED(context);
-  std::vector<index_t> out_shape(4);
-  std::vector<int> paddings(2);
-  auto &in_shape = input->shape();
-  auto &filter_shape = filter->shape();
-  CalOutputShapeAndInputPadSize(in_shape, filter_shape, &out_shape, &paddings);
-  out_shape[1] *= filter_shape[1];
-  MACE_RETURN_IF_ERROR(output->Resize(out_shape));
-  output->Clear();
-
-  const int pad_top = paddings[0] / 2;
-  const int pad_left = paddings[1] / 2;
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-  const index_t multiplier = out_channels / in_channels;
-
-  std::vector<index_t> out_bounds;
-  CalOutputBoundaryWithoutUsingInputPad(out_shape, paddings, &out_bounds);
-  const index_t valid_h_start = out_bounds[0];
-  const index_t valid_h_stop = out_bounds[1];
-  const index_t valid_w_start = out_bounds[2];
-  const index_t valid_w_stop = out_bounds[3];
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = input->data<float>();
-  auto output_data = output->mutable_data<float>();
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus DepthwiseConv2dK3x3S1<float>::DoCompute(
+    const DepthwiseConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        const index_t c = m / multiplier;
-        const index_t multi_index = m % multiplier;
+        const index_t c = m / p.multiplier;
+        const index_t multi_index = m % p.multiplier;
         const float
-            *in_base = input_data + b * in_batch_size + c * in_image_size;
+            *in_base = input_data + b * p.in_batch_size + c * p.in_image_size;
         const float
-            *filter_ptr = filter_data + multi_index * in_channels * 9 + c * 9;
-        float *out_base = output_data + b * out_batch_size + m * out_image_size;
+            *filter_ptr = filter_data + multi_index * p.in_channels * 9 + c * 9;
+        float *out_base =
+            output_data + b * p.out_batch_size + m * p.out_image_size;
         index_t h, w;
 
         // top
-        for (h = 0; h < valid_h_start; ++h) {
-          for (w = 0; w < out_width; ++w) {
+        for (h = 0; h < p.valid_h_start; ++h) {
+          for (w = 0; w < p.out_width; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h - pad_top,
-                                 w - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h - p.pad_top,
+                                 w - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -133,18 +89,18 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
         vf01 = vld1q_f32(filter_ptr + 3);
         vf02 = vld1q_f32(filter_ptr + 5);
 
-        for (h = valid_h_start; h + 1 < valid_h_stop; h += 2) {
+        for (h = p.valid_h_start; h + 1 < p.valid_h_stop; h += 2) {
           // left
-          for (w = 0; w < valid_w_start; ++w) {
+          for (w = 0; w < p.valid_w_start; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h - pad_top,
-                                 w - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h - p.pad_top,
+                                 w - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -152,17 +108,17 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
                                  filter_ptr,
                                  h + 1,
                                  w,
-                                 h + 1 - pad_top,
-                                 w - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h + 1 - p.pad_top,
+                                 w - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
           }
 
-          for (w = valid_w_start; w + 3 < valid_w_stop; w += 4) {
+          for (w = p.valid_w_start; w + 3 < p.valid_w_stop; w += 4) {
             // input (4 height x 3 slide): vi_height_slide
             float32x4_t vi00, vi01, vi02, vi0n;
             float32x4_t vi10, vi11, vi12, vi1n;
@@ -173,17 +129,17 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
             float32x4_t vo00, vo01;
 
             // load input
-            index_t in_h = h - pad_top;
-            index_t in_w = w - pad_left;
-            index_t in_offset = in_h * in_width + in_w;
+            index_t in_h = h - p.pad_top;
+            index_t in_w = w - p.pad_left;
+            index_t in_offset = in_h * p.in_width + in_w;
             vi00 = vld1q_f32(in_base + in_offset);
             vi0n = vld1q_f32(in_base + in_offset + 4);
-            vi10 = vld1q_f32(in_base + in_offset + in_width);
-            vi1n = vld1q_f32(in_base + in_offset + in_width + 4);
-            vi20 = vld1q_f32(in_base + in_offset + 2 * in_width);
-            vi2n = vld1q_f32(in_base + in_offset + 2 * in_width + 4);
-            vi30 = vld1q_f32(in_base + in_offset + 3 * in_width);
-            vi3n = vld1q_f32(in_base + in_offset + 3 * in_width + 4);
+            vi10 = vld1q_f32(in_base + in_offset + p.in_width);
+            vi1n = vld1q_f32(in_base + in_offset + p.in_width + 4);
+            vi20 = vld1q_f32(in_base + in_offset + 2 * p.in_width);
+            vi2n = vld1q_f32(in_base + in_offset + 2 * p.in_width + 4);
+            vi30 = vld1q_f32(in_base + in_offset + 3 * p.in_width);
+            vi3n = vld1q_f32(in_base + in_offset + 3 * p.in_width + 4);
 
             vi01 = vextq_f32(vi00, vi0n, 1);
             vi02 = vextq_f32(vi00, vi0n, 2);
@@ -195,9 +151,9 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
             vi32 = vextq_f32(vi30, vi3n, 2);
 
             // load ouptut
-            index_t out_offset = h * out_width + w;
+            index_t out_offset = h * p.out_width + w;
             vo00 = vld1q_f32(out_base + out_offset);
-            vo01 = vld1q_f32(out_base + out_offset + out_width);
+            vo01 = vld1q_f32(out_base + out_offset + p.out_width);
 
 #if defined(__aarch64__)
             // outch 0, height 0
@@ -245,20 +201,20 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
             vo01 = vmlaq_lane_f32(vo01, vi32, vget_high_f32(vf02), 1);
 #endif
             vst1q_f32(out_base + out_offset, vo00);
-            vst1q_f32(out_base + out_offset + out_width, vo01);
+            vst1q_f32(out_base + out_offset + p.out_width, vo01);
           }  // w
 
           // right
-          for (; w < out_width; ++w) {
+          for (; w < p.out_width; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h - pad_top,
-                                 w - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h - p.pad_top,
+                                 w - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -266,11 +222,11 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
                                  filter_ptr,
                                  h + 1,
                                  w,
-                                 h + 1 - pad_top,
-                                 w - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h + 1 - p.pad_top,
+                                 w - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -279,17 +235,17 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
 
 
         // bottom
-        for (; h < out_height; ++h) {
-          for (w = 0; w < out_width; ++w) {
+        for (; h < p.out_height; ++h) {
+          for (w = 0; w < p.out_width; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h - pad_top,
-                                 w - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h - p.pad_top,
+                                 w - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -297,86 +253,41 @@ MaceStatus DepthwiseConv2dK3x3S1::Compute(const mace::OpContext *context,
         }
       }  // m
     }    // b
-  }, 0, batch, 1, 0, out_channels, 1);  // threadpool
+  }, 0, p.batch, 1, 0, p.out_channels, 1);  // threadpool
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
-                                          const mace::Tensor *input,
-                                          const mace::Tensor *filter,
-                                          mace::Tensor *output) {
-  MACE_UNUSED(context);
-
-  std::vector<index_t> out_shape(4);
-  std::vector<int> paddings(2);
-  auto &in_shape = input->shape();
-  auto &filter_shape = filter->shape();
-
-  CalOutputShapeAndInputPadSize(in_shape, filter_shape, &out_shape, &paddings);
-  out_shape[1] *= in_shape[1];
-  MACE_RETURN_IF_ERROR(output->Resize(out_shape));
-  output->Clear();
-
-  const int pad_top = paddings[0] / 2;
-  const int pad_left = paddings[1] / 2;
-
-  const index_t batch = in_shape[0];
-  const index_t in_channels = in_shape[1];
-  const index_t in_height = in_shape[2];
-  const index_t in_width = in_shape[3];
-  const index_t out_channels = out_shape[1];
-  const index_t out_height = out_shape[2];
-  const index_t out_width = out_shape[3];
-
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
-  const index_t multiplier = out_channels / in_channels;
-
-  std::vector<index_t> out_bounds;
-  CalOutputBoundaryWithoutUsingInputPad(out_shape, paddings, &out_bounds);
-  const index_t valid_h_start = out_bounds[0];
-  const index_t valid_h_stop = out_bounds[1];
-  const index_t valid_w_start = out_bounds[2];
-  const index_t valid_w_stop = out_bounds[3];
-
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-  auto filter_data = filter->data<float>();
-  auto input_data = input->data<float>();
-  auto output_data = output->mutable_data<float>();
-
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
-  thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                            index_t start1, index_t end1, index_t step1) {
+template<>
+MaceStatus DepthwiseConv2dK3x3S2<float>::DoCompute(
+    const DepthwiseConvComputeParam &p, const float *filter_data,
+    const float *input_data, float *output_data) {
+  p.thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                              index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
       for (index_t m = start1; m < end1; m += step1) {
-        index_t c = m / multiplier;
-        index_t multi_index = m % multiplier;
+        index_t c = m / p.multiplier;
+        index_t multi_index = m % p.multiplier;
         const float
-            *in_base = input_data + b * in_batch_size + c * in_image_size;
+            *in_base = input_data + b * p.in_batch_size + c * p.in_image_size;
         const float
-            *filter_ptr = filter_data + multi_index * in_channels * 9 + c * 9;
-        float *out_base = output_data + b * out_batch_size + m * out_image_size;
+            *filter_ptr = filter_data + multi_index * p.in_channels * 9 + c * 9;
+        float *out_base =
+            output_data + b * p.out_batch_size + m * p.out_image_size;
         index_t h, w;
 
         // top
-        for (h = 0; h < valid_h_start; ++h) {
-          for (w = 0; w < out_width; ++w) {
+        for (h = 0; h < p.valid_h_start; ++h) {
+          for (w = 0; w < p.out_width; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h * 2 - pad_top,
-                                 w * 2 - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h * 2 - p.pad_top,
+                                 w * 2 - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -389,24 +300,24 @@ MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
         vf01 = vld1q_f32(filter_ptr + 3);
         vf02 = vld1q_f32(filter_ptr + 5);
 
-        for (h = valid_h_start; h < valid_h_stop; ++h) {
+        for (h = p.valid_h_start; h < p.valid_h_stop; ++h) {
           // left
-          for (w = 0; w < valid_w_start; ++w) {
+          for (w = 0; w < p.valid_w_start; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h * 2 - pad_top,
-                                 w * 2 - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h * 2 - p.pad_top,
+                                 w * 2 - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
           }
 
-          for (w = valid_w_start; w + 3 < valid_w_stop; w += 4) {
+          for (w = p.valid_w_start; w + 3 < p.valid_w_stop; w += 4) {
             float32x4x2_t vi0, vi1, vi2;
             float32x4_t vi0n, vi1n, vi2n;
 
@@ -419,19 +330,19 @@ MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
             float32x4_t vo;
 
             // load input
-            index_t in_h = h * 2 - pad_top;
-            index_t in_w = w * 2 - pad_left;
-            index_t in_offset = in_h * in_width + in_w;
+            index_t in_h = h * 2 - p.pad_top;
+            index_t in_w = w * 2 - p.pad_left;
+            index_t in_offset = in_h * p.in_width + in_w;
             vi0 = vld2q_f32(in_base + in_offset);  // [0.2.4.6, 1.3.5.7]
-            vi1 = vld2q_f32(in_base + in_offset + in_width);
-            vi2 = vld2q_f32(in_base + in_offset + 2 * in_width);
+            vi1 = vld2q_f32(in_base + in_offset + p.in_width);
+            vi2 = vld2q_f32(in_base + in_offset + 2 * p.in_width);
 
             vi0n = vld1q_f32(in_base + in_offset + 8);  // [8.9.10.11]
-            vi1n = vld1q_f32(in_base + in_offset + in_width + 8);
-            vi2n = vld1q_f32(in_base + in_offset + 2 * in_width + 8);
+            vi1n = vld1q_f32(in_base + in_offset + p.in_width + 8);
+            vi2n = vld1q_f32(in_base + in_offset + 2 * p.in_width + 8);
 
             // load ouptut
-            index_t out_offset = h * out_width + w;
+            index_t out_offset = h * p.out_width + w;
             vo = vld1q_f32(out_base + out_offset);
 
             vi00 = vi0.val[0];                // [0.2.4.6]
@@ -471,16 +382,16 @@ MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
           }  // w
 
           // right
-          for (; w < out_width; ++w) {
+          for (; w < p.out_width; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h * 2 - pad_top,
-                                 w * 2 - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h * 2 - p.pad_top,
+                                 w * 2 - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -489,17 +400,17 @@ MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
 
 
         // bottom
-        for (; h < out_height; ++h) {
-          for (w = 0; w < out_width; ++w) {
+        for (; h < p.out_height; ++h) {
+          for (w = 0; w < p.out_width; ++w) {
             DepthwiseConv2dPixel(in_base,
                                  filter_ptr,
                                  h,
                                  w,
-                                 h * 2 - pad_top,
-                                 w * 2 - pad_left,
-                                 out_width,
-                                 in_height,
-                                 in_width,
+                                 h * 2 - p.pad_top,
+                                 w * 2 - p.pad_left,
+                                 p.out_width,
+                                 p.in_height,
+                                 p.in_width,
                                  3,
                                  3,
                                  out_base);
@@ -507,23 +418,11 @@ MaceStatus DepthwiseConv2dK3x3S2::Compute(const mace::OpContext *context,
         }
       }  // m
     }    // b
-  }, 0, batch, 1, 0, out_channels, 1);
+  }, 0, p.batch, 1, 0, p.out_channels, 1);
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-void RegisterDepthwiseConv2dK3x3Delegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, DepthwiseConv2dK3x3S1, delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K3x3S1));
-  MACE_REGISTER_DELEGATOR(
-      registry, DepthwiseConv2dK3x3S2, delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
-                            float, ImplType::NEON, K3x3S2));
-}
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

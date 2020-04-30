@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-#include "mace/ops/arm/fp32/gemv.h"
-
 #include <arm_neon.h>
 #include <algorithm>
 
+#include "mace/ops/arm/base/gemv.h"
 #include "mace/utils/math.h"
 
 #if !defined(__aarch64__)
@@ -34,18 +32,18 @@ float vaddvq_f32(float32x4_t v) {
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-MaceStatus Gemv::Compute(const OpContext *context,
-                         const Tensor *lhs,
-                         const Tensor *rhs,
-                         const Tensor *bias,
-                         const index_t batch,
-                         const index_t lhs_height,
-                         const index_t lhs_width,
-                         const bool lhs_batched,
-                         const bool rhs_batched,
-                         Tensor *output) {
+template<>
+MaceStatus Gemv<float>::Compute(const OpContext *context,
+                                const Tensor *lhs,
+                                const Tensor *rhs,
+                                const Tensor *bias,
+                                const index_t batch,
+                                const index_t lhs_height,
+                                const index_t lhs_width,
+                                const bool lhs_batched,
+                                const bool rhs_batched,
+                                Tensor *output) {
   MACE_UNUSED(context);
 
   MACE_CHECK(output->size() == batch * lhs_height,
@@ -378,13 +376,6 @@ MaceStatus Gemv::Compute(const OpContext *context,
 #undef vaddvq_f32
 #endif
 
-void RegisterGemvDelegator(OpDelegatorRegistry *registry) {
-  MACE_REGISTER_DELEGATOR(
-      registry, Gemv, DelegatorParam,
-      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, float, ImplType::NEON));
-}
-
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

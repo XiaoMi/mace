@@ -21,7 +21,6 @@
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
 inline float32x4_t neon_vfma_lane_0(float32x4_t a,
                           float32x4_t b,
@@ -63,7 +62,6 @@ inline float32x4_t neon_vfma_lane_3(float32x4_t a,
 #endif
 }
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

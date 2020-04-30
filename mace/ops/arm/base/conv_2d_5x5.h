@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,40 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_FP32_GEMV_H_
-#define MACE_OPS_ARM_FP32_GEMV_H_
+#ifndef MACE_OPS_ARM_BASE_CONV_2D_5X5_H_
+#define MACE_OPS_ARM_BASE_CONV_2D_5X5_H_
+
+#include <vector>
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/delegator/gemv.h"
+#include "mace/ops/arm/base/conv_2d_mxn.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-class Gemv : public delegator::Gemv {
+template<typename T>
+class Conv2dK5x5S1 : public Conv2dKMxN<T> {
  public:
-  explicit Gemv(const DelegatorParam &param) : delegator::Gemv(param) {}
-  ~Gemv() {}
-  // Always row-major after transpose
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *lhs,
-      const Tensor *rhs,
-      const Tensor *bias,
-      const index_t batch,
-      const index_t lhs_height,
-      const index_t lhs_width,
-      const bool lhs_batched,
-      const bool rhs_batched,
-      Tensor *output) override;
+  explicit Conv2dK5x5S1(const delegator::Conv2dParam &param)
+      : Conv2dKMxN<T>(param, 1, 4) {}
+  virtual ~Conv2dK5x5S1() {}
+
+  MaceStatus DoCompute(const ConvComputeParam &p, const T *filter,
+                       const T *input_data, T *output_data) override;
 };
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_FP32_GEMV_H_
+#endif  // MACE_OPS_ARM_BASE_CONV_2D_5X5_H_

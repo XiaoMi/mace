@@ -1,4 +1,4 @@
-// Copyright 2019 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/conv_2d.h"
-#include "mace/ops/arm/fp32/gemm.h"
-#include "mace/ops/delegator/conv_2d.h"
+#include "mace/ops/arm/base/conv_2d_1x1.h"
+
+#include <vector>
 
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-class Conv2dK1x1 : public Conv2dBase {
- public:
-  explicit Conv2dK1x1(const delegator::Conv2dParam &param)
-      : Conv2dBase(param),
-        gemm_(delegator::GemmParam()) {}
-  virtual ~Conv2dK1x1() {}
-
-  MaceStatus Compute(
-      const OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      Tensor *output) override;
-
- private:
-  Gemm gemm_;
-};
-
-MaceStatus Conv2dK1x1::Compute(const OpContext *context,
-                               const Tensor *input,
-                               const Tensor *filter,
-                               Tensor *output) {
+template<typename T>
+MaceStatus Conv2dK1x1<T>::Compute(const OpContext *context,
+                                  const Tensor *input,
+                                  const Tensor *filter,
+                                  Tensor *output) {
   index_t batch = input->dim(0);
   index_t in_height = input->dim(2);
   index_t in_width = input->dim(3);
@@ -50,13 +33,8 @@ MaceStatus Conv2dK1x1::Compute(const OpContext *context,
   std::vector<index_t> output_shape;
   std::vector<int> in_pad_size;
   std::vector<int> out_pad_size;
-  CalOutputShapeAndPadSize(input,
-                           filter,
-                           1,
-                           1,
-                           &output_shape,
-                           &in_pad_size,
-                           &out_pad_size);
+  CalOutputShapeAndPadSize(input, filter, 1, 1,
+                           &output_shape, &in_pad_size, &out_pad_size);
   MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   const index_t out_channels = output_shape[1];
@@ -70,16 +48,16 @@ MaceStatus Conv2dK1x1::Compute(const OpContext *context,
       in_height != padded_in_height || in_width != padded_in_width;
   auto scratch_buffer = context->device()->scratch_buffer();
   const index_t padded_in_size = is_in_padded ? PadAlignSize(
-      sizeof(float) * batch * in_channels * padded_in_height
+      sizeof(T) * batch * in_channels * padded_in_height
           * padded_in_width) : 0;
   const index_t pack_filter_size =
-      PadAlignSize(sizeof(float) * out_channels * in_channels);
+      PadAlignSize(sizeof(T) * out_channels * in_channels);
   const index_t pack_input_size =
       PadAlignSize(
-          sizeof(float) * in_channels * padded_in_height * padded_in_width);
+          sizeof(T) * in_channels * padded_in_height * padded_in_width);
   const index_t pack_output_size =
       PadAlignSize(
-          sizeof(float) * out_channels * padded_in_height * padded_in_width);
+          sizeof(T) * out_channels * padded_in_height * padded_in_width);
 
   const index_t gemm_pack_size =
       pack_filter_size + pack_input_size + pack_output_size;
@@ -115,12 +93,11 @@ MaceStatus Conv2dK1x1::Compute(const OpContext *context,
 
 void RegisterConv2dK1x1Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK1x1, delegator::Conv2dParam,
+      registry, Conv2dK1x1<float>, delegator::Conv2dParam,
       MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
                             float, ImplType::NEON, K1x1));
 }
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace
