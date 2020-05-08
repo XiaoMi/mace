@@ -54,6 +54,7 @@ tf_axis = 'axis'
 TFSupportedOps = [
     'Abs',
     'Add',
+    'AddV2',
     'ArgMax',
     'AvgPool',
     'BatchMatMul',
@@ -165,6 +166,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     eltwise_type = {
         TFOpType.Add.name: EltwiseType.SUM,
+        TFOpType.AddV2.name: EltwiseType.SUM,
         TFOpType.Sub.name: EltwiseType.SUB,
         TFOpType.Mul.name: EltwiseType.PROD,
         TFOpType.Div.name: EltwiseType.DIV,
@@ -210,6 +212,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         self._op_converters = {
             TFOpType.Abs.name: self.convert_elementwise,
             TFOpType.Add.name: self.convert_add,
+            TFOpType.AddV2.name: self.convert_add,
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.AvgPool.name: self.convert_pooling,
             TFOpType.BatchMatMul.name: self.convert_matmul,
