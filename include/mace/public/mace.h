@@ -316,8 +316,6 @@ class MACE_API MaceEngineConfig {
   /// (AFFINITY_NONE) cores according to the policy. The threads number will
   /// also be truncated to the corresponding cores number when num_threads_hint
   /// is larger than it.
-  /// The OpenMP threads will be bind to (via sched_setaffinity) big cores
-  /// (AFFINITY_BIG_ONLY) and little cores (AFFINITY_LITTLE_ONLY).
   ///
   /// \param num_threads_hint it is only a hint.
   /// \param policy one of CPUAffinityPolicy

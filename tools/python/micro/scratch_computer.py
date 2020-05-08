@@ -31,7 +31,7 @@ class ScratchComputer:
             MaceOp.Conv2D: self.scratch_size_no_need,
             MaceOp.Squeeze: self.scratch_size_of_squeeze,
             MaceOp.Softmax: self.scratch_size_no_need,
-            MaceOp.Eltwise: self.scratch_size_no_need,
+            MaceOp.Eltwise: self.scratch_size_eltwise,
             MaceOp.Activation: self.scratch_size_no_need,
             MaceOp.StridedSlice: self.scratch_size_no_need,
             MaceOp.Reduce: self.scratch_size_no_need,
@@ -126,4 +126,8 @@ class ScratchComputer:
 
     def scratch_size_of_squeeze(self, op_def):
         input0_dims = self.get_op_input_dims(op_def, 0)
-        return len(input0_dims) * self.get_data_bytes(mace_pb2.DT_FLOAT)
+        return len(input0_dims) * self.get_data_bytes(mace_pb2.DT_INT32) * 2
+
+    def scratch_size_eltwise(self, op_def):
+        input0_dims = self.get_op_input_dims(op_def, 0)
+        return len(input0_dims) * self.get_data_bytes(mace_pb2.DT_INT32) * 3

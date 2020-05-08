@@ -20,7 +20,7 @@
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/arm/q8/quantization_util.h"
 // We reuse TensorFlow Lite's optimized depthwiseconv_uint8 and parallelized it
-// using OpenMP for MACE's quantized depthwise_conv2d.
+// using thread pool for MACE's quantized depthwise_conv2d.
 #include "tensorflow/contrib/lite/kernels/internal/optimized/depthwiseconv_uint8.h"
 #endif  // MACE_ENABLE_QUANTIZE
 

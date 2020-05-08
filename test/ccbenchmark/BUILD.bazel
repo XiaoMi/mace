@@ -11,18 +11,17 @@ load(
     "if_hexagon_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
-    "if_openmp_enabled",
     "if_quantize_enabled",
 )
 
 cc_library(
     name = "benchmark_utils",
     testonly = 1,
-    hdrs = glob([
-        "mace/benchmark_utils/*.h",
-    ]),
     srcs = glob([
         "mace/benchmark_utils/*.cc",
+    ]),
+    hdrs = glob([
+        "mace/benchmark_utils/*.h",
     ]),
     copts = [
         "-Werror",
@@ -31,9 +30,9 @@ cc_library(
     ],
     strip_include_prefix = "",
     deps = [
+        "//external:gflags_nothreads",
         "//mace/core",
         "//test/ccutils",
-        "//external:gflags_nothreads",
     ],
 )
 

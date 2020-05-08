@@ -29,8 +29,6 @@
 
 namespace mace {
 
-extern int MaceOpenMPThreadCount;
-
 class CPURuntime {
  public:
   CPURuntime(const int num_threads,
@@ -43,9 +41,9 @@ class CPURuntime {
 #ifdef MACE_ENABLE_QUANTIZE
     MACE_CHECK_NOTNULL(GetGemmlowpContext());
 #endif  // MACE_ENABLE_QUANTIZE
-    SetOpenMPThreadsAndAffinityPolicy(num_threads_,
-                                      policy_,
-                                      gemm_context_);
+    SetThreadsHintAndAffinityPolicy(num_threads_,
+                                    policy_,
+                                    gemm_context_);
   }
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -78,8 +76,8 @@ class CPURuntime {
   }
 
  private:
-  MaceStatus SetOpenMPThreadsAndAffinityPolicy(
-      int omp_num_threads_hint,
+  MaceStatus SetThreadsHintAndAffinityPolicy(
+      int num_threads_hint,
       CPUAffinityPolicy policy,
       void *gemm_context);
 

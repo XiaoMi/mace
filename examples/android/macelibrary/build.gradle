@@ -16,7 +16,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++11 -fopenmp"
+                cppFlags "-std=c++11"
                 abiFilters "arm64-v8a"
             }
         }

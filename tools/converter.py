@@ -117,7 +117,7 @@ DataFormatStrs = [
 
 class DefaultValues(object):
     mace_lib_type = MACELibType.static
-    omp_num_threads = -1,
+    num_threads = -1,
     cpu_affinity_policy = 1,
     gpu_perf_hint = 3,
     gpu_priority_hint = 3,
@@ -887,7 +887,7 @@ def convert_func(flags):
 ################################
 # run
 ################################
-def build_mace_run(configs, target_abi, toolchain, enable_openmp,
+def build_mace_run(configs, target_abi, toolchain,
                    address_sanitizer, mace_lib_type, debug_mode):
     library_name = configs[YAMLKeyword.library_name]
 
@@ -913,7 +913,6 @@ def build_mace_run(configs, target_abi, toolchain, enable_openmp,
         enable_hexagon=hexagon_enabled(configs),
         enable_hta=hta_enabled(configs),
         enable_apu=apu_enabled(configs),
-        enable_openmp=enable_openmp,
         enable_opencl=opencl_enabled(configs),
         enable_quantize=quantize_enabled(configs),
         enable_bfloat16=bfloat16_enabled(configs),
@@ -961,7 +960,6 @@ def run_mace(flags):
                 build_mace_run(configs,
                                target_abi,
                                toolchain,
-                               flags.enable_openmp,
                                flags.address_sanitizer,
                                flags.mace_lib_type,
                                flags.debug_mode)
@@ -1079,14 +1077,10 @@ def parse_args():
         default=DefaultValues.mace_lib_type,
         help="[static | dynamic], Which type MACE library to use.")
     run.add_argument(
-        "--enable_openmp",
-        action="store_true",
-        help="Enable openmp for multiple thread.")
-    run.add_argument(
-        "--omp_num_threads",
+        "--num_threads",
         type=int,
-        default=DefaultValues.omp_num_threads,
-        help="num of openmp threads")
+        default=DefaultValues.num_threads,
+        help="num of threads")
     run.add_argument(
         "--cpu_affinity_policy",
         type=int,

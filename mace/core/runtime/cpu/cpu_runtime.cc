@@ -14,10 +14,6 @@
 
 #include "mace/core/runtime/cpu/cpu_runtime.h"
 
-#ifdef MACE_ENABLE_OPENMP
-#include <omp.h>
-#endif
-
 #include <algorithm>
 #include <cerrno>
 #include <cmath>
@@ -35,62 +31,7 @@
 
 namespace mace {
 
-int MaceOpenMPThreadCount = 1;
-
-enum SchedulePolicy {
-  SCHED_STATIC,
-  SCHED_GUIDED,
-};
-
-namespace {
-
-MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
-                                           const std::vector<size_t> &cpu_ids,
-                                           SchedulePolicy schedule_policy) {
-  MaceOpenMPThreadCount = omp_num_threads;
-  SchedSetAffinity(cpu_ids);
-#ifdef MACE_ENABLE_OPENMP
-  VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
-          << ", CPU core IDs: " << MakeString(cpu_ids);
-  if (schedule_policy == SCHED_GUIDED) {
-    omp_set_schedule(omp_sched_guided, 1);
-  } else if (schedule_policy == SCHED_STATIC) {
-    omp_set_schedule(omp_sched_static, 0);
-  } else {
-    LOG(WARNING) << "Unknown schedule policy: " << schedule_policy;
-  }
-
-  omp_set_num_threads(omp_num_threads);
-#else
-  MACE_UNUSED(omp_num_threads);
-  MACE_UNUSED(schedule_policy);
-  VLOG(2) << "Set OpenMP threads number failed: OpenMP not enabled.";
-#endif
-
-#ifdef MACE_ENABLE_OPENMP
-  std::vector<MaceStatus> status(omp_num_threads,
-                                 MaceStatus::MACE_INVALID_ARGS);
-#pragma omp parallel for
-  for (int i = 0; i < omp_num_threads; ++i) {
-    VLOG(1) << "Set affinity for OpenMP thread " << omp_get_thread_num()
-            << "/" << omp_get_num_threads();
-    status[i] = SchedSetAffinity(cpu_ids);
-  }
-  for (int i = 0; i < omp_num_threads; ++i) {
-    if (status[i] != MaceStatus::MACE_SUCCESS)
-      return MaceStatus::MACE_INVALID_ARGS;
-  }
-  return MaceStatus::MACE_SUCCESS;
-#else
-  MaceStatus status = SchedSetAffinity(cpu_ids);
-  VLOG(1) << "Set affinity without OpenMP: " << MakeString(cpu_ids);
-  return status;
-#endif
-}
-
-}  // namespace
-
-MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
+MaceStatus CPURuntime::SetThreadsHintAndAffinityPolicy(
     int num_threads_hint,
     CPUAffinityPolicy policy,
     void *gemm_context) {
@@ -115,19 +56,8 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
 #else
     MACE_UNUSED(gemm_context);
 #endif  // MACE_ENABLE_QUANTIZE
-#ifdef MACE_ENABLE_OPENMP
-    omp_set_num_threads(num_threads_hint);
-#else
-    VLOG(2) << "Set OpenMP threads number failed: OpenMP not enabled.";
-#endif
-    return MaceStatus::MACE_SUCCESS;
-  }
 
-  SchedulePolicy sched_policy = SCHED_GUIDED;
-  float first_freq = cpu_max_freqs[cores_to_use[0]];
-  float last_freq = cpu_max_freqs[cores_to_use[cores_to_use.size() - 1]];
-  if (std::abs(first_freq - last_freq) < 1e-6) {
-    sched_policy = SCHED_STATIC;
+    return MaceStatus::MACE_SUCCESS;
   }
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -137,9 +67,10 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
   }
 #endif  // MACE_ENABLE_QUANTIZE
 
-  return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint,
-                                         cores_to_use,
-                                         sched_policy);
+  MaceStatus status = SchedSetAffinity(cores_to_use);
+  VLOG(1) << "Set affinity : " << MakeString(cores_to_use);
+
+  return status;
 }
 
 }  // namespace mace

@@ -364,12 +364,12 @@ Tuning for specific SoC's GPU
 
         .. note::
 
-             You should plug in device(s) with the specific SoC(s).
+             You must specify the ``target_socs`` in your YAML file and plug in device(s) with the specific SoC(s).
 
 
         .. code-block:: sh
 
-            python tools/converter.py run --config=/path/to/model_deployment_file.yml --validate
+            python tools/converter.py run --config=/path/to/model_deployment_file.yml
 
         The command will generate two files in `build/${library_name}/opencl`, like the following dir-tree.
 
@@ -487,7 +487,7 @@ the detailed information is in :doc:`benchmark`.
           - default
           - commands
           - explanation
-        * - --omp_num_threads
+        * - --num_threads
           - int
           - -1
           - ``run``

@@ -19,17 +19,19 @@ import six
 
 from py_proto import mace_pb2
 from transform import base_converter
-from transform.base_converter import PoolingType
-from transform.base_converter import PaddingMode
 from transform.base_converter import ActivationType
-from transform.base_converter import EltwiseType
-from transform.base_converter import ReduceType
-from transform.base_converter import FrameworkType
-from transform.base_converter import RoundMode
+from transform.base_converter import ConverterUtil
 from transform.base_converter import DataFormat
+from transform.base_converter import EltwiseType
+from transform.base_converter import FrameworkType
 from transform.base_converter import MaceOp
 from transform.base_converter import MaceKeyword
-from transform.base_converter import ConverterUtil
+from transform.base_converter import PoolingType
+from transform.base_converter import PaddingMode
+from transform.base_converter import PadType
+from transform.base_converter import ReduceType
+from transform.base_converter import RoundMode
+
 from utils.util import mace_check
 
 import numpy as np
@@ -1225,11 +1227,11 @@ class OnnxConverter(base_converter.ConverterInterface):
             padding_type_arg = op.arg.add()
             padding_type_arg.name = MaceKeyword.mace_padding_type_str
             if mode == 'reflect':
-                padding_type_arg.i = PadType.REFLECT
+                padding_type_arg.i = PadType.REFLECT.value
             elif mode == 'edge':
-                padding_type_arg.i = PadType.SYMMETRIC
+                padding_type_arg.i = PadType.SYMMETRIC.value
             else:
-                padding_type_arg.i = PadType.CONSTANT
+                padding_type_arg.i = PadType.CONSTANT.value
         if 'pads' in node.attrs:
             paddings_arg = op.arg.add()
             paddings_arg.name = MaceKeyword.mace_paddings_str
