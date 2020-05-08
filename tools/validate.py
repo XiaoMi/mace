@@ -69,9 +69,9 @@ def calculate_similarity(u, v, data_type=np.float64):
     norm = u_norm * v_norm
     if norm == 0:
         if u_norm == 0 and v_norm == 0:
-            return 1
+            return data_type(1)
         else:
-            return 0
+            return data_type(0)
     else:
         return np.dot(u, v) / norm
 
