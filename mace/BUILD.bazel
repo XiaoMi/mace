@@ -109,14 +109,6 @@ config_setting(
 )
 
 config_setting(
-    name = "openmp_enabled",
-    define_values = {
-        "openmp": "true",
-    },
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
     name = "opencl_enabled",
     define_values = {
         "opencl": "true",

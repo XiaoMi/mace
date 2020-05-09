@@ -150,7 +150,7 @@ DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
 DEFINE_int32(gpu_perf_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
+DEFINE_int32(num_threads, -1, "num of threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 DEFINE_bool(benchmark, false, "enable benchmark op");
@@ -170,10 +170,10 @@ bool RunModel(const std::string &model_name,
   MaceStatus status;
   MaceEngineConfig config(device_type);
   status = config.SetCPUThreadPolicy(
-          FLAGS_omp_num_threads,
+          FLAGS_num_threads,
           static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
   if (status != MaceStatus::MACE_SUCCESS) {
-    LOG(WARNING) << "Set openmp or cpu affinity failed.";
+    LOG(WARNING) << "Set cpu affinity failed.";
   }
 #if defined(MACE_ENABLE_OPENCL) || defined(MACE_ENABLE_HTA)
   std::shared_ptr<GPUContext> gpu_context;
@@ -544,7 +544,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;
   LOG(INFO) << "gpu_perf_hint: " << FLAGS_gpu_perf_hint;
   LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
-  LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;
+  LOG(INFO) << "num_threads: " << FLAGS_num_threads;
   LOG(INFO) << "cpu_affinity_policy: " << FLAGS_cpu_affinity_policy;
   auto limit_opencl_kernel_time = getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
   if (limit_opencl_kernel_time) {

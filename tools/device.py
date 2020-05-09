@@ -173,7 +173,7 @@ class DeviceWrapper:
                    opencl_binary_file,
                    opencl_parameter_file,
                    libmace_dynamic_library_path,
-                   omp_num_threads=-1,
+                   num_threads=-1,
                    cpu_affinity_policy=1,
                    gpu_perf_hint=3,
                    gpu_priority_hint=3,
@@ -189,11 +189,11 @@ class DeviceWrapper:
                    benchmark=False,
                    ):
         six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
-                   "out_of_range_check=%s, omp_num_threads=%s, "
+                   "out_of_range_check=%s, num_threads=%s, "
                    "cpu_affinity_policy=%s, gpu_perf_hint=%s, "
                    "gpu_priority_hint=%s" %
                    (model_tag, running_round, restart_round, str(tuning),
-                    str(out_of_range_check), omp_num_threads,
+                    str(out_of_range_check), num_threads,
                     cpu_affinity_policy, gpu_perf_hint, gpu_priority_hint))
         mace_model_path = ""
         if model_graph_format == ModelFormat.file:
@@ -236,7 +236,7 @@ class DeviceWrapper:
                     "--device=%s" % device_type,
                     "--round=%s" % running_round,
                     "--restart_round=%s" % restart_round,
-                    "--omp_num_threads=%s" % omp_num_threads,
+                    "--num_threads=%s" % num_threads,
                     "--cpu_affinity_policy=%s" % cpu_affinity_policy,
                     "--gpu_perf_hint=%s" % gpu_perf_hint,
                     "--gpu_priority_hint=%s" % gpu_priority_hint,
@@ -336,7 +336,7 @@ class DeviceWrapper:
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
                 "--restart_round=%s" % restart_round,
-                "--omp_num_threads=%s" % omp_num_threads,
+                "--num_threads=%s" % num_threads,
                 "--cpu_affinity_policy=%s" % cpu_affinity_policy,
                 "--gpu_perf_hint=%s" % gpu_perf_hint,
                 "--gpu_priority_hint=%s" % gpu_priority_hint,
@@ -541,7 +541,7 @@ class DeviceWrapper:
             out_of_range_check=flags.gpu_out_of_range_check,
             model_graph_format=configs[
                 YAMLKeyword.model_graph_format],
-            omp_num_threads=flags.omp_num_threads,
+            num_threads=flags.num_threads,
             cpu_affinity_policy=flags.cpu_affinity_policy,
             gpu_perf_hint=flags.gpu_perf_hint,
             gpu_priority_hint=flags.gpu_priority_hint,

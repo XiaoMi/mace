@@ -11,7 +11,6 @@ load(
     "if_hexagon_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
-    "if_openmp_enabled",
     "if_quantize_enabled",
 )
 
@@ -29,7 +28,7 @@ cc_library(
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_openmp_enabled(["-fopenmp"]) + if_neon_enabled([
+    ] + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",

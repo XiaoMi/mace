@@ -95,7 +95,7 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateGPUContext(
 
 JNIEXPORT jint JNICALL
 Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
-    JNIEnv *env, jclass thisObj, jint omp_num_threads, jint cpu_affinity_policy,
+    JNIEnv *env, jclass thisObj, jint num_threads, jint cpu_affinity_policy,
     jint gpu_perf_hint, jint gpu_priority_hint,
     jstring model_name_str, jstring device) {
   MaceContext &mace_context = GetMaceContext();
@@ -110,14 +110,13 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
   mace::MaceStatus status;
   mace::MaceEngineConfig config(mace_context.device_type);
   status = config.SetCPUThreadPolicy(
-      omp_num_threads,
+      num_threads,
       static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy));
   if (status != mace::MaceStatus::MACE_SUCCESS) {
     __android_log_print(ANDROID_LOG_ERROR,
                         "image_classify attrs",
-                        "openmp result: %s, threads: %d, cpu: %d",
-                        status.information().c_str(), omp_num_threads,
-                        cpu_affinity_policy);
+                        "threads: %d, cpu: %d",
+                        num_threads, cpu_affinity_policy);
   }
   if (mace_context.device_type == mace::DeviceType::GPU) {
     config.SetGPUContext(mace_context.gpu_context);

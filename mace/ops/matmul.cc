@@ -567,21 +567,15 @@ class MatMulOp<CPU, float16_t> : public MatMulOpBase {
         B->dtype() == DT_FLOAT) {
       auto *a_ptr_base = A->data<float16_t>();
       auto *b_ptr_base = B->data<float>();
-      FP16Gemv(a_ptr_base,
-               b_ptr_base,
-               height,
-               K,
-               c_ptr_base);
+      FP16Gemv(context, a_ptr_base, b_ptr_base,
+               height, K, c_ptr_base);
       return MaceStatus::MACE_SUCCESS;
     } else if (height == 1 && transpose_b_ && A->dtype() == DT_FLOAT &&
                B->dtype() == DT_FLOAT16) {
       auto *b_ptr_base = B->data<float16_t>();
       auto *a_ptr_base = A->data<float>();
-      FP16Gemv(b_ptr_base,
-               a_ptr_base,
-               width,
-               K,
-               c_ptr_base);
+      FP16Gemv(context, b_ptr_base, a_ptr_base,
+               width, K, c_ptr_base);
       return MaceStatus::MACE_SUCCESS;
     } else {
       LOG(INFO) << "Matmul fp16 gemv args: " << height << " " << width << " "

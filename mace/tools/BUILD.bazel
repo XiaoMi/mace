@@ -5,7 +5,6 @@ load(
     "if_android",
     "if_hexagon_enabled",
     "if_opencl_enabled",
-    "if_openmp_enabled",
 )
 
 licenses(["notice"])  # Apache 2.0

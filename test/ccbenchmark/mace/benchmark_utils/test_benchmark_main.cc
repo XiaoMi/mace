@@ -20,7 +20,7 @@
 #include "mace/ops/ops_test_util.h"
 
 DEFINE_string(filter, "all", "op benchmark regex filter, eg:.*CONV.*");
-DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
+DEFINE_int32(num_threads, -1, "num of threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
   // config runtime
   mace::ops::test::OpTestContext::Get(
-      FLAGS_omp_num_threads,
+      FLAGS_num_threads,
       static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));
 
   mace::testing::Benchmark::Run(FLAGS_filter.c_str());

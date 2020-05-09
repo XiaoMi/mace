@@ -180,4 +180,4 @@ Please refer to \ ``mace/tools/mace_run.cc``\ for full usage. The following list
     // 5. Run the model
     MaceStatus status = engine.Run(inputs, &outputs);
 
-More details are in :doc:`advanced_usage`.
+More details are in :doc:`advanced_usage_cmake`.

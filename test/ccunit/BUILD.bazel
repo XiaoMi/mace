@@ -12,7 +12,6 @@ load(
     "if_hta_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
-    "if_openmp_enabled",
     "if_quantize_enabled",
 )
 
@@ -49,9 +48,7 @@ cc_test(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_openmp_enabled([
-        "-fopenmp",
-    ]) + if_neon_enabled([
+    ] + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",
@@ -64,9 +61,6 @@ cc_test(
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
-    ]),
-    linkopts = if_openmp_enabled([
-        "-fopenmp",
     ]),
     linkstatic = 1,
     deps = [
