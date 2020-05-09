@@ -1115,7 +1115,9 @@ class Transformer(base_converter.ConverterInterface):
                 if (op.type == MaceOp.Conv2D.name or
                     op.type == MaceOp.Deconv2D.name or
                     (op.type == MaceOp.DepthwiseConv2d.name and
-                     self._option.device == DeviceType.APU.value)) and\
+                     self._option.device == DeviceType.APU.value) or
+                    (op.type == MaceOp.FullyConnected.name and
+                     len(self._consts[op.input[1]].dims) == 4)) and \
                         op.input[1] not in transposed_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
