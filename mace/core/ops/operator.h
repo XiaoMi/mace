@@ -64,6 +64,11 @@ class Operation {
         *operator_def_, name);
   }
 
+  bool ExistArg(const std::string &name) const {
+    MACE_CHECK(operator_def_, "operator_def was null!");
+    return ProtoArgHelper::ExistArg<OperatorDef>(*operator_def_, name);
+  }
+
   DeviceType device_type() const {
     return static_cast<DeviceType>(operator_def_->device_type());
   }

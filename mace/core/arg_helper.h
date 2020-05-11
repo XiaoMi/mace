@@ -41,6 +41,11 @@ class ProtoArgHelper {
     return ProtoArgHelper(def).GetRepeatedArgs<T>(arg_name, default_value);
   }
 
+  template <typename Def>
+  static bool ExistArg(const Def &def, const std::string &arg_name) {
+    return ProtoArgHelper(def).ExistArg(arg_name);
+  }
+
   explicit ProtoArgHelper(const OperatorDef &def);
   explicit ProtoArgHelper(const NetDef &netdef);
 
@@ -54,6 +59,8 @@ class ProtoArgHelper {
 
   template <typename T>
   std::vector<T> GetRepeatedArgs(const std::string &arg_name) const;
+
+  bool ExistArg(const std::string &arg_name) const;
 
  private:
   std::map<std::string, Argument> arg_map_;

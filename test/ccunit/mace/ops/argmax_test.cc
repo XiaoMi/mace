@@ -37,6 +37,7 @@ void ArgMaxTest(const std::vector<index_t> &input_shape,
         .Input("Input")
         .Input("axis")
         .Output("Output")
+        .AddIntArg("keepdims", 0)
         .OutputType({DT_INT32})
         .Finalize(net.NewOperatorDef());
     // Run

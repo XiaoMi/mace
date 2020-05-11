@@ -1046,6 +1046,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.type = MaceOp.ArgMax.name
         op.output_type.extend([mace_pb2.DT_INT32])
 
+        keep_dims_arg = op.arg.add()
+        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
+        keep_dims_arg.i = 0
+
     def convert_split(self, tf_op):
         op = self.convert_general_op(tf_op)
         num_or_size_splits = tf_op.get_attr('num_split')

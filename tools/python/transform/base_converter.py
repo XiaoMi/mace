@@ -49,6 +49,7 @@ class ActivationType(Enum):
     TANH = 4
     SIGMOID = 5
     LEAKYRELU = 6
+    RELU6 = 7
 
 
 class EltwiseType(Enum):
@@ -221,6 +222,8 @@ class MaceKeyword(object):
     mace_batch_to_space_crops_str = 'crops'
     mace_paddings_str = 'paddings'
     mace_align_corners_str = 'align_corners'
+    mace_height_scale_str = 'height_scale'
+    mace_width_scale_str = 'width_scale'
     mace_space_batch_block_shape_str = 'block_shape'
     mace_space_depth_block_size_str = 'block_size'
     mace_constant_value_str = 'constant_value'
@@ -257,6 +260,8 @@ class MaceKeyword(object):
     mace_epsilon_str = 'epsilon'
     mace_reduce_type_str = 'reduce_type'
     mace_argmin_str = 'argmin'
+    mace_out_val_str = 'out_val'
+    mace_top_k_str = 'top_k'
     mace_round_mode_str = 'round_mode'
     mace_min_size_str = 'min_size'
     mace_max_size_str = 'max_size'

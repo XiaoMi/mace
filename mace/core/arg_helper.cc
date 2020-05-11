@@ -38,6 +38,10 @@ ProtoArgHelper::ProtoArgHelper(const NetDef &netdef) {
   }
 }
 
+bool ProtoArgHelper::ExistArg(const std::string &arg_name) const {
+  return (arg_map_.count(arg_name) > 0);
+}
+
 namespace {
 template <typename InputType, typename TargetType>
 inline bool IsCastLossless(const InputType &value) {
