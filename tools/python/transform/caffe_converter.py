@@ -188,6 +188,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'InnerProduct': self.convert_fully_connected,
             'Interp': self.convert_interp,
             'BatchNorm': self.convert_folded_batchnorm,
+            'GroupNorm': self.convert_group_norm,
             'Crop': self.convert_crop,
             'Scale': self.convert_scale,
             'ShuffleChannel': self.convert_channel_shuffle,
@@ -554,6 +555,24 @@ class CaffeConverter(base_converter.ConverterInterface):
                         mace_pb2.DT_FLOAT, offset_value)
         op.input.extend([name for name in input_names])
         op.output[:] = scale_op.layer.top[:]
+
+    def convert_group_norm(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.GroupNorm.name
+
+        epsilon_arg = op.arg.add()
+        epsilon_arg.name = MaceKeyword.mace_epsilon_str
+        group_num_arg = op.arg.add()
+        group_num_arg.name = MaceKeyword.mace_group_num_str
+
+        if hasattr(caffe_op, 'layer') and \
+                hasattr(caffe_op.layer, 'group_norm_param'):
+            param = caffe_op.layer.group_norm_param
+            epsilon_arg.f = param.eps
+            group_num_arg.i = param.group_num
+        else:
+            epsilon_arg.f = 1e-5
+            group_num_arg.i = 32
 
     def convert_pooling(self, caffe_op):
         op = self.convert_general_op(caffe_op)

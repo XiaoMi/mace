@@ -49,7 +49,6 @@ class ActivationType(Enum):
     TANH = 4
     SIGMOID = 5
     LEAKYRELU = 6
-    RELU6 = 7
 
 
 class EltwiseType(Enum):
@@ -101,6 +100,7 @@ MaceSupportedOps = [
     'Concat',
     'Conv2D',
     'Crop',
+    'Cumsum',
     'Deconv2D',
     'DepthToSpace',
     'DepthwiseConv2d',
@@ -112,15 +112,18 @@ MaceSupportedOps = [
     'Fill',
     'FullyConnected',
     'Gather',
+    'GroupNorm',
     'Identity',
     'IfDefined',
     'InferConv2dShape',
     'KaldiBatchNorm',
     'LocalResponseNorm',
+    'LpNorm',
     'LSTMCell',
     'LstmNonlinear',
     'DynamicLSTM',
     'MatMul',
+    'MVNorm',
     'OneHot',
     'Pad',
     'PadContext',
@@ -154,11 +157,8 @@ MaceSupportedOps = [
     'Subsample',
     'SumGroup',
     'TargetRMSNorm',
-    'Transpose',
-    'Cumsum',
     'Tile',
-    'LpNorm',
-    'MVNorm',
+    'Transpose',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -178,7 +178,8 @@ MaceFixedDataFormatOps = [MaceOp.BatchNorm,
                           MaceOp.SpaceToBatchND,
                           MaceOp.SpaceToDepth,
                           MaceOp.LpNorm,
-                          MaceOp.MVNorm]
+                          MaceOp.MVNorm,
+                          MaceOp.GroupNorm]
 
 MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.AddN,
@@ -255,6 +256,7 @@ class MaceKeyword(object):
     mace_opencl_mem_type = "opencl_mem_type"
     mace_framework_type_str = "framework_type"
     mace_group_str = "group"
+    mace_group_num_str = "group_num"
     mace_wino_arg_str = "wino_block_size"
     mace_quantize_flag_arg_str = "quantize_flag"
     mace_epsilon_str = 'epsilon'

@@ -176,7 +176,7 @@ class ArgMaxOp : public Operation {
   const FrameworkType model_type_;
   // for Caffe
   const bool has_axis_;
-  const bool top_k_;
+  const int top_k_;
   const bool out_val_;
 
   // for ONNX and TENSORFLOW

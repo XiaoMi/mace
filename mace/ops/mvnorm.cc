@@ -145,9 +145,12 @@ class MVNormOp<DeviceType::GPU, float> : public Operation {
         Operation::GetOptionalArg<bool>("across_channels", false);
     auto eps = Operation::GetOptionalArg<float>("epsilon", 1e-9);
 
+    auto mean_type = across_channels ?
+                     opencl::image::MeanType::ACROSS_CHANNELS :
+                     opencl::image::MeanType::SINGLE_CHANNEL;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::MVNormKernel>(
-          normalize_variance, across_channels, eps);
+          normalize_variance, mean_type, eps);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

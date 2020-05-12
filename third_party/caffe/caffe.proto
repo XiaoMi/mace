@@ -1955,7 +1955,7 @@ message GroupNormParameter {
 }
 
 message ResizeNearestParameter {
-  optional float height_scale=1 [default = 2.0];
-  optional float width_scale =2 [default = 2.0];
+  optional float height_scale = 1 [default = 2.0];
+  optional float width_scale = 2 [default = 2.0];
 
 }

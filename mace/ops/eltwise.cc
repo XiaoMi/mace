@@ -953,7 +953,7 @@ class EltwiseOp : public Operation {
       swapped = !swapped;
     }
 
-    // convert tensor for caffe's boardcast
+    // convert tensor for caffe's broadcast
     if (!has_data_format_ && input0->dim_size() == 4) {
       if (input1->dim_size() == 2) {
         const_cast<Tensor *>(input1)->Reshape(

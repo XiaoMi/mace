@@ -65,7 +65,7 @@ class Operation {
   }
 
   bool ExistArg(const std::string &name) const {
-    MACE_CHECK(operator_def_, "operator_def was null!");
+    MACE_CHECK(operator_def_, "operator_def is null!");
     return ProtoArgHelper::ExistArg<OperatorDef>(*operator_def_, name);
   }
 

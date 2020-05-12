@@ -41,6 +41,7 @@ extern void RegisterExtractPooling(OpRegistry *op_registry);
 extern void RegisterFill(OpRegistry *op_registry);
 extern void RegisterFullyConnected(OpRegistry *op_registry);
 extern void RegisterGather(OpRegistry *op_registry);
+extern void RegisterGroupNorm(OpRegistry *op_registry);
 extern void RegisterIdentity(OpRegistry *op_registry);
 extern void RegisterIfDefined(OpRegistry *op_registry);
 extern void RegisterInferConv2dShape(OpRegistry *op_registry);
@@ -120,6 +121,7 @@ void RegisterAllOps(OpRegistry *registry) {
   ops::RegisterFill(registry);
   ops::RegisterFullyConnected(registry);
   ops::RegisterGather(registry);
+  ops::RegisterGroupNorm(registry);
   ops::RegisterIdentity(registry);
   ops::RegisterIfDefined(registry);
   ops::RegisterInferConv2dShape(registry);
