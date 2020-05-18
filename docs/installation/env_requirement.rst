@@ -86,7 +86,7 @@ For python dependencies,
 
 .. note::
 
-    - For Android build, `ANDROID_NDK_HOME` must be confifigured by using ``export ANDROID_NDK_HOME=/path/to/ndk``.
+    - For Android build, `ANDROID_NDK_HOME` must be configured by using ``export ANDROID_NDK_HOME=/path/to/ndk``.
     - It will link ``libc++`` instead of ``gnustl`` if ``NDK version >= r17b`` and ``bazel version >= 0.13.0``, please refer to `NDK cpp-support <https://developer.android.com/ndk/guides/cpp-support>`__.
     - For Mac, please install Homebrew at first before installing other dependencies. Set ANDROID_NDK_HOME in ``/etc/bashrc`` and then run ``source /etc/bashrc``.  This installation was tested with macOS Mojave(10.14).
 
