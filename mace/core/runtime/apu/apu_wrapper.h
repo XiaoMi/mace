@@ -21,41 +21,42 @@
 #include <memory>
 
 #include "mace/proto/mace.pb.h"
-#include "mace/core/tensor.h"
 #include "mace/core/device.h"
 #include "mace/core/quantize.h"
+#include "mace/core/tensor.h"
 
 #include "third_party/apu/ApuFrontend.h"
 
 namespace mace {
 
 class ApuWrapper {
-struct tensor_info {
+  struct ApuTensorInfo {
     std::string name;
     std::shared_ptr<uint8_t> buf;
     std::vector<index_t> shape;
     int size;
     float scale;
     int zero_point;
-};
+  };
 
  public:
-    explicit ApuWrapper(Device *device);
-    bool Init(const NetDef& net_def, unsigned const char *model_data);
-    bool Run(const std::map<std::string, Tensor *> &input_tensors,
-             std::map<std::string, Tensor *> *output_tensors);
-    bool Uninit();
+  explicit ApuWrapper(Device *device);
+  bool Init(const NetDef &net_def, unsigned const char *model_data,
+            const index_t model_data_size);
+  bool Run(const std::map<std::string, Tensor *> &input_tensors,
+           std::map<std::string, Tensor *> *output_tensors);
+  bool Uninit();
 
  private:
-    apu_data_type MapToApuDataType(DataType mace_type);
-    apu_pooling_mode MapToApuPoolingMode(int mace_mode);
-    apu_eltwise_mode MapToApuEltwiseMode(int mace_mode);
+  apu_data_type MapToApuDataType(DataType mace_type);
+  apu_pooling_mode MapToApuPoolingMode(int mace_mode);
+  apu_eltwise_mode MapToApuEltwiseMode(int mace_mode);
 
  private:
-    ApuFrontend* frontend;
-    std::vector<tensor_info> input_infos;
-    std::vector<tensor_info> output_infos;
-    QuantizeUtil<float, uint8_t> quantize_util_;
+  ApuFrontend *frontend;
+  std::vector<ApuTensorInfo> input_infos;
+  std::vector<ApuTensorInfo> output_infos;
+  QuantizeUtil<float, uint8_t> quantize_util_;
 };
 
 }  // namespace mace

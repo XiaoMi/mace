@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is a generated file. DO NOT EDIT!
+#ifndef MACE_OPS_MEMORY_OPTIMIZER_FOR_TEST_H_
+#define MACE_OPS_MEMORY_OPTIMIZER_FOR_TEST_H_
 
-#include "mace/public/mace.h"
+#include <string>
+#include <unordered_map>
+
+#include "mace/core/memory_optimizer.h"
 
 namespace mace {
-namespace {{tag}} {
 
-alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
-{% for d in model_data %}{{"0x%02X, " % d }}{%endfor%}
+class MemoryOptimizerForTest : public MemoryOptimizer {
+ public:
+  MemoryOptimizerForTest() {}
+  ~MemoryOptimizerForTest() {}
+
+  void Optimize(
+      const OperatorDef *op_def,
+      const std::unordered_map<std::string, MemoryType> *mem_types) override;
 };
 
-MACE_API const unsigned char *LoadModelData() {
-  return model_data;
-}
-
-MACE_API int64_t GetModelSize() {
-  return {{ model_data_size }};
-}
-
-}  // namespace {{tag}}
 }  // namespace mace
 
+#endif  // MACE_OPS_MEMORY_OPTIMIZER_FOR_TEST_H_

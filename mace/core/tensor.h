@@ -276,6 +276,7 @@ class Tensor {
 
   inline void *raw_mutable_data() {
     MACE_CHECK_NOTNULL(buffer_);
+
     return buffer_->raw_mutable_data();
   }
 

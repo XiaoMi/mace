@@ -68,8 +68,10 @@ void MaceRunFunc(const int in_out_size) {
   config.SetGPUContext(mace::ops::test::OpTestContext::Get()->gpu_context());
 
   MaceEngine engine(config);
-  MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
-      reinterpret_cast<unsigned char *>(data.data()));
+  MaceStatus status = engine.Init(
+      net_def.get(), input_names, output_names,
+      reinterpret_cast<unsigned char *>(data.data()),
+      data.size() * sizeof(half));
   EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);
 
   std::map<std::string, mace::MaceTensor> inputs;

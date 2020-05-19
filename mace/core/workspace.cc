@@ -64,6 +64,18 @@ void DequantizeTensor(Device *device,
                            dequantized_data);
 }
 
+
+index_t GetModelValidSize(const NetDef &net_def) {
+  index_t valid_data_size = 0;
+  for (auto &const_tensor : net_def.tensors()) {
+    valid_data_size = std::max<index_t>(
+        valid_data_size, const_tensor.offset() +
+            const_tensor.data_size()
+                * GetEnumTypeSize(const_tensor.data_type()));
+  }
+  return valid_data_size;
+}
+
 }  // namespace
 
 Workspace::Workspace(const OpDelegatorRegistry *registry) :
@@ -105,23 +117,17 @@ std::vector<std::string> Workspace::Tensors() const {
   return names;
 }
 
-MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
-                                      Device *device,
-                                      const unsigned char *model_data) {
+MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, Device *device,
+                                      const unsigned char *model_data,
+                                      const index_t model_data_size) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
-  index_t model_data_size = 0;
-  for (auto &const_tensor : net_def.tensors()) {
-    model_data_size = std::max(
-        model_data_size,
-        static_cast<index_t>(const_tensor.offset() +
-            const_tensor.data_size() *
-                GetEnumTypeSize(const_tensor.data_type())));
-  }
-  VLOG(3) << "Model data size: " << model_data_size;
+  index_t valid_data_size = GetModelValidSize(net_def);
+  VLOG(3) << "Model valid data size: " << valid_data_size;
+  MACE_CHECK(valid_data_size <= model_data_size,
+             valid_data_size, "should be smaller than", model_data_size);
 
   const DeviceType device_type = device->device_type();
-
-  if (model_data_size > 0) {
+  if (valid_data_size > 0) {
     bool is_quantize_model = IsQuantizedModel(net_def);
     diffused_buffer_ =
         (device_type == DeviceType::CPU && HasHalfTensor(net_def)) ||
@@ -129,7 +135,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 #ifdef MACE_ENABLE_OPENCL
     diffused_buffer_ = diffused_buffer_ || (device_type == DeviceType::GPU &&
         device->gpu_runtime()->opencl_runtime()->GetDeviceMaxMemAllocSize() <=
-            static_cast<uint64_t>(model_data_size));
+            static_cast<uint64_t>(valid_data_size));
 #endif
     if (diffused_buffer_) {
       for (auto &const_tensor : net_def.tensors()) {
@@ -162,15 +168,10 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 
         MACE_CHECK(tensor->size() == const_tensor.data_size(),
                    "Tensor's data_size not equal with the shape");
-        MACE_CHECK(static_cast<index_t>(const_tensor.offset() +
-            tensor->size() * GetEnumTypeSize(const_tensor.data_type())) <=
-            model_data_size,
-                   "buffer offset + length (",
-                   const_tensor.offset(),
-                   " + ",
-                   tensor->size() * GetEnumTypeSize(const_tensor.data_type()),
-                   ") should <= ",
-                   model_data_size);
+        const index_t tensor_end = const_tensor.offset() +
+            tensor->size() * GetEnumTypeSize(const_tensor.data_type());
+        MACE_CHECK(tensor_end <= model_data_size, "tensor_end (", tensor_end,
+                   ") should <= ", model_data_size);
 
         if (device_type == DeviceType::CPU &&
             const_tensor.data_type() == DataType::DT_HALF) {
@@ -207,14 +208,14 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         tensor_buffer_ = std::unique_ptr<Buffer>(
             new Buffer(device->allocator(),
                        const_cast<unsigned char *>(model_data),
-                       model_data_size));
+                       valid_data_size));
       } else {
         tensor_buffer_ = std::unique_ptr<Buffer>(
             new Buffer(device->allocator()));
-        MACE_RETURN_IF_ERROR(tensor_buffer_->Allocate(model_data_size));
+        MACE_RETURN_IF_ERROR(tensor_buffer_->Allocate(valid_data_size));
         tensor_buffer_->Map(nullptr);
         tensor_buffer_->Copy(const_cast<unsigned char *>(model_data),
-                             0, model_data_size);
+                             0, valid_data_size);
         tensor_buffer_->UnMap();
       }
       for (auto &const_tensor : net_def.tensors()) {

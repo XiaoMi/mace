@@ -74,7 +74,8 @@ apu_eltwise_mode ApuWrapper::MapToApuEltwiseMode(int mace_mode) {
 }
 
 bool ApuWrapper::Init(const NetDef &net_def,
-                      unsigned const char *model_data) {
+                      unsigned const char *model_data,
+                      const index_t model_data_size) {
   frontend = new ApuFrontend();
 
   // parse model argument
@@ -100,11 +101,15 @@ bool ApuWrapper::Init(const NetDef &net_def,
     tensor.dim_size = const_tensor.dims_size();
     MACE_CHECK(tensor.dim_size <= APU_TENSOR_MAX_DIMS,
                "tensor dimension size not supported");
-    for (auto i = 0 ; i < tensor.dim_size ; i++) {
+    for (auto i = 0; i < tensor.dim_size; i++) {
       tensor.dims[i] = const_tensor.dims(i);
     }
+    const auto tensor_end = const_tensor.offset() +
+        const_tensor->data_size() * GetEnumTypeSize(const_tensor.data_type());
+    MACE_CHECK(tensor_end <= model_data_size, "tensor_end (", tensor_end,
+               ") should <= ", model_data_size);
     tensor.data_buf =
-        const_cast<unsigned char*>(model_data + const_tensor.offset());
+        const_cast<unsigned char *>(model_data + const_tensor.offset());
     const_tensors.push_back(tensor);
   }
 
@@ -121,10 +126,10 @@ bool ApuWrapper::Init(const NetDef &net_def,
     tensor.dim_size = input_info.dims_size();
     MACE_CHECK(tensor.dim_size <= APU_TENSOR_MAX_DIMS,
                "tensor dimension size not supported");
-    tensor_info info;
+    ApuTensorInfo info;
     info.name = input_info.name();
     info.size = 1;
-    for (auto i = 0 ; i < tensor.dim_size ; i++) {
+    for (auto i = 0; i < tensor.dim_size; i++) {
       tensor.dims[i] = input_info.dims(i);
       info.size *= input_info.dims(i);
       info.shape.push_back(input_info.dims(i));
@@ -140,13 +145,13 @@ bool ApuWrapper::Init(const NetDef &net_def,
 
   // output tensors
   std::vector<int> output_tensor_ids;
-  std::vector<void*> output_buffers;
+  std::vector<void *> output_buffers;
   for (auto output_info : net_def.output_info()) {
     output_tensor_ids.push_back(output_info.node_id());
-    tensor_info info;
+    ApuTensorInfo info;
     info.name = output_info.name();
     info.size = 1;
-    for (auto i = 0 ; i < output_info.dims().size() ; i++) {
+    for (auto i = 0; i < output_info.dims().size(); i++) {
       info.size *= output_info.dims(i);
       info.shape.push_back(output_info.dims(i));
     }
@@ -170,7 +175,7 @@ bool ApuWrapper::Init(const NetDef &net_def,
     strncpy(op.type, op_def.type().c_str(), APU_OP_TYPE_MAX_SIZE);
     op.input_size = op_def.node_input_size();
     std::vector<int> input_ids;
-    for (auto i = 0 ; i < op.input_size ; i++) {
+    for (auto i = 0; i < op.input_size; i++) {
       input_ids.push_back(op_def.node_input(i).node_id());
     }
     cached_op_inputs.push_back(input_ids);
@@ -188,7 +193,7 @@ bool ApuWrapper::Init(const NetDef &net_def,
     op.output.dim_size = op_def.output_shape(0).dims_size();
     MACE_CHECK(op.output.dim_size <= APU_TENSOR_MAX_DIMS,
                "tensor dimension size not supported");
-    for (auto i = 0 ; i < op.output.dim_size ; i++) {
+    for (auto i = 0; i < op.output.dim_size; i++) {
       op.output.dims[i] = op_def.output_shape(0).dims(i);
     }
     op.output.data_buf = nullptr;
@@ -223,12 +228,12 @@ bool ApuWrapper::Init(const NetDef &net_def,
 
   bool print_model = false;
   bool ret = frontend->InitGraph(
-                 const_tensors.size(), const_tensors.data(),
-                 input_tensors.size(), input_tensors.data(),
-                 output_tensor_ids.size(), output_tensor_ids.data(),
-                 output_buffers.data(),
-                 ops.size(), ops.data(),
-                 print_model);
+      const_tensors.size(), const_tensors.data(),
+      input_tensors.size(), input_tensors.data(),
+      output_tensor_ids.size(), output_tensor_ids.data(),
+      output_buffers.data(),
+      ops.size(), ops.data(),
+      print_model);
   cached_op_inputs.clear();
   MACE_CHECK(ret == true, "apu init graph failed");
 
@@ -243,7 +248,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 
   // prepare input
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
-    Tensor* tensor = input_tensors.at(input_infos[i].name);
+    Tensor *tensor = input_tensors.at(input_infos[i].name);
 
     // check size
     int size = input_infos[i].size;
@@ -251,7 +256,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 
     // quantize
     quantize_util_.QuantizeWithScaleAndZeropoint(
-        (const float*)tensor->raw_data(),
+        tensor->data<float>(),
         size,
         input_infos[i].scale,
         input_infos[i].zero_point,
@@ -263,8 +268,8 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
   MACE_CHECK(ret == true, "neuron run model failed");
 
   // process output
-  for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
-    Tensor* tensor = output_tensors->at(output_infos[i].name);
+  for (int i = 0; i < static_cast<int>(output_tensors->size()); i++) {
+    Tensor *tensor = output_tensors->at(output_infos[i].name);
 
     // prepare out buffer
     tensor->SetDtype(DT_FLOAT);
@@ -278,18 +283,18 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
         size,
         output_infos[i].scale,
         output_infos[i].zero_point,
-        reinterpret_cast<float*>(tensor->raw_mutable_data()));
+        tensor->mutable_data<float>());
   }
 
   return true;
 }
 
 bool ApuWrapper::Uninit() {
-    bool ret = frontend->UninitGraph();
-    frontend = nullptr;
-    input_infos.clear();
-    output_infos.clear();
-    return ret;
+  bool ret = frontend->UninitGraph();
+  frontend = nullptr;
+  input_infos.clear();
+  output_infos.clear();
+  return ret;
 }
 
 }  // namespace mace

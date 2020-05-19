@@ -56,9 +56,9 @@ class Workspace {
 
   std::vector<std::string> Tensors() const;
 
-  MaceStatus LoadModelTensor(const NetDef &net_def,
-                             Device *device,
-                             const unsigned char *model_data);
+  MaceStatus LoadModelTensor(const NetDef &net_def, Device *device,
+                             const unsigned char *model_data,
+                             const index_t model_data_size);
 
   MaceStatus PreallocateOutputTensor(const NetDef &net_def,
                                      const MemoryOptimizer *mem_optimizer,

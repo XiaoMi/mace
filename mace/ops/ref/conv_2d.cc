@@ -39,9 +39,9 @@ MaceStatus Conv2d<T>::Compute(const OpContext *context,
                               const Tensor *filter,
                               Tensor *output) {
   MACE_UNUSED(context);
-
   const std::vector<index_t> in_shape = input->shape();
   const std::vector<index_t> filter_shape = filter->shape();
+  MACE_CHECK(in_shape[1] == filter_shape[1]);
   std::vector<index_t> out_shape(4);
 
   std::vector<int> paddings(2);

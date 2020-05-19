@@ -165,7 +165,8 @@ bool HexagonDSPWrapper::Finalize() {
 }
 
 bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
-                                   unsigned const char *model_data) {
+                                   unsigned const char *model_data,
+                                   const index_t model_data_size) {
   LOG(INFO) << "Hexagon setup graph";
 
   int64_t t0 = NowMicros();
@@ -188,6 +189,9 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       data = const_cast<unsigned char *>(model_data + const_tensor.offset());
       data_len =
           const_tensor.data_size() * GetEnumTypeSize(const_tensor.data_type());
+      MACE_CHECK(const_tensor.offset() + data_len <= model_data_size,
+                 "tensor end (", const_tensor.offset() + data_len,
+                 ") should <= ", model_data_size);
     }
     MACE_CHECK(
         hexagon_nn_append_const_node(nn_id_,

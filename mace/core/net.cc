@@ -54,6 +54,9 @@ SerialNet::SerialNet(const OpRegistry *op_registry,
 #ifdef MACE_ENABLE_OPENCL
   // used for memory optimization
   std::unordered_map<std::string, MemoryType> output_mem_map;
+  std::unordered_map<std::string, MemoryType> *mem_types = &output_mem_map;
+#else
+  std::unordered_map<std::string, MemoryType> *mem_types = nullptr;
 #endif  // MACE_ENABLE_OPENCL
 
   OpConstructContext construct_context(ws_);
@@ -100,11 +103,7 @@ SerialNet::SerialNet(const OpRegistry *op_registry,
   for (auto &op : operators_) {
     VLOG(2) << "Operator " << op->debug_def().name() << "<" << op->device_type()
             << ", " << op->debug_def().type() << ">";
-#ifdef MACE_ENABLE_OPENCL
-    mem_optimizer->Optimize(op->operator_def().get(), &output_mem_map);
-#else
-    mem_optimizer->Optimize(op->operator_def().get());
-#endif  // MACE_ENABLE_OPENCL
+    mem_optimizer->Optimize(op->operator_def().get(), mem_types);
   }
   VLOG(1) << mem_optimizer->DebugInfo();
 }
@@ -128,8 +127,7 @@ MaceStatus SerialNet::Init() {
 
 MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
   const char *profiling = getenv("MACE_OPENCL_PROFILING");
-  bool
-  enable_opencl_profiling =
+  bool enable_opencl_profiling =
       profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1';
 
   MACE_MEMORY_LOGGING_GUARD();

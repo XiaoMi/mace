@@ -74,11 +74,8 @@ MACE_GET_OPTIONAL_ARGUMENT_FUNC(std::string, s, false)
 #define MACE_GET_REPEATED_ARGUMENT_FUNC(T, fieldname, lossless_conversion) \
   template <>                                                              \
   std::vector<T> ProtoArgHelper::GetRepeatedArgs<T>(                       \
-      const std::string &arg_name, const std::vector<T> &default_value)    \
-      const {                                                              \
-    if (arg_map_.count(arg_name) == 0) {                                   \
-      return default_value;                                                \
-    }                                                                      \
+      const std::string &arg_name) const {                                 \
+    MACE_CHECK(arg_map_.count(arg_name) > 0, arg_name, "not exist.");      \
     std::vector<T> values;                                                 \
     for (const auto &v : arg_map_.at(arg_name).fieldname()) {              \
       if (lossless_conversion) {                                           \
@@ -89,7 +86,18 @@ MACE_GET_OPTIONAL_ARGUMENT_FUNC(std::string, s, false)
       values.push_back(v);                                                 \
     }                                                                      \
     return values;                                                         \
+  }                                                                        \
+  template <>                                                              \
+  std::vector<T> ProtoArgHelper::GetRepeatedArgs<T>(                       \
+      const std::string &arg_name, const std::vector<T> &default_value)    \
+      const {                                                              \
+    if (arg_map_.count(arg_name) == 0) {                                   \
+      return default_value;                                                \
+    } else {                                                               \
+      return GetRepeatedArgs<T>(arg_name);                                 \
+    }                                                                      \
   }
+
 
 MACE_GET_REPEATED_ARGUMENT_FUNC(float, floats, false)
 MACE_GET_REPEATED_ARGUMENT_FUNC(int, ints, true)

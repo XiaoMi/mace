@@ -77,6 +77,7 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
 {% if embed_model_data %}
   (void)model_data_file;
   const unsigned char * model_data;
+  const int64_t model_size;
 {% endif %}
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
@@ -86,8 +87,9 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
       engine->reset(new mace::MaceEngine(config));
 {% if embed_model_data %}
       model_data = mace::{{model_tags[i]}}::LoadModelData();
+      model_size = mace::{{model_tags[i]}}::GetModelSize();
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
-                               model_data);
+                               model_data, model_size);
 {% else %}
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
                                model_data_file);
@@ -116,10 +118,9 @@ MACE_API MaceStatus CreateMaceEngineFromCode(
   std::shared_ptr<NetDef> net_def;
 {% if embed_model_data %}
   const unsigned char * model_data;
+  const int64_t model_size;
   (void)model_weights_data;
 {% endif %}
-  // TODO(yejianwu) Add buffer range checking
-  (void)model_weights_data_size;
 
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
@@ -129,11 +130,12 @@ MACE_API MaceStatus CreateMaceEngineFromCode(
       engine->reset(new mace::MaceEngine(config));
 {% if embed_model_data %}
       model_data = mace::{{model_tags[i]}}::LoadModelData();
+      model_size = mace::{{model_tags[i]}}::GetModelSize();
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
-                               model_data);
+                               model_data, model_size);
 {% else %}
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
-                               model_weights_data);
+                               model_weights_data, model_weights_data_size);
 {% endif %}
       break;
 {% endfor %}

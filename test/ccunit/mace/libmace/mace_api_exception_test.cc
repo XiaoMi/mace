@@ -36,7 +36,7 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
   }
 
   MaceEngine engine(config);
-  ASSERT_DEATH(engine.Init(net_def.get(), {"input"}, output_names, nullptr),
+  ASSERT_DEATH(engine.Init(net_def.get(), {"input"}, output_names, nullptr, 0),
                "");
 }
 

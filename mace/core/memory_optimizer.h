@@ -94,9 +94,9 @@ class MemoryOptimizer {
                               const MemoryType mem_type);
   void UpdateTensorRef(const std::string &tensor_name);
   void UpdateTensorRef(const OperatorDef *op_def);
-  void Optimize(
+  virtual void Optimize(
       const OperatorDef *op_def,
-      const std::unordered_map<std::string, MemoryType> *mem_types = nullptr);
+      const std::unordered_map<std::string, MemoryType> *mem_types);
 
   const std::vector<MemoryBlock> &mem_blocks() const;
 
