@@ -60,6 +60,7 @@ PlatformTypeStrs = [
     "tensorflow",
     "caffe",
     "onnx",
+    "megengine",
 ]
 PlatformType = Enum('PlatformType', [(ele, ele) for ele in PlatformTypeStrs],
                     type=str)

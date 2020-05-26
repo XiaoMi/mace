@@ -184,6 +184,10 @@ def convert_model(conf, quantize_stat):
         from transform import onnx_converter
         converter = onnx_converter.OnnxConverter(option,
                                                  conf["model_file_path"])
+    elif platform == Platform.MEGENGINE:
+        from transform import megengine_converter
+        converter = megengine_converter.MegengineConverter(
+            option, conf["model_file_path"])
     else:
         mace_check(False, "Mace do not support platorm %s yet." % platform)
 

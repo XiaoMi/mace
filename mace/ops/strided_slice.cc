@@ -127,9 +127,9 @@ class StridedSliceOp : public Operation {
         strides_data, strides_data + strides->size());
 
     MACE_CHECK(input->size() > 0 && input->dim_size() > 0 &&
-               input->dim_size() <= 4,
+               input->dim_size() <= 5,  // for megengine is 5, the others are 4
                "The input size should larger than 0."
-               " And input dims should be an integer in (0, 4].");
+               " And input dims should be an integer in (0, 5].");
 
     std::vector<index_t> output_shape = {};
 
