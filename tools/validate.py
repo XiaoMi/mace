@@ -353,7 +353,9 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
     output_names = [name for name in output_node.split(',')]
     assert len(input_names) == len(input_shapes)
     if not isinstance(validation_outputs_data, list):
-        if os.path.isfile(validation_outputs_data):
+        if os.path.isfile(validation_outputs_data) or \
+                validation_outputs_data.startswith("http://") or \
+                validation_outputs_data.startswith("https://"):
             validation_outputs = [validation_outputs_data]
         else:
             validation_outputs = []
