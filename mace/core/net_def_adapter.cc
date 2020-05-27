@@ -347,7 +347,8 @@ MaceStatus NetDefAdapter::AdaptDevice(OpConditionContext *context,
     if (device_type == target_device_type) {
       context->set_device(target_device);
     } else {
-      LOG(INFO) << "Op " << op_def->name() << " fall back to CPU";
+      LOG(INFO) << "Op " << op_def->name() << "(" << op_def->type() << ")"
+                << " fall back to CPU";
     }
   }
   op_def->set_device_type(device_type);

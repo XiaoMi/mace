@@ -806,16 +806,19 @@ class OnnxConverter(base_converter.ConverterInterface):
 
     def convert_depth_space(self, node):
         op = self.convert_general_op(node)
-        if op.type == OnnxOpType.DepthToSpace.name:
+        if node.op_type == OnnxOpType.DepthToSpace.name:
             op.type = MaceOp.DepthToSpace.name
         else:
             op.type = MaceOp.SpaceToDepth.name
-        mace_check(('block_size' in node.attrs),
-                   "depth to space op should have block size attribute.")
-        block_size = node.attrs['block_size']
+        mace_check(('blocksize' in node.attrs),
+                   "DepthToSpace/SpaceToDepth must have blocksize attribute.")
+        block_size = node.attrs['blocksize']
         size_arg = op.arg.add()
         size_arg.name = MaceKeyword.mace_space_depth_block_size_str
         size_arg.i = block_size
+
+        if 'mode' in node.attrs:
+            mace_check(node.attrs['mode'] == 'DCR', "Only supports DCR mode.")
 
     def convert_dim_range(self, node):
         op = self.convert_general_op(node)
