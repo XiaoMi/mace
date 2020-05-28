@@ -12,25 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is a generated file. DO NOT EDIT!
-
-#include "mace/public/mace.h"
+#include "mace/ops/memory_optimizer_for_test.h"
 
 namespace mace {
-namespace {{tag}} {
 
-alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
-{% for d in model_data %}{{"0x%02X, " % d }}{%endfor%}
-};
-
-MACE_API const unsigned char *LoadModelData() {
-  return model_data;
+void MemoryOptimizerForTest::Optimize(
+    const OperatorDef *op_def,
+    const std::unordered_map<std::string, MemoryType> *mem_types) {
+  if (op_def->output_size() == op_def->output_shape_size()) {
+    MemoryOptimizer::Optimize(op_def, mem_types);
+  }
 }
 
-MACE_API int64_t GetModelSize() {
-  return {{ model_data_size }};
-}
-
-}  // namespace {{tag}}
 }  // namespace mace
-

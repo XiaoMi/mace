@@ -65,7 +65,7 @@ void MaceRun(const int in_out_size,
 
   MaceEngine engine(config);
   MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
-      reinterpret_cast<unsigned char *>(data.data()));
+      reinterpret_cast<unsigned char *>(data.data()), data.size() * sizeof(T));
   EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);
 
   std::map<std::string, mace::MaceTensor> inputs;

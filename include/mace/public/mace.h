@@ -416,7 +416,8 @@ class MACE_API MaceEngine {
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
-                  const unsigned char *model_data);
+                  const unsigned char *model_data,
+                  const int64_t model_data_size);
 
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,

@@ -114,12 +114,9 @@ void MemoryOptimizer::Optimize(
     const mace::OperatorDef *op_def,
     const std::unordered_map<std::string, MemoryType> *mem_types) {
   MACE_LATENCY_LOGGER(2, "Optimize memory");
-  if (op_def->output_size() != op_def->output_shape_size()) {
-    VLOG(1) << op_def->name()
-            << ": the number of output shape "
-            << "is not equal to the number of output";
-    return;
-  }
+  MACE_CHECK(op_def->output_size() == op_def->output_shape_size(),
+             op_def->name(), "The number of output shapes is"
+                             " not equal to the number of outputs");
 
   auto device = static_cast<DeviceType>(op_def->device_type());
   DataType op_dtype = static_cast<DataType>(ProtoArgHelper::GetOptionalArg(
@@ -220,8 +217,8 @@ void MemoryOptimizer::Optimize(
       } else {
         mem_ref_count_[best_mem_id] = 1;
       }
-      tensor_mem_map_.emplace(op_def->output(i), TensorMemInfo(best_mem_id,
-          dt, data_format));
+      tensor_mem_map_.emplace(op_def->output(i),
+                              TensorMemInfo(best_mem_id, dt, data_format));
     }
   }
 
@@ -249,7 +246,7 @@ void MemoryOptimizer::Optimize(
   }
 }
 
-const std::vector<MemoryBlock>& MemoryOptimizer::mem_blocks() const {
+const std::vector<MemoryBlock> &MemoryOptimizer::mem_blocks() const {
   return mem_blocks_;
 }
 
@@ -277,8 +274,8 @@ std::string MemoryOptimizer::DebugInfo() const {
     sstream << i << " " << memory_type_to_str(mem_blocks_[i].mem_type())
             << " ";
     if (mem_blocks_[i].mem_type() == MemoryType::GPU_IMAGE) {
-      sstream << DataTypeToString(mem_blocks_[i].data_type()) << " "
-              "[" << mem_blocks_[i].x() << ", " << mem_blocks_[i].y() << "]";
+      sstream << DataTypeToString(mem_blocks_[i].data_type()) << " ["
+              << mem_blocks_[i].x() << ", " << mem_blocks_[i].y() << "]";
     } else {
       sstream << "[" << mem_blocks_[i].x() << "]";
     }

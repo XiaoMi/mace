@@ -35,7 +35,8 @@ class HexagonDSPWrapper : public HexagonControlWrapper {
   bool Init() override;
   bool Finalize() override;
   bool SetupGraph(const NetDef &net_def,
-                  const unsigned char *model_data) override;
+                  const unsigned char *model_data,
+                  const index_t model_data_size) override;
   bool ExecuteGraph(const Tensor &input_tensor,
                     Tensor *output_tensor) override;
   bool ExecuteGraphNew(const std::map<std::string, Tensor*> &input_tensors,

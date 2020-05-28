@@ -46,7 +46,8 @@ class HexagonControlWrapper {
   virtual bool Init() = 0;
   virtual bool Finalize() = 0;
   virtual bool SetupGraph(const NetDef &net_def,
-                          const unsigned char *model_data) = 0;
+                          const unsigned char *model_data,
+                          const index_t model_data_size) = 0;
   virtual bool ExecuteGraph(const Tensor &input_tensor,
                             Tensor *output_tensor) = 0;
   virtual bool ExecuteGraphNew(

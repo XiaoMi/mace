@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "mace/ops/ops_test_util.h"
+
 #include "mace/core/memory_optimizer.h"
-#include "mace/utils/memory.h"
 #include "mace/core/net_def_adapter.h"
+#include "mace/ops/memory_optimizer_for_test.h"
+#include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
@@ -228,7 +230,7 @@ bool OpsTestNet::Setup(mace::DeviceType device) {
                               OpTestContext::Get()->GetDevice(device),
                               &adapted_net_def);
 
-  MemoryOptimizer mem_optimizer;
+  MemoryOptimizerForTest mem_optimizer;
   net_ = make_unique<SerialNet>(
       op_registry_.get(),
       &adapted_net_def,
@@ -284,7 +286,7 @@ MaceStatus OpsTestNet::RunNet(const mace::NetDef &net_def,
   net_def_adapter.AdaptNetDef(&net_def,
                               OpTestContext::Get()->GetDevice(device),
                               &adapted_net_def);
-  MemoryOptimizer mem_optimizer;
+  MemoryOptimizerForTest mem_optimizer;
   net_ = make_unique<SerialNet>(
       op_registry_.get(),
       &adapted_net_def,

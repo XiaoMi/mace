@@ -350,7 +350,8 @@ MaceStatus BMNet::Run(DeviceType device,
   }
   MaceEngine engine(config);
 
-  status = engine.Init(&net_, input_names_, output_names_, weight_.data());
+  status = engine.Init(&net_, input_names_, output_names_,
+                       weight_.data(), weight_.size());
   if (status != MaceStatus::MACE_SUCCESS) {
     return status;
   }

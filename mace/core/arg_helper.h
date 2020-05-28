@@ -46,10 +46,14 @@ class ProtoArgHelper {
 
   template <typename T>
   T GetOptionalArg(const std::string &arg_name, const T &default_value) const;
+
   template <typename T>
   std::vector<T> GetRepeatedArgs(
       const std::string &arg_name,
-      const std::vector<T> &default_value = std::vector<T>()) const;
+      const std::vector<T> &default_value) const;
+
+  template <typename T>
+  std::vector<T> GetRepeatedArgs(const std::string &arg_name) const;
 
  private:
   std::map<std::string, Argument> arg_map_;

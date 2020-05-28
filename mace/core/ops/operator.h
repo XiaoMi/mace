@@ -48,12 +48,20 @@ class Operation {
     return ProtoArgHelper::GetOptionalArg<OperatorDef, T>(
         *operator_def_, name, default_value);
   }
+
   template<typename T>
   std::vector<T> GetRepeatedArgs(
-      const std::string &name, const std::vector<T> &default_value = {}) const {
+      const std::string &name, const std::vector<T> &default_value) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ProtoArgHelper::GetRepeatedArgs<OperatorDef, T>(
         *operator_def_, name, default_value);
+  }
+
+  template<typename T>
+  std::vector<T> GetRepeatedArgs(const std::string &name) const {
+    MACE_CHECK(operator_def_, "operator_def was null!");
+    return ProtoArgHelper::GetRepeatedArgs<OperatorDef, T>(
+        *operator_def_, name);
   }
 
   DeviceType device_type() const {
@@ -65,7 +73,10 @@ class Operation {
     return inputs_[idx];
   }
 
-  Tensor *Output(int idx) { return outputs_[idx]; }
+  Tensor *Output(unsigned int idx) {
+    MACE_CHECK(idx < outputs_.size());
+    return outputs_[idx];
+  }
 
   int InputSize() { return inputs_.size(); }
   int OutputSize() { return outputs_.size(); }

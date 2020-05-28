@@ -94,6 +94,7 @@ class PoolingOp<DeviceType::CPU, T> : public PoolingOpBase {
     Tensor::MappingGuard input_guard(input_tensor);
     Tensor::MappingGuard output_guard(output_tensor);
     const T *input = input_tensor->data<T>();
+    MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<T>::value);
     T *output = output_tensor->mutable_data<T>();
     const index_t *input_shape = input_tensor->shape().data();
     int pad_hw[2] = {paddings[0] / 2, paddings[1] / 2};
@@ -299,6 +300,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
     Tensor::MappingGuard input_guard(input_tensor);
     Tensor::MappingGuard output_guard(output_tensor);
     const uint8_t *input = input_tensor->data<uint8_t>();
+    MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<uint8_t>::value);
     uint8_t *output = output_tensor->mutable_data<uint8_t>();
     int pad_hw[2] = {paddings[0] / 2, paddings[1] / 2};
 

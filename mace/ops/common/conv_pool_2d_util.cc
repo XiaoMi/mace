@@ -31,7 +31,9 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,
                               index_t *output_shape,
                               int *padding_size) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
-             "Invalid dilations, must >= 1");
+             "Invalid dilations, must > 0");
+  MACE_CHECK(strides[0] > 0 && strides[1] > 0,
+             "Invalid strides, must > 0");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
       (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
@@ -145,7 +147,9 @@ void CalcOutputSize(const index_t *input_shape,
                     const RoundType round_type,
                     index_t *output_shape) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
-             "Invalid dilations, must >= 1");
+             "Invalid dilations, must > 0");
+  MACE_CHECK(strides[0] > 0 && strides[1] > 0,
+             "Invalid strides, must > 0");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
       (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");

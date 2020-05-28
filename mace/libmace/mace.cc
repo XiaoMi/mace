@@ -433,7 +433,8 @@ class MaceEngine::Impl {
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
-                  const unsigned char *model_data);
+                  const unsigned char *model_data,
+                  const int64_t model_data_size);
 
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
@@ -557,7 +558,7 @@ MaceStatus MaceEngine::Impl::Init(
     const NetDef *net_def,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const unsigned char *model_data) {
+    const unsigned char *model_data, const int64_t model_data_size) {
   LOG(INFO) << "Initializing MaceEngine";
   // Check avalibility
 #ifdef MACE_ENABLE_OPENCL
@@ -634,8 +635,8 @@ MaceStatus MaceEngine::Impl::Init(
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
         static_cast<int>(mace::port::MinVLogLevelFromEnv()));
-    MACE_CHECK(hexagon_controller_->SetupGraph(*net_def, model_data),
-               "hexagon setup graph error");
+    MACE_CHECK(hexagon_controller_->SetupGraph(
+        *net_def, model_data, model_data_size), "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->PrintGraph();
     }
@@ -644,12 +645,12 @@ MaceStatus MaceEngine::Impl::Init(
 #ifdef MACE_ENABLE_APU
   if (device_type_ == APU) {
     apu_controller_.reset(new ApuWrapper(device_.get()));
-    MACE_CHECK(apu_controller_->Init(*net_def, model_data), "apu init error");
+    MACE_CHECK(apu_controller_->Init(
+        *net_def, model_data, model_data_size), "apu init error");
   } else {
 #endif
-    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
-                                              device_.get(),
-                                              model_data));
+    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(
+        *net_def, device_.get(), model_data, model_data_size));
 
     NetDef adapted_net_def;
     NetDefAdapter net_def_adapter(op_registry_.get(), ws_.get());
@@ -696,7 +697,8 @@ MaceStatus MaceEngine::Impl::Init(
 
   MACE_RETURN_IF_ERROR(Init(
       net_def, input_nodes, output_nodes,
-      reinterpret_cast<const unsigned char *>(model_data_->data())));
+      reinterpret_cast<const unsigned char *>(model_data_->data()),
+      model_data_->length()));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON ||
       device_type_ == DeviceType::HTA ||
@@ -945,6 +947,7 @@ MaceStatus MaceEngine::Impl::Run(
                  << MakeString(MapKeys(output_info_map_));
     }
     Tensor *output_tensor = ws_->GetTensor(output.first);
+    MACE_CHECK(output_tensor != nullptr);
     output_tensors[output.first] = output_tensor;
   }
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
@@ -988,8 +991,10 @@ MaceEngine::~MaceEngine() = default;
 MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const std::vector<std::string> &input_nodes,
                             const std::vector<std::string> &output_nodes,
-                            const unsigned char *model_data) {
-  return impl_->Init(net_def, input_nodes, output_nodes, model_data);
+                            const unsigned char *model_data,
+                            int64_t model_data_size) {
+  return impl_->Init(net_def, input_nodes, output_nodes,
+                     model_data, model_data_size);
 }
 
 MaceStatus MaceEngine::Init(const NetDef *net_def,
@@ -1032,7 +1037,8 @@ MaceStatus CreateMaceEngineFromProto(
 
   engine->reset(new mace::MaceEngine(config));
   MaceStatus status = (*engine)->Init(
-      net_def.get(), input_nodes, output_nodes, model_weights_data);
+      net_def.get(), input_nodes, output_nodes,
+      model_weights_data, model_weights_data_size);
 
   return status;
 }
