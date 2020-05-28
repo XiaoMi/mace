@@ -32,8 +32,6 @@ class OpenCLResizeNearestNeighborKernel {
   virtual MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
-      const Tensor *size,
-      const std::vector<index_t> &dims,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLResizeNearestNeighborKernel);
 };
