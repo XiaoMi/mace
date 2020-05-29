@@ -1833,6 +1833,8 @@ message V1LayerParameter {
   optional TransformationParameter transform_param = 36;
   optional LossParameter loss_param = 42;
   optional V0LayerParameter layer = 1;
+  optional ResizeNearestParameter resize_nearest_param = 204;
+  optional GroupNormParameter group_norm_param = 205;
 }
 
 // DEPRECATED: V0LayerParameter is the old way of specifying layer parameters
@@ -1945,4 +1947,15 @@ message ShuffleChannelParameter {
 
 message L2NormalizationParameter {
   optional int32 axis = 1 [default = 1];
+}
+
+message GroupNormParameter {
+  optional float eps = 1 [default = 1e-5];
+  optional int32 group_num = 2 [default = 32];
+}
+
+message ResizeNearestParameter {
+  optional float height_scale = 1 [default = 2.0];
+  optional float width_scale = 2 [default = 2.0];
+
 }

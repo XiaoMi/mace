@@ -100,6 +100,7 @@ MaceSupportedOps = [
     'Concat',
     'Conv2D',
     'Crop',
+    'Cumsum',
     'Deconv2D',
     'DepthToSpace',
     'DepthwiseConv2d',
@@ -111,15 +112,18 @@ MaceSupportedOps = [
     'Fill',
     'FullyConnected',
     'Gather',
+    'GroupNorm',
     'Identity',
     'IfDefined',
     'InferConv2dShape',
     'KaldiBatchNorm',
     'LocalResponseNorm',
+    'LpNorm',
     'LSTMCell',
     'LstmNonlinear',
     'DynamicLSTM',
     'MatMul',
+    'MVNorm',
     'OneHot',
     'Pad',
     'PadContext',
@@ -153,11 +157,8 @@ MaceSupportedOps = [
     'Subsample',
     'SumGroup',
     'TargetRMSNorm',
-    'Transpose',
-    'Cumsum',
     'Tile',
-    'LpNorm',
-    'MVNorm',
+    'Transpose',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -177,7 +178,8 @@ MaceFixedDataFormatOps = [MaceOp.BatchNorm,
                           MaceOp.SpaceToBatchND,
                           MaceOp.SpaceToDepth,
                           MaceOp.LpNorm,
-                          MaceOp.MVNorm]
+                          MaceOp.MVNorm,
+                          MaceOp.GroupNorm]
 
 MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.AddN,
@@ -221,6 +223,8 @@ class MaceKeyword(object):
     mace_batch_to_space_crops_str = 'crops'
     mace_paddings_str = 'paddings'
     mace_align_corners_str = 'align_corners'
+    mace_height_scale_str = 'height_scale'
+    mace_width_scale_str = 'width_scale'
     mace_space_batch_block_shape_str = 'block_shape'
     mace_space_depth_block_size_str = 'block_size'
     mace_constant_value_str = 'constant_value'
@@ -252,11 +256,14 @@ class MaceKeyword(object):
     mace_opencl_mem_type = "opencl_mem_type"
     mace_framework_type_str = "framework_type"
     mace_group_str = "group"
+    mace_group_num_str = "group_num"
     mace_wino_arg_str = "wino_block_size"
     mace_quantize_flag_arg_str = "quantize_flag"
     mace_epsilon_str = 'epsilon'
     mace_reduce_type_str = 'reduce_type'
     mace_argmin_str = 'argmin'
+    mace_out_val_str = 'out_val'
+    mace_top_k_str = 'top_k'
     mace_round_mode_str = 'round_mode'
     mace_min_size_str = 'min_size'
     mace_max_size_str = 'max_size'

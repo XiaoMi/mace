@@ -893,7 +893,7 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
       int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
                                             std::multiplies<int64_t>());
       MACE_CHECK(output_size <= output->second.impl_->buffer_size)
-        << "Output size exceeds buffer size: shape"
+        << output_tensor->name() << " Output size exceeds buffer size: shape"
         << MakeString<int64_t>(shape) << " vs buffer size "
         << output->second.impl_->buffer_size;
       output->second.impl_->shape = shape;

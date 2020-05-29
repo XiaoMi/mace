@@ -36,8 +36,9 @@ class ShapeInference(object):
             MaceOp.Deconv2D.name: self.infer_shape_deconv,
             MaceOp.DepthwiseConv2d.name: self.infer_shape_conv_pool_shape,
             MaceOp.DepthwiseDeconv2d.name: self.infer_shape_deconv,
-            MaceOp.Eltwise.name: self.infer_shape_general,
+            MaceOp.Eltwise.name: self.infer_shape_eltwise,
             MaceOp.BatchNorm.name: self.infer_shape_general,
+            MaceOp.GroupNorm.name: self.infer_shape_general,
             MaceOp.AddN.name: self.infer_shape_general,
             MaceOp.Activation.name: self.infer_shape_general,
             MaceOp.Pooling.name: self.infer_shape_conv_pool_shape,
@@ -54,6 +55,9 @@ class ShapeInference(object):
             MaceOp.ResizeBilinear.name: self.infer_shape_resize_bilinear,
             MaceOp.LpNorm.name: self.infer_shape_general,
             MaceOp.MVNorm.name: self.infer_shape_general,
+            MaceOp.ResizeNearestNeighbor.name:
+                self.infer_shape_nearest_neighbor,
+            MaceOp.ArgMax.name: self.infer_shape_argmax,
         }
 
         self._net = net
@@ -131,7 +135,7 @@ class ShapeInference(object):
 
         output_shape[0] = input_shape[0]
         if ConverterUtil.data_format(op) == DataFormat.NCHW \
-                and ConverterUtil.filter_format(self._net) == DataFormat.OIHW:  # noqa
+                and ConverterUtil.filter_format(self._net) == DataFormat.OIHW:
             # filter format: OIHW
             if op.type == MaceOp.DepthwiseConv2d.name:
                 output_shape[1] = filter_shape[0] * filter_shape[1]
@@ -172,7 +176,7 @@ class ShapeInference(object):
                                           MaceKeyword.mace_group_str)
         output_shape[0] = input_shape[0]
         if ConverterUtil.data_format(op) == DataFormat.NCHW \
-                and ConverterUtil.filter_format(self._net) == DataFormat.OIHW:  # noqa
+                and ConverterUtil.filter_format(self._net) == DataFormat.OIHW:
             # filter format: IOHW
             output_shape[1] = filter_shape[1]
             if group_arg is not None and group_arg.i > 1:
@@ -250,9 +254,12 @@ class ShapeInference(object):
         input_shape = list(self._output_shape_cache[op.input[0]])
         input_w = input_shape[3]
         input_h = input_shape[2]
-        min_size = ConverterUtil.get_arg(op, MaceKeyword.mace_min_size_str).floats  # noqa
-        max_size = ConverterUtil.get_arg(op, MaceKeyword.mace_max_size_str).floats  # noqa
-        aspect_ratio = ConverterUtil.get_arg(op, MaceKeyword.mace_aspect_ratio_str).floats  # noqa
+        min_size = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_min_size_str).floats
+        max_size = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_max_size_str).floats
+        aspect_ratio = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_aspect_ratio_str).floats
         num_prior = len(aspect_ratio) * len(min_size) + len(max_size)
 
         output_shape[2] = int(num_prior * input_h * input_w * 4)
@@ -282,7 +289,8 @@ class ShapeInference(object):
         else:
             output_shape = []
             axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
-            end_axis = ConverterUtil.get_arg(op, MaceKeyword.mace_end_axis_str).i  # noqa
+            end_axis = ConverterUtil.get_arg(op,
+                                             MaceKeyword.mace_end_axis_str).i
             end_axis = end_axis if end_axis > 0 else end_axis + len(
                 list(self._output_shape_cache[op.input[0]]))
             dim = 1
@@ -310,3 +318,73 @@ class ShapeInference(object):
             mace_check(False, "format %s is not supported"
                        % ConverterUtil.data_format(op))
         self.add_output_shape(op, [output_shape])
+
+    def infer_shape_nearest_neighbor(self, op):
+        input_shape = self._output_shape_cache[op.input[0]]
+        height_scale = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_height_scale_str).f
+        width_scale = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_width_scale_str).f
+        if ConverterUtil.data_format(op) == DataFormat.NCHW:
+            output_shape = [input_shape[0], input_shape[1],
+                            int(input_shape[2] * height_scale),
+                            int(input_shape[3] * width_scale)]
+        elif ConverterUtil.data_format(op) == DataFormat.NHWC:
+            output_shape = [input_shape[0], int(input_shape[2] * height_scale),
+                            int(input_shape[3] * width_scale), input_shape[3]]
+        else:
+            output_shape = []
+            mace_check(False, "format %s is not supported"
+                       % ConverterUtil.data_format(op))
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_argmax(self, op):
+        input_shape = self._output_shape_cache[op.input[0]]
+        output_dim_num = len(input_shape)
+        if output_dim_num < 3:
+            output_dim_num = 3
+
+        axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
+        has_axis = (axis_arg is not None)
+        axis_value = 0
+        if has_axis:
+            axis_value = axis_arg.i
+            if axis_value < 0:
+                axis_value = len(input_shape) + axis_value
+
+        top_k = ConverterUtil.get_arg(op, MaceKeyword.mace_top_k_str).i
+        mace_check(top_k >= 1, "Invalid top_k value")
+        out_val = ConverterUtil.get_arg(op, MaceKeyword.mace_out_val_str).i
+
+        if has_axis:  # Produces max_ind or max_val per axis
+            output_shape = input_shape
+            output_shape[axis_value] = top_k
+        else:
+            output_shape = [1] * output_dim_num
+            output_shape[0] = input_shape[0]
+            output_shape[2] = top_k
+            if out_val:  # Produces max_ind and max_val
+                output_shape[1] = 2
+
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_eltwise(self, op):
+        input_num = len(op.input)
+        mace_check(input_num > 0, "input num should > 0")
+
+        max_idx = 0
+        max_input_size = 0
+        for i in range(0, input_num):
+            mace_check(op.input[i] in self._output_shape_cache,
+                       "Op %s input %s does not exist"
+                       % (op.name, op.input[i]))
+            input_shape = self._output_shape_cache[op.input[i]]
+            input_size = 1
+            for k in range(0, len(input_shape)):
+                input_size *= input_shape[k]
+            if input_size > max_input_size:
+                max_idx = i
+                max_input_size = input_size
+
+        input_max_shape = self._output_shape_cache[op.input[max_idx]]
+        self.add_output_shape(op, [input_max_shape])

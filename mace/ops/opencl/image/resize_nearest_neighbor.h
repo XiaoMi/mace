@@ -72,8 +72,8 @@ class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
-      const Tensor *size,
-      const std::vector<index_t> &dims,
+      const index_t out_height,
+      const index_t out_width,
       Tensor *output) override;
 
  private:

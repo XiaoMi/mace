@@ -28,48 +28,79 @@ namespace ops {
 namespace opencl {
 namespace image {
 
+enum MeanType {
+  SINGLE_CHANNEL,
+  GROUP_CHANNELS,
+  ACROSS_CHANNELS,
+};
+
 class MVNormKernel : public OpenCLMVNormKernel {
  public:
-  explicit MVNormKernel(bool normalize_variance_,
-                        bool across_channels, float eps);
+  explicit MVNormKernel(bool normalize_variance_, MeanType mean_type,
+                        float eps, int group_num = 0);
   ~MVNormKernel() = default;
 
   MaceStatus Compute(
       OpContext *context, const Tensor *input, Tensor *output) override;
 
  private:
-  void CheckImage(OpContext *context, const DataType dt,
-                  const std::vector<index_t> &square_shape,
-                  const std::vector<index_t> &mean_shape);
+  MaceStatus DoCompute(OpContext *context, const Tensor *input,
+                       Tensor *output, const index_t batch,
+                       const index_t height, const index_t width,
+                       const index_t channels, const index_t group_blocks);
+
+  MaceStatus ExecuteMeanValueKernel(OpContext *context,
+                                    OpenCLRuntime *runtime,
+                                    const index_t batch,
+                                    const index_t height,
+                                    const index_t width,
+                                    const index_t channel_blocks,
+                                    const index_t group_blocks,
+                                    const cl::Image *input_image,
+                                    cl::Image *output_image);
+
   MaceStatus ExecuteMeanNormKernel(OpContext *context,
                                    OpenCLRuntime *runtime,
                                    const uint32_t (&gws)[3],
-                                   const Tensor *input,
-                                   Tensor *output);
+                                   const index_t height,
+                                   const index_t group_blocks,
+                                   const cl::Image *input,
+                                   const cl::Image *mean_image,
+                                   cl::Image *output);
+
+  // compute the (X - EX)^2
   MaceStatus ExecuteVarianceNormStep1Kernel(OpContext *context,
                                             OpenCLRuntime *runtime,
                                             const uint32_t (&gws)[3],
-                                            const Tensor *input);
+                                            const index_t height,
+                                            const index_t group_blocks,
+                                            const cl::Image *input,
+                                            const cl::Image *mean_image,
+                                            cl::Image *output);
+
+  // compute (X - EX) / (E((X - EX)^2)^0.5 + eps_)
   MaceStatus ExecuteVarianceNormStep2Kernel(OpContext *context,
                                             OpenCLRuntime *runtime,
                                             const uint32_t (&gws)[3],
-                                            const Tensor *input,
-                                            Tensor *output);
+                                            const index_t height,
+                                            const index_t group_blocks,
+                                            const cl::Image *input,
+                                            const cl::Image *mean_image,
+                                            const cl::Image *mean_image_sqr,
+                                            cl::Image *output);
 
  private:
-  bool normalize_variance_;
-  bool across_channels_;
-  float eps_;
+  const bool normalize_variance_;
+  const MeanType mean_type_;
+  const float eps_;
+  const int group_num_;
 
+  cl::Kernel kernel_mean_;
+  uint32_t kwg_size_mean_;
   cl::Kernel kernel_step1_;
   uint32_t kwg_size_step1_;
   cl::Kernel kernel_step2_;
   uint32_t kwg_size_step2_;
-
-  // the cache of (X - EX)^2
-  std::unique_ptr<Image> square_image_;
-  // the cache of EX
-  std::unique_ptr<Image> mean_image_;
 };
 
 }  // namespace image

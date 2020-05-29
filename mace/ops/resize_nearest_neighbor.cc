@@ -78,27 +78,37 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
       : Operation(context),
-        align_corners_(Operation::GetOptionalArg<bool>("align_corners",
-                                                       false)) {}
+        align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
+        height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
-    const Tensor *size = this->Input(1);
-    Tensor::MappingGuard size_mapper(size);
     Tensor *output = this->Output(0);
 
-    MACE_CHECK(input->dim_size() == 4 && size->dim_size() == 1,
-               "input must be 4-dimensional and size must be 1-dimensional. ",
-               input->dim_size(), size->dim_size());
+    MACE_CHECK(input->dim_size() == 4,
+               "input must be 4-dimensional.", input->dim_size());
 
     const index_t batch = input->dim(0);
     const index_t channels = input->dim(1);
     const index_t in_height = input->dim(2);
     const index_t in_width = input->dim(3);
 
-    const index_t out_height = size->data<int32_t>()[0];
-    const index_t out_width = size->data<int32_t>()[1];
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (height_scale_ > 0) {  // for Caffe
+      out_height = static_cast<index_t>(height_scale_ * in_height);
+      out_width = static_cast<index_t>(width_scale_ * in_width);
+    } else {  // for tensor (Tf and ONNX)
+      const Tensor *size = this->Input(1);
+      Tensor::MappingGuard size_mapper(size);
+      MACE_CHECK(size->dim_size() == 1,
+                 "size must be 1-dimensional.", size->dim_size());
+      out_height = size->data<int32_t>()[0];
+      out_width = size->data<int32_t>()[1];
+    }
+
     MACE_CHECK(out_height > 0 && out_width > 0, out_height, out_width);
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
@@ -114,14 +124,15 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
       return MaceStatus::MACE_SUCCESS;
     }
 
-    float height_scale =
-        common::utils::CalculateResizeScale(in_height,
-                                            out_height,
-                                            align_corners_);
-    float width_scale =
-        common::utils::CalculateResizeScale(in_width,
-                                            out_width,
-                                            align_corners_);
+    // Caffe's scale is the opposite of ours
+    float height_scale = height_scale_ > 0 ? 1 / height_scale_ :
+                         common::utils::CalculateResizeScale(in_height,
+                                                             out_height,
+                                                             align_corners_);
+    float width_scale = width_scale_ > 0 ? 1 / width_scale_ :
+                        common::utils::CalculateResizeScale(in_width,
+                                                            out_width,
+                                                            align_corners_);
     ResizeImageNCHW(context,
                     input_data,
                     batch,
@@ -139,6 +150,8 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
 
  private:
   bool align_corners_;
+  float height_scale_;
+  float width_scale_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -146,7 +159,9 @@ template<>
 class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
-      : Operation(context), dim_(Operation::GetRepeatedArgs<index_t>("dim")) {
+      : Operation(context), dim_(Operation::GetRepeatedArgs<index_t>("dim")),
+        height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
@@ -158,17 +173,34 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
   }
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
-    const Tensor *size = this->Input(1);
     Tensor *output = this->Output(0);
-    MACE_CHECK(input->dim_size() == 4 && size->dim_size() == 1,
-               "input must be 4-dimensional and size must be 1-dimensional.",
-               input->dim_size(), size->dim_size());
+    MACE_CHECK(input->dim_size() == 4,
+               "input must be 4-dimensional.", input->dim_size());
 
-    return kernel_->Compute(context, input, size, dim_, output);
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (height_scale_ > 0) {  // for Caffe
+      out_height = static_cast<index_t>(height_scale_ * input->dim(1));
+      out_width = static_cast<index_t>(width_scale_ * input->dim(2));
+    } else if (dim_.size() < 2) {  // for variable tensor (Tf and ONNX)
+      const Tensor *size = this->Input(1);
+      Tensor::MappingGuard size_mapper(size);
+      MACE_CHECK(size->dim_size() == 1,
+                 "size must be 1-dimensional.", size->dim_size());
+      out_height = size->data<int32_t>()[0];
+      out_width = size->data<int32_t>()[1];
+    } else {  // for const tensor (Tf and ONNX)
+      out_height = dim_[0];
+      out_width = dim_[1];
+    }
+
+    return kernel_->Compute(context, input, out_height, out_width, output);
   }
 
  private:
   std::vector<index_t> dim_;
+  float height_scale_;
+  float width_scale_;
   std::unique_ptr<OpenCLResizeNearestNeighborKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL

@@ -161,6 +161,7 @@ class CaffeConverter(base_converter.ConverterInterface):
     }
     activation_type = {
         'ReLU': ActivationType.RELU,
+        'ReLU6': ActivationType.RELUX,
         'PReLU': ActivationType.PRELU,
         'TanH': ActivationType.TANH,
         'Sigmoid': ActivationType.SIGMOID,
@@ -175,6 +176,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'Eltwise': self.convert_elementwise,
             'Add': self.convert_add,
             'ReLU': self.convert_activation,
+            'ReLU6': self.convert_activation,
             'TanH': self.convert_activation,
             'Sigmoid': self.convert_activation,
             'PReLU': self.convert_activation,
@@ -186,6 +188,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'InnerProduct': self.convert_fully_connected,
             'Interp': self.convert_interp,
             'BatchNorm': self.convert_folded_batchnorm,
+            'GroupNorm': self.convert_group_norm,
             'Crop': self.convert_crop,
             'Scale': self.convert_scale,
             'ShuffleChannel': self.convert_channel_shuffle,
@@ -196,7 +199,9 @@ class CaffeConverter(base_converter.ConverterInterface):
             'L2Normalization': self.convert_lpnorm,
             'L1Normalization': self.convert_lpnorm,
             'MVN': self.convert_MVN,
-            'Bias': self.convert_Bias,
+            'Bias': self.convert_bias,
+            'ArgMax': self.convert_argmax,
+            'ResizeNearest': self.convert_resize_nearest,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -254,7 +259,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         for op in ops:
             for i in six.moves.range(len(op.output)):
                 original_output_name = op.output[i].split('#')[0]
-                if original_output_name not in visited and\
+                if original_output_name not in visited and \
                         original_output_name not in self._option.input_nodes:
                     self.replace_input_name(
                         consumers.get(op.output[i], []),
@@ -456,6 +461,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         filter_data = caffe_op.blobs[0]
         self.add_tensor(filter_tensor_name, filter_data.shape,
                         mace_pb2.DT_FLOAT, filter_data)
+        print("convert conv2d, the filter shape is: ", filter_data.shape)
         op.input.extend([filter_tensor_name])
 
         if len(caffe_op.blobs) == 2:
@@ -499,16 +505,18 @@ class CaffeConverter(base_converter.ConverterInterface):
             self.add_tensor(alpha_tensor_name, alpha_data.reshape(-1).shape,
                             mace_pb2.DT_FLOAT, alpha_data)
             op.input.extend([alpha_tensor_name])
-
-        negative_slope = caffe_op.layer.relu_param.negative_slope
-        if caffe_op.type == 'ReLU' and negative_slope != 0:
-            param_arg = op.arg.add()
-            param_arg.name = MaceKeyword.mace_activation_leakyrelu_coefficient_str  # noqa
-            param_arg.f = caffe_op.layer.relu_param.negative_slope
-
-            type_arg.s = six.b(ActivationType.LEAKYRELU.name)
-
-        if caffe_op.type == 'Clip':
+        elif caffe_op.type == 'ReLU':
+            negative_slope = caffe_op.layer.relu_param.negative_slope
+            if negative_slope != 0:
+                param_arg = op.arg.add()
+                param_arg.name = MaceKeyword.mace_activation_leakyrelu_coefficient_str  # noqa
+                param_arg.f = caffe_op.layer.relu_param.negative_slope
+                type_arg.s = six.b(ActivationType.LEAKYRELU.name)
+        elif caffe_op.type == 'ReLU6':
+            limit_arg = op.arg.add()
+            limit_arg.name = MaceKeyword.mace_activation_max_limit_str
+            limit_arg.f = 6.0
+        elif caffe_op.type == 'Clip':
             mace_check(caffe_op.layer.clip_param.min == 0,
                        "Mace only supports min == 0 Clip op")
             limit_arg = op.arg.add()
@@ -547,6 +555,24 @@ class CaffeConverter(base_converter.ConverterInterface):
                         mace_pb2.DT_FLOAT, offset_value)
         op.input.extend([name for name in input_names])
         op.output[:] = scale_op.layer.top[:]
+
+    def convert_group_norm(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.GroupNorm.name
+
+        epsilon_arg = op.arg.add()
+        epsilon_arg.name = MaceKeyword.mace_epsilon_str
+        group_num_arg = op.arg.add()
+        group_num_arg.name = MaceKeyword.mace_group_num_str
+
+        if hasattr(caffe_op, 'layer') and \
+                hasattr(caffe_op.layer, 'group_norm_param'):
+            param = caffe_op.layer.group_norm_param
+            epsilon_arg.f = param.eps
+            group_num_arg.i = param.group_num
+        else:
+            epsilon_arg.f = 1e-5
+            group_num_arg.i = 32
 
     def convert_pooling(self, caffe_op):
         op = self.convert_general_op(caffe_op)
@@ -668,11 +694,12 @@ class CaffeConverter(base_converter.ConverterInterface):
         type_arg.name = MaceKeyword.mace_element_type_str
         type_arg.i = EltwiseType.PROD.value
 
-        scale_tensor_name = scale_op_name + '_scale'
-        scale_data = caffe_op.blobs[0]
-        self.add_tensor(scale_tensor_name, scale_data.shape,
-                        mace_pb2.DT_FLOAT, scale_data)
-        op.input.extend([scale_tensor_name])
+        if len(caffe_op.blobs) >= 1:
+            scale_tensor_name = scale_op_name + '_scale'
+            scale_data = caffe_op.blobs[0]
+            self.add_tensor(scale_tensor_name, scale_data.shape,
+                            mace_pb2.DT_FLOAT, scale_data)
+            op.input.extend([scale_tensor_name])
 
         if len(caffe_op.blobs) == 2:
             bias_tensor_name = scale_op_name + '_offset'
@@ -802,8 +829,9 @@ class CaffeConverter(base_converter.ConverterInterface):
             mace_check(step_w_arg.f > 0, "step_w should be larger than 0.")
 
         if param.HasField('step'):
-            mace_check(not param.HasField('step_h') and not param.HasField('step_w'),  # noqa
-                       "Either step or step_h/step_w should be specified; not both.")  # noqa
+            mace_check(
+                not param.HasField('step_h') and not param.HasField('step_w'),
+                "Either step or step_h/step_w should be specified; not both.")
             mace_check(param.step > 0, "step should be larger than 0.")
             step_h_arg.f = param.step
             step_w_arg.f = param.step
@@ -869,7 +897,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             eps_arg.name = MaceKeyword.mace_epsilon_str
             eps_arg.f = param.eps
 
-    def convert_Bias(self, caffe_op):
+    def convert_bias(self, caffe_op):
         op = self.convert_general_op(caffe_op)
         op.type = MaceOp.BiasAdd.name
         param = caffe_op.layer.bias_param
@@ -882,3 +910,58 @@ class CaffeConverter(base_converter.ConverterInterface):
             mace_check(param.axis == 0 or param.axis == 1,
                        "BiasAdd only support axis with 0 or 1.")
             axis_arg.i = param.axis
+        if len(caffe_op.blobs) >= 1:
+            bias_tensor_name = op.name + '_bias'
+            bias_data = caffe_op.blobs[0]
+            self.add_tensor(bias_tensor_name, bias_data.shape,
+                            mace_pb2.DT_FLOAT, bias_data)
+            op.input.extend([bias_tensor_name])
+
+    def convert_resize_nearest(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.ResizeNearestNeighbor.name
+
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = 0
+
+        height_scale_arg = op.arg.add()
+        height_scale_arg.name = MaceKeyword.mace_height_scale_str
+        width_scale_arg = op.arg.add()
+        width_scale_arg.name = MaceKeyword.mace_width_scale_str
+        if hasattr(caffe_op, 'layer') and \
+                hasattr(caffe_op.layer, 'resize_nearest_param'):
+            param = caffe_op.layer.resize_nearest_param
+            height_scale_arg.f = param.height_scale
+            width_scale_arg.f = param.width_scale
+        else:
+            height_scale_arg.f = 2.0
+            width_scale_arg.f = 2.0
+
+    def convert_argmax(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.ArgMax.name
+
+        out_max_val = False
+        if hasattr(caffe_op, 'layer') and \
+                hasattr(caffe_op.layer, 'argmax_param'):
+            param = caffe_op.layer.argmax_param
+            if hasattr(param, 'out_max_val'):
+                axis_arg = op.arg.add()
+                axis_arg.name = MaceKeyword.mace_out_val_str
+                axis_arg.i = param.out_max_val
+                out_max_val = param.out_max_val
+
+            if hasattr(param, MaceKeyword.mace_top_k_str):
+                axis_arg = op.arg.add()
+                axis_arg.name = MaceKeyword.mace_top_k_str
+                axis_arg.i = param.top_k
+
+            if hasattr(param, MaceKeyword.mace_axis_str):
+                axis_arg = op.arg.add()
+                axis_arg.name = MaceKeyword.mace_axis_str
+                axis_arg.i = param.axis
+        if out_max_val:
+            op.output_type.extend([mace_pb2.DT_FLOAT])
+        else:
+            op.output_type.extend([mace_pb2.DT_INT32])
