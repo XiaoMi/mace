@@ -97,10 +97,10 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
 
     index_t out_height = 0;
     index_t out_width = 0;
-    if (height_scale_ > 0) {  // for Caffe
+    if (height_scale_ > 0) {  // for Caffe and ONNX
       out_height = static_cast<index_t>(height_scale_ * in_height);
       out_width = static_cast<index_t>(width_scale_ * in_width);
-    } else {  // for tensor (Tf and ONNX)
+    } else {  // for tensor (Tf)
       const Tensor *size = this->Input(1);
       Tensor::MappingGuard size_mapper(size);
       MACE_CHECK(size->dim_size() == 1,
@@ -124,7 +124,7 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
       return MaceStatus::MACE_SUCCESS;
     }
 
-    // Caffe's scale is the opposite of ours
+    // Caffe/ONNX's scale is the opposite of ours
     float height_scale = height_scale_ > 0 ? 1 / height_scale_ :
                          common::utils::CalculateResizeScale(in_height,
                                                              out_height,
@@ -179,17 +179,17 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
 
     index_t out_height = 0;
     index_t out_width = 0;
-    if (height_scale_ > 0) {  // for Caffe
+    if (height_scale_ > 0) {  // for Caffe and ONNX
       out_height = static_cast<index_t>(height_scale_ * input->dim(1));
       out_width = static_cast<index_t>(width_scale_ * input->dim(2));
-    } else if (dim_.size() < 2) {  // for variable tensor (Tf and ONNX)
+    } else if (dim_.size() < 2) {  // for variable tensor (Tf)
       const Tensor *size = this->Input(1);
       Tensor::MappingGuard size_mapper(size);
       MACE_CHECK(size->dim_size() == 1,
                  "size must be 1-dimensional.", size->dim_size());
       out_height = size->data<int32_t>()[0];
       out_width = size->data<int32_t>()[1];
-    } else {  // for const tensor (Tf and ONNX)
+    } else {  // for const tensor (Tf)
       out_height = dim_[0];
       out_width = dim_[1];
     }
