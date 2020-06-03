@@ -72,11 +72,28 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "libmicro.lo",
-    linkshared = False,
-    linkstatic = True,
-    deps = [
-        ":micro_engine",
+genrule(
+    name = "libmicro_static",
+    srcs = [
+        "micro_engine",
+        "generated_models",
+        "//micro/framework",
+        "//micro/include",
+        "//micro/model",
+        "//micro/ops",
     ],
+    outs = ["libmicro.a"],
+    cmd = "tmp_mri_file=$$(mktemp micro-static-lib-mri.XXXXXXXXXX);" +
+          "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
+          "$(locations micro_engine) " +
+          "$(locations generated_models) " +
+          "$(locations //micro/framework) " +
+          "$(locations //micro/model) " +
+          "$(locations ////micro/ops) " +
+          "$@ " +
+          "$$tmp_mri_file);" +
+          "$(AR) -M <$$tmp_mri_file;"  +
+          "rm -rf $$tmp_mri_file;",
+    tools = ["//mace/python/tools:archive_static_lib"],
+    visibility = ["//visibility:public"],
 )
