@@ -6,6 +6,8 @@ enum apu_act_mode {
     APU_ACT_NONE = 0,
     APU_ACT_RELU = 1,
     APU_ACT_RELU6 = 2,
+    APU_ACT_SIGMOID = 3,
+    APU_ACT_TANH = 4,
 };
 
 enum apu_pooling_mode {

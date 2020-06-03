@@ -738,7 +738,6 @@ class Transformer(base_converter.ConverterInterface):
                     net.tensors.remove(scale)
                     self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
-
                     return True
 
         return False
@@ -963,17 +962,21 @@ class Transformer(base_converter.ConverterInterface):
                 or op.type == MaceOp.BatchNorm.name) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
+                fold_consumer = False
                 if consumer_op.type == MaceOp.Activation.name:
                     act_type_arg = ConverterUtil.get_arg(
                         consumer_op, MaceKeyword.mace_activation_type_str)
                     act_type = act_type_arg.s.decode()
-                    if act_type == ActivationType.PRELU.name:
-                        continue
+                    if self._option.device == DeviceType.APU.value:
+                        fold_consumer = (act_type in [ActivationType.RELU.name, ActivationType.RELUX.name])
+                    else:
+                        fold_consumer = (act_type !=  ActivationType.PRELU.name)
                     # during quantization, only fold relu/relux
                     if (self._option.quantize_stat or self._option.quantize) \
                             and act_type not in [ActivationType.RELU.name,
                                                  ActivationType.RELUX.name]:
                         continue
+                if fold_consumer:
                     print("Fold activation: %s(%s)" % (op.name, op.type))
                     op.name = consumer_op.name
                     op.output[0] = consumer_op.output[0]
@@ -989,6 +992,7 @@ class Transformer(base_converter.ConverterInterface):
                     return True
 
         return False
+
 
     def transform_global_conv_to_fc(self):
         """Transform global conv to fc should be placed after transposing
