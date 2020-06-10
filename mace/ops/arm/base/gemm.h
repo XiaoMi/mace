@@ -134,7 +134,8 @@ class Gemm : public delegator::Gemm {
       depth = rows;
     }
     const index_t depth_padded = RoundUp(depth, static_cast<index_t>(4));
-    memset(packed_matrix, 0, sizeof(T) * WidthBlockSize * depth_padded);
+    memset(static_cast<void *>(packed_matrix), 0,
+           sizeof(T) * WidthBlockSize * depth_padded);
     if (dst_major == ColMajor) {
       for (index_t c = 0; c < cols; ++c) {
         for (index_t r = 0; r < rows; ++r) {

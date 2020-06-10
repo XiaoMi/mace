@@ -81,18 +81,22 @@ genrule(
         "//micro/include",
         "//micro/model",
         "//micro/ops",
+        "//micro/base",
+        "//micro/port",
     ],
     outs = ["libmicro.a"],
     cmd = "tmp_mri_file=$$(mktemp micro-static-lib-mri.XXXXXXXXXX);" +
           "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
           "$(locations micro_engine) " +
           "$(locations generated_models) " +
+          "$(locations //micro/base) " +
           "$(locations //micro/framework) " +
           "$(locations //micro/model) " +
-          "$(locations ////micro/ops) " +
+          "$(locations //micro/ops) " +
+          "$(locations //micro/port) " +
           "$@ " +
           "$$tmp_mri_file);" +
-          "$(AR) -M <$$tmp_mri_file;"  +
+          "$(AR) -M <$$tmp_mri_file;" +
           "rm -rf $$tmp_mri_file;",
     tools = ["//mace/python/tools:archive_static_lib"],
     visibility = ["//visibility:public"],

@@ -590,7 +590,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     const T *input_ptr = input->data<T>();
     Tensor::MappingGuard output_map(output);
     T *output_ptr = output->mutable_data<T>();
-    memset(output_ptr, 0, output->size() * sizeof(T));
+    memset(static_cast<void *>(output_ptr), 0, output->size() * sizeof(T));
     switch (data_reshape_.size()) {
       case 1:Reduce1Dims(context, input_ptr, reduce_type_, output_ptr);
         break;
