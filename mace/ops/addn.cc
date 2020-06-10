@@ -47,7 +47,7 @@ class AddNOp<DeviceType::CPU, T> : public Operation {
 
     Tensor::MappingGuard output_guard(output);
     auto output_data = output->mutable_data<T>();
-    memset(output_data, 0, size * sizeof(T));
+    memset(static_cast<void *>(output_data), 0, size * sizeof(T));
 
     for (auto &input : inputs_) {
       Tensor::MappingGuard input_guard(input);

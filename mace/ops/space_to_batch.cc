@@ -163,13 +163,13 @@ class SpaceToBatchNDOp<DeviceType::CPU, T> : public SpaceToBatchOpBase {
           T *output_base =
               output_data + (b * channels + c) * out_height * out_width;
 
-          memset(output_base + block_h * out_width,
+          memset(static_cast<void *>(output_base + block_h * out_width),
                  0,
                  (valid_h_start - block_h) * out_width * sizeof(T));
 
           index_t in_h = valid_h_start * block_shape_h + tile_h - pad_top;
           for (index_t h = valid_h_start; h < valid_h_end; ++h) {
-            memset(output_base + h * out_width,
+            memset(static_cast<void *>(output_base + h * out_width),
                    0,
                    valid_w_start * sizeof(T));
 
@@ -181,12 +181,12 @@ class SpaceToBatchNDOp<DeviceType::CPU, T> : public SpaceToBatchOpBase {
             }  // w
             in_h += block_shape_h;
 
-            memset(output_base + h * out_width + valid_w_end,
-                   0,
-                   (out_width - valid_w_end) * sizeof(T));
+            memset(
+                static_cast<void *>(output_base + h * out_width + valid_w_end),
+                0, (out_width - valid_w_end) * sizeof(T));
           }  // h
 
-          memset(output_base + valid_h_end * out_width,
+          memset(static_cast<void *>(output_base + valid_h_end * out_width),
                  0,
                  (std::min(out_height, block_h + block_h_size) - valid_h_end)
                      * out_width * sizeof(T));

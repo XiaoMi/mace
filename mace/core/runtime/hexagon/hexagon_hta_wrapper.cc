@@ -244,7 +244,7 @@ bool HexagonHTAWrapper::SetupGraph(const NetDef &net_def,
     auto quantized_tensor = make_unique<Tensor>(allocator_, DT_UINT8);
     auto hta_tensor = make_unique<Tensor>(allocator_, DT_UINT8);
     hexagon_hta_nn_hw_tensordef &input_tensordef = input_tensordef_[index];
-    memset(&input_tensordef, 0, sizeof(input_tensordef));
+    memset(static_cast<void *>(&input_tensordef), 0, sizeof(input_tensordef));
     MACE_CHECK(hexagon_hta_nn_get_memory_layout(nn_id_, 0, index,
                                                 &input_tensordef) == 0);
     input_tensordef.dataLen = input_tensordef.batchStride;
@@ -290,7 +290,7 @@ bool HexagonHTAWrapper::SetupGraph(const NetDef &net_def,
     quantized_tensor->SetZeroPoint(output_info.zero_point());
 
     hexagon_hta_nn_hw_tensordef &output_tensordef = output_tensordef_[index];
-    memset(&output_tensordef, 0, sizeof(output_tensordef));
+    memset(static_cast<void *>(&output_tensordef), 0, sizeof(output_tensordef));
     MACE_CHECK(hexagon_hta_nn_get_memory_layout(nn_id_, 1, index,
                                                 &output_tensordef) == 0);
     output_tensordef.dataLen = output_tensordef.batchStride;

@@ -52,17 +52,17 @@ Here we use the har-cnn model as an example.
 
     .. code-block:: sh
 
-        # copy convert result to micro dir ``path/to/micro``
+        # copy convert result to micro dir ``path/to/micro``, which should not be the sub directory of the ``mace/``.
         cp build/har-cnn/model/har_cnn_micro.tar.gz path/to/micro/
         cd path/to/micro
         tar zxvf har_cnn_micro.tar.gz
-        bazel build //micro/codegen:micro_engine
+        bazel build //micro/codegen:libmicro.so
 
     .. note::
 
         - This step can be skipped if you just want to run a model using ``tools/python/run_micro.py``, such as commands in step 5.
 
-        - The build result ``bazel-bin/micro/codegen/libmicro_engine.so``'s abi is host, if you want to run the model on micro controllers, you should build the code with the target abi.
+        - The build result ``bazel-bin/micro/codegen/libmicro.so``'s abi is host, if you want to run the model on micro controllers, you should build the code with the target abi.
 
     5. Run the model on host.
 

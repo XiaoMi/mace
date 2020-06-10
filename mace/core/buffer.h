@@ -224,7 +224,7 @@ class Buffer : public BufferBase {
   }
 
   void Clear(index_t size) {
-    memset(reinterpret_cast<char*>(raw_mutable_data()), 0, size);
+    memset(reinterpret_cast<void *>(raw_mutable_data()), 0, size);
   }
 
   const std::vector<size_t> shape() const {

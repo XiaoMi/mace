@@ -62,7 +62,7 @@ class SqrDiffMeanOp : public Operation {
     const T *input_ptr1 = input1->data<T>();
     Tensor::MappingGuard output_map(output);
     T *output_ptr = output->mutable_data<T>();
-    memset(output_ptr, 0, output->size() * sizeof(T));
+    memset(static_cast<void *>(output_ptr), 0, output->size() * sizeof(T));
 
     const index_t img_size = input0->dim(2) * input0->dim(3);
     const index_t bc = input0->dim(0) * input0->dim(1);

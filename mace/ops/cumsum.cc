@@ -84,7 +84,7 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
         for (index_t cum_idx = 0; cum_idx < cum_size; ++cum_idx) {
           if (cum_idx == 0) {
             if (exclusive_) {
-              std::memset(output_ptr + start_idx,
+              std::memset(static_cast<void *>(output_ptr + start_idx),
                           0,
                           sizeof(T) * inner_size);
             } else {
@@ -111,7 +111,7 @@ class CumsumOp<DeviceType::CPU, T> : public Operation {
           index_t cur_idx = start_idx + cum_idx * inner_size;
           if (cum_idx == cum_size - 1) {
             if (exclusive_) {
-              std::memset(output_ptr + cur_idx,
+              std::memset(static_cast<void *>(output_ptr + cur_idx),
                           0,
                           sizeof(T) * inner_size);
             } else {
