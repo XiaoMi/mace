@@ -181,7 +181,9 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
   explicit ResizeBilinearOp(OpConstructContext *context)
       : Operation(context),
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
-        size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})) {}
+        size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
+        height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -196,9 +198,16 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
     const index_t in_height = input->dim(2);
     const index_t in_width = input->dim(3);
 
-    index_t out_height = size_[0];
-    index_t out_width = size_[1];
-    MACE_CHECK(out_height > 0 && out_width > 0);
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (height_scale_ > 0) {  // for ONNX
+      out_height = static_cast<index_t>(height_scale_ * in_height);
+      out_width = static_cast<index_t>(width_scale_ * in_width);
+    } else {  // for tensor (Tf and Caffe)
+      out_height = size_[0];
+      out_width = size_[1];
+    }
+    MACE_CHECK(out_height > 0 && out_width > 0, out_height, out_width);
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 
@@ -214,14 +223,15 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
       return MaceStatus::MACE_SUCCESS;
     }
 
-    float height_scale =
-        common::utils::CalculateResizeScale(in_height,
-                                            out_height,
-                                            align_corners_);
-    float width_scale =
-        common::utils::CalculateResizeScale(in_width,
-                                            out_width,
-                                            align_corners_);
+    // ONNX's scale is the opposite of ours
+    float height_scale = height_scale_ > 0 ? 1 / height_scale_ :
+                         common::utils::CalculateResizeScale(in_height,
+                                                             out_height,
+                                                             align_corners_);
+    float width_scale = width_scale_ > 0 ? 1 / width_scale_ :
+                        common::utils::CalculateResizeScale(in_width,
+                                                            out_width,
+                                                            align_corners_);
 
     std::vector<CachedInterpolation> ys(out_height + 1);
     std::vector<CachedInterpolation> xs(out_width + 1);
@@ -248,6 +258,8 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
  private:
   bool align_corners_;
   std::vector<index_t> size_;
+  float height_scale_;
+  float width_scale_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -257,7 +269,9 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
   explicit ResizeBilinearOp(OpConstructContext *context)
       : Operation(context),
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
-        size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})) {}
+        size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
+        height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -272,8 +286,15 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
     const index_t in_width = input->dim(2);
     const index_t channels = input->dim(3);
 
-    index_t out_height = size_[0];
-    index_t out_width = size_[1];
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (height_scale_ > 0) {  // for ONNX
+      out_height = static_cast<index_t>(height_scale_ * in_height);
+      out_width = static_cast<index_t>(width_scale_ * in_width);
+    } else {  // for tensor (Tf and Caffe)
+      out_height = size_[0];
+      out_width = size_[1];
+    }
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> out_shape{batch, out_height, out_width, channels};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
@@ -290,14 +311,15 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
       return MaceStatus::MACE_SUCCESS;
     }
 
-    float height_scale =
-        common::utils::CalculateResizeScale(in_height,
-                                            out_height,
-                                            align_corners_);
-    float width_scale =
-        common::utils::CalculateResizeScale(in_width,
-                                            out_width,
-                                            align_corners_);
+    // ONNX's scale is the opposite of ours
+    float height_scale = height_scale_ > 0 ? 1 / height_scale_ :
+                         common::utils::CalculateResizeScale(in_height,
+                                                             out_height,
+                                                             align_corners_);
+    float width_scale = width_scale_ > 0 ? 1 / width_scale_ :
+                        common::utils::CalculateResizeScale(in_width,
+                                                            out_width,
+                                                            align_corners_);
 
     std::vector<CachedInterpolation> ys(out_height + 1);
     std::vector<CachedInterpolation> xs(out_width + 1);
@@ -324,6 +346,8 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
  private:
   bool align_corners_;
   std::vector<index_t> size_;
+  float height_scale_;
+  float width_scale_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -332,15 +356,14 @@ template<>
 class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeBilinearOp(OpConstructContext *context)
-      : Operation(context) {
+      : Operation(context),
+        size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
+        height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0))  {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
-    std::vector<index_t> size = Operation::GetRepeatedArgs<index_t>(
-        "size", {-1, -1});
-    MACE_CHECK(size.size() == 2);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ResizeBilinearKernel>(
-          align_corners, size[0], size[1]);
+      kernel_ = make_unique<opencl::image::ResizeBilinearKernel>(align_corners);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -351,11 +374,25 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional.",
                input->dim_size());
 
-    return kernel_->Compute(context, input, output);
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (height_scale_ > 0) {  // for ONNX
+      out_height = static_cast<index_t>(height_scale_ * input->dim(1));
+      out_width = static_cast<index_t>(width_scale_ * input->dim(2));
+    } else {  // for tensor (Tf and Caffe)
+      out_height = size_[0];
+      out_width = size_[1];
+    }
+    MACE_CHECK(out_height > 0 && out_width > 0);
+
+    return kernel_->Compute(context, input, out_height, out_width, output);
   }
 
  private:
   std::unique_ptr<OpenCLResizeBilinearKernel> kernel_;
+  std::vector<index_t> size_;
+  float height_scale_;
+  float width_scale_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

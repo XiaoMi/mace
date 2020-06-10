@@ -66,22 +66,18 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 class ResizeBilinearKernel : public OpenCLResizeBilinearKernel {
  public:
-  ResizeBilinearKernel(bool align_corners,
-                       const index_t out_height,
-                       const index_t out_width)
-      : align_corners_(align_corners),
-        out_height_(out_height),
-        out_width_(out_width) {}
+  explicit ResizeBilinearKernel(bool align_corners)
+      : align_corners_(align_corners) {}
 
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
+      const index_t out_height,
+      const index_t out_width,
       Tensor *output) override;
 
  private:
   bool align_corners_;
-  index_t out_height_;
-  index_t out_width_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

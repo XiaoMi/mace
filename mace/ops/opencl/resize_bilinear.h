@@ -30,6 +30,8 @@ class OpenCLResizeBilinearKernel {
   virtual MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
+      const index_t out_height,
+      const index_t out_width,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLResizeBilinearKernel);
 };
