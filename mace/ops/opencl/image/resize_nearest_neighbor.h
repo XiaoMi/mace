@@ -66,8 +66,10 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
  public:
-  explicit ResizeNearestNeighborKernel(bool align_corners)
-      : align_corners_(align_corners) {}
+  explicit ResizeNearestNeighborKernel(bool align_corners,
+                                       bool half_pixel_centers)
+      : align_corners_(align_corners),
+        half_pixel_centers_(half_pixel_centers) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -78,6 +80,7 @@ class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
 
  private:
   bool align_corners_;
+  bool half_pixel_centers_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

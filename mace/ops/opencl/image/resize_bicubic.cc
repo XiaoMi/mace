@@ -85,6 +85,7 @@ MaceStatus ResizeBicubicKernel::Compute(
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, height_scale);
     kernel_.setArg(idx++, width_scale);
+    kernel_.setArg(idx++, static_cast<int32_t>(half_pixel_centers_));
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));

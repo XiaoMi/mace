@@ -40,11 +40,13 @@ inline void ComputeInterpolationWeights(
     const index_t out_size,
     const index_t in_size,
     const float scale,
+    bool half_pixel_centers,
     CachedInterpolation *interpolation) {
   interpolation[out_size].lower = 0;
   interpolation[out_size].upper = 0;
   for (index_t i = out_size - 1; i >= 0; --i) {
-    const float in = i * scale;
+    const float in = half_pixel_centers ?
+                     (static_cast<float>(i) + 0.5f) * scale - 0.5f : i * scale;
     interpolation[i].lower = static_cast<index_t>(in);
     interpolation[i].upper = std::min(interpolation[i].lower + 1, in_size - 1);
     interpolation[i].lerp = in - interpolation[i].lower;
@@ -183,7 +185,9 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
         size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
-        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)),
+        half_pixel_centers_(
+            Operation::GetOptionalArg<bool>("half_pixel_centers", false)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -237,8 +241,10 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
     std::vector<CachedInterpolation> xs(out_width + 1);
 
     // Compute the cached interpolation weights on the x and y dimensions.
-    ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
-    ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
+    ComputeInterpolationWeights(out_height, in_height, height_scale,
+                                half_pixel_centers_, ys.data());
+    ComputeInterpolationWeights(out_width, in_width, width_scale,
+                                half_pixel_centers_, xs.data());
 
     ResizeImageNCHW(context,
                     input_data,
@@ -260,6 +266,7 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
+  bool half_pixel_centers_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -271,7 +278,9 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
         size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
-        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)),
+        half_pixel_centers_(
+            Operation::GetOptionalArg<bool>("half_pixel_centers", false)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -325,8 +334,10 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
     std::vector<CachedInterpolation> xs(out_width + 1);
 
     // Compute the cached interpolation weights on the x and y dimensions.
-    ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
-    ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
+    ComputeInterpolationWeights(out_height, in_height, height_scale,
+                                half_pixel_centers_, ys.data());
+    ComputeInterpolationWeights(out_width, in_width, width_scale,
+                                half_pixel_centers_, xs.data());
 
     ResizeImageNHWC(context,
                     input_data,
@@ -348,6 +359,7 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
   std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
+  bool half_pixel_centers_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -362,8 +374,11 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0))  {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
+    bool half_pixel_centers = Operation::GetOptionalArg<bool>(
+        "half_pixel_centers", false);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ResizeBilinearKernel>(align_corners);
+      kernel_ = make_unique<opencl::image::ResizeBilinearKernel>(
+          align_corners, half_pixel_centers);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

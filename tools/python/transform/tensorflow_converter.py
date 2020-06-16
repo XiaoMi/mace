@@ -202,8 +202,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
     }
 
     pad_type = {
-        'CONSTANT':  PadType.CONSTANT,
-        'REFLECT':   PadType.REFLECT,
+        'CONSTANT': PadType.CONSTANT,
+        'REFLECT': PadType.REFLECT,
         'SYMMETRIC': PadType.SYMMETRIC
     }
 
@@ -267,7 +267,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Reshape.name: self.convert_reshape,
             TFOpType.ResizeBicubic.name: self.convert_resize_bicubic,
             TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
-            TFOpType.ResizeNearestNeighbor.name: self.convert_resize_nearest_neighbor,  # noqa
+            TFOpType.ResizeNearestNeighbor.name:
+                self.convert_resize_nearest_neighbor,
             TFOpType.ReverseV2.name: self.convert_reverse,
             TFOpType.Select.name: self.convert_select,
             TFOpType.Shape.name: self.convert_shape,
@@ -715,6 +716,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Softmax.name
 
+    def add_resize_args(self, op, tf_op):
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
+        try:
+            half_pixel_centers = tf_op.get_attr('half_pixel_centers')
+            half_pixel_centers_arg = op.arg.add()
+            half_pixel_centers_arg.name = \
+                MaceKeyword.mace_half_pixel_centers_str
+            half_pixel_centers_arg.i = half_pixel_centers
+        except ValueError:
+            pass
+
     def convert_resize_bicubic(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.ResizeBicubic.name
@@ -725,9 +739,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         size_value = tf_op.inputs[1].eval().astype(np.int32)
         size_arg.ints.extend(size_value)
         self._skip_tensor.add(tf_op.inputs[1].name)
-        align_corners_arg = op.arg.add()
-        align_corners_arg.name = MaceKeyword.mace_align_corners_str
-        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
+        self.add_resize_args(op, tf_op)
 
     def convert_resize_bilinear(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -739,17 +751,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         size_value = tf_op.inputs[1].eval().astype(np.int32)
         size_arg.ints.extend(size_value)
         self._skip_tensor.add(tf_op.inputs[1].name)
-        align_corners_arg = op.arg.add()
-        align_corners_arg.name = MaceKeyword.mace_align_corners_str
-        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
+        self.add_resize_args(op, tf_op)
 
     def convert_resize_nearest_neighbor(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.ResizeNearestNeighbor.name
-
-        align_corners_arg = op.arg.add()
-        align_corners_arg.name = MaceKeyword.mace_align_corners_str
-        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
+        self.add_resize_args(op, tf_op)
 
     def convert_space_batch(self, tf_op):
         op = self.convert_general_op(tf_op)

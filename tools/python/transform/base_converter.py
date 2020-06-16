@@ -225,6 +225,7 @@ class MaceKeyword(object):
     mace_align_corners_str = 'align_corners'
     mace_height_scale_str = 'height_scale'
     mace_width_scale_str = 'width_scale'
+    mace_half_pixel_centers_str = 'half_pixel_centers'
     mace_space_batch_block_shape_str = 'block_shape'
     mace_space_depth_block_size_str = 'block_size'
     mace_constant_value_str = 'constant_value'
