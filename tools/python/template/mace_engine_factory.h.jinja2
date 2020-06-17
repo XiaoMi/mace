@@ -29,6 +29,7 @@ namespace mace {
 namespace {{tag}} {
 
 extern const unsigned char *LoadModelData();
+extern int64_t GetModelSize();
 
 extern const std::shared_ptr<NetDef> CreateNet();
 
@@ -77,17 +78,16 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
 {% if embed_model_data %}
   (void)model_data_file;
   const unsigned char * model_data;
-  const int64_t model_size;
 {% endif %}
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
 {% for i in range(model_tags |length) %}
-    case {{ i }}:
+    case {{ i }}: {
       net_def = mace::{{model_tags[i]}}::CreateNet();
       engine->reset(new mace::MaceEngine(config));
 {% if embed_model_data %}
       model_data = mace::{{model_tags[i]}}::LoadModelData();
-      model_size = mace::{{model_tags[i]}}::GetModelSize();
+      const int64_t model_size = mace::{{model_tags[i]}}::GetModelSize();
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
                                model_data, model_size);
 {% else %}
@@ -95,6 +95,7 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
                                model_data_file);
 {% endif %}
       break;
+    }
 {% endfor %}
    default:
      status = MaceStatus::MACE_INVALID_ARGS;
@@ -118,19 +119,19 @@ MACE_API MaceStatus CreateMaceEngineFromCode(
   std::shared_ptr<NetDef> net_def;
 {% if embed_model_data %}
   const unsigned char * model_data;
-  const int64_t model_size;
   (void)model_weights_data;
+  (void)model_weights_data_size;
 {% endif %}
 
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
 {% for i in range(model_tags |length) %}
-    case {{ i }}:
+    case {{ i }}: {
       net_def = mace::{{model_tags[i]}}::CreateNet();
       engine->reset(new mace::MaceEngine(config));
 {% if embed_model_data %}
       model_data = mace::{{model_tags[i]}}::LoadModelData();
-      model_size = mace::{{model_tags[i]}}::GetModelSize();
+      const int64_t model_size = mace::{{model_tags[i]}}::GetModelSize();
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
                                model_data, model_size);
 {% else %}
@@ -138,6 +139,7 @@ MACE_API MaceStatus CreateMaceEngineFromCode(
                                model_weights_data, model_weights_data_size);
 {% endif %}
       break;
+    }
 {% endfor %}
    default:
      status = MaceStatus::MACE_INVALID_ARGS;

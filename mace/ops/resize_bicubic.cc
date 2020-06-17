@@ -56,11 +56,15 @@ inline int64_t Bound(int64_t val, int64_t limit) {
   return std::min<int64_t>(limit - 1ll, std::max<int64_t>(0ll, val));
 }
 
-inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
+inline void GetWeightsAndIndices(float scale, bool half_pixel_centers,
+                                 int64_t out_loc, int64_t limit,
                                  std::vector<float> *weights,
                                  std::vector<int64_t> *indices) {
-  auto in_loc = static_cast<int64_t>(scale * out_loc);
-  const float delta = scale * out_loc - in_loc;
+  const float in = half_pixel_centers ?
+                   (static_cast<float>(out_loc) + 0.5f) * scale - 0.5f :
+                   out_loc * scale;
+  auto in_loc = static_cast<int64_t>(in);
+  const float delta = in - in_loc;
   const int64_t offset = lrintf(delta * common::utils::kTableSize);
   const float *coeffs_tab = GetCoeffsTable();
   *weights = {coeffs_tab[offset * 2 + 1],
@@ -87,6 +91,7 @@ inline void ResizeImage(const OpContext *context,
                         const index_t channels,
                         const float height_scale,
                         const float width_scale,
+                        const bool half_pixel_centers,
                         float *output) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
@@ -97,13 +102,13 @@ inline void ResizeImage(const OpContext *context,
       for (index_t y = start1; y < end1; y += step1) {
         std::vector<float> y_weights;
         std::vector<index_t> y_indices;
-        GetWeightsAndIndices(height_scale, y, in_height, &y_weights,
-                             &y_indices);
+        GetWeightsAndIndices(height_scale, half_pixel_centers, y, in_height,
+                             &y_weights, &y_indices);
         for (index_t x = 0; x < out_width; ++x) {
           std::vector<float> x_weights;
           std::vector<index_t> x_indices;
-          GetWeightsAndIndices(width_scale, x, in_width, &x_weights,
-                               &x_indices);
+          GetWeightsAndIndices(width_scale, half_pixel_centers, x, in_width,
+                               &x_weights, &x_indices);
 
           for (index_t c = 0; c < channels; ++c) {
             // Use a 4x4 patch to compute the interpolated output value at
@@ -139,6 +144,8 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
   explicit ResizeBicubicOp(OpConstructContext *context)
       : Operation(context),
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
+        half_pixel_centers_(
+            Operation::GetOptionalArg<bool>("half_pixel_centers", false)),
         size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -191,6 +198,7 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
                 channels,
                 height_scale,
                 width_scale,
+                half_pixel_centers_,
                 output_data);
 
     return MaceStatus::MACE_SUCCESS;
@@ -198,6 +206,7 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
 
  private:
   bool align_corners_;
+  bool half_pixel_centers_;
   std::vector<index_t> size_;
 };
 
@@ -209,12 +218,14 @@ class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
       : Operation(context) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
+    bool half_pixel_centers = Operation::GetOptionalArg<bool>(
+        "half_pixel_centers", false);
     std::vector<index_t> size = Operation::GetRepeatedArgs<index_t>(
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeBicubicKernel>(
-          align_corners, size[0], size[1]);
+          align_corners, half_pixel_centers, size[0], size[1]);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

@@ -37,7 +37,8 @@ inline void ResizeImageNCHW(const OpContext *context,
                             const index_t channels,
                             const float height_scale,
                             const float width_scale,
-                            bool align_corners,
+                            const bool align_corners,
+                            const bool half_pixel_centers,
                             T *output) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
@@ -52,14 +53,20 @@ inline void ResizeImageNCHW(const OpContext *context,
         T *channel_output_ptr =
             output + (b * channels + c) * out_height * out_width;
         for (index_t y = 0; y < out_height; ++y) {
+          const float in_f_y = half_pixel_centers ?
+                               (static_cast<float>(y) + 0.5f) * height_scale :
+                               y * height_scale;
           const index_t in_y = std::min(
-              (align_corners) ? static_cast<index_t>(roundf(y * height_scale))
-                              : static_cast<index_t>(floorf(y * height_scale)),
+              (align_corners) ? static_cast<index_t>(roundf(in_f_y))
+                              : static_cast<index_t>(floorf(in_f_y)),
               in_height - 1);
           for (int x = 0; x < out_width; ++x) {
+            const float in_f_x = half_pixel_centers ?
+                                 (static_cast<float>(x) + 0.5f) * width_scale :
+                                 x * width_scale;
             const index_t in_x = std::min(
-                (align_corners) ? static_cast<index_t>(roundf(x * width_scale))
-                                : static_cast<index_t>(floorf(x * width_scale)),
+                (align_corners) ? static_cast<index_t>(roundf(in_f_x))
+                                : static_cast<index_t>(floorf(in_f_x)),
                 in_width - 1);
             channel_output_ptr[y * out_width + x] =
                 channel_input_ptr[in_y * in_width + in_x];
@@ -79,6 +86,8 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
       : Operation(context),
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
+        half_pixel_centers_(
+            Operation::GetOptionalArg<bool>("half_pixel_centers", false)),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
 
@@ -144,12 +153,14 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
                     height_scale,
                     width_scale,
                     align_corners_,
+                    half_pixel_centers_,
                     output_data);
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
-  bool align_corners_;
+  const bool align_corners_;
+  const bool half_pixel_centers_;
   float height_scale_;
   float width_scale_;
 };
@@ -164,9 +175,11 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
+    bool half_pixel_centers = Operation::GetOptionalArg<bool>(
+        "half_pixel_centers", false);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel>(
-          align_corners);
+          align_corners, half_pixel_centers);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

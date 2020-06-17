@@ -7,6 +7,7 @@ __kernel void resize_nearest_neighbor_nocache(
     __write_only image2d_t output,
     __private const float height_scale,
     __private const float width_scale,
+    __private const int half_pixel_centers,
     __private const int in_height,
     __private const int in_width,
     __private const int out_height,
@@ -27,10 +28,15 @@ __kernel void resize_nearest_neighbor_nocache(
   const int b = hb / out_height;
   const int h = hb - mul24(b, out_height);
 
-  const int h_in = min((align_corner) ? (int) round(h * height_scale) :
-      (int) floor(h * height_scale), in_height - 1);
-  const int w_in = min((align_corner) ? (int) round(w * width_scale) :
-      (int) floor(w * width_scale), in_width - 1);
+  const float h_in_f = half_pixel_centers ?
+      ((float)h + 0.5f) * height_scale : h * height_scale;
+  const float w_in_f = half_pixel_centers ?
+      ((float)w + 0.5f) * width_scale : w * width_scale;
+
+  const int h_in = min((align_corner) ? (int) round(h_in_f) :
+      (int) floor(h_in_f), in_height - 1);
+  const int w_in = min((align_corner) ? (int) round(w_in_f) :
+      (int) floor(w_in_f), in_width - 1);
 
   const int in_w_offset = mul24(ch_blk, in_width);
   const int in_h_offset = mul24(b, in_height);

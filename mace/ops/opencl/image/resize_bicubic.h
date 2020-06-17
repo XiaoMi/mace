@@ -64,9 +64,11 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
  public:
   ResizeBicubicKernel(bool align_corners,
+                      bool half_pixel_centers,
                       const index_t out_height,
                       const index_t out_width)
       : align_corners_(align_corners),
+        half_pixel_centers_(half_pixel_centers),
         out_height_(out_height),
         out_width_(out_width) {}
 
@@ -77,6 +79,7 @@ class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
 
  private:
   bool align_corners_;
+  bool half_pixel_centers_;
   index_t out_height_;
   index_t out_width_;
   cl::Kernel kernel_;

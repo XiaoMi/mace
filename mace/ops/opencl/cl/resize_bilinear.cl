@@ -6,6 +6,7 @@ __kernel void resize_bilinear_nocache(OUT_OF_RANGE_PARAMS
                                       __write_only image2d_t output,
                                       __private const float height_scale,
                                       __private const float width_scale,
+                                      __private const int half_pixel_centers,
                                       __private const int in_height,
                                       __private const int in_width,
                                       __private const int out_height) {
@@ -26,8 +27,10 @@ __kernel void resize_bilinear_nocache(OUT_OF_RANGE_PARAMS
   const int b = hb / out_height;
   const int h = hb - mul24(b, out_height);
 
-  const float h_in = h * height_scale;
-  const float w_in = w * width_scale;
+  const float h_in = half_pixel_centers ?
+      ((float)h + 0.5f) * height_scale - 0.5f : h * height_scale;
+  const float w_in = half_pixel_centers ?
+      ((float)w + 0.5f) * width_scale - 0.5f : w * width_scale;
   const int h_lower = max(0, (int) floor(h_in));
   const int h_upper = min(in_height - 1, h_lower + 1);
   const int w_lower = max(0, (int) floor(w_in));
