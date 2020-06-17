@@ -1032,6 +1032,13 @@ MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
   return impl_->Run(inputs, outputs, nullptr);
 }
 
+MaceStatus MaceEngine::Init(const NetDef *net_def,
+                            const std::vector<std::string> &input_nodes,
+                            const std::vector<std::string> &output_nodes,
+                            const unsigned char *model_data) {
+  return impl_->Init(net_def, input_nodes, output_nodes, model_data, -1);
+}
+
 MaceStatus CreateMaceEngineFromProto(
     const unsigned char *model_graph_proto,
     const size_t model_graph_proto_size,

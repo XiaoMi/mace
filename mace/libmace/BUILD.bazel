@@ -119,6 +119,8 @@ genrule(
     ]) + if_opencl_enabled([
         "//mace/ops:opencl_kernels",
         "//mace/codegen:generated_opencl",
+    ]) + if_rpcmem_enabled([
+        "//third_party/rpcmem:rpcmem.a",
     ]) + if_neon_enabled([
         "//mace/ops:arm_neon_kernels",
     ]),
@@ -163,6 +165,10 @@ genrule(
           "$(locations @com_google_protobuf//:protobuf_lite) " +
           if_opencl_enabled(
               "$(locations //mace/codegen:generated_opencl) ",
+              default_value = "",
+          ) +
+          if_rpcmem_enabled(
+              "$(locations //third_party/rpcmem:rpcmem.a) ",
               default_value = "",
           ) +
           "$@ " +

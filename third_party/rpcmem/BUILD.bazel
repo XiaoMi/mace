@@ -1,4 +1,7 @@
 # These files are generated fron rpcmem project
+package(
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])
 
@@ -10,13 +13,20 @@ load(
     "if_android_armv7",
 )
 
-cc_library(
-    name = "rpcmem",
+filegroup(
+    name = "rpcmem.a",
     srcs = if_android_armv7([
         "armeabi-v7a/rpcmem.a",
     ]) + if_android_arm64([
         "arm64-v8a/rpcmem.a",
     ]),
+)
+
+cc_library(
+    name = "rpcmem",
+    srcs = [
+        ":rpcmem.a",
+    ],
     hdrs = [
         "rpcmem.h",
     ],

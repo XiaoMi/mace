@@ -123,8 +123,10 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, Device *device,
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   index_t valid_data_size = GetModelValidSize(net_def);
   VLOG(3) << "Model valid data size: " << valid_data_size;
-  MACE_CHECK(valid_data_size <= model_data_size,
-             valid_data_size, "should be smaller than", model_data_size);
+  if (model_data_size >= 0) {
+    MACE_CHECK(valid_data_size <= model_data_size,
+               valid_data_size, "should be smaller than", model_data_size);
+  }
 
   const DeviceType device_type = device->device_type();
   if (valid_data_size > 0) {
@@ -170,8 +172,10 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, Device *device,
                    "Tensor's data_size not equal with the shape");
         const index_t tensor_end = const_tensor.offset() +
             tensor->size() * GetEnumTypeSize(const_tensor.data_type());
-        MACE_CHECK(tensor_end <= model_data_size, "tensor_end (", tensor_end,
-                   ") should <= ", model_data_size);
+        if (model_data_size >= 0) {
+          MACE_CHECK(tensor_end <= model_data_size, "tensor_end (", tensor_end,
+                     ") should <= ", model_data_size);
+        }
 
         if (device_type == DeviceType::CPU &&
             const_tensor.data_type() == DataType::DT_HALF) {

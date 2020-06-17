@@ -106,8 +106,10 @@ bool ApuWrapper::Init(const NetDef &net_def,
     }
     const auto tensor_end = const_tensor.offset() +
         const_tensor->data_size() * GetEnumTypeSize(const_tensor.data_type());
-    MACE_CHECK(tensor_end <= model_data_size, "tensor_end (", tensor_end,
-               ") should <= ", model_data_size);
+    if (model_data_size >= 0) {
+      MACE_CHECK(tensor_end <= model_data_size, "tensor_end (", tensor_end,
+                 ") should <= ", model_data_size);
+    }
     tensor.data_buf =
         const_cast<unsigned char *>(model_data + const_tensor.offset());
     const_tensors.push_back(tensor);

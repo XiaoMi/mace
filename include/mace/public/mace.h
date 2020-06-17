@@ -431,6 +431,12 @@ class MACE_API MaceEngine {
                  std::map<std::string, MaceTensor> *outputs,
                  RunMetadata *run_metadata);
 
+  // @Deprecated, will be removed in future version
+  MaceStatus Init(const NetDef *net_def,
+                  const std::vector<std::string> &input_nodes,
+                  const std::vector<std::string> &output_nodes,
+                  const unsigned char *model_data);
+
  private:
   class Impl;
   std::unique_ptr<Impl> impl_;
