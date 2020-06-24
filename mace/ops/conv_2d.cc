@@ -445,33 +445,41 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
       kernel_ = make_unique<opencl::buffer::Conv2dKernel>();
     }
     // Transform filter tensor to target format
-    if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
-        (kernel_->CheckUseWinograd(
-          context->device()->gpu_runtime()->opencl_runtime(),
-          context->workspace()->GetTensor(
-              operator_def_->input(1))->shape(),
-          std::vector<index_t>(operator_def_->output_shape(0).dims().begin(),
-                               operator_def_->output_shape(0).dims().end()),
-          strides_.data(),
-          dilations_.data(),
-          &wino_block_size_))) {
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 1,
-          OpenCLBufferType::WINOGRAD_FILTER, mem_type, wino_block_size_)
-                     == MaceStatus::MACE_SUCCESS);
+    auto *filter_tensor =
+        context->workspace()->GetTensor(operator_def_->input(FILTER));
+    if (filter_tensor != nullptr && filter_tensor->is_weight()) {
+      if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
+          (kernel_->CheckUseWinograd(
+            context->device()->gpu_runtime()->opencl_runtime(),
+            filter_tensor->shape(),
+            std::vector<index_t>(operator_def_->output_shape(0).dims().begin(),
+                                 operator_def_->output_shape(0).dims().end()),
+            strides_.data(),
+            dilations_.data(),
+            &wino_block_size_))) {
+        MACE_CHECK(TransformFilter(
+            context, operator_def_.get(), 1,
+            OpenCLBufferType::WINOGRAD_FILTER, mem_type, wino_block_size_)
+                       == MaceStatus::MACE_SUCCESS);
+      } else {
+        wino_block_size_ = 0;
+        MACE_CHECK(TransformFilter(
+            context, operator_def_.get(), 1,
+            OpenCLBufferType::CONV2D_FILTER, mem_type)
+                       == MaceStatus::MACE_SUCCESS);
+      }
     } else {
+      // we don't know whether the kernal support winograd, so disable it.
       wino_block_size_ = 0;
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 1,
-          OpenCLBufferType::CONV2D_FILTER, mem_type)
-                     == MaceStatus::MACE_SUCCESS);
     }
+
     if (operator_def_->input_size() > 2) {
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
-                     == MaceStatus::MACE_SUCCESS);
+      auto ret = TransformFilter(context, operator_def_.get(), 2,
+                                 OpenCLBufferType::ARGUMENT, mem_type);
+      MACE_CHECK(ret == MaceStatus::MACE_SUCCESS);
     }
   }
+
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
@@ -506,6 +514,17 @@ void RegisterConv2D(OpRegistry *op_registry) {
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Conv2D", Conv2dOp);
+
+#ifdef MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("Conv2D").SetInputMemoryTypeSetter(
+          [](OpConditionContext *context) -> void {
+            SetFilterMemoryType(context, OpenCLBufferType::CONV2D_FILTER);
+          }));
+#endif  // MACE_ENABLE_OPENCL
+
+  RegisterFilterDataFormat(op_registry, "Conv2D");
 }
 
 }  // namespace ops

@@ -34,7 +34,6 @@ class OperatorDef;
 class OpRegistry;
 class Workspace;
 
-
 ///////////////////////////////////////////////////////////////////////////////
 ///                               Conventions
 ///
@@ -68,8 +67,8 @@ class NetDefAdapter {
       NetDef *target_net_def);
 
  public:
-  NetDefAdapter(const NetDefAdapter&) = delete;
-  NetDefAdapter(const NetDefAdapter&&) = delete;
+  NetDefAdapter(const NetDefAdapter &) = delete;
+  NetDefAdapter(const NetDefAdapter &&) = delete;
   NetDefAdapter &operator=(const NetDefAdapter &) = delete;
   NetDefAdapter &operator=(const NetDefAdapter &&) = delete;
 
@@ -121,6 +120,15 @@ class NetDefAdapter {
       std::unordered_set<std::string> *transformed_set,
       MemoryType *op_output_mem_types,
       NetDef *target_net_def);
+
+  std::vector<int> GetDstDimsFromTransposeRuler(
+      TensorInfoMap *output_map, const OperatorDef *op_def, const int input_idx,
+      const DataFormat src_df, const DataFormat dst_df);
+  MaceStatus AddTranposeOpForDataFormat(
+      TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
+      std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
+      MemoryType target_mem_type, OperatorDef *op_def, const int i,
+      const DataFormat dst_df, const std::vector<int> &dst_dims);
 
   std::string DebugString(const NetDef *net_def);
 

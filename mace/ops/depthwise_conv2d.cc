@@ -417,38 +417,13 @@ void RegisterDepthwiseConv2d(OpRegistry *op_registry) {
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP_CONDITION(
       op_registry,
-      OpConditionBuilder("DepthwiseConv2d")
-          .SetInputMemoryTypeSetter(
-              [](OpConditionContext *context) -> void {
-                MemoryType mem_type = MemoryType::CPU_BUFFER;
-                if (context->device()->device_type() == DeviceType::GPU) {
-                  if (context->device()->gpu_runtime()->UseImageMemory()) {
-                    mem_type = MemoryType::GPU_IMAGE;
-                  } else {
-                    mem_type = MemoryType::GPU_BUFFER;
-                  }
-                  auto filter_tensor = context->workspace()->GetTensor(
-                      context->operator_def()->input(1));
-                  if (filter_tensor == nullptr || !filter_tensor->is_weight()) {
-                    context->SetInputOpenCLBufferType(
-                        1, OpenCLBufferType::DW_CONV2D_FILTER);
-                  }
-                }
-                context->set_output_mem_type(mem_type);
-              }));
+      OpConditionBuilder("DepthwiseConv2d").SetInputMemoryTypeSetter(
+          [](OpConditionContext *context) -> void {
+            SetFilterMemoryType(context, OpenCLBufferType::DW_CONV2D_FILTER);
+          }));
 #endif  // MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP_CONDITION(
-      op_registry,
-      OpConditionBuilder("DepthwiseConv2d")
-          .SetInputsDataFormatSelector(
-              [](OpConditionContext *context) -> std::vector<DataFormat> {
-                DataFormat op_data_format =
-                    static_cast<DataFormat>(
-                        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                            *context->operator_def(), "data_format",
-                            static_cast<int>(DataFormat::NONE)));
-                return {op_data_format, DataFormat::OIHW, DataFormat::NONE};
-              }));
+
+  RegisterFilterDataFormat(op_registry, "DepthwiseConv2d");
 }
 
 }  // namespace ops

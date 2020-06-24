@@ -154,10 +154,14 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
-    MACE_CHECK(TransformFilter(
-        context, operator_def_.get(), 1,
-        OpenCLBufferType::CONV2D_FILTER, mem_type)
-                   == MaceStatus::MACE_SUCCESS);
+    auto *filter_tensor =
+        context->workspace()->GetTensor(operator_def_->input(1));
+    if (filter_tensor != nullptr && filter_tensor->is_weight()) {
+      MACE_CHECK(TransformFilter(
+          context, operator_def_.get(), 1,
+          OpenCLBufferType::CONV2D_FILTER, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
+    }
     if (model_type_ == FrameworkType::TENSORFLOW) {
       if (operator_def_->input_size() >= 4) {
         MACE_CHECK(TransformFilter(
@@ -238,34 +242,28 @@ void RegisterDeconv2D(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Deconv2D", Deconv2dOp, DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Deconv2D", Deconv2dOp, DeviceType::CPU);
   MACE_REGISTER_GPU_OP(op_registry, "Deconv2D", Deconv2dOp);
+
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP_CONDITION(
       op_registry,
-      OpConditionBuilder("Deconv2D")
-          .SetInputMemoryTypeSetter(
-              [](OpConditionContext *context) -> void {
-                MemoryType mem_type = MemoryType::CPU_BUFFER;
-                if (context->device()->device_type() == DeviceType::GPU) {
-                  if (context->device()->gpu_runtime()->UseImageMemory()) {
-                    mem_type = MemoryType::GPU_IMAGE;
-                  } else {
-                    MACE_NOT_IMPLEMENTED;
-                  }
-                  context->set_output_mem_type(mem_type);
-                  FrameworkType framework_type =
-                      static_cast<FrameworkType>(
-                        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                            *(context->operator_def()), "framework_type",
-                            FrameworkType::TENSORFLOW));
-                  if (framework_type == FrameworkType::TENSORFLOW) {
-                    context->SetInputInfo(2, MemoryType::CPU_BUFFER,
-                                          DataType::DT_INT32);
-                  }
-                } else {
-                  context->set_output_mem_type(mem_type);
-                }
-              }));
+      OpConditionBuilder("Deconv2D").SetInputMemoryTypeSetter(
+          [](OpConditionContext *context) -> void {
+            SetFilterMemoryType(context, OpenCLBufferType::DW_CONV2D_FILTER);
+            if (context->device()->device_type() == DeviceType::GPU) {
+              FrameworkType framework_type =
+                  static_cast<FrameworkType>(
+                    ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                        *(context->operator_def()), "framework_type",
+                        FrameworkType::TENSORFLOW));
+              if (framework_type == FrameworkType::TENSORFLOW) {
+                context->SetInputInfo(2, MemoryType::CPU_BUFFER,
+                                      DataType::DT_INT32);
+              }
+            }
+          }));
 #endif  // MACE_ENABLE_OPENCL
+
+  RegisterFilterDataFormat(op_registry, "Deconv2D");
 }
 
 }  // namespace ops

@@ -160,10 +160,13 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
-    MACE_CHECK(TransformFilter(
-        context, operator_def_.get(), 1,
-        OpenCLBufferType::DW_CONV2D_FILTER, mem_type)
-                   == MaceStatus::MACE_SUCCESS);
+    auto *filter_tensor =
+        context->workspace()->GetTensor(operator_def_->input(1));
+    if (filter_tensor != nullptr && filter_tensor->is_weight()) {
+      auto ret = TransformFilter(context, operator_def_.get(), 1,
+                                 OpenCLBufferType::DW_CONV2D_FILTER, mem_type);
+      MACE_CHECK(ret == MaceStatus::MACE_SUCCESS);
+    }
     if (operator_def_->input_size() >= 3) {
       MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 2,
@@ -223,6 +226,17 @@ void RegisterDepthwiseDeconv2d(OpRegistry *op_registry) {
                         DepthwiseDeconv2dOp, DeviceType::CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "DepthwiseDeconv2d", DepthwiseDeconv2dOp);
+
+#ifdef MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("DepthwiseDeconv2d").SetInputMemoryTypeSetter(
+          [](OpConditionContext *context) -> void {
+            SetFilterMemoryType(context, OpenCLBufferType::DW_CONV2D_FILTER);
+          }));
+#endif  // MACE_ENABLE_OPENCL
+
+  RegisterFilterDataFormat(op_registry, "DepthwiseDeconv2d");
 }
 
 }  // namespace ops

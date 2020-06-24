@@ -36,10 +36,11 @@ def execute(cmd, verbose=True):
                          universal_newlines=True)
 
     if not verbose:
-        # use p.communicate instead of p.wait to avoid such situation: pipe is filled and the child process is blocked.
+        # use p.communicate instead of p.wait to avoid such situation:
+        # pipe is filled and the child process is blocked.
         out, err = p.communicate()
         if p.returncode != 0:
-            raise Exception("errorcode: {}".format(p.returncode) )
+            raise Exception("errorcode: {}".format(p.returncode))
         return out
 
     buf = []
