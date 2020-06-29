@@ -338,6 +338,8 @@ class TransformerRule(Enum):
     QUANTIZE_LARGE_WEIGHTS = 43
     TRANSPOSE_SHAPE_TENSOR_TO_PARAM = 44
     TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV = 45
+    TRANSFORM_MUL_MAX_TO_PRELU = 46
+    TRANSFORM_EXPAND_DIMS_TO_RESHAPE = 47
 
 
 class ConverterInterface(object):
@@ -608,6 +610,8 @@ class ConverterOption(object):
             if self._device == DeviceType.APU.value:
                 self._transformer_option = self._transformer_option + [
                     TransformerRule.TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV,
+                    TransformerRule.TRANSFORM_MUL_MAX_TO_PRELU,
+                    TransformerRule.TRANSFORM_EXPAND_DIMS_TO_RESHAPE,
                 ]
             if self.quantize_large_weights:
                 self._transformer_option = self._transformer_option + [

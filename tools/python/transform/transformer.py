@@ -117,6 +117,10 @@ class Transformer(base_converter.ConverterInterface):
                 self.quantize_large_weights,
             TransformerRule.TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV:
                 self.transform_single_bn_to_depthwise_conv,
+            TransformerRule.TRANSFORM_MUL_MAX_TO_PRELU:
+                self.transform_mul_max_to_prelu,
+            TransformerRule.TRANSFORM_EXPAND_DIMS_TO_RESHAPE:
+                self.transform_expand_dims_to_reshape,
         }
 
         self._option = option
@@ -1037,6 +1041,8 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def reshape_fc_weight(self):
+        if self._option.device == DeviceType.APU.value:
+            return
         net = self._model
         filter_format = self.filter_format()
         for op in net.op:
@@ -1352,6 +1358,36 @@ class Transformer(base_converter.ConverterInterface):
                     weight.dims[:] = [1, 1] + list(weight_data.shape)
                     return True
 
+            if self._option.device == DeviceType.APU.value:
+                if op.type == MaceOp.MatMul.name:
+                    transpose_a_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_a_str)  # noqa
+                    transpose_b_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
+                    transpose_a = transpose_a_arg is not None and transpose_a_arg.i == 1  # noqa
+                    transpose_b = transpose_b_arg is not None and transpose_b_arg.i == 1  # noqa
+                    if transpose_a is False and transpose_b is False and \
+                            op.input[1] in self._consts and \
+                            len(self.get_tensor_shape(op.input[0])) == 2 and \
+                            len(self.get_tensor_shape(op.input[1])) == 2:
+                        op.type = MaceOp.FullyConnected.name
+                        del op.arg[:]
+                        rhs = op.input[1]
+                        if rhs in self._consts and \
+                                len(self._consts[rhs].dims) == 2:
+                            arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
+                            if arg is None:
+                                arg = op.arg.add()
+                                arg.name = MaceKeyword.mace_transpose_b_str
+                                arg.i = 0
+                            if arg.i == 0:
+                                arg.i = 1
+                                filter = self._consts[rhs]
+                                filter_data = np.array(filter.float_data) \
+                                    .reshape(filter.dims)
+                                filter_data = filter_data.transpose(1, 0)
+                                filter.float_data[:] = filter_data.flat
+                                filter.dims[:] = filter_data.shape
+                                six.print_('Transpose matmul weight to shape:',
+                                           filter.dims)
         return False
 
     def update_float_op_data_type(self):
@@ -2473,5 +2509,68 @@ class Transformer(base_converter.ConverterInterface):
                     tensor.dims[:] = [1, 1, 1, tensor.dims[0]]
                     break
             return True
+        return False
 
+    def transform_mul_max_to_prelu(self):
+        if self._option.device != DeviceType.APU.value:
+            return False
+        net = self._model
+        for op in net.op:
+            if op.type != MaceOp.Eltwise.name or \
+                    ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i \
+                    != EltwiseType.PROD.value or \
+                    op.output[0] not in self._consumers:
+                continue
+            if len(op.input) != 1:
+                continue
+            consumer_op = self._consumers[op.output[0]][0]
+            if consumer_op.type != MaceOp.Eltwise.name or \
+                    ConverterUtil.get_arg(
+                        consumer_op, MaceKeyword.mace_element_type_str).i \
+                    != EltwiseType.MAX.value:
+                continue
+            if op.input[0] not in consumer_op.input:
+                continue
+            float_value_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_scalar_input_str)
+            mace_check(float_value_arg is not None,
+                       op.name + ': ' + MaceKeyword.mace_scalar_input_str +
+                       ' value float should not be None')
+            scalar = float_value_arg.f
+            if scalar < 0:
+                continue
+            if scalar > 1:
+                scalar = 1
+            # Change Mul op to Prelu
+            print("Change mul and max to prelu: %s(%s)" % (op.name, op.type))
+            op.name = consumer_op.name
+            op.output[0] = consumer_op.output[0]
+            alpha_tensor = net.tensors.add()
+            alpha_tensor.name = op.name + '_alpha'
+            alpha_tensor.dims.append(1)
+            alpha_tensor.data_type = mace_pb2.DT_FLOAT
+            alpha_tensor.float_data.extend([scalar])
+            op.input.extend([alpha_tensor.name])
+            ConverterUtil.del_arg(op, MaceKeyword.mace_scalar_input_str)
+            ConverterUtil.del_arg(
+                op, MaceKeyword.mace_scalar_input_index_str)
+            op.type = MaceOp.Activation.name
+            type_arg = op.arg.add()
+            type_arg.name = MaceKeyword.mace_activation_type_str
+            type_arg.s = six.b(ActivationType.PRELU.name)
+            self.replace_quantize_info(op, consumer_op)
+            self.safe_remove_node(consumer_op, op)
+            return True
+        return False
+
+    def transform_expand_dims_to_reshape(self):
+        if self._option.device != DeviceType.APU.value:
+            return False
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.ExpandDims.name:
+                op.type = MaceOp.Reshape.name
+                del op.arg[:]
+                return True
         return False
