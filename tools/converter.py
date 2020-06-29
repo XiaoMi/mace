@@ -122,6 +122,7 @@ class DefaultValues(object):
     cpu_affinity_policy = 1,
     gpu_perf_hint = 3,
     gpu_priority_hint = 3,
+    apu_cache_policy = 0,
 
 
 class ValidationThreshold(object):
@@ -1175,6 +1176,21 @@ def parse_args():
         "--benchmark",
         action="store_true",
         help="enable op benchmark.")
+    run.add_argument(
+        "--apu_cache_policy",
+        type=int,
+        default=DefaultValues.apu_cache_policy,
+        help="0:NONE/1:STORE/2:LOAD")
+    run.add_argument(
+        "--apu_binary_file",
+        type=str,
+        default="",
+        help="apu cache load dir.")
+    run.add_argument(
+        "--apu_storage_file",
+        type=str,
+        default="",
+        help="apu cache store dir.")
     return parser.parse_known_args()
 
 

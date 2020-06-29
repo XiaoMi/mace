@@ -144,6 +144,12 @@ DEFINE_string(model_data_file,
 DEFINE_string(model_file,
               "",
               "model file name, used when load mace model in pb");
+DEFINE_string(apu_binary_file,
+              "",
+              "apu init cache path, used when load apu init cache");
+DEFINE_string(apu_storage_file,
+              "",
+              "apu init cache path, used when store apu init cache");
 DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON/APU");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
@@ -153,6 +159,7 @@ DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(num_threads, -1, "num of threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
+DEFINE_int32(apu_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
 DEFINE_bool(benchmark, false, "enable benchmark op");
 
 bool RunModel(const std::string &model_name,
@@ -201,6 +208,11 @@ bool RunModel(const std::string &model_name,
   // firmware) or 8250 family above to run hexagon nn on unsigned PD.
   // config.SetHexagonToUnsignedPD();
   config.SetHexagonPower(HEXAGON_NN_CORNER_TURBO, true, 100);
+#endif
+#ifdef MACE_ENABLE_APU
+  config.SetAPUCache(static_cast<APUCachePolicy>(FLAGS_apu_cache_policy),
+                     FLAGS_apu_binary_file,
+                     FLAGS_apu_storage_file);
 #endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
     make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
@@ -539,6 +551,9 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "output dir: " << FLAGS_output_dir;
   LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
   LOG(INFO) << "model_file: " << FLAGS_model_file;
+  LOG(INFO) << "apu_cache_policy: " << FLAGS_apu_cache_policy;
+  LOG(INFO) << "apu_binary_file: " << FLAGS_apu_binary_file;
+  LOG(INFO) << "apu_storage_file: " << FLAGS_apu_storage_file;
   LOG(INFO) << "device: " << FLAGS_device;
   LOG(INFO) << "round: " << FLAGS_round;
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;

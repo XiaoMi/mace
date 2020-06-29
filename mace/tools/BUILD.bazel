@@ -5,6 +5,7 @@ load(
     "if_android",
     "if_hexagon_enabled",
     "if_opencl_enabled",
+    "if_apu_enabled",
 )
 
 licenses(["notice"])  # Apache 2.0
@@ -22,6 +23,8 @@ cc_binary(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_apu_enabled([
+        "-DMACE_ENABLE_APU",
     ]),
     linkstatic = 1,
     deps = [
@@ -46,6 +49,8 @@ cc_binary(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_apu_enabled([
+        "-DMACE_ENABLE_APU",
     ]),
     linkopts = [
         "-lm",
