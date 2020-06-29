@@ -318,6 +318,51 @@ def validate_onnx_model(model_file,
                        mace_out_value, value,
                        validation_threshold, log_file)
 
+def validate_megengine_model(model_file, input_file,
+                             mace_out_file, input_names, input_shapes,
+                             input_data_formats, output_names, output_shapes,
+                             output_data_formats, validation_threshold,
+                             input_data_types, log_file):
+    import megengine._internal as mgb
+
+    if not os.path.isfile(model_file):
+        common.MaceLogger.error(
+            VALIDATION_MODULE,
+            "Input graph file '" + model_file + "' does not exist!",
+            )
+
+    feed_inputs = []
+    for i in range(len(input_names)):
+        input_value = load_data(
+            util.formatted_file_name(input_file, input_names[i]),
+            input_data_types[i])
+        input_value = input_value.reshape(input_shapes[i])
+        if (input_data_formats[i] == DataFormat.NHWC and \
+                len(input_shapes[i]) == 4):
+            input_value = input_value.transpose((0, 3, 1, 2))
+        feed_inputs.append(input_value)
+
+    cg, _, outputs = mgb.load_comp_graph_from_file(model_file)
+    inputs = mgb.cgtools.get_dep_vars(outputs, "Host2DeviceCopy")
+    inputs = sorted(inputs, key=lambda i: i.name)
+    outputs = list(map(mgb.copy_output, outputs))
+    if len(outputs) == 1:
+        (outputs,) = outputs
+    func = cg.compile(inputs, outputs)
+
+    mge_output_value = func(*feed_inputs)
+
+    for i in range(len(output_names)):
+        output_file_name = \
+            util.formatted_file_name(mace_out_file, output_names[i])
+        mace_out_value = load_data(output_file_name)
+        if (output_data_formats[i] == DataFormat.NHWC and \
+                len(output_shapes[i]) == 4):
+            mace_out_value = \
+                mace_out_value.reshape(output_shapes[i]).transpose((0, 3, 1, 2))
+        compare_output(output_names[i], mace_out_value,
+                       mge_output_value, validation_threshold, log_file)
+
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
              input_shape, output_shape, input_data_format,
@@ -354,3 +399,12 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                             output_node, output_shape, output_data_format,
                             validation_threshold,
                             input_data_type, backend, log_file)
+    elif platform == Platform.MEGENGINE:
+        validate_megengine_model(model_file,
+                                 input_file, mace_out_file,
+                                 input_node, input_shape,
+                                 input_data_format,
+                                 output_node, output_shape,
+                                 output_data_format,
+                                 validation_threshold,
+                                 input_data_type, log_file)

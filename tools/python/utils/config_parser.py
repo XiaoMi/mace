@@ -149,6 +149,7 @@ class Platform(Enum):
     TENSORFLOW = 0
     CAFFE = 1
     ONNX = 2
+    MEGENGINE = 3
 
 
 def parse_platform(str):

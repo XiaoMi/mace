@@ -145,7 +145,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                   "device": runtime.name
                   }
 
-    opts = ["--%s=%s" % (arg_key, arg_val) for arg_key, arg_val in
+    opts = ["--%s='%s'" % (arg_key, arg_val) for arg_key, arg_val in
             model_args.items()] + args
     should_generate_data = (flags.validate
                             or flags.tune or "--benchmark" in opts)

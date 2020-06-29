@@ -748,8 +748,8 @@ def validate_model(abi,
                 "--input_file=/mace/%s" % input_file_name,
                 "--mace_out_file=/mace/%s" % output_file_name,
                 "--device_type=%s" % device_type,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
+                "--input_node='%s'" % ",".join(input_nodes),
+                "--output_node='%s'" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
                 "--input_data_format=%s" % ",".join(input_data_formats),
@@ -761,6 +761,18 @@ def validate_model(abi,
                     validation_outputs_data),
                 "--log_file=%s" % log_file,
                 _fg=True)
+    elif platform == "megengine":
+        validate(platform, model_file_path, "",
+                 "%s/%s" % (model_output_dir, input_file_name),
+                 "%s/%s" % (model_output_dir, output_file_name),
+                 device_type,
+                 ":".join(input_shapes), ":".join(output_shapes),
+                 ",".join(input_data_formats),
+                 ",".join(output_data_formats),
+                 ",".join(input_nodes), ",".join(output_nodes),
+                 validation_threshold, ",".join(input_data_types), backend,
+                 validation_outputs_data,
+                 log_file)
 
     six.print_("Validation done!\n")
 

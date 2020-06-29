@@ -86,6 +86,7 @@ class FrameworkType(Enum):
     TENSORFLOW = 0
     CAFFE = 1
     ONNX = 2
+    MEGENGINE = 3
 
 
 MaceSupportedOps = [
@@ -547,7 +548,6 @@ class ConverterOption(object):
                 # Model structure related transformation
                 TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_FAKE_QUANTIZE,
-                TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
                 TransformerRule.TRANSFORM_BASIC_LSTMCELL,
