@@ -340,6 +340,20 @@ MaceStatus MaceEngineConfig::Impl::SetAPUCache(
 }
 #endif
 
+MaceStatus MaceEngineConfig::Impl::SetAPUCache(
+    APUCachePolicy policy,
+    const std::string &binary_file,
+    const std::string &storage_file) {
+  bool ret = false;
+  apu_cache_policy_ = policy;
+  apu_binary_file_ = binary_file;
+  apu_storage_file_ = storage_file;
+#ifdef MACE_ENABLE_APU
+  ret = true;
+#endif
+  return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
+}
+
 MaceEngineConfig::MaceEngineConfig(
     const DeviceType device_type)
     : impl_(new MaceEngineConfig::Impl(device_type)) {}
@@ -709,21 +723,24 @@ MaceStatus MaceEngine::Impl::Init(
 #ifdef MACE_ENABLE_APU
   if (device_type_ == APU) {
     apu_controller_.reset(new ApuWrapper(device_.get()));
-    bool cache_load = apu_cache_policy_ == APUCachePolicy::APU_CACHE_LOAD;
-    bool cache_store = apu_cache_policy_ == APUCachePolicy::APU_CACHE_STORE;
-    const char* file_name = cache_store ?
-        apu_storage_file_.c_str() : apu_binary_file_.c_str();
-    bool ret = false;
-    if (cache_load || cache_store) {
-      VLOG(1) << "Loading/Storing init cache";
-      ret = apu_controller_->Init(
-          *net_def, model_data, file_name, cache_load, cache_store);
+    if (apu_cache_policy_ == APUCachePolicy::APU_CACHE_STORE) {
+      LOG(INFO) << "Storing init cache";
+      const char* file_name = apu_storage_file_.c_str();
+      MACE_CHECK(apu_controller_->Init(*net_def, model_data,
+                                       file_name, false, true), "Storing fail");
+    } else if (apu_cache_policy_ == APUCachePolicy::APU_CACHE_LOAD) {
+      LOG(INFO) << "Loading init cache";
+      const char* file_name = apu_binary_file_.c_str();
+      if (!apu_controller_->Init(*net_def, model_data,
+                                 file_name, true, false)) {
+        LOG(INFO) << "Loading init cache fail";
+        MACE_CHECK(apu_controller_->Init(*net_def, model_data),
+                   "apu init error");
+      }
+    } else {
+      LOG(INFO) << "Do not use init cache";
+      MACE_CHECK(apu_controller_->Init(*net_def, model_data), "apu init error");
     }
-    if (!ret && !cache_store) {
-      VLOG(1) << "Do not use init cache";
-      ret = apu_controller_->Init(*net_def, model_data);
-    }
-    MACE_CHECK(ret, "apu int error", cache_load, cache_store);
   } else {
 #endif
     MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(
