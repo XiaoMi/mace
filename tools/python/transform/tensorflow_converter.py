@@ -116,6 +116,7 @@ TFSupportedOps = [
     'SpaceToBatchND',
     'SpaceToDepth',
     'Split',
+    'SplitV',
     'Sqrt',
     'Square',
     'SquaredDifference',
@@ -279,6 +280,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.SpaceToBatchND.name: self.convert_space_batch,
             TFOpType.SpaceToDepth.name: self.convert_space_depth,
             TFOpType.Split.name: self.convert_split,
+            TFOpType.SplitV.name: self.convert_splitv,
             TFOpType.Sqrt.name: self.convert_elementwise,
             TFOpType.Squeeze.name: self.convert_squeeze,
             TFOpType.Stack.name: self.convert_stack,
@@ -1057,14 +1059,15 @@ class TensorflowConverter(base_converter.ConverterInterface):
         keep_dims_arg.name = MaceKeyword.mace_keepdims_str
         keep_dims_arg.i = 0
 
-    def convert_split(self, tf_op):
+    def convert_split(self, tf_op, axis_idx=0):
         op = self.convert_general_op(tf_op)
         num_or_size_splits = tf_op.get_attr('num_split')
-        if num_or_size_splits == 1:
+        is_split = (num_or_size_splits > 1)
+        if not is_split:
             op.type = MaceOp.Identity.name
         else:
             op.type = MaceOp.Split.name
-            axis = tf_op.inputs[0].eval().astype(np.int32)
+            axis = tf_op.inputs[axis_idx].eval().astype(np.int32)
             axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
 
             axis_arg = op.arg.add()
@@ -1074,8 +1077,24 @@ class TensorflowConverter(base_converter.ConverterInterface):
             num_split_arg = op.arg.add()
             num_split_arg.name = MaceKeyword.mace_num_split_str
             num_split_arg.i = num_or_size_splits
-        del op.input[0]
-        self._skip_tensor.add(tf_op.inputs[0].name)
+        del op.input[axis_idx]
+        self._skip_tensor.add(tf_op.inputs[axis_idx].name)
+        return (op, is_split)
+
+    def convert_splitv(self, tf_op):
+        (op, is_split) = self.convert_split(tf_op, 2)
+        if not is_split:
+            return
+        size_splits_arg = op.arg.add()
+        size_splits_arg.name = MaceKeyword.mace_size_splits_str
+        size_splits = tf_op.inputs[1].eval().astype(np.int32)
+        del op.input[1]
+        self._skip_tensor.add(tf_op.inputs[1].name)
+        # todo(luxuhui): support size_splits
+        for size in size_splits:
+            mace_check(size == size_splits[0],
+                       "SplitV Only support even distribution")
+        size_splits_arg.ints.extend(size_splits)
 
     def convert_tile(self, tf_op):
         op = self.convert_general_op(tf_op)

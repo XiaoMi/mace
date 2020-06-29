@@ -166,7 +166,7 @@ class MegengineConverter(base_converter.ConverterInterface):
                 if "," in op.input[i]:
                     op_name = op.input[i]
                     op_name = op_name.replace(",", "#")
-                    if (op_name in self._option.input_nodes or \
+                    if (op_name in self._option.input_nodes or
                             op_name in self._option.output_nodes):
                         op.input[i] = op_name
             for i in six.moves.range(len(op.output)):
@@ -195,7 +195,8 @@ class MegengineConverter(base_converter.ConverterInterface):
             kernels_arg.name = MaceKeyword.mace_kernel_str
             kernels_arg.ints.extend(kernel)
         if op_def.type in (MaceOp.Conv2D.name, MaceOp.DepthwiseConv2d.name,
-                           MaceOp.Deconv2D.name, MaceOp.DepthwiseDeconv2d.name):
+                           MaceOp.Deconv2D.name,
+                           MaceOp.DepthwiseDeconv2d.name):
             dilation = [params[mge_dilate_h_str], params[mge_dilate_w_str]]
             dilation_arg = op_def.arg.add()
             dilation_arg.name = MaceKeyword.mace_dilations_str
@@ -426,13 +427,14 @@ class MegengineConverter(base_converter.ConverterInterface):
         # check the case of counting include padding
         mode = mge_op.params["mode"]
         if mode == "AVERAGE_COUNT_EXCLUDE_PADDING" or \
-                (mode == "AVERAGE" and mge_op.params["pad_w"] == 0 and \
+                (mode == "AVERAGE" and mge_op.params["pad_w"] == 0 and
                  mge_op.params["pad_h"] == 0):
             pool_type_arg.i = PoolingType.AVG.value
         elif mode == "MAX":
             pool_type_arg.i = PoolingType.MAX.value
         else:
-            mace_check(False, "AVERAGE pooling should not count padding values")
+            mace_check(False,
+                       "AVERAGE pooling should not count padding values")
 
         self.add_stride_pad_kernel_arg(mge_op.params, op)
 

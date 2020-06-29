@@ -318,6 +318,7 @@ def validate_onnx_model(model_file,
                        mace_out_value, value,
                        validation_threshold, log_file)
 
+
 def validate_megengine_model(model_file, input_file,
                              mace_out_file, input_names, input_shapes,
                              input_data_formats, output_names, output_shapes,
@@ -337,7 +338,7 @@ def validate_megengine_model(model_file, input_file,
             util.formatted_file_name(input_file, input_names[i]),
             input_data_types[i])
         input_value = input_value.reshape(input_shapes[i])
-        if (input_data_formats[i] == DataFormat.NHWC and \
+        if (input_data_formats[i] == DataFormat.NHWC and
                 len(input_shapes[i]) == 4):
             input_value = input_value.transpose((0, 3, 1, 2))
         feed_inputs.append(input_value)
@@ -356,10 +357,10 @@ def validate_megengine_model(model_file, input_file,
         output_file_name = \
             util.formatted_file_name(mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
-        if (output_data_formats[i] == DataFormat.NHWC and \
+        if (output_data_formats[i] == DataFormat.NHWC and
                 len(output_shapes[i]) == 4):
-            mace_out_value = \
-                mace_out_value.reshape(output_shapes[i]).transpose((0, 3, 1, 2))
+            mace_out_value = mace_out_value.reshape(
+                output_shapes[i]).transpose((0, 3, 1, 2))
         compare_output(output_names[i], mace_out_value,
                        mge_output_value, validation_threshold, log_file)
 
