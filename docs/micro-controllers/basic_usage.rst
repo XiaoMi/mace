@@ -45,24 +45,25 @@ Here we use the har-cnn model as an example.
         cd path/to/mace
         # output lib path: build/har-cnn/model/har_cnn_micro.tar.gz
         CONF_FILE=/path/to/mace-models/micro-models/har-cnn/har-cnn.yml
-        python tools/converter.py convert --config=$CONF_FILE --enable_micro
+        python tools/python/convert.py --config=$CONF_FILE --enable_micro
 
 
     4. Build Micro-Controllers engine and models to library on host.
 
     .. code-block:: sh
 
-        # copy convert result to micro dir ``path/to/micro``, which should not be the sub directory of the ``mace/``.
-        cp build/har-cnn/model/har_cnn_micro.tar.gz path/to/micro/
-        cd path/to/micro
-        tar zxvf har_cnn_micro.tar.gz
-        bazel build //micro/codegen:libmicro.so
+        cd micro
+        ./tools/cmake/cmake-build-host.sh
 
     .. note::
 
-        - This step can be skipped if you just want to run a model using ``tools/python/run_micro.py``, such as commands in step 5.
+        - The build result ``build/cmake-build/host/libmicro.a``'s abi is host, if you want to run the model on micro controllers, you should build the code with the right toolchain, for example
 
-        - The build result ``bazel-bin/micro/codegen/libmicro.so``'s abi is host, if you want to run the model on micro controllers, you should build the code with the target abi.
+    .. code-block:: sh
+        cd micro
+        export HEXAGON_SDK_ROOT=/home/user/Qualcomm/Hexagon_SDK/3.4.1
+        export HEXAGON_TOOLS=/home/user/Qualcomm/HEXAGON_Tools/6.4.06
+        ./tools/cmake/cmake-build-hexagon6.sh
 
     5. Run the model on host.
 

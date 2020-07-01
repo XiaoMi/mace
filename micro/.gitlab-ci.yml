@@ -1,0 +1,28 @@
+stages:
+  - convert
+  - build
+  - test
+
+model-convert:
+  stage: convert
+  script:
+    - rm -rf mace-models
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - >
+    - CONF_FILE=mace-models/micro-models/har-cnn/har-cnn.yml
+    - python tools/python/convert.py --config=${CONF_FILE} --enable_micro
+  artifacts:
+    paths:
+      - mace-models
+    untracked: true
+
+host-build:
+  stage: build
+  script:
+    - cd micro && ./tools/cmake/cmake-build-host.sh -DMICRO_MODEL_NAME=har_cnn
+
+host-test:
+  stage: test
+  script:
+    - CONF_FILE=mace-models/micro-models/har-cnn/har-cnn.yml
+    - python tools/python/run_micro.py --config $CONF_FILE --build --validate --model_name har_cnn

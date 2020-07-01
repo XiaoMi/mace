@@ -169,7 +169,7 @@ MaceStatus Operator::ResizeOutputShape(uint32_t idx, uint32_t dim_size,
                                        const int32_t *dims) {
   model::OutputShape *output_shape =
       const_cast<model::OutputShape *>(op_context_->output_resize_shape(idx));
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
   if (op_def_->output_shape(idx)->dim_size() < dim_size
       || output_shape->dim_size() < dim_size) {
     LOG(FATAL) << "Can not support dynamic dim_size. op_def_dim_size = "
@@ -193,7 +193,7 @@ MaceStatus Operator::ResizeOutputShape(uint32_t idx, uint32_t dim_size,
     }
     MACE_ASSERT(def_output_shape_size >= input_shape_size);
   }
-#endif  // NDEBUG
+#endif  // MACE_MICRO_NDEBUG
 
   if (dim_size > 0) {
     base::memcpy(output_shape->mutable_dim(), dims, dim_size * sizeof(int32_t));

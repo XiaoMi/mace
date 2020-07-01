@@ -89,7 +89,7 @@ MaceStatus ReshapeOp::Run() {
   MACE_RETURN_IF_ERROR(ValidShapeData(input_dims_, input_dim_size_,
                                       shape_data, shape_data_size));
 
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
   const int32_t output_data_size = base::accumulate_multi(
       shape_data, 0, static_cast<uint32_t>(shape_data_size));
   if (input_data_size != output_data_size) {

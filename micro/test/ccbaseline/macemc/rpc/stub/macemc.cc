@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "macemc/rpc/stub/macemc.h"
-#include "micro/test/ccbaseline/codegen/macemc.h"
+#include "codegen/macemc.h"
 
 namespace micro {
 namespace testing {

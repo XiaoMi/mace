@@ -227,6 +227,10 @@ def parse_args():
         type=str,
         default="build",
         help="output dir")
+    parser.add_argument(
+        "--enable_micro",
+        action="store_true",
+        help="enable convert micro.")
     flgs, _ = parser.parse_known_args()
     return flgs
 
@@ -234,4 +238,4 @@ def parse_args():
 if __name__ == '__main__':
     flags = parse_args()
     conf = config_parser.parse(flags.config)
-    convert(conf, flags.output)
+    convert(conf, flags.output, flags.enable_micro)

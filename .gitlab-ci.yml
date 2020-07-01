@@ -196,3 +196,9 @@ dynamic_linking_test:
     - rm -rf mace-models
   only:
     - triggers
+
+micro-child:
+  stage: build
+  trigger:
+    include:
+      - 'micro/.gitlab-ci.yml'
