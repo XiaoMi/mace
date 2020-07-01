@@ -972,9 +972,11 @@ class Transformer(base_converter.ConverterInterface):
                         consumer_op, MaceKeyword.mace_activation_type_str)
                     act_type = act_type_arg.s.decode()
                     if self._option.device == DeviceType.APU.value:
-                        fold_consumer = (act_type in [ActivationType.RELU.name, ActivationType.RELUX.name])
+                        fold_consumer = (act_type in
+                                         [ActivationType.RELU.name,
+                                          ActivationType.RELUX.name])
                     else:
-                        fold_consumer = (act_type !=  ActivationType.PRELU.name)
+                        fold_consumer = (act_type != ActivationType.PRELU.name)
                     # during quantization, only fold relu/relux
                     if (self._option.quantize_stat or self._option.quantize) \
                             and act_type not in [ActivationType.RELU.name,
@@ -996,7 +998,6 @@ class Transformer(base_converter.ConverterInterface):
                     return True
 
         return False
-
 
     def transform_global_conv_to_fc(self):
         """Transform global conv to fc should be placed after transposing
