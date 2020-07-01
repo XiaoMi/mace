@@ -236,6 +236,7 @@ class MaceKeyword(object):
     mace_end_axis_str = 'end_axis'
     mace_num_axes_str = 'num_axes'
     mace_num_split_str = 'num_split'
+    mace_size_splits_str = 'size_splits'
     mace_keepdims_str = 'keepdims'
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'
@@ -548,6 +549,7 @@ class ConverterOption(object):
                 # Model structure related transformation
                 TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_FAKE_QUANTIZE,
+                TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
                 TransformerRule.TRANSFORM_BASIC_LSTMCELL,
