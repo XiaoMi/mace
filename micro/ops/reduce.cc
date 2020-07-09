@@ -29,7 +29,7 @@ MaceStatus ReduceOpBase::OnInit() {
 }
 
 void ReduceOpBase::Validate() {
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
   const int32_t input_dim_size = GetInputShapeDimSize(INPUT);
   const int32_t left = input_dim_size * -1;
   const int32_t right = input_dim_size;

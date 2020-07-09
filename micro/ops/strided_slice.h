@@ -188,7 +188,7 @@ class StridedSliceOp : public framework::Operator {
       for (uint32_t i = 0; i < input_dim_size_; ++i) {
         int32_t b = begin_[i];
         int32_t s = end_[i];
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
         int32_t input_i = input_dims_[i];
         if (!(0 <= b && b <= input_i)) {
           LOG(FATAL) << "In Slice, expected begin[" << i << "] in [0, "
@@ -240,7 +240,7 @@ class StridedSliceOp : public framework::Operator {
         } else {
           begin_[d] = begin_[d] < 0 ? begin_[d] + dim_len : begin_[d];
           end_[d] = begin_[d] + 1;
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
           if (!(begin_[d] >= 0 && begin_[d] < dim_len)) {
             LOG(FATAL) << "slice begin indice of dimension '" << d << "': "
                        << begin_[d] << ", is out of bound";
@@ -249,7 +249,7 @@ class StridedSliceOp : public framework::Operator {
         }
       }
     }
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
     for (uint32_t i = 0; i < output_shape_idx_; ++i) {
       if (output_shape_[i] <= 0) {
         LOG(FATAL) << "Expected output_shape[" << i

@@ -31,6 +31,6 @@ class Benchmark : public rpc::stub::BaseHandle {
 }  // namespace testing
 }  // namespace micro
 
-void BenchmarkRun();
+extern "C" void BenchmarkRun();
 
 #endif  // MICRO_TEST_CCBENCHMARK_MICRO_RPC_STUB_BENCHMARK_H_

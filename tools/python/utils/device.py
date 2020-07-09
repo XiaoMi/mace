@@ -37,7 +37,7 @@ def execute(cmd, verbose=True):
 
     if not verbose:
         if p.wait() != 0:
-            raise Exception("errorcode: %s" % p.returncode)
+            raise Exception("\"%s\" with errorcode: %s" % (cmd, p.returncode))
         return p.stdout.read()
 
     buf = []

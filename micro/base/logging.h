@@ -26,7 +26,7 @@ namespace log {
 #define LOG(severity) \
   micro::base::Logger(__FILE__, __LINE__, micro::severity)
 
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
 #define LOG1(severity, value) LOG(severity) << value
 #define LOG2(severity, value1, value2) LOG(severity) << value1 << value2
 #define LOG3(severity, value1, value2, value3) \
@@ -41,9 +41,9 @@ namespace log {
 #define LOG3(severity, value1, value2, value3)
 #define LOG4(severity, value1, value2, value3, value4)
 #define LOG5(severity, value1, value2, value3, value4, value5)
-#endif  // NDEBUG
+#endif  // MACE_MICRO_NDEBUG
 
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
 #define MACE_ASSERT(condition) \
   if (!(condition)) LOG(FATAL) << "Assert failed: "#condition  // NOLINT
 #define MACE_ASSERT1(condition, str) \
@@ -54,7 +54,7 @@ namespace log {
 #define MACE_ASSERT(condition)
 #define MACE_ASSERT1(condition, string)
 #define MACE_ASSERT2(condition, string1, string2)
-#endif  // NDEBUG
+#endif  // MACE_MICRO_NDEBUG
 
 #define MACE_NOT_IMPLEMENTED MACE_ASSERT1(false, "not implemented")
 

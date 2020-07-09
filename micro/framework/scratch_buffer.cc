@@ -20,7 +20,7 @@
 namespace micro {
 namespace framework {
 
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
 namespace {
 int64_t kDetectHandle = -1;
 }
@@ -28,7 +28,7 @@ int64_t kDetectHandle = -1;
 
 ScratchBuffer::ScratchBuffer(MaceMicroEngineConfig *engine_config) :
     engine_config_(engine_config), offset_(0) {
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
   int64_t cur_handle = reinterpret_cast<int64_t>(engine_config);
   MACE_ASSERT1(cur_handle != kDetectHandle, "Detect scratch buffer error.");
   kDetectHandle = cur_handle;
@@ -36,7 +36,7 @@ ScratchBuffer::ScratchBuffer(MaceMicroEngineConfig *engine_config) :
 }
 
 ScratchBuffer::~ScratchBuffer() {
-#ifndef NDEBUG
+#ifndef MACE_MICRO_NDEBUG
   kDetectHandle = -1;
 #endif
 }

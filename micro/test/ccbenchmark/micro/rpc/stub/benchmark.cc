@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "micro/rpc/stub/benchmark.h"
-#include "micro/test/ccbenchmark/codegen/benchmark.h"
+#include "codegen/benchmark.h"
 
 namespace micro {
 namespace testing {

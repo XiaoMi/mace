@@ -39,13 +39,15 @@ void DebugLog(const char *str) {
 }
 
 int64_t NowMicros() {
-  // you should rewrite this file in the platform source file.
 #ifdef MACE_ENABLE_HEXAGON
   return HAP_perf_get_time_us();
-#else
+#elif __linux__
   struct timeval tv;
   gettimeofday(&tv, 0);
   return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+#else
+  // you should rewrite this file in the platform source file.
+  return -1;
 #endif
 }
 

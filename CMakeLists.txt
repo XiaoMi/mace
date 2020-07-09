@@ -143,3 +143,7 @@ add_subdirectory(mace)
 if(MACE_ENABLE_TESTS OR MACE_ENABLE_BENCHMARKS)
   add_subdirectory(test)
 endif(MACE_ENABLE_TESTS OR MACE_ENABLE_BENCHMARKS)
+
+if(MACE_ENABLE_MICRO)
+  add_subdirectory(micro)
+endif(MACE_ENABLE_MICRO)
