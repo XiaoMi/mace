@@ -189,9 +189,11 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       data = const_cast<unsigned char *>(model_data + const_tensor.offset());
       data_len =
           const_tensor.data_size() * GetEnumTypeSize(const_tensor.data_type());
-      MACE_CHECK(const_tensor.offset() + data_len <= model_data_size,
-                 "tensor end (", const_tensor.offset() + data_len,
-                 ") should <= ", model_data_size);
+      if (model_data_size >= 0) {
+        MACE_CHECK(const_tensor.offset() + data_len <= model_data_size,
+                   "tensor end (", const_tensor.offset() + data_len,
+                   ") should <= ", model_data_size);
+      }
     }
     MACE_CHECK(
         hexagon_nn_append_const_node(nn_id_,

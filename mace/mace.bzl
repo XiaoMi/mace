@@ -109,10 +109,10 @@ def if_bfloat16_enabled(a):
         "//conditions:default": [],
     })
 
-def if_rpcmem_enabled(a):
+def if_rpcmem_enabled(a, default_value = []):
     return select({
         "//mace:rpcmem_enabled": a,
-        "//conditions:default": [],
+        "//conditions:default": default_value,
     })
 
 def mace_version_genrule():
