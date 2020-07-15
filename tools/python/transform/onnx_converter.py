@@ -38,7 +38,7 @@ import numpy as np
 
 import onnx
 import onnx.utils
-from onnx import mapping, numpy_helper, TensorProto
+from onnx import mapping, numpy_helper, shape_inference, TensorProto
 from numbers import Number
 
 IS_PYTHON3 = sys.version_info > (3,)
@@ -419,6 +419,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         opset_imp = onnx_model.opset_import
 
         onnx.checker.check_model(onnx_model)
+
+        onnx_model = shape_inference.infer_shapes(onnx_model)
 
         self._isKaldi = False
 

@@ -358,7 +358,7 @@ class Transformer(base_converter.ConverterInterface):
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
                 return True
-            elif op.type == 'Reshape' and \
+            elif op.type == 'Reshape' and len(op.output_shape) == 1 and \
                     op.output_shape[0].dims == \
                     self.get_tensor_shape(op.input[0]):
                 print("Remove useless reshape: %s(%s)" % (op.name, op.type))
@@ -1417,28 +1417,35 @@ class Transformer(base_converter.ConverterInterface):
 
         if op.type == MaceOp.Reshape:
             input_op = self._producer[op.input[0]]
-            input_dims = input_op.output_shape[0].dims
-            output_dims = op.output_shape[0].dims
-            if len(input_op.output_shape) != 1 or \
-                    len(input_dims) != 4 or len(output_dims) != 4:
+            if len(input_op.output_shape) == 0 or len(op.output_shape) == 0:
                 transposable = False
             else:
-                in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
-                    input_dims, ConverterUtil.data_format(input_op))
-                ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
-                    output_dims, ConverterUtil.data_format(op))
-                transposable = (in_b == ou_b and in_c == ou_c)
+                input_dims = input_op.output_shape[0].dims
+                output_dims = op.output_shape[0].dims
+                if len(input_op.output_shape) != 1 or \
+                        len(input_dims) != 4 or len(output_dims) != 4:
+                    transposable = False
+                else:
+                    in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
+                        input_dims, ConverterUtil.data_format(input_op))
+                    ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
+                        output_dims, ConverterUtil.data_format(op))
+                    transposable = (in_b == ou_b and in_c == ou_c)
         elif op.type == MaceOp.Squeeze:
-            input_dims = self._producer[op.input[0]].output_shape[0].dims
-            output_dims = op.output_shape[0].dims
-            src_df = ConverterUtil.data_format(self._model)
-            arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
-            if len(input_dims) == 4 and len(output_dims) == 2 and \
-                    ((src_df == DataFormat.NCHW and arg.ints == [2, 3]) or
-                     (src_df == DataFormat.NHWC and arg.ints == [1, 2])):
-                transposable = True
-            else:
+            input_op = self._producer[op.input[0]]
+            if len(input_op.output_shape) == 0 or len(op.output_shape) == 0:
                 transposable = False
+            else:
+                input_dims = input_op.output_shape[0].dims
+                output_dims = op.output_shape[0].dims
+                src_df = ConverterUtil.data_format(self._model)
+                arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
+                if len(input_dims) == 4 and len(output_dims) == 2 and \
+                        ((src_df == DataFormat.NCHW and arg.ints == [2, 3]) or
+                         (src_df == DataFormat.NHWC and arg.ints == [1, 2])):
+                    transposable = True
+                else:
+                    transposable = False
 
         if op.type in MaceTransposableDataFormatOps and not transposable:
             print("%s(%s) is not a transposable op in this model."
