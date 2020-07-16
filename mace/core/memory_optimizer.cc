@@ -114,9 +114,12 @@ void MemoryOptimizer::Optimize(
     const mace::OperatorDef *op_def,
     const std::unordered_map<std::string, MemoryType> *mem_types) {
   MACE_LATENCY_LOGGER(2, "Optimize memory");
-  MACE_CHECK(op_def->output_size() == op_def->output_shape_size(),
-             op_def->name(), "The number of output shapes is"
-                             " not equal to the number of outputs");
+  if (op_def->output_size() != op_def->output_shape_size()) {
+    VLOG(1) << op_def->name()
+            << ": the number of output shape "
+            << "is not equal to the number of output";
+    return;
+  }
 
   auto device = static_cast<DeviceType>(op_def->device_type());
   DataType op_dtype = static_cast<DataType>(ProtoArgHelper::GetOptionalArg(
