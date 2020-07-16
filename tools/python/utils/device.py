@@ -36,9 +36,11 @@ def execute(cmd, verbose=True):
                          universal_newlines=True)
 
     if not verbose:
-        if p.wait() != 0:
-            raise Exception("\"%s\" with errorcode: %s" % (cmd, p.returncode))
-        return p.stdout.read()
+        # use p.communicate instead of p.wait to avoid such situation: pipe is filled and the child process is blocked.
+        out, err = p.communicate()
+        if p.returncode != 0:
+            raise Exception("errorcode: {}".format(p.returncode) )
+        return out
 
     buf = []
 
