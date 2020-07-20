@@ -56,6 +56,7 @@ extern void RegisterPad(OpRegistry *op_registry);
 extern void RegisterPadContext(OpRegistry *op_registry);
 extern void RegisterPNorm(OpRegistry *op_registry);
 extern void RegisterPooling(OpRegistry *op_registry);
+extern void RegisterExtractImagePatches(OpRegistry *op_registry);
 extern void RegisterReduce(OpRegistry *op_registry);
 extern void RegisterReplaceIndex(OpRegistry *op_registry);
 extern void RegisterPriorBox(OpRegistry *op_registry);
@@ -136,6 +137,7 @@ void RegisterAllOps(OpRegistry *registry) {
   ops::RegisterPadContext(registry);
   ops::RegisterPNorm(registry);
   ops::RegisterPooling(registry);
+  ops::RegisterExtractImagePatches(registry);
   ops::RegisterReduce(registry);
   ops::RegisterReplaceIndex(registry);
   ops::RegisterPriorBox(registry);

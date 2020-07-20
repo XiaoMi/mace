@@ -85,6 +85,7 @@ __kernel void deconv_2d(OUT_OF_RANGE_PARAMS
       for (int f_y = f_start_y, idx_h = start_y ; f_y >= 0; f_y -= stride_h, ++idx_h) {
         index_y = mad24(b, in_height, idx_h);
         in_pos.y = select(index_y, -1, idx_h < 0 || idx_h >= in_height);
+#pragma unroll
         for (int f_x = f_start_x, idx_w = start_x; f_x >= 0; f_x -= stride_w, ++idx_w) {
           f_pos_y = mad24(f_y, kernel_w, f_x);
           f_pos_y = mad24(c, kernel_size, f_pos_y);

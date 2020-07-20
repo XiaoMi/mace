@@ -72,6 +72,7 @@ TFSupportedOps = [
     'Div',
     'Equal',
     'ExpandDims',
+    'ExtractImagePatches',
     'FakeQuantWithMinMaxVars',
     'FakeQuantWithMinMaxArgs',
     'Fill',
@@ -231,6 +232,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Div.name: self.convert_elementwise,
             TFOpType.Equal.name: self.convert_elementwise,
             TFOpType.ExpandDims.name: self.convert_expand_dims,
+            TFOpType.ExtractImagePatches.name:
+                self.convert_extract_image_patches,
             TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
             TFOpType.FakeQuantWithMinMaxArgs.name: self.convert_fake_quantize,
             TFOpType.Fill.name: self.convert_fill,
@@ -713,6 +716,27 @@ class TensorflowConverter(base_converter.ConverterInterface):
         kernels_arg = op.arg.add()
         kernels_arg.name = MaceKeyword.mace_kernel_str
         kernels_arg.ints.extend(tf_op.get_attr(tf_kernel_str)[1:3])
+
+    def convert_extract_image_patches(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.ExtractImagePatches.name
+
+        padding_arg = op.arg.add()
+        padding_arg.name = MaceKeyword.mace_padding_str
+        padding_arg.i = self.padding_mode[tf_op.get_attr(tf_padding_str)].value
+
+        strides_arg = op.arg.add()
+        strides_arg.name = MaceKeyword.mace_strides_str
+        strides_arg.ints.extend(tf_op.get_attr(tf_strides_str)[1:3])
+
+        dilation_arg = op.arg.add()
+        dilation_arg.name = MaceKeyword.mace_dilations_str
+        dilations = tf_op.get_attr('rates')[1:3]
+        dilation_arg.ints.extend(dilations)
+
+        kernels_arg = op.arg.add()
+        kernels_arg.name = MaceKeyword.mace_kernel_str
+        kernels_arg.ints.extend(tf_op.get_attr('ksizes')[1:3])
 
     def convert_softmax(self, tf_op):
         op = self.convert_general_op(tf_op)

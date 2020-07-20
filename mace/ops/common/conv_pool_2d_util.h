@@ -16,6 +16,10 @@
 #define MACE_OPS_COMMON_CONV_POOL_2D_UTIL_H_
 
 #include <vector>
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/opencl_util.h"
+#endif  // MACE_ENABLE_OPENCL
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -30,6 +34,9 @@ enum RoundType {
   FLOOR = 0,
   CEIL = 1,
 };
+
+class OpConditionContext;
+class OpRegistry;
 
 namespace ops {
 
@@ -97,6 +104,13 @@ void CalDeconvOutputShapeAndPadSize(const std::vector<index_t> &input_shape,
                                     std::vector<index_t> *padded_out_shape,
                                     FrameworkType framework_type,
                                     DataFormat data_format);
+
+#ifdef MACE_ENABLE_OPENCL
+void SetFilterMemoryType(OpConditionContext *context,
+                         OpenCLBufferType buffer_type);
+#endif  // MACE_ENABLE_OPENCL
+
+void RegisterFilterDataFormat(OpRegistry *op_registry, const char *op_name);
 
 }  // namespace ops
 }  // namespace mace

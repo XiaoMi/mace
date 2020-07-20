@@ -18,6 +18,9 @@
 #include <cmath>
 #include <vector>
 
+#include "mace/core/ops/op_condition_builder.h"
+#include "mace/core/registry/ops_registry.h"
+
 namespace mace {
 namespace ops {
 
@@ -433,6 +436,38 @@ void CalDeconvOutputShapeAndPadSize(const std::vector<index_t> &input_shape,
         padded_out_shape,
         data_format);
   }
+}
+
+#ifdef MACE_ENABLE_OPENCL
+void SetFilterMemoryType(OpConditionContext *context,
+                         OpenCLBufferType buffer_type) {
+  MemoryType mem_type = MemoryType::CPU_BUFFER;
+  if (context->device()->device_type() == DeviceType::GPU) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
+    } else {
+      mem_type = MemoryType::GPU_BUFFER;
+    }
+    auto filter_tensor = context->workspace()->GetTensor(
+        context->operator_def()->input(1));
+    if (filter_tensor == nullptr || !filter_tensor->is_weight()) {
+      context->SetInputOpenCLBufferType(1, buffer_type);
+    }
+  }
+  context->set_output_mem_type(mem_type);
+}
+#endif  // MACE_ENABLE_OPENCL
+
+void RegisterFilterDataFormat(OpRegistry *op_registry, const char *op_name) {
+  auto builder = OpConditionBuilder(op_name).SetInputsDataFormatSelector(
+      [](OpConditionContext *context) -> std::vector<DataFormat> {
+        DataFormat op_data_format = static_cast<DataFormat>(
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *context->operator_def(), "data_format",
+                static_cast<int>(DataFormat::NONE)));
+        return {op_data_format, DataFormat::OIHW, DataFormat::NONE};
+      });
+  MACE_REGISTER_OP_CONDITION(op_registry, builder);
 }
 
 }  // namespace ops
