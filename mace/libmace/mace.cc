@@ -201,6 +201,10 @@ class MaceEngineConfig::Impl {
                              bool dcvs_enable,
                              int latency);
 
+  MaceStatus SetAPUCache(APUCachePolicy policy,
+                         const std::string &binary_file,
+                         const std::string &storage_file);
+
   inline DeviceType device_type() const {
     return device_type_;
   }
@@ -237,6 +241,18 @@ class MaceEngineConfig::Impl {
     return hexagon_latency_;
   }
 
+  inline APUCachePolicy apu_cache_policy() const {
+    return apu_cache_policy_;
+  }
+
+  inline std::string apu_binary_file() const {
+    return apu_binary_file_;
+  }
+
+  inline std::string apu_storage_file() const {
+    return apu_storage_file_;
+  }
+
  private:
   DeviceType device_type_;
   int num_threads_;
@@ -247,6 +263,9 @@ class MaceEngineConfig::Impl {
   HexagonNNCornerType hexagon_corner_;
   bool hexagon_dcvs_enable_;
   int hexagon_latency_;
+  APUCachePolicy apu_cache_policy_;
+  std::string apu_binary_file_;
+  std::string apu_storage_file_;
 };
 
 MaceEngineConfig::Impl::Impl(const DeviceType device_type)
@@ -258,7 +277,10 @@ MaceEngineConfig::Impl::Impl(const DeviceType device_type)
       gpu_perf_hint_(GPUPerfHint::PERF_NORMAL),
       hexagon_corner_(HexagonNNCornerType::HEXAGON_NN_CORNER_TURBO),
       hexagon_dcvs_enable_(true),
-      hexagon_latency_(100) {}
+      hexagon_latency_(100),
+      apu_cache_policy_(APUCachePolicy::APU_CACHE_NONE),
+      apu_binary_file_(""),
+      apu_storage_file_("") {}
 
 MaceStatus MaceEngineConfig::Impl::SetGPUContext(
     std::shared_ptr<GPUContext> context) {
@@ -282,14 +304,15 @@ MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
   return MaceStatus::MACE_SUCCESS;
 }
 
+#ifdef MACE_ENABLE_HEXAGON
 MaceStatus MaceEngineConfig::Impl::SetHexagonToUnsignedPD() {
   bool ret = false;
-#ifdef MACE_ENABLE_HEXAGON
   ret = HexagonDSPWrapper::RequestUnsignedPD();
-#endif
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
+#endif
 
+#ifdef MACE_ENABLE_HEXAGON
 MaceStatus MaceEngineConfig::Impl::SetHexagonPower(
     HexagonNNCornerType corner,
     bool dcvs_enable,
@@ -298,11 +321,24 @@ MaceStatus MaceEngineConfig::Impl::SetHexagonPower(
   hexagon_dcvs_enable_ = dcvs_enable;
   hexagon_latency_ = latency;
   bool ret = false;
-#ifdef MACE_ENABLE_HEXAGON
   ret = HexagonDSPWrapper::SetPower(corner, dcvs_enable, latency);
-#endif
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
+#endif
+
+#ifdef MACE_ENABLE_APU
+MaceStatus MaceEngineConfig::Impl::SetAPUCache(
+    APUCachePolicy policy,
+    const std::string &binary_file,
+    const std::string &storage_file) {
+  bool ret = false;
+  apu_cache_policy_ = policy;
+  apu_binary_file_ = binary_file;
+  apu_storage_file_ = storage_file;
+  ret = true;
+  return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
+}
+#endif
 
 MaceEngineConfig::MaceEngineConfig(
     const DeviceType device_type)
@@ -336,6 +372,13 @@ MaceStatus MaceEngineConfig::SetHexagonPower(
     bool dcvs_enable,
     int latency) {
   return impl_->SetHexagonPower(corner, dcvs_enable, latency);
+}
+
+MaceStatus MaceEngineConfig::SetAPUCache(
+    APUCachePolicy policy,
+    const std::string &binary_file,
+    const std::string &storage_file) {
+  return impl_->SetAPUCache(policy, binary_file, storage_file);
 }
 
 // Mace Tensor
@@ -478,6 +521,9 @@ class MaceEngine::Impl {
 #endif
 #ifdef MACE_ENABLE_APU
   std::unique_ptr<ApuWrapper> apu_controller_;
+  APUCachePolicy apu_cache_policy_;
+  std::string apu_binary_file_;
+  std::string apu_storage_file_;
 #endif
 
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
@@ -504,6 +550,9 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 #endif
 #ifdef MACE_ENABLE_APU
       , apu_controller_(nullptr)
+      , apu_cache_policy_(config.impl_->apu_cache_policy())
+      , apu_binary_file_(config.impl_->apu_binary_file())
+      , apu_storage_file_(config.impl_->apu_storage_file())
 #endif
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
@@ -660,8 +709,21 @@ MaceStatus MaceEngine::Impl::Init(
 #ifdef MACE_ENABLE_APU
   if (device_type_ == APU) {
     apu_controller_.reset(new ApuWrapper(device_.get()));
-    MACE_CHECK(apu_controller_->Init(
-        *net_def, model_data, model_data_size), "apu init error");
+    bool cache_load = apu_cache_policy_ == APUCachePolicy::APU_CACHE_LOAD;
+    bool cache_store = apu_cache_policy_ == APUCachePolicy::APU_CACHE_STORE;
+    const char* file_name = cache_store ?
+        apu_storage_file_.c_str() : apu_binary_file_.c_str();
+    bool ret = false;
+    if (cache_load || cache_store) {
+      VLOG(1) << "Loading/Storing init cache";
+      ret = apu_controller_->Init(
+          *net_def, model_data, file_name, cache_load, cache_store);
+    }
+    if (!ret && !cache_store) {
+      VLOG(1) << "Do not use init cache";
+      ret = apu_controller_->Init(*net_def, model_data);
+    }
+    MACE_CHECK(ret, "apu int error", cache_load, cache_store);
   } else {
 #endif
     MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(

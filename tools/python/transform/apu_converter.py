@@ -24,6 +24,7 @@ from transform.base_converter import EltwiseType
 from transform.base_converter import MaceKeyword
 from transform.base_converter import MaceOp
 from transform.base_converter import PaddingMode
+from transform.base_converter import PadType
 from transform.base_converter import PoolingType
 from transform.base_converter import ReduceType
 from transform.base_converter import DataFormat
@@ -32,16 +33,17 @@ from utils.util import mace_check
 
 
 ApuSupportedOps = [
+    'Activation',
     'Concat',
     'Conv2D',
     'DepthwiseConv2d',
     'Eltwise',
+    'Pad',
     'Pooling',
     'Reduce',
     'ResizeBilinear',
     'Reshape',
     'Softmax',
-    'Squeeze',
 ]
 
 ApuOp = Enum('ApuOp', [(op, op) for op in ApuSupportedOps], type=str)
@@ -50,16 +52,18 @@ ApuOp = Enum('ApuOp', [(op, op) for op in ApuSupportedOps], type=str)
 class ApuOps(object):
     def __init__(self):
         self.apu_ops = {
+            MaceOp.Activation.name: ApuOp.Activation.name,
             MaceOp.Concat.name: ApuOp.Concat.name,
             MaceOp.Conv2D.name: ApuOp.Conv2D.name,
             MaceOp.DepthwiseConv2d.name: ApuOp.DepthwiseConv2d.name,
             MaceOp.Eltwise.name: ApuOp.Eltwise.name,
+            MaceOp.Pad.name: ApuOp.Pad.name,
             MaceOp.Pooling.name: ApuOp.Pooling.name,
             MaceOp.Reduce.name: ApuOp.Reduce.name,
             MaceOp.ResizeBilinear.name: ApuOp.ResizeBilinear.name,
             MaceOp.Reshape.name: ApuOp.Reshape.name,
             MaceOp.Softmax.name: ApuOp.Softmax.name,
-            MaceOp.Squeeze.name: ApuOp.Squeeze.name,
+            MaceOp.Squeeze.name: ApuOp.Reshape.name,
         }
 
     def has_op(self, op_name):
@@ -78,17 +82,30 @@ class ApuConverter(base_converter.ConverterInterface):
         self._apu_ops = ApuOps()
 
     def run(self):
-        self.use_uint8_in_out()
+        if self._option.quantize:
+            self.use_quant_in_out()
         self.add_op_output_type()
         self.ensure_bias_vector()
+        self.ensure_binary_input()
         self.common_check()
         if ConverterUtil.get_arg(self._model.op[0],
                                  MaceKeyword.mace_framework_type_str).i == \
            FrameworkType.TENSORFLOW.value:
             self.add_tensorflow_padding_value()
+        # Calculate the number of apu constant tensors
+        # Any tensors which will be apu constant tensors should be added
+        # above this line
         const_data_num_arg = self._model.arg.add()
         const_data_num_arg.name = MaceKeyword.mace_const_data_num_arg_str
         const_data_num_arg.i = len(self._model.tensors)
+        apu_data_type_arg = self._model.arg.add()
+        apu_data_type_arg.name = MaceKeyword.mace_apu_data_type_arg_str
+        if self._option.quantize_schema == 'mace_apu_16bit_per_tensor':
+            apu_data_type_arg.i = mace_pb2.DT_INT16
+        elif self._option.quantize:
+            apu_data_type_arg.i = mace_pb2.DT_UINT8
+        else:
+            apu_data_type_arg.i = mace_pb2.DT_FLOAT
         self.convert_ops()
         self.add_node_id()
         return self._model
@@ -104,9 +121,11 @@ class ApuConverter(base_converter.ConverterInterface):
                        ' match')
             mace_check(len(op.output_shape[0].dims) <= 4,
                        op.name + ': apu only support 1D~4D tensor')
-            mace_check(len(op.output) == len(op.quantize_info),
-                       op.name + ': length of output and quantize_info not'
-                       ' match')
+            if op.output_type[0] == mace_pb2.DT_UINT8 \
+                    or op.output_type[0] == mace_pb2.DT_INT16:
+                mace_check(len(op.output) == len(op.quantize_info),
+                           op.name + ': length of output and quantize_info not'
+                           ' match')
             data_format = ConverterUtil.data_format(op)
             if data_format is not None and len(op.output_shape[0].dims) == 4:
                 mace_check((data_format == DataFormat.NHWC)
@@ -117,9 +136,11 @@ class ApuConverter(base_converter.ConverterInterface):
                                op, MaceKeyword.mace_activation_type_str)
             if act_mode_arg is not None:
                 mace_check(act_mode_arg.s == b'RELU'
-                           or act_mode_arg.s == b'RELUX',
-                           op.name + ': apu only support activation RELU and'
-                           ' RELUX')
+                           or act_mode_arg.s == b'RELUX'
+                           or act_mode_arg.s == b'TANH'
+                           or act_mode_arg.s == b'SIGMOID',
+                           op.name + ': apu only support activation RELU,'
+                           ' RELUX, TANH and SIGMOID')
         for tensor in self._model.tensors:
             mace_check(len(tensor.dims) <= 4,
                        tensor.name + ': apu only support 1D~4D tensor')
@@ -138,7 +159,6 @@ class ApuConverter(base_converter.ConverterInterface):
         for op in self._model.op:
             if not self._apu_ops.has_op(op.type):
                 raise Exception('Unsupported op: ', op)
-
             if op.type == MaceOp.Conv2D.name \
                     or op.type == MaceOp.DepthwiseConv2d.name:
                 mace_check(len(op.input) == 3,
@@ -146,7 +166,7 @@ class ApuConverter(base_converter.ConverterInterface):
                            ' with 3 input')
                 self.add_size_tensor_from_arg(
                     op, MaceKeyword.mace_strides_str)
-                self.add_padding_tensor_from_arg(op)
+                self.add_padding_value_tensor_from_arg(op)
                 self.add_size_tensor_from_arg(
                     op, MaceKeyword.mace_dilations_str)
                 if op.type == MaceOp.DepthwiseConv2d.name:
@@ -160,22 +180,64 @@ class ApuConverter(base_converter.ConverterInterface):
                             break
                     op.input.extend([multiplier.name])
             elif op.type == MaceOp.Eltwise.name:
+                eltwise_type = ConverterUtil.get_arg(
+                               op, MaceKeyword.mace_element_type_str).i
+                # We only handle SUM and PROD operators now which are
+                # commutative
                 mace_check(len(op.input) == 2,
                            op.name + ': apu only support eltwise op with 2'
                            ' input')
-                eltwise_type = ConverterUtil.get_arg(
-                               op, MaceKeyword.mace_element_type_str).i
-                mace_check(eltwise_type == EltwiseType.SUM.value,
-                           op.name + ': apu only support eltwise type SUM')
+                mace_check(eltwise_type == EltwiseType.SUM.value
+                           or eltwise_type == EltwiseType.PROD.value,
+                           op.name +
+                           ': apu only support eltwise type SUM or PROD')
+            elif op.type == MaceOp.Pad.name:
+                mace_check(len(op.input) == 1,
+                           op.name + ': apu only support Pad op with 1'
+                           ' input')
+                pad_type_arg = \
+                    ConverterUtil.get_arg(op, MaceKeyword.mace_pad_type_str)
+                if pad_type_arg is not None:
+                    mace_check(PadType(pad_type_arg.i) ==
+                               PadType.CONSTANT, op.name +
+                               ': apu only support Pad type CONSTANT')
+
+                padding_arg = ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_paddings_str)
+                mace_check(len(padding_arg.ints) == 8,
+                           op.name + ': paddings does not have size 8')
+                mace_check({0} ==
+                           {padding_arg.ints[0], padding_arg.ints[1],
+                            padding_arg.ints[6], padding_arg.ints[7]},
+                           op.name + ': apu only support Pad op with padding'
+                           ' in H/W dimensions')
+                data_type = ConverterUtil.get_arg(op, 'T').i
+                constant_value_arg = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_constant_value_str)
+                if constant_value_arg is not None:
+                    if data_type in [mace_pb2.DT_FLOAT, mace_pb2.DT_HALF]:
+                        constant_value = constant_value_arg.f
+                    elif data_type == mace_pb2.DT_INT32:
+                        constant_value = constant_value_arg.i
+                    else:
+                        mace_check(False, "Not supported data type")
+
+                    mace_check(constant_value == 0,
+                               op.name + ': apu only support Pad op with zero'
+                               ' padding')
+                self.add_paddings_tensor_from_arg(op)
+
             elif op.type == MaceOp.Pooling.name:
                 mace_check(len(op.input) == 1,
                            op.name + ': apu only support pooling op with 1'
                            ' input')
                 pooling_type_arg = ConverterUtil.get_arg(
                                    op, MaceKeyword.mace_pooling_type_str)
-                mace_check(PoolingType(pooling_type_arg.i) == PoolingType.AVG,
-                           op.name + ': apu only support pooling type AVG')
-                self.add_padding_tensor_from_arg(op)
+                mace_check(PoolingType(pooling_type_arg.i) in
+                           [PoolingType.AVG, PoolingType.MAX],
+                           op.name + ': apu only support pooling type AVG,'
+                           ' MAX')
+                self.add_padding_value_tensor_from_arg(op)
                 self.add_size_tensor_from_arg(
                     op, MaceKeyword.mace_strides_str)
                 self.add_size_tensor_from_arg(op, MaceKeyword.mace_kernel_str)
@@ -213,8 +275,7 @@ class ApuConverter(base_converter.ConverterInterface):
                 mace_check(len(op.input) == 1,
                            op.name + ': apu only support squeeze op with 1'
                            ' input')
-                self.add_int_list_tensor_from_arg(
-                    op, MaceKeyword.mace_axis_str)
+                self.add_shape_tensor_from_axis_arg(op)
 
             op.type = self._apu_ops.map_nn_op(op.type)
 
@@ -222,7 +283,12 @@ class ApuConverter(base_converter.ConverterInterface):
         type_map = {}
         for input_info in self._model.input_info:
             # will do input quantize in wrapper
-            type_map[input_info.name] = mace_pb2.DT_UINT8
+            if self._option.quantize_schema == 'mace_apu_16bit_per_tensor':
+                type_map[input_info.name] = mace_pb2.DT_INT16
+            elif self._option.quantize:
+                type_map[input_info.name] = mace_pb2.DT_UINT8
+            else:
+                type_map[input_info.name] = mace_pb2.DT_FLOAT
 
         for op in self._model.op:
             if len(op.output_type) >= 1:
@@ -239,8 +305,11 @@ class ApuConverter(base_converter.ConverterInterface):
                        op.name + ': length of output and output_type not'
                        ' match')
             mace_check(op.output_type[0] == mace_pb2.DT_UINT8
-                       or op.output_type[0] == mace_pb2.DT_INT32,
-                       op.name + ': apu only support quantized node')
+                       or op.output_type[0] == mace_pb2.DT_INT16
+                       or op.output_type[0] == mace_pb2.DT_INT32
+                       or op.output_type[0] == mace_pb2.DT_FLOAT,
+                       op.name + ': apu only support quantized or float16'
+                       ' node')
 
     def add_node_id(self):
         node_id_counter = 0
@@ -266,7 +335,7 @@ class ApuConverter(base_converter.ConverterInterface):
         for output_info in self._model.output_info:
             output_info.node_id = node_id_map[output_info.name]
 
-    def add_padding_tensor_from_arg(self, op):
+    def add_padding_value_tensor_from_arg(self, op):
         padding_value_arg = ConverterUtil.get_arg(
                             op, MaceKeyword.mace_padding_values_str)
         mace_check(len(padding_value_arg.ints) == 4,
@@ -275,6 +344,19 @@ class ApuConverter(base_converter.ConverterInterface):
         padding_value_tensor.name = op.name + '/padding:0'
         padding_value_tensor.data_type = mace_pb2.DT_INT32
         padding_value_tensor.dims.extend([4])
+        padding_value_tensor.int32_data.extend(padding_value_arg.ints)
+        op.input.extend([padding_value_tensor.name])
+
+    def add_paddings_tensor_from_arg(self, op):
+        padding_value_arg = ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_paddings_str)
+        padding_value_tensor = self._model.tensors.add()
+        padding_value_tensor.name = op.name + '/padding:0'
+        padding_value_tensor.data_type = mace_pb2.DT_INT32
+        mace_check(len(padding_value_arg.ints) % 2 == 0,
+                   op.name + ': the rank of paddings should be even')
+        padding_value_tensor.dims.extend(
+            [int(len(padding_value_arg.ints) / 2), 2])
         padding_value_tensor.int32_data.extend(padding_value_arg.ints)
         op.input.extend([padding_value_tensor.name])
 
@@ -310,6 +392,27 @@ class ApuConverter(base_converter.ConverterInterface):
         list_value_tensor.dims.extend([len(list_value_arg.ints)])
         list_value_tensor.int32_data.extend(list_value_arg.ints)
         op.input.extend([list_value_tensor.name])
+
+    def add_shape_tensor_from_axis_arg(self, op):
+        list_value_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
+        mace_check(list_value_arg.ints is not None,
+                   op.name + ': ' + MaceKeyword.mace_axis_str +
+                   ' value ints should not be None')
+        axes = list_value_arg.ints
+        for producer in self._model.op:
+            if producer.output[0] == op.input[0]:
+                input_tensor_shape = producer.output_shape[0].dims
+                break
+
+        shape_tensor = self._model.tensors.add()
+        shape_tensor.name = op.name + '/' + MaceKeyword.mace_axis_str + ':0'
+        shape_tensor.data_type = mace_pb2.DT_INT32
+        shape_tensor.dims.extend([len(input_tensor_shape) - len(axes)])
+        shape_tensor.int32_data.extend(input_tensor_shape)
+        for axis in sorted(axes, reverse=True):
+            del shape_tensor.int32_data[axis]
+        op.input.extend([shape_tensor.name])
+        ConverterUtil.del_arg(op, MaceKeyword.mace_axis_str)
 
     def add_tensorflow_padding_value(self):
         for op in self._model.op:
@@ -374,7 +477,8 @@ class ApuConverter(base_converter.ConverterInterface):
             tensor = self._model.tensors.add()
             tensor.name = _op.name + '/add/bias_add'
             tensor.dims.extend([_op.output_shape[0].dims[-1]])
-            if _op.output_type[0] == mace_pb2.DT_UINT8:
+            if _op.output_type[0] == mace_pb2.DT_UINT8 or \
+                    _op.output_type[0] == mace_pb2.DT_INT16:
                 tensor.data_type = mace_pb2.DT_INT32
                 input_name = _op.input[0]
                 for input_op in self._model.op:
@@ -395,7 +499,46 @@ class ApuConverter(base_converter.ConverterInterface):
                 tensor.float_data.extend([0.0] * tensor.dims[0])
             _op.input.extend([tensor.name])
 
-    def use_uint8_in_out(self):
+    def ensure_binary_input(self):
+        for _op in self._model.op:
+            if _op.type != MaceOp.Eltwise.name:
+                continue
+            if len(_op.input) != 1:
+                continue
+            eltwise_type = ConverterUtil.get_arg(
+                           _op, MaceKeyword.mace_element_type_str).i
+            if eltwise_type != EltwiseType.SUM.value and \
+               eltwise_type != EltwiseType.PROD.value:
+                continue
+
+            float_value_arg = ConverterUtil.get_arg(
+                                _op, MaceKeyword.mace_scalar_input_str)
+            mace_check(float_value_arg.f is not None,
+                       _op.name + ': ' +
+                       MaceKeyword.mace_scalar_input_str +
+                       ' value float should not be None')
+            scalar = float_value_arg.f
+            const_tensor = self._model.tensors.add()
+            const_tensor.name = _op.name + '/' + \
+                MaceKeyword.mace_scalar_input_str + ':0'
+            const_tensor.dims.extend([1])
+            if _op.output_type[0] == mace_pb2.DT_UINT8 or \
+                    _op.output_type[0] == mace_pb2.DT_INT16:
+                const_tensor.data_type = _op.output_type[0]
+                const_tensor.scale = scalar
+                const_tensor.zero_point = 0
+                const_tensor.quantized = True
+                const_tensor.int32_data.extend([1])
+            elif _op.output_type[0] == mace_pb2.DT_FLOAT:
+                const_tensor.data_type = mace_pb2.DT_FLOAT
+                const_tensor.float_data.extend([scalar])
+            _op.input.extend([const_tensor.name])
+            ConverterUtil.del_arg(
+                _op, MaceKeyword.mace_scalar_input_str)
+            ConverterUtil.del_arg(
+                _op, MaceKeyword.mace_scalar_input_index_str)
+
+    def use_quant_in_out(self):
         replace_dict = {}
         for input_info in self._model.input_info:
             if input_info.data_type == mace_pb2.DT_FLOAT:

@@ -92,6 +92,7 @@ class ModelKeys(object):
     weight_sha256_checksum = "weight_sha256_checksum"
     quantize_range_file = "quantize_range_file"
     quantize = "quantize"
+    quantize_schema = "quantize_schema"
     quantize_large_weights = "quantize_large_weights"
     quantize_stat = "quantize_stat"
     change_concat_ranges = "change_concat_ranges"

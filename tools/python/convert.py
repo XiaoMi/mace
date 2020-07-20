@@ -113,6 +113,8 @@ def convert_model(conf, quantize_stat):
         option.winograd = conf[ModelKeys.winograd]
     if ModelKeys.quantize in conf:
         option.quantize = conf[ModelKeys.quantize]
+    if ModelKeys.quantize_schema in conf:
+        option.quantize_schema = conf[ModelKeys.quantize_schema]
     if ModelKeys.quantize_large_weights in conf:
         option.quantize_large_weights = conf[ModelKeys.quantize_large_weights]
     if ModelKeys.quantize_range_file in conf:
