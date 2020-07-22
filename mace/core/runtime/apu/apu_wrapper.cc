@@ -287,7 +287,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
           input_infos[i].zero_point,
           reinterpret_cast<int16_t*>(input_infos[i].buf.get()));
     } else if (input_infos[i].data_type == APU_DATA_TYPE_FLOAT) {
-        std::memcpy(input_infos[i].buf.get(),
+      std::memcpy(input_infos[i].buf.get(),
                     (const float*)tensor->raw_data(),
                     element_size * byte_per_element);
     } else {
@@ -341,27 +341,27 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 }
 
 bool ApuWrapper::Uninit() {
-    bool ret = frontend->UninitGraph();
-    frontend = nullptr;
-    input_infos.clear();
-    output_infos.clear();
-    return ret;
+  bool ret = frontend->UninitGraph();
+  frontend = nullptr;
+  input_infos.clear();
+  output_infos.clear();
+  return ret;
 }
 
 int ApuWrapper::GetByteNum(apu_data_type data_type) {
-    int byte_per_element;
-    if (data_type == APU_DATA_TYPE_FLOAT || data_type == APU_DATA_TYPE_INT32) {
-        byte_per_element = 4;
-    } else if (data_type == APU_DATA_TYPE_HALF ||
-               data_type == APU_DATA_TYPE_INT16) {
-        byte_per_element = 2;
-    } else if (data_type == APU_DATA_TYPE_UINT8) {
-        byte_per_element = 1;
-    } else {
-      byte_per_element = 1;
-      MACE_CHECK(false, "unsupport data type");
-    }
-    return byte_per_element;
+  int byte_per_element;
+  if (data_type == APU_DATA_TYPE_FLOAT || data_type == APU_DATA_TYPE_INT32) {
+    byte_per_element = 4;
+  } else if (data_type == APU_DATA_TYPE_HALF ||
+             data_type == APU_DATA_TYPE_INT16) {
+    byte_per_element = 2;
+  } else if (data_type == APU_DATA_TYPE_UINT8) {
+    byte_per_element = 1;
+  } else {
+    byte_per_element = 1;
+    MACE_CHECK(false, "unsupport data type");
+  }
+  return byte_per_element;
 }
 
 }  // namespace mace
