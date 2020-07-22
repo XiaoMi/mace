@@ -21,7 +21,8 @@
 namespace mace {
 
 ApuWrapper::ApuWrapper(Device *device)
-    : quantize_util_(&device->cpu_runtime()->thread_pool()) {
+    : quantize_util_uint8_(&device->cpu_runtime()->thread_pool()),
+      quantize_util_int16_(&device->cpu_runtime()->thread_pool()) {
 }
 
 apu_data_type ApuWrapper::MapToApuDataType(DataType mace_type) {
@@ -270,7 +271,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
               "Wrong outputs num");
   // prepare input
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
-    Tensor *tensor = input_tensors.at(input_infos[i].name);
+    Tensor* tensor = input_tensors.at(input_infos[i].name);
 
     // check size
     int element_size = input_infos[i].size;
@@ -279,18 +280,18 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                 "Wrong input size");
     // quantize
     if (input_infos[i].data_type == APU_DATA_TYPE_INT16) {
-      quantize_util_.QuantizeWithScaleAndZeropoint(
+      quantize_util_int16_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
           input_infos[i].scale,
           input_infos[i].zero_point,
           reinterpret_cast<int16_t*>(input_infos[i].buf.get()));
     } else if (input_infos[i].data_type == APU_DATA_TYPE_FLOAT) {
-        std::memcpy(input_infos[i].buf.get(),
+      std::memcpy(input_infos[i].buf.get(),
                     (const float*)tensor->raw_data(),
                     element_size * byte_per_element);
     } else {
-      quantize_util_.QuantizeWithScaleAndZeropoint(
+      quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
           input_infos[i].scale,
@@ -304,8 +305,8 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
   MACE_CHECK(ret == true, "neuron run model failed");
 
   // process output
-  for (int i = 0; i < static_cast<int>(output_tensors->size()); i++) {
-    Tensor *tensor = output_tensors->at(output_infos[i].name);
+  for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
+    Tensor* tensor = output_tensors->at(output_infos[i].name);
 
     // prepare out buffer
     tensor->SetDtype(DT_FLOAT);
@@ -316,7 +317,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                 "Wrong output size");
     // dequantize
     if (output_infos[i].data_type == APU_DATA_TYPE_INT16) {
-      quantize_util_.Dequantize(
+      quantize_util_int16_.Dequantize(
           reinterpret_cast<int16_t*>(output_infos[i].buf.get()),
           element_size,
           output_infos[i].scale,
@@ -327,7 +328,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                     output_infos[i].buf.get(),
                     element_size * byte_per_element);
     } else {
-      quantize_util_.Dequantize(
+      quantize_util_uint8_.Dequantize(
           output_infos[i].buf.get(),
           element_size,
           output_infos[i].scale,
@@ -348,19 +349,19 @@ bool ApuWrapper::Uninit() {
 }
 
 int ApuWrapper::GetByteNum(apu_data_type data_type) {
-    int byte_per_element;
-    if (data_type == APU_DATA_TYPE_FLOAT || data_type == APU_DATA_TYPE_INT32) {
-        byte_per_element = 4;
-    } else if (data_type == APU_DATA_TYPE_HALF ||
-               data_type == APU_DATA_TYPE_INT16) {
-        byte_per_element = 2;
-    } else if (data_type == APU_DATA_TYPE_UINT8) {
-        byte_per_element = 1;
-    } else {
-      byte_per_element = 1;
-      MACE_CHECK(false, "unsupport data type");
-    }
-    return byte_per_element;
+  int byte_per_element;
+  if (data_type == APU_DATA_TYPE_FLOAT || data_type == APU_DATA_TYPE_INT32) {
+    byte_per_element = 4;
+  } else if (data_type == APU_DATA_TYPE_HALF ||
+             data_type == APU_DATA_TYPE_INT16) {
+    byte_per_element = 2;
+  } else if (data_type == APU_DATA_TYPE_UINT8) {
+    byte_per_element = 1;
+  } else {
+    byte_per_element = 1;
+    MACE_CHECK(false, "unsupport data type");
+  }
+  return byte_per_element;
 }
 
 }  // namespace mace

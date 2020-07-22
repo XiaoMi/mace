@@ -37,9 +37,12 @@ ApuSupportedOps = [
     'Concat',
     'Conv2D',
     'DepthwiseConv2d',
+    'Deconv2D',
     'Eltwise',
+    'FullyConnected',
     'Pad',
     'Pooling',
+    'PRelu',
     'Reduce',
     'ResizeBilinear',
     'Reshape',
@@ -56,7 +59,9 @@ class ApuOps(object):
             MaceOp.Concat.name: ApuOp.Concat.name,
             MaceOp.Conv2D.name: ApuOp.Conv2D.name,
             MaceOp.DepthwiseConv2d.name: ApuOp.DepthwiseConv2d.name,
+            MaceOp.Deconv2D.name: ApuOp.Deconv2D.name,
             MaceOp.Eltwise.name: ApuOp.Eltwise.name,
+            MaceOp.FullyConnected.name: ApuOp.FullyConnected.name,
             MaceOp.Pad.name: ApuOp.Pad.name,
             MaceOp.Pooling.name: ApuOp.Pooling.name,
             MaceOp.Reduce.name: ApuOp.Reduce.name,
@@ -135,7 +140,8 @@ class ApuConverter(base_converter.ConverterInterface):
             act_mode_arg = ConverterUtil.get_arg(
                                op, MaceKeyword.mace_activation_type_str)
             if act_mode_arg is not None:
-                mace_check(act_mode_arg.s == b'RELU'
+                mace_check(act_mode_arg.s == b'PRELU'
+                           or act_mode_arg.s == b'RELU'
                            or act_mode_arg.s == b'RELUX'
                            or act_mode_arg.s == b'TANH'
                            or act_mode_arg.s == b'SIGMOID',
@@ -179,6 +185,15 @@ class ApuConverter(base_converter.ConverterInterface):
                             multiplier.int32_data.extend([tensor.dims[0]])
                             break
                     op.input.extend([multiplier.name])
+            elif op.type == MaceOp.Deconv2D.name:
+                mace_check(len(op.input) == 4,
+                           op.name + ': apu only support ' + op.type + ' op'
+                           ' with 4 input')
+                self.add_size_tensor_from_arg(
+                    op, MaceKeyword.mace_strides_str)
+                self.add_padding_value_tensor_from_arg(op)
+                self.add_size_tensor_from_list(
+                    op, MaceKeyword.mace_dilations_str, [1, 1])
             elif op.type == MaceOp.Eltwise.name:
                 eltwise_type = ConverterUtil.get_arg(
                                op, MaceKeyword.mace_element_type_str).i
@@ -276,8 +291,8 @@ class ApuConverter(base_converter.ConverterInterface):
                            op.name + ': apu only support squeeze op with 1'
                            ' input')
                 self.add_shape_tensor_from_axis_arg(op)
-
             op.type = self._apu_ops.map_nn_op(op.type)
+        self.change_activation_to_prelu()
 
     def add_op_output_type(self):
         type_map = {}
@@ -371,6 +386,14 @@ class ApuConverter(base_converter.ConverterInterface):
         size_value_tensor.int32_data.extend(size_value_arg.ints)
         op.input.extend([size_value_tensor.name])
 
+    def add_size_tensor_from_list(self, op, keyword, list_value):
+        size_value_tensor = self._model.tensors.add()
+        size_value_tensor.name = op.name + '/' + keyword + ':0'
+        size_value_tensor.data_type = mace_pb2.DT_INT32
+        size_value_tensor.dims.extend([len(list_value)])
+        size_value_tensor.int32_data.extend(list_value)
+        op.input.extend([size_value_tensor.name])
+
     def add_int_tensor_from_arg(self, op, keyword):
         int_value_arg = ConverterUtil.get_arg(op, keyword)
         mace_check(int_value_arg.i is not None,
@@ -420,7 +443,6 @@ class ApuConverter(base_converter.ConverterInterface):
                                op, MaceKeyword.mace_padding_str)
             if padding_type is None:
                 continue
-
             padding_arg = op.arg.add()
             padding_arg.name = MaceKeyword.mace_padding_values_str
             if padding_type.i == PaddingMode.VALID.value:
@@ -431,7 +453,8 @@ class ApuConverter(base_converter.ConverterInterface):
                 kernel = []
                 dilation = [1, 1]
                 if op.type == MaceOp.Conv2D.name or \
-                   op.type == MaceOp.DepthwiseConv2d.name:
+                   op.type == MaceOp.DepthwiseConv2d.name or \
+                   op.type == MaceOp.Deconv2D.name:
                     if ConverterUtil.get_arg(
                            op, MaceKeyword.mace_dilations_str) is not None:
                         dilation = ConverterUtil.get_arg(
@@ -456,22 +479,37 @@ class ApuConverter(base_converter.ConverterInterface):
                     if len(in_size) > 0:
                         break
                 out_size = op.output_shape[0].dims[1:3]
-                h = (out_size[0] - 1) * stride[0] \
-                    + ((kernel[0] - 1) * dilation[0] + 1) - in_size[0]
-                w = (out_size[1] - 1) * stride[1] \
-                    + ((kernel[1] - 1) * dilation[1] + 1) - in_size[1]
+                if(op.type == MaceOp.Deconv2D.name):
+                    h = (in_size[0] - 1) * stride[0] + kernel[0] - out_size[0]
+                    w = (in_size[1] - 1) * stride[1] + kernel[1] - out_size[1]
+                else:
+                    h = (out_size[0] - 1) * stride[0] \
+                        + ((kernel[0] - 1) * dilation[0] + 1) - in_size[0]
+                    w = (out_size[1] - 1) * stride[1] \
+                        + ((kernel[1] - 1) * dilation[1] + 1) - in_size[1]
                 top = int(np.floor(h/2))
                 left = int(np.floor(w/2))
                 bottom = h - top
                 right = w - left
                 padding_arg.ints.extend([top, right, bottom, left])
 
+    def change_activation_to_prelu(self):
+        for op in self._model.op:
+            if op.type == ApuOp.Activation.name and \
+                ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_activation_type_str).s == b'PRELU':
+                op.type = ApuOp.PRelu.name
+
     def ensure_bias_vector(self):
         for _op in self._model.op:
-            if _op.type != MaceOp.Conv2D.name and \
-               _op.type != MaceOp.DepthwiseConv2d.name:
-                continue
-            if len(_op.input) != 2:
+            ensure_input = -1
+            if _op.type == MaceOp.Conv2D.name or \
+               _op.type == MaceOp.DepthwiseConv2d.name or \
+               _op.type == MaceOp.FullyConnected.name:
+                ensure_input = 3
+            if _op.type == MaceOp.Deconv2D.name:
+                ensure_input = 4
+            if ensure_input == -1 or len(_op.input) != ensure_input - 1:
                 continue
 
             tensor = self._model.tensors.add()
@@ -522,15 +560,14 @@ class ApuConverter(base_converter.ConverterInterface):
             const_tensor.name = _op.name + '/' + \
                 MaceKeyword.mace_scalar_input_str + ':0'
             const_tensor.dims.extend([1])
+            const_tensor.data_type = _op.output_type[0]
             if _op.output_type[0] == mace_pb2.DT_UINT8 or \
                     _op.output_type[0] == mace_pb2.DT_INT16:
-                const_tensor.data_type = _op.output_type[0]
                 const_tensor.scale = scalar
                 const_tensor.zero_point = 0
                 const_tensor.quantized = True
                 const_tensor.int32_data.extend([1])
             elif _op.output_type[0] == mace_pb2.DT_FLOAT:
-                const_tensor.data_type = mace_pb2.DT_FLOAT
                 const_tensor.float_data.extend([scalar])
             _op.input.extend([const_tensor.name])
             ConverterUtil.del_arg(
