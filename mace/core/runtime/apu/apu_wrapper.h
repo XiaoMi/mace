@@ -59,7 +59,8 @@ class ApuWrapper {
   ApuFrontend *frontend;
   std::vector<ApuTensorInfo> input_infos;
   std::vector<ApuTensorInfo> output_infos;
-  QuantizeUtil<float, uint8_t> quantize_util_;
+  QuantizeUtil<float, uint8_t> quantize_util_uint8_;
+  QuantizeUtil<float, int16_t> quantize_util_int16_;
 };
 
 }  // namespace mace

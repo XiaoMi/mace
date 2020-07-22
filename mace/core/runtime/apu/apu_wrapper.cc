@@ -21,7 +21,8 @@
 namespace mace {
 
 ApuWrapper::ApuWrapper(Device *device)
-    : quantize_util_(&device->cpu_runtime()->thread_pool()) {
+    : quantize_util_uint8_(&device->cpu_runtime()->thread_pool()),
+      quantize_util_int16_(&device->cpu_runtime()->thread_pool()) {
 }
 
 apu_data_type ApuWrapper::MapToApuDataType(DataType mace_type) {
@@ -279,7 +280,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                 "Wrong input size");
     // quantize
     if (input_infos[i].data_type == APU_DATA_TYPE_INT16) {
-      quantize_util_.QuantizeWithScaleAndZeropoint(
+      quantize_util_int16_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
           input_infos[i].scale,
@@ -290,7 +291,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                     (const float*)tensor->raw_data(),
                     element_size * byte_per_element);
     } else {
-      quantize_util_.QuantizeWithScaleAndZeropoint(
+      quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
           input_infos[i].scale,
@@ -316,7 +317,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                 "Wrong output size");
     // dequantize
     if (output_infos[i].data_type == APU_DATA_TYPE_INT16) {
-      quantize_util_.Dequantize(
+      quantize_util_int16_.Dequantize(
           reinterpret_cast<int16_t*>(output_infos[i].buf.get()),
           element_size,
           output_infos[i].scale,
@@ -327,7 +328,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                     output_infos[i].buf.get(),
                     element_size * byte_per_element);
     } else {
-      quantize_util_.Dequantize(
+      quantize_util_uint8_.Dequantize(
           output_infos[i].buf.get(),
           element_size,
           output_infos[i].scale,

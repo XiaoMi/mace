@@ -304,15 +304,14 @@ MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
   return MaceStatus::MACE_SUCCESS;
 }
 
-#ifdef MACE_ENABLE_HEXAGON
 MaceStatus MaceEngineConfig::Impl::SetHexagonToUnsignedPD() {
   bool ret = false;
+#ifdef MACE_ENABLE_HEXAGON
   ret = HexagonDSPWrapper::RequestUnsignedPD();
+#endif
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
-#endif
 
-#ifdef MACE_ENABLE_HEXAGON
 MaceStatus MaceEngineConfig::Impl::SetHexagonPower(
     HexagonNNCornerType corner,
     bool dcvs_enable,
@@ -321,24 +320,11 @@ MaceStatus MaceEngineConfig::Impl::SetHexagonPower(
   hexagon_dcvs_enable_ = dcvs_enable;
   hexagon_latency_ = latency;
   bool ret = false;
+#ifdef MACE_ENABLE_HEXAGON
   ret = HexagonDSPWrapper::SetPower(corner, dcvs_enable, latency);
+#endif
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
-#endif
-
-#ifdef MACE_ENABLE_APU
-MaceStatus MaceEngineConfig::Impl::SetAPUCache(
-    APUCachePolicy policy,
-    const std::string &binary_file,
-    const std::string &storage_file) {
-  bool ret = false;
-  apu_cache_policy_ = policy;
-  apu_binary_file_ = binary_file;
-  apu_storage_file_ = storage_file;
-  ret = true;
-  return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
-}
-#endif
 
 MaceStatus MaceEngineConfig::Impl::SetAPUCache(
     APUCachePolicy policy,
