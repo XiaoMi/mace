@@ -172,6 +172,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
   int64_t t0 = NowMicros();
 
   // const node
+  std::vector<hexagon_nn_const_node> const_node_list;
   for (const ConstTensor &const_tensor : net_def.tensors()) {
     std::vector<int> tensor_shape(const_tensor.dims().begin(),
                                   const_tensor.dims().end());
@@ -179,37 +180,54 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       tensor_shape.insert(tensor_shape.begin(), 1);
     }
 
-    unsigned char *data;
-    int data_len;
+    hexagon_nn_const_node const_node;
+    const_node.node_id = node_id(const_tensor.node_id());
+    const_node.tensor.batches = tensor_shape[0];
+    const_node.tensor.height = tensor_shape[1];
+    const_node.tensor.width = tensor_shape[2];
+    const_node.tensor.depth = tensor_shape[3];
+
     if (const_tensor.data_type() == DataType::DT_INT32 &&
         const_tensor.data_size() == 0) {
-      data = NULL;
-      data_len = 0;
+      const_node.tensor.data = NULL;
+      const_node.tensor.dataLen = 0;
     } else {
-      data = const_cast<unsigned char *>(model_data + const_tensor.offset());
-      data_len =
-          const_tensor.data_size() * GetEnumTypeSize(const_tensor.data_type());
+      const_node.tensor.data =
+          const_cast<unsigned char *>(model_data + const_tensor.offset());
+      const_node.tensor.dataLen = const_tensor.data_size() *
+                                  GetEnumTypeSize(const_tensor.data_type());
+
       if (model_data_size >= 0) {
-        MACE_CHECK(const_tensor.offset() + data_len <= model_data_size,
-                   "tensor end (", const_tensor.offset() + data_len,
+        const index_t tensor_end =
+            const_tensor.offset() + const_node.tensor.dataLen;
+        MACE_CHECK(tensor_end <= model_data_size, "tensor end (", tensor_end,
                    ") should <= ", model_data_size);
       }
     }
+    const_node_list.push_back(const_node);
+    // 250 is magic number: why fastrpc limits sequence length to that?
+    if (const_node_list.size() >= 250) {
+      MACE_CHECK(
+          hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
+                                            const_node_list.size()) == 0,
+          "append const node error");
+      const_node_list.clear();
+    }
+  }
+  if (!const_node_list.empty()) {
     MACE_CHECK(
-        hexagon_nn_append_const_node(nn_id_,
-                                     node_id(const_tensor.node_id()),
-                                     tensor_shape[0],
-                                     tensor_shape[1],
-                                     tensor_shape[2],
-                                     tensor_shape[3],
-                                     data,
-                                     data_len) == 0,
+        hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
+                                          const_node_list.size()) == 0,
         "append const node error");
   }
+  const_node_list.clear();
 
   // op node
   OpMap op_map;
   op_map.Init();
+  std::vector<hexagon_nn_op_node> op_node_list;
+  std::vector<std::vector<hexagon_nn_input>> cached_inputs;
+  std::vector<std::vector<hexagon_nn_output>> cached_outputs;
   std::vector<hexagon_nn_input> inputs;
   std::vector<hexagon_nn_output> outputs;
 
@@ -236,18 +254,41 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       outputs[i].zero_offset = 0;
       outputs[i].stepsize = 0;
     }
-    auto padding_type = static_cast<hexagon_nn_padding_type>(op.padding());
+    cached_inputs.push_back(inputs);
+    cached_outputs.push_back(outputs);
 
-    MACE_CHECK(hexagon_nn_append_node(nn_id_,
-                                      node_id(op.node_id()),
-                                      op_id,
-                                      padding_type,
-                                      inputs.data(),
-                                      inputs.size(),
-                                      outputs.data(),
-                                      outputs.size()) == 0,
+    hexagon_nn_padding_type padding_type =
+        static_cast<hexagon_nn_padding_type>(op.padding());
+
+    hexagon_nn_op_node op_node;
+    op_node.node_id = node_id(op.node_id());
+    op_node.operation = op_id;
+    op_node.padding = padding_type;
+    op_node.inputs = cached_inputs.back().data();
+    op_node.inputsLen = inputs.size();
+    op_node.outputs = cached_outputs.back().data();
+    op_node.outputsLen = outputs.size();
+
+    op_node_list.push_back(op_node);
+    // 125 is also magic number
+    if (op_node_list.size() >= 125) {
+      MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
+                                             op_node_list.size()) == 0,
+                 "append node error");
+      op_node_list.clear();
+      cached_inputs.clear();
+      cached_outputs.clear();
+    }
+  }
+
+  if (!op_node_list.empty()) {
+    MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
+                                           op_node_list.size()) == 0,
                "append node error");
   }
+  op_node_list.clear();
+  cached_inputs.clear();
+  cached_outputs.clear();
 
   // input info
   num_inputs_ = net_def.input_info_size();
