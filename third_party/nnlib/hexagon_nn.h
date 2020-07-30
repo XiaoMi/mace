@@ -185,6 +185,23 @@ __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_node)(hexagon_nn_nn_id 
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_const_node)(hexagon_nn_nn_id id, unsigned int node_id, unsigned int batches, unsigned int height, unsigned int width, unsigned int depth, const unsigned char* data, int dataLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_empty_const_node)(hexagon_nn_nn_id id, unsigned int node_id, unsigned int batches, unsigned int height, unsigned int width, unsigned int depth, unsigned int size) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_populate_const_node)(hexagon_nn_nn_id id, unsigned int node_id, const unsigned char* data, int dataLen, unsigned int target_offset) __QAIC_HEADER_ATTRIBUTE;
+typedef struct hexagon_nn_op_node hexagon_nn_op_node;
+struct hexagon_nn_op_node {
+  unsigned int node_id;
+  unsigned int operation;
+  hexagon_nn_padding_type padding;
+  hexagon_nn_input* inputs;
+  int inputsLen;
+  hexagon_nn_output* outputs;
+  int outputsLen;
+};
+typedef struct hexagon_nn_const_node hexagon_nn_const_node;
+struct hexagon_nn_const_node {
+  unsigned int node_id;
+  hexagon_nn_tensordef tensor;
+};
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_node_list)(hexagon_nn_nn_id id, const hexagon_nn_op_node* ops, int opsLen) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_const_node_list)(hexagon_nn_nn_id id, const hexagon_nn_const_node* consts, int constsLen) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_prepare)(hexagon_nn_nn_id id) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_execute)(hexagon_nn_nn_id id, unsigned int batches_in, unsigned int height_in, unsigned int width_in, unsigned int depth_in, const unsigned char* data_in, int data_inLen, unsigned int* batches_out, unsigned int* height_out, unsigned int* width_out, unsigned int* depth_out, unsigned char* data_out, int data_outLen, unsigned int* data_len_out) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_teardown)(hexagon_nn_nn_id id) __QAIC_HEADER_ATTRIBUTE;
