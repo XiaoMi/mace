@@ -187,7 +187,7 @@ void MemoryOptimizer::Optimize(
           // minimize add_mem_size; if best_mem_add_size is 0,
           // then minimize waste_mem_size
           if ((best_added_mem_size > 0 && added_mem_size < best_added_mem_size)
-              || (best_added_mem_size == 0 &&
+              || (best_added_mem_size == 0 && added_mem_size == 0 &&
                   wasted_mem_size < best_wasted_mem_size)) {
             best_mem_id = idle_mem_id;
             best_added_mem_size = added_mem_size;
