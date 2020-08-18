@@ -12,81 +12,111 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <arm_neon.h>
-
 #include "mace/ops/arm/base/bias_add.h"
+
+#include <arm_neon.h>
 
 namespace mace {
 namespace ops {
 namespace arm {
 
-template<>
-void BiasAdd<float>::Add1DimBias(
-    utils::ThreadPool *thread_pool, const float *input_data,
-    const float *bias_data, float *output_data, const index_t batch,
-    const index_t channels, const index_t image_size) {
+template <>
+template <int Dim>
+void BiasAdd<float>::AddBiasNCHW(utils::ThreadPool *thread_pool,
+                                 const Tensor *input,
+                                 const Tensor *bias,
+                                 Tensor *output) {
+  auto input_data = input->data<float>();
+  auto bias_data = bias->data<float>();
+  auto output_data = output->mutable_data<float>();
+
+  const index_t batch = input->dim(0);
+  const index_t channels = input->dim(1);
+  const index_t image_size = input->dim(2) * input->dim(3);
   const index_t block_count = image_size / 4;
   const index_t remain = image_size % 4;
-  thread_pool->Compute2D([=](index_t start0, index_t end0, index_t step0,
-                             index_t start1, index_t end1, index_t step1) {
-    for (index_t b = start0; b < end0; b += step0) {
-      const index_t b_offset = b * channels;
-      for (index_t c = start1; c < end1; c += step1) {
-        const index_t offset = (b_offset + c) * image_size;
-        auto input_ptr = input_data + offset;
-        auto output_ptr = output_data + offset;
-        const float bias = bias_data[c];
-        float32x4_t vbias = vdupq_n_f32(bias);
+  thread_pool->Compute2D(
+      [=](index_t start0, index_t end0, index_t step0, index_t start1,
+          index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          const index_t b_offset = b * channels;
+          for (index_t c = start1; c < end1; c += step1) {
+            const index_t offset = (b_offset + c) * image_size;
+            auto input_ptr = input_data + offset;
+            auto output_ptr = output_data + offset;
+            const float bias = bias_data[bias_index<Dim>(b_offset, c)];
+            float32x4_t vbias = vdupq_n_f32(bias);
 
-        for (index_t i = 0; i < block_count; ++i) {
-          float32x4_t v = vld1q_f32(input_ptr);
-          v = vaddq_f32(v, vbias);
-          vst1q_f32(output_ptr, v);
+            for (index_t i = 0; i < block_count; ++i) {
+              float32x4_t v = vld1q_f32(input_ptr);
+              v = vaddq_f32(v, vbias);
+              vst1q_f32(output_ptr, v);
 
-          input_ptr += 4;
-          output_ptr += 4;
+              input_ptr += 4;
+              output_ptr += 4;
+            }
+            for (index_t i = 0; i < remain; ++i) {
+              (*output_ptr++) = (*input_ptr++) + bias;
+            }
+          }
         }
-        for (index_t i = 0; i < remain; ++i) {
-          (*output_ptr++) = (*input_ptr++) + bias;
-        }
-      }
-    }
-  }, 0, batch, 1, 0, channels, 1);
+      },
+      0, batch, 1, 0, channels, 1);
 }
 
-template<>
-void BiasAdd<float>::Add2DimsBias(
-    utils::ThreadPool *thread_pool, const float *input_data,
-    const float *bias_data, float *output_data, const index_t batch,
-    const index_t channels, const index_t image_size) {
-  const index_t block_count = image_size / 4;
-  const index_t remain = image_size % 4;
-  thread_pool->Compute2D([=](index_t start0, index_t end0, index_t step0,
-                             index_t start1, index_t end1, index_t step1) {
-    for (index_t b = start0; b < end0; b += step0) {
-      const index_t b_offset = b * channels;
-      for (index_t c = start1; c < end1; c += step1) {
-        const index_t offset = (b_offset + c) * image_size;
-        auto input_ptr = input_data + offset;
-        auto output_ptr = output_data + offset;
-        const float bias = bias_data[b * channels + c];
-        float32x4_t vbias = vdupq_n_f32(bias);
+template <>
+template <int Dim>
+void BiasAdd<float>::AddBiasNHWC(utils::ThreadPool *thread_pool,
+                                 const Tensor *input,
+                                 const Tensor *bias,
+                                 Tensor *output) {
+  const float *input_ptr = input->data<float>();
+  const float *bias_ptr = bias->data<float>();
+  float *output_ptr = output->mutable_data<float>();
 
-        for (index_t i = 0; i < block_count; ++i) {
-          float32x4_t v = vld1q_f32(input_ptr);
-          v = vaddq_f32(v, vbias);
-          vst1q_f32(output_ptr, v);
-
-          input_ptr += 4;
-          output_ptr += 4;
+  const std::vector<index_t> &shape = input->shape();
+  const index_t channels = *shape.rbegin();
+  const auto batch = shape[0];
+  if (Dim == 2) {
+    MACE_CHECK(batch == bias->shape()[0]);
+  }
+  const index_t fused_hw = std::accumulate(shape.begin() + 1, shape.end() - 1,
+                                           1, std::multiplies<index_t>());
+  thread_pool->Compute2D(
+      [=](index_t start0, index_t end0, index_t step0, index_t start1,
+          index_t end1, index_t step1) {
+        for (index_t i = start0; i < end0; i += step0) {
+          auto offset = i * fused_hw;
+          auto bias_offset = i * channels;
+          for (index_t j = start1; j < end1; j += step1) {
+            index_t pos = (offset + j) * channels;
+            for (index_t c = 0; c < channels; ++c, ++pos) {
+              output_ptr[pos] =
+                  input_ptr[pos] + bias_ptr[bias_index<Dim>(bias_offset, c)];
+            }
+          }
         }
-        for (index_t i = 0; i < remain; ++i) {
-          (*output_ptr++) = (*input_ptr++) + bias;
-        }
-      }
-    }
-  }, 0, batch, 1, 0, channels, 1);
+      },
+      0, batch, 1, 0, fused_hw, 1);
 }
+
+template void BiasAdd<float>::AddBiasNCHW<1>(utils::ThreadPool *thread_pool,
+                                             const Tensor *input,
+                                             const Tensor *bias,
+                                             Tensor *output);
+template void BiasAdd<float>::AddBiasNCHW<2>(utils::ThreadPool *thread_pool,
+                                             const Tensor *input,
+                                             const Tensor *bias,
+                                             Tensor *output);
+
+template void BiasAdd<float>::AddBiasNHWC<1>(utils::ThreadPool *thread_pool,
+                                             const Tensor *input,
+                                             const Tensor *bias,
+                                             Tensor *output);
+template void BiasAdd<float>::AddBiasNHWC<2>(utils::ThreadPool *thread_pool,
+                                             const Tensor *input,
+                                             const Tensor *bias,
+                                             Tensor *output);
 
 }  // namespace arm
 }  // namespace ops

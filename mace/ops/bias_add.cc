@@ -50,63 +50,15 @@ class BiasAddOp<DeviceType::CPU, T> : public Operation {
     const Tensor *bias = this->Input(1);
     Tensor *output = this->Output(0);
 
-    if (input->dim_size() == 4 && (has_data_format_
-        || input->data_format() == DataFormat::NCHW)) {  // NCHW
-      MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
-                 "bias must be 1-dimensional or n*c for caffee.",
-                 MakeString(bias->shape()));
-      bias_add_delegator_->Compute(context, input, bias, output);
-    } else {  // NHWC
-      MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
-                 "bias must be 1 or 2 dimensionals for caffee.",
+    MACE_CHECK(bias->dim_size() == 1 || bias->dim_size() == 2,
+                 "bias must be 1 or 2 dimensionals for caffe.",
                  bias->dim_size(), MakeString(bias->shape()));
-      // TODO(liyin): remove it and tranform bias to add (eltwise)
-      MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-
-      Tensor::MappingGuard input_mapper(input);
-      Tensor::MappingGuard bias_mapper(bias);
-      Tensor::MappingGuard output_mapper(output);
-
-      const T *input_ptr = input->data<T>();
-      const T *bias_ptr = bias->data<T>();
-      T *output_ptr = output->mutable_data<T>();
-
-      const std::vector<index_t> &shape = input->shape();
-      const index_t channels = *shape.rbegin();
-      utils::ThreadPool
-          &thread_pool = context->device()->cpu_runtime()->thread_pool();
-      if (bias->dim_size() == 1) {
-        const index_t fused_batch = std::accumulate(
-            shape.begin(), shape.end() - 1, 1, std::multiplies<index_t>());
-        thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
-          for (index_t n = start; n < end; n += step) {
-            index_t pos = n * channels;
-            for (index_t c = 0; c < channels; ++c) {
-              output_ptr[pos] = input_ptr[pos] + bias_ptr[c];
-              ++pos;
-            }
-          }
-        }, 0, fused_batch, 1);
-      } else {  // bias is 2d
-        const auto n = shape[0];
-        MACE_CHECK(n == bias->shape()[0]);
-        const index_t fused_hw = std::accumulate(
-            shape.begin() + 1, shape.end() - 1, 1, std::multiplies<index_t>());
-        const auto ch_size = bias->shape()[1];
-        thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
-                                  index_t start1, index_t end1, index_t step1) {
-          for (index_t i = start0; i < end0; i += step0) {
-            auto offset = i * fused_hw;
-            auto bias_offset = i * ch_size;
-            for (index_t j = start1; j < end1; j += step1) {
-              index_t pos = (offset + i) * channels;
-              for (index_t c = 0; c < channels; ++c, ++pos) {
-                output_ptr[pos] = input_ptr[pos] + bias_ptr[bias_offset + c];
-              }
-            }
-          }
-        }, 0, n, 1, 0, fused_hw, 1);
-      }
+    if (input->dim_size() == 4 &&
+        ((has_data_format_ && DataTypeToEnum<T>::value != DT_UINT8) ||
+         input->data_format() == DataFormat::NCHW)) {  // NCHW
+      bias_add_delegator_->Compute(context, input, bias, output, true);
+    } else {  // NHWC
+      bias_add_delegator_->Compute(context, input, bias, output, false);
     }
 
     return MaceStatus::MACE_SUCCESS;
@@ -160,9 +112,11 @@ class BiasAddOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterBiasAdd(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp,
-                   DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU);
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
   MACE_REGISTER_GPU_OP(op_registry, "BiasAdd", BiasAddOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,

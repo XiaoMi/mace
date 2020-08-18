@@ -33,7 +33,8 @@ class BiasAdd : public OpDelegator {
   virtual MaceStatus Compute(const OpContext *context,
                              const Tensor *input,
                              const Tensor *bias,
-                             Tensor *output) = 0;
+                             Tensor *output,
+                             const bool isNCHW = true) = 0;
 };
 
 }  // namespace delegator

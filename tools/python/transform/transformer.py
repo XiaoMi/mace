@@ -866,7 +866,8 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if (((op.type == MaceOp.Conv2D.name
                   or op.type == MaceOp.DepthwiseConv2d.name
-                  or op.type == MaceOp.FullyConnected.name)
+                  or op.type == MaceOp.FullyConnected.name
+                  or op.type == MaceOp.MatMul.name)
                  and len(op.input) == 2)
                 or (op.type == MaceOp.Deconv2D.name
                     and ((ConverterUtil.get_arg(
@@ -1753,7 +1754,8 @@ class Transformer(base_converter.ConverterInterface):
                     check_conv =\
                         ops[0].type in [MaceOp.Conv2D.name,
                                         MaceOp.DepthwiseConv2d.name,
-                                        MaceOp.FullyConnected.name]\
+                                        MaceOp.FullyConnected.name,
+                                        MaceOp.MatMul.name]\
                         and ops[0].input[2] == tensor.name
                 # in tensorflow deconv's bias is the forth input
                 if ops[0].type in [MaceOp.Deconv2D.name,
@@ -2036,7 +2038,8 @@ class Transformer(base_converter.ConverterInterface):
                            MaceOp.BatchToSpaceND.name,
                            MaceOp.SpaceToBatchND.name,
                            MaceOp.SpaceToDepth.name,
-                           MaceOp.DepthToSpace.name]:
+                           MaceOp.DepthToSpace.name,
+                           MaceOp.Transpose.name]:
                 del op.quantize_info[:]
                 producer_op = self._producer[op.input[0]]
                 if producer_op.output[0] in self._option.input_nodes:

@@ -308,6 +308,62 @@ TEST_F(ActivationOpTest, OPENCLSimpleSigmoid) {
   TestSimpleSigmoid<DeviceType::GPU>();
 }
 
+namespace {
+void TestQuantized(const index_t size, const char *type) {
+  OpsTestNet net;
+  std::vector<index_t> input_shape{size};
+  net.AddRandomInput<CPU, float>(
+      "Input", input_shape, false, false);
+  net.AddRandomInput<DeviceType::CPU, float>(
+      "Output", input_shape, false, true, true);
+  OpDefBuilder("Activation", "ActivationTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", type)
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp(CPU);
+
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
+  OpDefBuilder("Activation", "QuantizedActivationTest")
+      .Input("QuantizedInput")
+      .Output("QuantizedOutput")
+      .AddStringArg("activation", type)
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(ActivationOpTest, Quantized) {
+  TestQuantized(64, "RELU");
+  TestQuantized(64, "RELUX");
+  TestQuantized(37, "RELU");
+  TestQuantized(37, "RELUX");
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

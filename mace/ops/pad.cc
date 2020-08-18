@@ -16,6 +16,9 @@
 #include <memory>
 
 #include "mace/core/ops/operator.h"
+#ifdef MACE_ENABLE_QUANTIZE
+#include "mace/core/quantize.h"
+#endif  // MACE_ENABLE_QUANTIZE
 #include "mace/core/registry/ops_registry.h"
 #include "mace/ops/common/pad_type.h"
 #ifdef MACE_ENABLE_OPENCL
@@ -23,6 +26,29 @@
 #endif  // MACE_ENABLE_OPENCL
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
+
+namespace {
+int get_src_idx(int out, int in_size, int pad, int l_add, int r_add) {
+  const int diff_left = pad - out;
+  int in;
+
+  if (diff_left > 0) {
+    in = diff_left + l_add;
+
+  } else {
+    const int diff_right = out - (in_size + pad);
+
+    if (diff_right >= 0) {
+      in = in_size - diff_right + r_add;
+
+    } else {
+      in = -diff_left;
+    }
+  }
+
+  return in;
+}
+}  // namespace
 
 namespace mace {
 namespace ops {
@@ -143,31 +169,128 @@ class PadOp<DeviceType::CPU, T> : public Operation {
   }
 
  private:
-  int get_src_idx(int out, int in_size, int pad, int l_add, int r_add) {
-    const int diff_left = pad - out;
-    int in;
-
-    if (diff_left > 0) {
-      in = diff_left + l_add;
-
-    } else {
-      const int diff_right = out - (in_size + pad);
-
-      if (diff_right >= 0) {
-        in = in_size - diff_right + r_add;
-
-      } else {
-        in = -diff_left;
-      }
-    }
-
-    return in;
-  }
-
   PadType type_;
   std::vector<int> paddings_;
   float constant_value_;
 };
+
+#ifdef MACE_ENABLE_QUANTIZE
+template<>
+class PadOp<DeviceType::CPU, uint8_t> : public Operation {
+ public:
+  explicit PadOp(OpConstructContext *context)
+      : Operation(context),
+        type_(
+            static_cast<PadType>(Operation::GetOptionalArg<int>(
+                "pad_type", static_cast<int>(PadType::CONSTANT)))),
+        paddings_(Operation::GetRepeatedArgs<int>("paddings")),
+        constant_value_(Operation::GetOptionalArg<float>(
+            "constant_value", 0.0)) {
+    MACE_CHECK(paddings_.size() == 8);
+  }
+
+  MaceStatus Run(OpContext *context) override {
+    MACE_UNUSED(context);
+    const Tensor *input = this->Input(0);
+    Tensor *output = this->Output(0);
+    MACE_CHECK(
+        this->paddings_.size() == static_cast<size_t>(input->dim_size()) * 2);
+    auto input_shape = input->shape();
+    for (size_t i = 0; i < paddings_.size(); ++i) {
+      if (type_ == PadType::REFLECT || type_ == PadType::SYMMETRIC) {
+        MACE_CHECK(paddings_[i] < input_shape[i / 2], paddings_[i],
+                   " vs ", input_shape[i / 2]);
+      }
+      MACE_CHECK(paddings_[i] >= 0);
+    }
+    output->SetScale(input->scale());
+    output->SetZeroPoint(input->zero_point());
+    MACE_RETURN_IF_ERROR(output->Resize({input_shape[0] + this->paddings_[0]
+                                             + this->paddings_[1],
+                                         input_shape[1] + this->paddings_[2]
+                                             + this->paddings_[3],
+                                         input_shape[2] + this->paddings_[4]
+                                             + this->paddings_[5],
+                                         input_shape[3] + this->paddings_[6]
+                                             + this->paddings_[7]}));
+
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard output_guard(output);
+    const auto input_ptr = input->data<uint8_t>();
+    auto output_ptr = output->mutable_data<uint8_t>();
+
+    const index_t batch = input->dim(0);
+    const index_t height = input->dim(1);
+    const index_t width = input->dim(2);
+    const index_t channel = input->dim(3);
+
+    if (type_ == PadType::CONSTANT) {
+      uint8_t constant = Quantize<uint8_t>(
+          this->constant_value_, input->scale(), input->zero_point());
+      std::fill(output_ptr, output_ptr + output->size(), constant);
+
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t h = 0; h < height; ++h) {
+          for (index_t w = 0; w < width; ++w) {
+            const index_t in_offset = (((b * height + h) * width) +
+                w) * channel;
+            const index_t out_offset =
+                (((b + this->paddings_[0]) * output->dim(1)
+                    + (h + this->paddings_[2])) * output->dim(2)
+                    + (w + this->paddings_[4])) * output->dim(3)
+                    + this->paddings_[6];
+            memcpy(output_ptr + out_offset,
+                   input_ptr + in_offset,
+                   channel * sizeof(uint8_t));
+          }
+        }
+      }
+    } else if (type_ == PadType::REFLECT || type_ == PadType::SYMMETRIC) {
+      const index_t o_batch = output->dim(0);
+      const index_t o_height = output->dim(1);
+      const index_t o_width = output->dim(2);
+      const index_t o_channel = output->dim(3);
+      const int l_add = type_ == PadType::REFLECT ? 0 : -1;
+      const int r_add = type_ == PadType::REFLECT ? -2 : -1;
+
+      for (index_t b = 0; b < o_batch; ++b) {
+        index_t b_in = get_src_idx(b, batch, paddings_[0], l_add, r_add);
+        for (index_t h = 0; h < o_height; ++h) {
+          index_t h_in = get_src_idx(h, height, paddings_[2], l_add, r_add);
+          for (index_t w = 0; w < o_width; ++w) {
+            index_t w_in = get_src_idx(w, width, paddings_[4], l_add, r_add);
+            const index_t in_offset =
+                (((b_in * height + h_in) * width) + w_in) * channel;
+            index_t out_offset =
+                (((b * o_height + h) * o_width) + w) * o_channel;
+
+            for (index_t i = 0, j = paddings_[6] + l_add;
+                 i < paddings_[6]; ++i, --j) {
+              output_ptr[out_offset++] = input_ptr[in_offset + j];
+            }
+            memcpy(output_ptr + out_offset, input_ptr + in_offset,
+                   channel * sizeof(uint8_t));
+            out_offset += channel;
+            for (index_t i = 0, j = channel + r_add; i < paddings_[7];
+                 ++i, --j) {
+              output_ptr[out_offset++] = input_ptr[in_offset + j];
+            }
+          }
+        }
+      }
+    } else {
+      LOG(FATAL) << "Pad op doesn't support type " << type_;
+    }
+
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+ private:
+  PadType type_;
+  std::vector<int> paddings_;
+  float constant_value_;
+};
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
@@ -202,6 +325,9 @@ class PadOp<DeviceType::GPU, float> : public Operation {
 void RegisterPad(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pad", PadOp, DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Pad", PadOp, DeviceType::CPU);
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_OP(op_registry, "Pad", PadOp, DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Pad", PadOp);
 }

@@ -77,6 +77,11 @@ inline Q Saturate(float value) {
   }
 }
 
+template<typename Q>
+inline Q Quantize(float value, float scale, int32_t zero_point) {
+  return Saturate<Q>(std::roundf(value / scale + zero_point));
+}
+
 inline void FindMinMax(const float *input,
                        const index_t size,
                        float *min_val, float *max_val) {

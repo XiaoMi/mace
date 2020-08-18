@@ -315,8 +315,13 @@ void ExpectTensorSimilar(const Tensor &x,
   double norm_product = sqrt(x_norm) * sqrt(y_norm);
   double error = rel_err * std::abs(dot_product);
 
-  EXPECT_NEAR(dot_product, norm_product, error)
-            << "Shape " << ShapeToString(x);
+  // When y_norm is 0, dot_product and norm_product are all 0
+  if (y_norm == 0.0) {
+    EXPECT_NEAR(x_norm, y_norm, rel_err) << "Shape " << ShapeToString(x);
+  } else {
+    EXPECT_NEAR(dot_product, norm_product, error)
+        << "Shape " << ShapeToString(x);
+  }
 }
 
 }  // namespace test

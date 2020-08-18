@@ -27,24 +27,41 @@ class BiasAdd : public delegator::BiasAdd {
   explicit BiasAdd(const DelegatorParam &param) : delegator::BiasAdd(param) {}
   ~BiasAdd() = default;
 
-  MaceStatus Compute(const OpContext *context, const Tensor *input,
-                     const Tensor *bias, Tensor *output) override;
+  MaceStatus Compute(const OpContext *context,
+                     const Tensor *input,
+                     const Tensor *bias,
+                     Tensor *output,
+                     const bool isNCHW = true) override;
 
  private:
-  void AddBias(const OpContext *context, const Tensor *input,
-               const Tensor *bias, Tensor *output);
+  void AddBias(const OpContext *context,
+               const Tensor *input,
+               const Tensor *bias,
+               Tensor *output,
+               const bool isNCHW = true);
 
-  void Add1DimBias(utils::ThreadPool *thread_pool, const T *input_data,
-                   const T *bias_data, T *output_data,
-                   const index_t batch, const index_t channels,
-                   const index_t image_size);
-
-  void Add2DimsBias(utils::ThreadPool *thread_pool, const T *input_data,
-                    const T *bias_data, T *output_data,
-                    const index_t batch, const index_t channels,
-                    const index_t image_size);
+  template <int Dim>
+  void AddBiasNCHW(utils::ThreadPool *thread_pool,
+                   const Tensor *input,
+                   const Tensor *bias,
+                   Tensor *output);
+  template <int Dim>
+  void AddBiasNHWC(utils::ThreadPool *thread_pool,
+                   const Tensor *input,
+                   const Tensor *bias,
+                   Tensor *output);
 };
 
+template <int Dim>
+inline index_t bias_index(index_t offset, index_t channel) {
+    return offset + channel;
+}
+
+template <>
+inline index_t bias_index<1>(index_t offset, index_t channel) {
+    MACE_UNUSED(offset);
+    return channel;
+}
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

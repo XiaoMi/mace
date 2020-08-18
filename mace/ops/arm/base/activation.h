@@ -35,16 +35,16 @@ class Activation : public delegator::Activation {
   void DoActivation(const OpContext *context,
                     const Tensor *input, Tensor *output);
 
-  void ActivateRelu(utils::ThreadPool *thread_pool, const T *input_data,
-                    const index_t input_size, T *output_data);
-  void ActivateRelux(utils::ThreadPool *thread_pool, const T *input_data,
-                     const index_t input_size, T *output_data);
-  void ActivateLeakyRelu(utils::ThreadPool *thread_pool, const T *input_data,
-                         const index_t input_size, T *output_data);
-  void ActivateTanh(utils::ThreadPool *thread_pool, const T *input_data,
-                    const index_t input_size, T *output_data);
-  void ActivateSigmoid(utils::ThreadPool *thread_pool, const T *input_data,
-                       const index_t input_size, T *output_data);
+  void ActivateRelu(utils::ThreadPool *thread_pool, const Tensor *input,
+                    Tensor *output);
+  void ActivateRelux(utils::ThreadPool *thread_pool, const Tensor *input,
+                     Tensor *output);
+  void ActivateLeakyRelu(utils::ThreadPool *thread_pool, const Tensor *input,
+                         Tensor *output);
+  void ActivateTanh(utils::ThreadPool *thread_pool, const Tensor *input,
+                    Tensor *output);
+  void ActivateSigmoid(utils::ThreadPool *thread_pool, const Tensor *input,
+                       Tensor *output);
 };
 
 }  // namespace arm

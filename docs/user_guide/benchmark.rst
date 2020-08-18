@@ -88,7 +88,7 @@ or for Bazel users:
 
     .. code-block:: bash
 
-        python tools/python/converter.py run --config=/path/to/your/model_deployment.yml --benchmark
+        python tools/converter.py run --config=/path/to/your/model_deployment.yml --benchmark
 
 ======
 Output

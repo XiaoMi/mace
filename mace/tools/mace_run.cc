@@ -225,6 +225,8 @@ bool RunModel(const std::string &model_name,
     }
   }
 
+  // model_weights_data should be kept the lifetime of MaceEngine if device_type
+  // is CPU except half/uint8 weights are used to compress model data size.
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_weights_data =
     make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
   if (FLAGS_model_data_file != "") {

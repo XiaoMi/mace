@@ -48,6 +48,8 @@ class TransposeOp : public Operation {
       output_shape.push_back(input_shape[dims_[i]]);
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+    output->SetScale(input->scale());
+    output->SetZeroPoint(input->zero_point());
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
@@ -69,6 +71,10 @@ void RegisterTranspose(OpRegistry *op_registry) {
                    DeviceType::CPU, half);
   MACE_REGISTER_BF16_OP(op_registry, "Transpose", TransposeOp,
                         DeviceType::CPU);
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
+                   DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 }
 
 }  // namespace ops

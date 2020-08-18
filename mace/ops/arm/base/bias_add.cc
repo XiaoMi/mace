@@ -19,8 +19,11 @@ namespace ops {
 namespace arm {
 
 template<typename T>
-MaceStatus BiasAdd<T>::Compute(const OpContext *context, const Tensor *input,
-                               const Tensor *bias, Tensor *output) {
+MaceStatus BiasAdd<T>::Compute(const OpContext *context,
+                               const Tensor *input,
+                               const Tensor *bias,
+                               Tensor *output,
+                               const bool isNCHW) {
   if (input != output) {
     if (bias == nullptr) {
       output->Copy(*input);
@@ -29,13 +32,13 @@ MaceStatus BiasAdd<T>::Compute(const OpContext *context, const Tensor *input,
       Tensor::MappingGuard input_guard(input);
       Tensor::MappingGuard bias_guard(bias);
       Tensor::MappingGuard output_guard(output);
-      AddBias(context, input, bias, output);
+      AddBias(context, input, bias, output, isNCHW);
     }
   } else {
     if (bias != nullptr) {
       Tensor::MappingGuard input_guard(input);
       Tensor::MappingGuard bias_guard(bias);
-      AddBias(context, input, bias, output);
+      AddBias(context, input, bias, output, isNCHW);
     }
   }
 
@@ -43,28 +46,26 @@ MaceStatus BiasAdd<T>::Compute(const OpContext *context, const Tensor *input,
 }
 
 template<typename T>
-void BiasAdd<T>::AddBias(const OpContext *context, const Tensor *input,
-                         const Tensor *bias, mace::Tensor *output) {
-  auto input_data = input->data<T>();
-  auto bias_data = bias->data<T>();
-  auto output_data = output->mutable_data<T>();
-
-  const index_t batch = input->dim(0);
-  const index_t channels = input->dim(1);
-
-  const index_t height = input->dim(2);
-  const index_t width = input->dim(3);
-  const index_t image_size = height * width;
-
+void BiasAdd<T>::AddBias(const OpContext *context,
+                         const Tensor *input,
+                         const Tensor *bias,
+                         mace::Tensor *output,
+                         const bool isNCHW) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
-  if (bias->dim_size() == 1) {
-    Add1DimBias(&thread_pool, input_data, bias_data,
-                output_data, batch, channels, image_size);
+  if (isNCHW) {
+    if (bias->dim_size() == 1) {
+      AddBiasNCHW<1>(&thread_pool, input, bias, output);
+    } else {
+      AddBiasNCHW<2>(&thread_pool, input, bias, output);
+    }
   } else {
-    Add2DimsBias(&thread_pool, input_data, bias_data,
-                     output_data, batch, channels, image_size);
+    if (bias->dim_size() == 1) {
+      AddBiasNHWC<1>(&thread_pool, input, bias, output);
+    } else {
+      AddBiasNHWC<2>(&thread_pool, input, bias, output);
+    }
   }
 }
 
@@ -72,6 +73,11 @@ void RegisterBiasAddDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, BiasAdd<float>, DelegatorParam,
       MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float, ImplType::NEON));
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_DELEGATOR(
+      registry, BiasAdd<uint8_t>, DelegatorParam,
+      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, uint8_t, ImplType::NEON));
+#endif  // MACE_ENABLE_QUANTIZE
 }
 
 }  // namespace arm

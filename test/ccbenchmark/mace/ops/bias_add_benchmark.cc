@@ -27,14 +27,14 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == DeviceType::CPU && DataTypeToEnum<T>::value != DT_UINT8) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
-    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
-    MACE_NOT_IMPLEMENTED;
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   }
   net.AddRandomInput<D, T>("Bias", {channels}, true, true);
+  net.GetTensor("Input")->SetScale(0.1);
+  net.GetTensor("Bias")->SetScale(0.1);
 
   OpDefBuilder("BiasAdd", "BiasAddBM")
       .Input("Input")
@@ -44,17 +44,18 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(D);
+  net.GetTensor("Output")->SetScale(0.1);
+
   // Warm-up
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
-  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
-  net.Sync();
 }
 }  // namespace
 
@@ -67,12 +68,21 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   }                                                                       \
   MACE_BENCHMARK(MACE_BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#ifdef MACE_ENABLE_OPENCL
+#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_BIAS_ADD(N, C, H, W)                 \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, CPU);  \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU);    \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU);
+#elif defined(MACE_ENABLE_OPENCL)
 #define MACE_BM_BIAS_ADD(N, C, H, W)                 \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU);    \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU);
-#else
+#elif defined(MACE_ENABLE_QUANTIZE)
+#define MACE_BM_BIAS_ADD(N, C, H, W)                 \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, CPU);
 #define MACE_BM_BIAS_ADD(N, C, H, W)                 \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);
 #endif
