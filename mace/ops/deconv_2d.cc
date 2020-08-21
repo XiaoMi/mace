@@ -248,7 +248,7 @@ void RegisterDeconv2D(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("Deconv2D").SetInputMemoryTypeSetter(
           [](OpConditionContext *context) -> void {
-            SetFilterMemoryType(context, OpenCLBufferType::DW_CONV2D_FILTER);
+            SetFilterMemoryType(context, OpenCLBufferType::CONV2D_FILTER);
             if (context->device()->device_type() == DeviceType::GPU) {
               FrameworkType framework_type =
                   static_cast<FrameworkType>(
