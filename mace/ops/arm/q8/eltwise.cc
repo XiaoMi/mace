@@ -23,7 +23,31 @@ namespace mace {
 namespace ops {
 namespace arm {
 namespace q8 {
-
+namespace {
+template <EltwiseType ET, typename T>
+inline T EltCompute(T input0, T input1) {
+  MACE_UNUSED(input0);
+  MACE_UNUSED(input1);
+  MACE_NOT_IMPLEMENTED;
+  return input0;
+}
+template <>
+inline int32x4_t EltCompute<SUM>(int32x4_t input0, int32x4_t input1) {
+  return vaddq_s32(input0, input1);
+}
+template <>
+inline int32x4_t EltCompute<SUB>(int32x4_t input0, int32x4_t input1) {
+  return vsubq_s32(input0, input1);
+}
+template <>
+inline int32_t EltCompute<SUM>(int32_t input0, int32_t input1) {
+  return input0 + input1;
+}
+template <>
+inline int32_t EltCompute<SUB>(int32_t input0, int32_t input1) {
+  return input0 - input1;
+}
+}  // namespace
 class Eltwise : public delegator::Eltwise {
  public:
   explicit Eltwise(const delegator::EltwiseParam &param)
@@ -32,16 +56,32 @@ class Eltwise : public delegator::Eltwise {
 
   MaceStatus Compute(const OpContext *context, const Tensor *input0,
                      const Tensor *input1, Tensor *output) override;
+
+ private:
+  template <EltwiseType ET>
+  MaceStatus ComputeSumSub(const OpContext *context, const Tensor *input0,
+                           const Tensor *input1, Tensor *output);
 };
 
 MaceStatus Eltwise::Compute(const OpContext *context,
                             const Tensor *input0,
                             const Tensor *input1,
                             Tensor *output) {
-  MACE_UNUSED(context);
-  MACE_CHECK(type_ == SUM || type_ == SUB,
-             "Quantized Elementwise only support SUM and SUB now.");
+  if (type_ == SUM) {
+    return ComputeSumSub<SUM>(context, input0, input1, output);
+  } else if (type_ == SUB) {
+    return ComputeSumSub<SUB>(context, input0, input1, output);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+}
 
+template <EltwiseType ET>
+MaceStatus Eltwise::ComputeSumSub(const OpContext *context,
+                                  const Tensor *input0,
+                                  const Tensor *input1,
+                                  Tensor *output) {
   constexpr int left_shift = 20;
   const double doubled_scale = 2 * std::max(input0->scale(), input1->scale());
   const double adjusted_input0_scale = input0->scale() / doubled_scale;
@@ -101,14 +141,8 @@ MaceStatus Eltwise::Compute(const OpContext *context,
           input0_high_s32 = vshlq_s32(input0_high_s32, input0_shift_dup);
           input1_low_s32 = vshlq_s32(input1_low_s32, input1_shift_dup);
           input1_high_s32 = vshlq_s32(input1_high_s32, input1_shift_dup);
-          int32x4_t res_low, res_high;
-          if (type_ == SUM) {
-            res_low = vaddq_s32(input0_low_s32, input1_low_s32);
-            res_high = vaddq_s32(input0_high_s32, input1_high_s32);
-          } else {
-            res_low = vsubq_s32(input0_low_s32, input1_low_s32);
-            res_high = vsubq_s32(input0_high_s32, input1_high_s32);
-          }
+          int32x4_t res_low = EltCompute<ET>(input0_low_s32, input1_low_s32);
+          int32x4_t res_high = EltCompute<ET>(input0_high_s32, input1_high_s32);
           res_low = vqrdmulhq_n_s32(res_low, output_multiplier);
           res_high = vqrdmulhq_n_s32(res_high, output_multiplier);
           res_low = gemmlowp::RoundingDivideByPOT(res_low, -output_shift);
@@ -141,12 +175,7 @@ MaceStatus Eltwise::Compute(const OpContext *context,
                                                           input1_multiplier),
               -input1_shift);
 
-          int32_t res;
-          if (type_ == SUM) {
-            res = multiplied_input0 + multiplied_input1;
-          } else {
-            res = multiplied_input0 - multiplied_input1;
-          }
+          int32_t res = EltCompute<ET>(multiplied_input0, multiplied_input1);
 
           const int32_t output_val =
               gemmlowp::RoundingDivideByPOT(
@@ -161,6 +190,15 @@ MaceStatus Eltwise::Compute(const OpContext *context,
 
   return MaceStatus::MACE_SUCCESS;
 }
+
+template MaceStatus Eltwise::ComputeSumSub<SUM>(const OpContext *context,
+                                                const Tensor *input0,
+                                                const Tensor *input1,
+                                                Tensor *output);
+template MaceStatus Eltwise::ComputeSumSub<SUB>(const OpContext *context,
+                                                const Tensor *input0,
+                                                const Tensor *input1,
+                                                Tensor *output);
 
 void RegisterEltwiseDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(

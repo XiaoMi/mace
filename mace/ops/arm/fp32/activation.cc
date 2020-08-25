@@ -23,9 +23,11 @@ namespace arm {
 
 template<>
 void Activation<float>::ActivateRelu(utils::ThreadPool *thread_pool,
-                                     const float *input_data,
-                                     const index_t input_size,
-                                     float *output_data) {
+                                     const Tensor *input,
+                                     Tensor *output) {
+  const auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+  const index_t input_size = input->size();
   const float32x4_t vzero = vdupq_n_f32(0.f);
   const index_t block_count = input_size / 4;
 
@@ -53,9 +55,11 @@ void Activation<float>::ActivateRelu(utils::ThreadPool *thread_pool,
 
 template<>
 void Activation<float>::ActivateRelux(utils::ThreadPool *thread_pool,
-                                      const float *input_data,
-                                      const index_t input_size,
-                                      float *output_data) {
+                                      const Tensor *input,
+                                      Tensor *output) {
+  const auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+  const index_t input_size = input->size();
   const float32x4_t vzero = vdupq_n_f32(0.f);
   const float32x4_t vlimit = vdupq_n_f32(limit_);
   const index_t block_count = input_size / 4;
@@ -85,9 +89,11 @@ void Activation<float>::ActivateRelux(utils::ThreadPool *thread_pool,
 
 template<>
 void Activation<float>::ActivateLeakyRelu(utils::ThreadPool *thread_pool,
-                                          const float *input_data,
-                                          const index_t input_size,
-                                          float *output_data) {
+                                          const Tensor *input,
+                                          Tensor *output) {
+  const auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+  const index_t input_size = input->size();
   const float32x4_t vzero = vdupq_n_f32(0.f);
   const float32x4_t valpha = vdupq_n_f32(leakyrelu_coefficient_);
   const index_t block_count = input_size / 4;
@@ -119,9 +125,12 @@ void Activation<float>::ActivateLeakyRelu(utils::ThreadPool *thread_pool,
 
 template<>
 void Activation<float>::ActivateTanh(utils::ThreadPool *thread_pool,
-                                     const float *input_data,
-                                     const index_t input_size,
-                                     float *output_data) {
+                                     const Tensor *input,
+                                     Tensor *output) {
+  const auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+  const index_t input_size = input->size();
+
   thread_pool->Compute1D(
       [=](index_t start, index_t end, index_t step) {
         for (index_t i = start; i < end; i += step) {
@@ -133,9 +142,12 @@ void Activation<float>::ActivateTanh(utils::ThreadPool *thread_pool,
 
 template<>
 void Activation<float>::ActivateSigmoid(utils::ThreadPool *thread_pool,
-                                        const float *input_data,
-                                        const index_t input_size,
-                                        float *output_data) {
+                                        const Tensor *input,
+                                        Tensor *output) {
+  const auto input_data = input->data<float>();
+  auto output_data = output->mutable_data<float>();
+  const index_t input_size = input->size();
+
   thread_pool->Compute1D(
       [=](index_t start, index_t end, index_t step) {
         for (index_t i = start; i < end; i += step) {

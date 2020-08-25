@@ -163,8 +163,8 @@ MaceStatus Gemv<OUTPUT_TYPE>::Compute(const OpContext *context,
         }
 
         if (is_output_type_uint8_) {
-          *output_ptr =
-              Saturate<uint8_t>(std::roundf(ret * output_multiplier_float));
+          *output_ptr = Saturate<uint8_t>(std::roundf(
+              ret * output_multiplier_float + output->zero_point()));
         } else {
           *output_ptr = ret;
         }

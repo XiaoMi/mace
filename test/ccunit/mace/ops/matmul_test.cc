@@ -182,8 +182,8 @@ void QuantOutputUint8(const std::vector<index_t> &batch,
   if (rhs_batched) {
     rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
-  net.AddRandomInput<CPU, float>("A", lhs_shape);
-  net.AddRandomInput<CPU, float>("B", rhs_shape);
+  net.AddRandomInput<CPU, float>("A", lhs_shape, false, false);
+  net.AddRandomInput<CPU, float>("B", rhs_shape, false, false);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
@@ -276,8 +276,8 @@ void QuantOutputInt32(const std::vector<index_t> &batch,
   if (rhs_batched) {
     rhs_shape.insert(rhs_shape.begin(), batch.begin(), batch.end());
   }
-  net.AddRandomInput<CPU, float>("A", lhs_shape);
-  net.AddRandomInput<CPU, float>("B", rhs_shape);
+  net.AddRandomInput<CPU, float>("A", lhs_shape, false, false);
+  net.AddRandomInput<CPU, float>("B", rhs_shape, false, false);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
@@ -408,10 +408,16 @@ TEST_F(MatMulOpTest, QuantOutputUint8) {
   QuantOutputUint8({1}, 64, 128, 32, true, true);
   QuantOutputUint8({1}, 64, 32, 128, true, true);
   QuantOutputUint8({2, 3}, 64, 32, 128, true, true);
+  QuantOutputUint8({1}, 1, 30000, 256, false, true);
+  QuantOutputUint8({1}, 30000, 256, 1, false, false);
+  QuantOutputUint8({2}, 1, 256, 128, false, true);
+  QuantOutputUint8({3}, 128, 256, 1, false, false);
   // UnAligned
   QuantOutputUint8({16}, 31, 61, 67, false, true);
   QuantOutputUint8({31}, 31, 61, 67, true, false);
   QuantOutputUint8({2, 3}, 31, 61, 67, true, true);
+  QuantOutputUint8({1}, 1, 30001, 253, false, true);
+  QuantOutputUint8({2}, 253, 300, 1, false, false);
 
   QuantOutputUint8({2, 3}, 31, 61, 67, true, true, true, false);
   QuantOutputUint8({2, 3}, 31, 61, 67, true, true, false, true);

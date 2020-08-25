@@ -121,6 +121,10 @@ void RegisterActivation(OpRegistry *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Activation",
                         ActivationOp, DeviceType::CPU);
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_OP(op_registry, "Activation", ActivationOp,
+                   DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
   MACE_REGISTER_GPU_OP(op_registry, "Activation", ActivationOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,

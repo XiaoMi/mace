@@ -37,36 +37,32 @@ template<typename T>
 void Activation<T>::DoActivation(const OpContext *context,
                                  const Tensor *input,
                                  Tensor *output) {
-  const T *input_data = input->data<T>();
-  T *output_data = output->mutable_data<T>();
-  const index_t size = input->size();
-
   utils::ThreadPool &thread_pool =
       context->device()->cpu_runtime()->thread_pool();
 
   switch (type_) {
     case RELU: {
-      ActivateRelu(&thread_pool, input_data, size, output_data);
+      ActivateRelu(&thread_pool, input, output);
       break;
     }
 
     case RELUX: {
-      ActivateRelux(&thread_pool, input_data, size, output_data);
+      ActivateRelux(&thread_pool, input, output);
       break;
     }
 
     case LEAKYRELU: {
-      ActivateLeakyRelu(&thread_pool, input_data, size, output_data);
+      ActivateLeakyRelu(&thread_pool, input, output);
       break;
     }
 
     case TANH: {
-      ActivateTanh(&thread_pool, input_data, size, output_data);
+      ActivateTanh(&thread_pool, input, output);
       break;
     }
 
     case SIGMOID: {
-      ActivateSigmoid(&thread_pool, input_data, size, output_data);
+      ActivateSigmoid(&thread_pool, input, output);
       break;
     }
 
@@ -84,6 +80,11 @@ void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Activation<float>, delegator::ActivationParam,
       MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, float, ImplType::NEON));
+#ifdef MACE_ENABLE_QUANTIZE
+  MACE_REGISTER_DELEGATOR(
+      registry, Activation<uint8_t>, delegator::ActivationParam,
+      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, uint8_t, ImplType::NEON));
+#endif  // MACE_ENABLE_QUANTIZE
 }
 
 }  // namespace arm

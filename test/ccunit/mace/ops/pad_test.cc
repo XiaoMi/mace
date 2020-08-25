@@ -470,6 +470,78 @@ TEST_F(PadTest, SymmetricCPU) {
       expected_data, paddings, PadType::SYMMETRIC);
 }
 
+namespace {
+void TestQuantized(const std::vector<int> &paddings,
+                   const int pad_type) {
+  static unsigned int seed = time(NULL);
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t height = 64 + rand_r(&seed) % 50;
+  index_t width = 64 + rand_r(&seed) % 50;
+
+  OpsTestNet net;
+  std::vector<index_t> input_shape{batch, height, width, channels};
+  net.AddRandomInput<CPU, float>(
+      "Input", input_shape, false, false);
+  net.TransformDataFormat<CPU, float>(
+      "Input", DataFormat::NHWC, "TInput", DataFormat::NCHW);
+  OpDefBuilder("Pad", "PadTest")
+      .Input("TInput")
+      .Output("TOutput")
+      .AddIntsArg("paddings", paddings)
+      .AddIntArg("pad_type", pad_type)
+      .AddFloatArg("constant_value", 1.0)
+      .AddIntArg("has_data_format", 1)
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp();
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "TOutput", DataFormat::NCHW, "Output", DataFormat::NHWC);
+
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
+  OpDefBuilder("Pad", "QuantizedPadTest")
+      .Input("QuantizedInput")
+      .Output("QuantizedOutput")
+      .AddIntsArg("paddings", paddings)
+      .AddIntArg("pad_type", pad_type)
+      .AddFloatArg("constant_value", 1.0)
+      .AddIntArg("has_data_format", 1)
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(PadTest, Quantized) {
+  for (int i = PadType::CONSTANT; i <= PadType::SYMMETRIC; i++) {
+    TestQuantized({0, 0, 2, 2, 1, 1, 0, 0}, i);
+    TestQuantized({0, 0, 2, 0, 1, 0, 0, 0}, i);
+    TestQuantized({0, 0, 0, 1, 0, 2, 0, 0}, i);
+  }
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
