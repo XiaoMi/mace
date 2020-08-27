@@ -21,6 +21,7 @@ Operator lists
     "DEPTH_TO_SPACE","Y",""
     "DEQUANTIZE","Y","Model quantization will be supported later."
     "ELEMENT_WISE","Y","ADD/MUL/DIV/MIN/MAX/NEG/ABS/SQR_DIFF/POW/RSQRT/SQRT/EQUAL/FLOOR_DIV"
+    "ELU","Y",""
     "EMBEDDING_LOOKUP","Y",""
     "EXPANDDIMS","Y","Only CPU and TensorFlow is supported."
     "FILL","Y","Only CPU and TensorFlow is supported."

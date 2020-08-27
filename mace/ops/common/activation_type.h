@@ -26,6 +26,7 @@ enum ActivationType {
   TANH = 4,
   SIGMOID = 5,
   LEAKYRELU = 6,
+  ELU = 7,
 };
 
 }  // namespace ops

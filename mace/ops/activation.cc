@@ -54,7 +54,7 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
-    if (activation_type_ == PRELU) {
+    if (activation_type_ == PRELU || activation_type_ == ELU) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input));
       const T *input_ptr = input->data<T>();
       T *output_ptr = output->mutable_data<T>();
@@ -63,8 +63,8 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
       const T *alpha_ptr = alpha->data<T>();
       const index_t outer_size = output->dim(0);
       const index_t inner_size = output->dim(2) * output->dim(3);
-      PReLUActivation(context, input_ptr, outer_size, input->dim(1), inner_size,
-                      alpha_ptr, output_ptr);
+      ActivationWithAlpha(context, input_ptr, outer_size, input->dim(1),
+                          inner_size, alpha_ptr, activation_type_, output_ptr);
     } else {
       activation_delegator_->Compute(context, input, output);
     }
@@ -96,7 +96,7 @@ class ActivationOp<DeviceType::GPU, float> : public Operation {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
-    if (type == ActivationType::PRELU) {
+    if (type == ActivationType::PRELU || type == ActivationType::ELU) {
       MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);

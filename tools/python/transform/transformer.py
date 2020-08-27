@@ -977,7 +977,10 @@ class Transformer(base_converter.ConverterInterface):
                                          [ActivationType.RELU.name,
                                           ActivationType.RELUX.name])
                     else:
-                        fold_consumer = (act_type != ActivationType.PRELU.name)
+                        fold_consumer = (
+                            act_type != ActivationType.PRELU.name
+                            and act_type != ActivationType.ELU.name
+                        )
                     # during quantization, only fold relu/relux
                     if (self._option.quantize_stat or self._option.quantize) \
                             and act_type not in [ActivationType.RELU.name,

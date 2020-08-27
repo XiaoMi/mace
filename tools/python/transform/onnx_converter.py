@@ -85,7 +85,7 @@ OnnxSupportedOps = [
     'Div',
     'Dropout',
     'DynamicLSTM',
-    # 'Elu',
+    'Elu',
     'Equal',
     # 'Exp',
     # 'Expand',
@@ -323,6 +323,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         OnnxOpType.Relu.name: ActivationType.RELU,
         OnnxOpType.LeakyRelu.name: ActivationType.LEAKYRELU,
         OnnxOpType.PRelu.name: ActivationType.PRELU,
+        OnnxOpType.Elu.name: ActivationType.ELU,
         OnnxOpType.Tanh.name: ActivationType.TANH,
         OnnxOpType.Sigmoid.name: ActivationType.SIGMOID,
     }
@@ -348,6 +349,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Dropout.name: self.convert_dropout,
             OnnxOpType.DimRange.name: self.convert_dim_range,
             OnnxOpType.Div.name: self.convert_eltwise,
+            OnnxOpType.Elu.name: self.convert_activation,
             OnnxOpType.Equal.name: self.convert_eltwise,
             OnnxOpType.ExtractPooling.name: self.convert_extract_pooling,
             OnnxOpType.Flatten.name: self.convert_flatten,
@@ -627,7 +629,11 @@ class OnnxConverter(base_converter.ConverterInterface):
         type_arg.s = six.b(self.activation_type[node.op_type].name)
 
         if "alpha" in node.attrs:
-            alpha_value = node.attrs["alpha"]
+            alpha_tensor_name = node.name + '_alpha'
+            alpha_value = np.array([node.attrs["alpha"]])
+            self.add_tensor(alpha_tensor_name, alpha_value.reshape(-1).shape,
+                            mace_pb2.DT_FLOAT, alpha_value)
+            op.input.extend([alpha_tensor_name])
         else:
             if node.op_type == OnnxOpType.LeakyRelu.name:
                 alpha_value = 0.01

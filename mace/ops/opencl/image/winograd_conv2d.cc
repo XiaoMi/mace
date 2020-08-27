@@ -161,6 +161,10 @@ MaceStatus WinogradOutputTransform(OpContext *context,
         built_options.emplace("-DUSE_PRELU");
         break;
       }
+      case ELU: {
+        built_options.emplace("-DUSE_ELU");
+        break;
+      }
       case TANH: {
         built_options.emplace("-DUSE_TANH");
         break;
