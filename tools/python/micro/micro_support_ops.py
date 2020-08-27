@@ -96,6 +96,8 @@ McSupportedOps = [
                  mace_pb2.DT_FLOAT, DataFormat.NHWC),
     OpDescriptor('micro/ops/expand_dims.h', 'ExpandDimsOp',
                  MaceOp.ExpandDims.name, mace_pb2.DT_FLOAT, DataFormat.NHWC),
+    OpDescriptor('micro/ops/concat.h', 'ConcatOp<mifloat>', MaceOp.Concat.name,
+                 mace_pb2.DT_FLOAT, DataFormat.NHWC),
     OpDescriptor('micro/ops/nhwc/depthwise_conv_2d_ref.h',
                  'DepthwiseConv2dRefOp',
                  MaceOp.DepthwiseConv2d.name, mace_pb2.DT_FLOAT,
