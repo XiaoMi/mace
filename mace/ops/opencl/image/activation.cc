@@ -58,6 +58,11 @@ MaceStatus ActivationKernel::Compute(
         built_options.emplace("-DUSE_PRELU");
         break;
       }
+      case ELU: {
+        tuning_key_prefix_ = "elu_opencl_kernel";
+        built_options.emplace("-DUSE_ELU");
+        break;
+      }
       case TANH: {
         tuning_key_prefix_ = "tanh_opencl_kernel";
         built_options.emplace("-DUSE_TANH");
@@ -94,7 +99,7 @@ MaceStatus ActivationKernel::Compute(
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
     kernel_.setArg(idx++, *(input->opencl_image()));
-    if (activation_ == PRELU) {
+    if (activation_ == PRELU || activation_ == ELU) {
       MACE_CHECK_NOTNULL(alpha);
       kernel_.setArg(idx++, *(alpha->opencl_image()));
     }

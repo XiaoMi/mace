@@ -49,6 +49,7 @@ class ActivationType(Enum):
     TANH = 4
     SIGMOID = 5
     LEAKYRELU = 6
+    ELU = 7
 
 
 class EltwiseType(Enum):

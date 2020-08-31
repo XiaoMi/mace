@@ -83,8 +83,8 @@ inline float4 do_sigmoid(float4 in) {
 
 #ifdef DATA_TYPE
 inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
-#ifdef USE_PRELU
-                                DATA_TYPE4 prelu_alpha,
+#if defined (USE_PRELU) || defined (USE_ELU)
+                                DATA_TYPE4 alpha,
 #endif
                                 __private const float relux_max_limit,
                                 __private const float leakyrelu_coefficient) {
@@ -96,7 +96,10 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
   out = clamp(in, (DATA_TYPE4)0, relux_max_limit);
 #endif
 #ifdef USE_PRELU
-  out = select(prelu_alpha * in, in, in >= (DATA_TYPE)0);
+  out = select(alpha * in, in, in >= (DATA_TYPE)0);
+#endif
+#ifdef USE_ELU
+  out = select(alpha * (native_exp(in) - 1.0f), in, in >= (DATA_TYPE)0);
 #endif
 #ifdef USE_TANH
   out = tanh(in);

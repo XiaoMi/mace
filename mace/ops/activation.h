@@ -42,6 +42,8 @@ inline ActivationType StringToActivationType(const std::string type) {
     return ActivationType::NOOP;
   } else if (type == "LEAKYRELU") {
     return ActivationType::LEAKYRELU;
+  } else if (type == "ELU") {
+    return ActivationType::ELU;
   } else {
     LOG(FATAL) << "Unknown activation type: " << type;
   }
@@ -49,13 +51,14 @@ inline ActivationType StringToActivationType(const std::string type) {
 }
 
 template<typename T>
-void PReLUActivation(const OpContext *context,
-                     const T *input_ptr,
-                     const index_t outer_size,
-                     const index_t input_chan,
-                     const index_t inner_size,
-                     const T *alpha_ptr,
-                     T *output_ptr) {
+void ActivationWithAlpha(const OpContext *context,
+                         const T *input_ptr,
+                         const index_t outer_size,
+                         const index_t input_chan,
+                         const index_t inner_size,
+                         const T *alpha_ptr,
+                         const index_t activation_type,
+                         T *output_ptr) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
@@ -66,7 +69,12 @@ void PReLUActivation(const OpContext *context,
         for (index_t j = 0; j < inner_size; ++j) {
           index_t idx = i * input_chan * inner_size + chan_idx * inner_size + j;
           if (input_ptr[idx] < 0) {
-            output_ptr[idx] = input_ptr[idx] * alpha_ptr[chan_idx];
+            if (activation_type == ActivationType::PRELU) {
+              output_ptr[idx] = input_ptr[idx] * alpha_ptr[chan_idx];
+            } else if (activation_type == ActivationType::ELU) {
+              output_ptr[idx] =
+                  (std::exp(input_ptr[idx]) - 1) * alpha_ptr[chan_idx];
+            }
           } else {
             output_ptr[idx] = input_ptr[idx];
           }
@@ -75,7 +83,6 @@ void PReLUActivation(const OpContext *context,
     }
   }, 0, outer_size, 1, 0, input_chan, 1);
 }
-
 }  // namespace ops
 }  // namespace mace
 

@@ -3,7 +3,7 @@
 __kernel void activation(OUT_OF_RANGE_PARAMS
                          GLOBAL_WORK_GROUP_SIZE_DIM3
                          __read_only image2d_t input,
-#ifdef USE_PRELU
+#if defined (USE_PRELU) || defined (USE_ELU)
                          __read_only image2d_t alpha,
 #endif
                          __private const float relux_max_limit,
@@ -23,9 +23,9 @@ __kernel void activation(OUT_OF_RANGE_PARAMS
 
   const int pos = mad24(ch_blk, width, w);
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
-#ifdef USE_PRELU
-  DATA_TYPE4 prelu_alpha = READ_IMAGET(alpha, SAMPLER, (int2)(ch_blk, 0));
-  DATA_TYPE4 out = do_activation(in, prelu_alpha, relux_max_limit, leakyrelu_coefficient);
+#if defined (USE_PRELU) || defined (USE_ELU)
+  DATA_TYPE4 activation_alpha = READ_IMAGET(alpha, SAMPLER, (int2)(ch_blk, 0));
+  DATA_TYPE4 out = do_activation(in, activation_alpha, relux_max_limit, leakyrelu_coefficient);
 #else
   DATA_TYPE4 out = do_activation(in, relux_max_limit, leakyrelu_coefficient);
 #endif

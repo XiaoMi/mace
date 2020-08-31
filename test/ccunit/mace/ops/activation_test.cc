@@ -237,6 +237,59 @@ TEST_F(ActivationOpTest, OPENCLSimplePrelu) {
 
 namespace {
 template <DeviceType D>
+void TestSimpleElu() {
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<D, float>(
+      "Input", {2, 2, 2, 2},
+      {-7, 7, -6, 6, -5, -5, -4, -4, -3, 3, -2, 2, -1, -1, 0, 0});
+  net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0}, true);
+
+  if (D == DeviceType::GPU) {
+    OpDefBuilder("Activation", "EluTest")
+        .Input("Input")
+        .Input("Alpha")
+        .Output("Output")
+        .AddStringArg("activation", "ELU")
+        .Finalize(net.NewOperatorDef());
+
+    // Run
+    net.RunOp(D);
+  } else {
+    net.TransformDataFormat<D, float>(
+        "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
+    OpDefBuilder("Activation", "EluTest")
+        .Input("InputNCHW")
+        .Input("Alpha")
+        .Output("OutputNCHW")
+        .AddStringArg("activation", "ELU")
+        .Finalize(net.NewOperatorDef());
+
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<D, float>(
+        "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
+  }
+
+  auto expected = net.CreateTensor<float>(
+      {2, 2, 2, 2},
+      {-1.998176236068891, 7, -1.9950424956466672, 6, -1.986524106001829,
+       -2.9797861590027437, -1.9633687222225316, -2.9450530833337973,
+       -1.900425863264272, 3, -1.7293294335267746, 2, -1.2642411176571153,
+       -1.896361676485673, 0, 0});
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+}  // namespace
+
+TEST_F(ActivationOpTest, CPUSimpleElu) { TestSimpleElu<DeviceType::CPU>(); }
+
+TEST_F(ActivationOpTest, OPENCLSimpleElu) {
+  TestSimpleElu<DeviceType::GPU>();
+}
+
+namespace {
+template <DeviceType D>
 void TestSimpleTanh() {
   OpsTestNet net;
 
