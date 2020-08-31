@@ -41,6 +41,7 @@ class ScratchComputer:
             MaceOp.Shape: self.scratch_size_no_need,
             MaceOp.Reshape: self.scratch_size_no_need,
             MaceOp.ExpandDims: self.scratch_size_of_expand_dims,
+            MaceOp.Concat: self.scratch_size_of_concat,
             MaceOp.MatMul: self.scratch_size_of_matmul,
             MaceOp.Pooling: self.scratch_size_of_pooling,
             MaceOp.DepthwiseConv2d: self.scratch_size_of_depthwise_conv,
@@ -131,3 +132,7 @@ class ScratchComputer:
     def scratch_size_eltwise(self, op_def):
         input0_dims = self.get_op_input_dims(op_def, 0)
         return len(input0_dims) * self.get_data_bytes(mace_pb2.DT_INT32) * 3
+
+    def scratch_size_of_concat(self, op_def):
+        # On a 64bit operating system, one pointer data need 8 bytes
+        return len(op_def.input) * self.get_data_bytes(mace_pb2.DT_INT32) * 3
