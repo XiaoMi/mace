@@ -67,15 +67,14 @@ namespace log {
     }                                               \
   }
 
-#define MACE_RETURN_IF_ERROR(stmt)               \
-  {                                              \
-    MaceStatus status = (stmt);                  \
-    if (status != MACE_SUCCESS) {                \
-      LOG(INFO) << static_cast<int32_t>(stmt)    \
-                << " failed with error: "        \
-                << static_cast<int32_t>(status); \
-      return status;                             \
-    }                                            \
+#define MACE_RETURN_IF_ERROR(stmt)                 \
+  {                                                \
+    MaceStatus status = (stmt);                    \
+    if (status != MACE_SUCCESS) {                  \
+      LOG(INFO) << #stmt << " failed with error: " \
+                << status;                         \
+      return status;                               \
+    }                                              \
   }
 
 }  // namespace log
