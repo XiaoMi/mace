@@ -41,10 +41,10 @@ DeviceType NetOptimizer::SelectBestDevice(
   }
   // Greedy strategy: Use input op's device type as current op's device
   for (auto device_type : inputs_op_devices) {
-    if (device_type != best_device) {
-      best_device = device_type;
+    if (device_type == best_device) {
+      return best_device;
     }
   }
-  return best_device;
+  return DeviceType::CPU;
 }
 }  // namespace mace
