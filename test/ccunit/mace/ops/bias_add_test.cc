@@ -309,6 +309,50 @@ TEST_F(BiasAddOpTest, Quantized) {
   TestQuantized(true, true);
 }
 
+#ifdef MACE_ENABLE_BFLOAT16
+TEST_F(BiasAddOpTest, BFloat16) {
+  // generate random input
+  static unsigned int seed = time(NULL);
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t height = 103 + rand_r(&seed) % 100;
+  index_t width = 113 + rand_r(&seed) % 100;
+
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<DeviceType::CPU, float>("Input",
+                                             {batch, channels, height, width});
+  net.AddRandomInput<DeviceType::CPU, float>("Bias", {channels}, true);
+
+  net.Cast<DeviceType::CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<DeviceType::CPU, float, BFloat16>("Bias", "BF16Bias");
+
+  // Construct graph
+  OpDefBuilder("BiasAdd", "BiasAddTest")
+      .Input("Input")
+      .Input("Bias")
+      .AddIntArg("has_data_format", 1)
+      .Output("Output")
+      .AddIntArg("T", static_cast<int>(DT_FLOAT))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("BiasAdd", "BF16BiasAddTest")
+      .Input("BF16Input")
+      .Input("BF16Bias")
+      .AddIntArg("has_data_format", 1)
+      .Output("BF16Output")
+      .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  net.Cast<DeviceType::CPU, BFloat16, float>("BF16Output", "CastOutput");
+
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("CastOutput"), 1e-5);
+}
+#endif  // MACE_ENABLE_BFLOAT16
 
 }  // namespace test
 }  // namespace ops

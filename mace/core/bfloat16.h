@@ -62,27 +62,27 @@ class BFloat16 {
   }
 
   template<typename T>
-  BFloat16 operator+(T value) const {
-    return BFloat16(Sphinx(
-        static_cast<uint32_t>(data_ << 16)).f + static_cast<float>(value));
+  float operator+(T value) const {
+    return Sphinx(static_cast<uint32_t>(data_ << 16)).f
+           + static_cast<float>(value);
   }
 
   template<typename T>
-  BFloat16 operator-(T value) const {
-    return BFloat16(Sphinx(
-        static_cast<uint32_t>(data_ << 16)).f - static_cast<float>(value));
+  float operator-(T value) const {
+    return Sphinx(static_cast<uint32_t>(data_ << 16)).f
+           - static_cast<float>(value);
   }
 
   template<typename T>
-  BFloat16 operator*(T value) const {
-    return BFloat16(Sphinx(
-        static_cast<uint32_t>(data_ << 16)).f * static_cast<float>(value));
+  float operator*(T value) const {
+    return Sphinx(static_cast<uint32_t>(data_ << 16)).f
+           * static_cast<float>(value);
   }
 
   template<typename T>
-  BFloat16 operator/(T value) const {
-    return BFloat16(Sphinx(
-        static_cast<uint32_t>(data_ << 16)).f / static_cast<float>(value));
+  float operator/(T value) const {
+    return Sphinx(static_cast<uint32_t>(data_ << 16)).f
+           / static_cast<float>(value);
   }
 
   template<typename T>
@@ -223,7 +223,6 @@ inline ostream &operator<<(ostream &ss,  // NOLINT
 
 }  // namespace std
 
-
 inline float operator+(const float &a, const mace::BFloat16 &value) {
   return a + static_cast<float>(value);
 }
@@ -254,6 +253,38 @@ inline void operator*=(float &a, const mace::BFloat16 &value) {  // NOLINT
 
 inline void operator/=(float &a, const mace::BFloat16 &value) {  // NOLINT
   a /= static_cast<float>(value);
+}
+
+inline double operator+(const double &a, const mace::BFloat16 &value) {
+  return a + static_cast<double>(value);
+}
+
+inline double operator-(const double &a, const mace::BFloat16 &value) {
+  return a - static_cast<double>(value);
+}
+
+inline double operator*(const double &a, const mace::BFloat16 &value) {
+  return a * static_cast<double>(value);
+}
+
+inline double operator/(const double &a, const mace::BFloat16 &value) {
+  return a / static_cast<double>(value);
+}
+
+inline void operator+=(double &a, const mace::BFloat16 &value) {  // NOLINT
+  a += static_cast<double>(value);
+}
+
+inline void operator-=(double &a, const mace::BFloat16 &value) {  // NOLINT
+  a -= static_cast<double>(value);
+}
+
+inline void operator*=(double &a, const mace::BFloat16 &value) {  // NOLINT
+  a *= static_cast<double>(value);
+}
+
+inline void operator/=(double &a, const mace::BFloat16 &value) {  // NOLINT
+  a /= static_cast<double>(value);
 }
 
 #endif  // MACE_ENABLE_BFLOAT16

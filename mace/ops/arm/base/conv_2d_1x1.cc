@@ -96,6 +96,11 @@ void RegisterConv2dK1x1Delegator(OpDelegatorRegistry *registry) {
       registry, Conv2dK1x1<float>, delegator::Conv2dParam,
       MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
                             float, ImplType::NEON, K1x1));
+
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, Conv2dK1x1<BFloat16>, delegator::Conv2dParam,
+      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+                            BFloat16, ImplType::NEON, K1x1));
 }
 
 }  // namespace arm

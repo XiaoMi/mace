@@ -518,7 +518,8 @@ Use ``-h`` to get detailed help.
 
 Reduce Library Size
 -------------------
-* Build for your own usage purpose.
+* Build for your own usage purpose. Some configuration variables in tools/bazel_build_standalone_lib.sh
+  are set to ``true`` by default, you can change them to ``false`` to reduce the library size.
     * **dynamic library**
 
         - If the models don't need to run on device ``dsp``, change the build option ``--define hexagon=true``

@@ -14,8 +14,8 @@
 
 #include <arm_neon.h>
 
+#include "mace/ops/arm/base/common_neon.h"
 #include "mace/ops/arm/base/deconv_2d_4x4.h"
-#include "mace/ops/arm/fp32/common_neon.h"
 
 namespace mace {
 namespace ops {

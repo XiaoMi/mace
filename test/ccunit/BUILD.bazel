@@ -11,6 +11,7 @@ load(
     "if_hexagon_enabled",
     "if_hta_enabled",
     "if_neon_enabled",
+    "if_bfloat16_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
 )
@@ -37,13 +38,19 @@ cc_test(
             "mace/ops/arm/q8/*.cc",
             "mace/ops/fixpoint_test.cc",
         ]
+    )) + if_bfloat16_enabled(glob(
+        [
+            "mace/ops/arm/bf16/*.cc",
+        ]
     )) + if_opencl_enabled(glob(
         [
             "mace/ops/opencl/*.cc",
         ]
-    )) + if_hta_enabled([
-        "mace/core/runtime/hexagon/hta_transform_test.cc",
-    ]),
+    )) + if_hta_enabled(
+        [
+            "mace/core/runtime/hexagon/hta_transform_test.cc",
+        ]
+    ),
     copts = [
         "-Werror",
         "-Wextra",
@@ -57,6 +64,8 @@ cc_test(
         "-DMACE_ENABLE_OPENCL",
     ]) + if_quantize_enabled([
         "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_hta_enabled([

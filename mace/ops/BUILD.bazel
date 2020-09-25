@@ -104,15 +104,13 @@ cc_library(
             "arm/fp32/*.cc",
             "arm/fp16/gemv.h",
         ],
-        exclude = [
-            "arm/fp32/*_test.cc",
-        ],
     ) + if_quantize_enabled(glob(
         [
             "arm/q8/*.cc",
         ],
-        exclude = [
-            "arm/q8/*_test.cc",
+    )) + if_bfloat16_enabled(glob(
+        [
+            "arm/bf16/*.cc",
         ],
     )),
     hdrs = glob(
@@ -123,6 +121,10 @@ cc_library(
     ) + if_quantize_enabled(glob(
         [
             "arm/q8/*.h",
+        ],
+    )) + if_bfloat16_enabled(glob(
+        [
+            "arm/bf16/*.h",
         ],
     )),
     copts = [

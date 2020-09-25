@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/arm/fp32/conv_2d_3x3_winograd.h"
+#include "mace/ops/arm/base/conv_2d_3x3_winograd.h"
 
 #include <algorithm>
 
+#include "mace/ops/arm/base/common_neon.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/ops/delegator/conv_2d.h"
 #include "mace/utils/math.h"
@@ -24,12 +25,12 @@
 namespace mace {
 namespace ops {
 namespace arm {
-namespace fp32 {
 
-MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
-                                       const Tensor *input,
-                                       const Tensor *filter,
-                                       Tensor *output) {
+template<typename T>
+MaceStatus Conv2dK3x3Winograd<T>::Compute(const OpContext *context,
+                                          const Tensor *input,
+                                          const Tensor *filter,
+                                          Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t in_channels = input->dim(1);
   const index_t in_height = input->dim(2);
@@ -84,17 +85,17 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
   // pad input and transform input
   auto scratch_buffer = context->device()->scratch_buffer();
   const index_t padded_in_size = is_in_padded ? PadAlignSize(
-      sizeof(float) * batch * in_channels * padded_in_height
+      sizeof(T) * batch * in_channels * padded_in_height
           * padded_in_width) : 0;
   const index_t padded_out_size = is_out_padded ? PadAlignSize(
-      sizeof(float) * batch * out_channels * padded_out_height
+      sizeof(T) * batch * out_channels * padded_out_height
           * padded_out_width) : 0;
   const index_t transformed_in_size = PadAlignSize(
-      sizeof(float) * batch * in_tile_area * in_channels * tile_count);
+      sizeof(T) * batch * in_tile_area * in_channels * tile_count);
   const index_t transformed_out_size = PadAlignSize(
-      sizeof(float) * batch * in_tile_area * out_channels * tile_count);
+      sizeof(T) * batch * in_tile_area * out_channels * tile_count);
   const index_t transformed_filter_size =
-      PadAlignSize(sizeof(float) * in_tile_area * out_channels * in_channels);
+      PadAlignSize(sizeof(T) * in_tile_area * out_channels * in_channels);
   const index_t gemm_pack_size =
       transformed_in_size + transformed_filter_size + transformed_filter_size;
 
@@ -104,8 +105,8 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
           + transformed_out_size + gemm_pack_size);
 
   const Tensor *padded_in = input;
-  Tensor tmp_padded_in
-      (scratch_buffer->Scratch(padded_in_size), DataType::DT_FLOAT);
+  Tensor tmp_padded_in(scratch_buffer->Scratch(padded_in_size),
+                       DataTypeToEnum<T>::value);
   if (is_in_padded) {
     tmp_padded_in.Resize({batch, in_channels, padded_in_height,
                           padded_in_width});
@@ -115,8 +116,8 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
   }
 
   Tensor *padded_out = output;
-  Tensor tmp_padded_out
-      (scratch_buffer->Scratch(padded_out_size), DataType::DT_FLOAT);
+  Tensor tmp_padded_out(scratch_buffer->Scratch(padded_out_size),
+                        DataTypeToEnum<T>::value);
   if (is_out_padded) {
     padded_out = &tmp_padded_out;
     padded_out->Resize({batch, out_channels, padded_out_height,
@@ -125,17 +126,17 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
 
   auto transformed_in = scratch_buffer->Scratch(transformed_in_size);
   auto transformed_out = scratch_buffer->Scratch(transformed_out_size);
-  auto padded_in_data = padded_in->data<float>();
-  auto padded_out_data = padded_out->mutable_data<float>();
-  auto transformed_in_data = transformed_in.mutable_data<float>();
-  auto transformed_out_data = transformed_out.mutable_data<float>();
-  auto filter_data = filter->data<float>();
+  auto padded_in_data = padded_in->data<T>();
+  auto padded_out_data = padded_out->mutable_data<T>();
+  auto transformed_in_data = transformed_in.mutable_data<T>();
+  auto transformed_out_data = transformed_out.mutable_data<T>();
+  auto filter_data = filter->data<T>();
 
   if (!filter->is_weight() || out_tile_size != out_tile_size_) {
     out_tile_size_ = out_tile_size;
     transformed_filter_.reset(new Tensor);
     transformed_filter_->Resize({in_tile_area, out_channels, in_channels});
-    auto transformed_filter_data = transformed_filter_->mutable_data<float>();
+    auto transformed_filter_data = transformed_filter_->mutable_data<T>();
     switch (out_tile_size) {
       case 2:
         TransformFilter4x4(context,
@@ -181,9 +182,9 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
 
   const index_t scratch_buffer_offset = scratch_buffer->offset();
   const index_t transformed_in_size_per_batch =
-      in_tile_area * in_channels * tile_count * sizeof(float);
+      in_tile_area * in_channels * tile_count * sizeof(T);
   const index_t transformed_out_size_per_batch =
-      in_tile_area * out_channels * tile_count * sizeof(float);
+      in_tile_area * out_channels * tile_count * sizeof(T);
   for (index_t b = 0; b < batch; ++b) {
     scratch_buffer->Rewind(scratch_buffer_offset);
 
@@ -194,10 +195,11 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
                                       b * transformed_out_size_per_batch,
                                       transformed_out_size_per_batch);
 
-    Tensor transformed_in_this_batch(transformed_in_slice, DataType::DT_FLOAT);
+    Tensor transformed_in_this_batch(transformed_in_slice,
+                                     DataTypeToEnum<T>::value);
     transformed_in_this_batch.Resize({in_tile_area, in_channels, tile_count});
-    Tensor
-        transformed_out_this_batch(transformed_out_slice, DataType::DT_FLOAT);
+    Tensor transformed_out_this_batch(transformed_out_slice,
+                                      DataTypeToEnum<T>::value);
     transformed_out_this_batch.Resize({in_tile_area, out_channels, tile_count});
 
     gemm_.Compute(context,
@@ -246,11 +248,12 @@ MaceStatus Conv2dK3x3Winograd::Compute(const OpContext *context,
 }
 
 // OCHW => TOC
-void Conv2dK3x3Winograd::TransformFilter4x4(const OpContext *context,
-                                            const float *filter,
-                                            const index_t in_channels,
-                                            const index_t out_channels,
-                                            float *output) {
+template<typename T>
+void Conv2dK3x3Winograd<T>::TransformFilter4x4(const OpContext *context,
+                                               const T *filter,
+                                               const index_t in_channels,
+                                               const index_t out_channels,
+                                               T *output) {
   const index_t stride = out_channels * in_channels;
 
   utils::ThreadPool
@@ -339,11 +342,12 @@ void Conv2dK3x3Winograd::TransformFilter4x4(const OpContext *context,
 ⎢                  ⎥
 ⎣ 0      0      1  ⎦
  */
-void Conv2dK3x3Winograd::TransformFilter8x8(const OpContext *context,
-                                            const float *filter,
-                                            const index_t in_channels,
-                                            const index_t out_channels,
-                                            float *output) {
+template<typename T>
+void Conv2dK3x3Winograd<T>::TransformFilter8x8(const OpContext *context,
+                                               const T *filter,
+                                               const index_t in_channels,
+                                               const index_t out_channels,
+                                               T *output) {
   const index_t stride = out_channels * in_channels;
 
   const float G[8][3] = {{1.0f, 0.0f, 0.0f},
@@ -396,14 +400,15 @@ void Conv2dK3x3Winograd::TransformFilter8x8(const OpContext *context,
 }
 
 // NCHW => NTCB (T: in tile pixels, B: tile indices)
-void Conv2dK3x3Winograd::TransformInput4x4(const OpContext *context,
-                                           const float *input,
-                                           const index_t batch,
-                                           const index_t in_height,
-                                           const index_t in_width,
-                                           const index_t in_channels,
-                                           const index_t tile_count,
-                                           float *output) {
+template<typename T>
+void Conv2dK3x3Winograd<T>::TransformInput4x4(const OpContext *context,
+                                              const T *input,
+                                              const index_t batch,
+                                              const index_t in_height,
+                                              const index_t in_width,
+                                              const index_t in_channels,
+                                              const index_t tile_count,
+                                              T *output) {
   const index_t stride = in_channels * tile_count;
   const index_t in_height_width = in_height * in_width;
   const index_t input_batch_size = in_height_width * in_channels;
@@ -420,14 +425,12 @@ void Conv2dK3x3Winograd::TransformInput4x4(const OpContext *context,
         for (index_t h = 0; h < in_height - 2; h += 2) {
           for (index_t w = 0; w < in_width - 2; w += 2) {
             float d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13,
-                d14,
-                d15;
+                d14, d15;
             float s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13,
-                s14,
-                s15;
+                s14, s15;
 
             // load tile data
-            const float *input_ptr = input + n * input_batch_size +
+            const T *input_ptr = input + n * input_batch_size +
                 c * in_height_width + h * in_width + w;
             d0 = input_ptr[0];
             d1 = input_ptr[1];
@@ -468,7 +471,7 @@ void Conv2dK3x3Winograd::TransformInput4x4(const OpContext *context,
             s15 = (d5 - d13) - (d7 - d15);
 
             // store output
-            float *output_ptr =
+            T *output_ptr =
                 output + n * output_batch_size + c * tile_count + tile_index;
             output_ptr[0] = s0;
             output_ptr[1 * stride] = s1;
@@ -517,14 +520,15 @@ void Conv2dK3x3Winograd::TransformInput4x4(const OpContext *context,
 ⎢                                          ⎥
 ⎣0   -1     0    21/4     0    -21/4  0   1⎦
  */
-void Conv2dK3x3Winograd::TransformInput8x8(const OpContext *context,
-                                           const float *input,
-                                           const index_t batch,
-                                           const index_t in_height,
-                                           const index_t in_width,
-                                           const index_t in_channels,
-                                           const index_t tile_count,
-                                           float *output) {
+template<typename T>
+void Conv2dK3x3Winograd<T>::TransformInput8x8(const OpContext *context,
+                                              const T *input,
+                                              const index_t batch,
+                                              const index_t in_height,
+                                              const index_t in_width,
+                                              const index_t in_channels,
+                                              const index_t tile_count,
+                                              T *output) {
   const index_t stride = in_channels * tile_count;
   const index_t in_height_width = in_height * in_width;
   const index_t input_batch_size = in_height_width * in_channels;
@@ -540,7 +544,7 @@ void Conv2dK3x3Winograd::TransformInput8x8(const OpContext *context,
         float s[8][8];
         for (index_t h = 0; h < in_height - 2; h += 6) {
           for (index_t w = 0; w < in_width - 2; w += 6) {
-            const float *input_ptr = input + n * input_batch_size +
+            const T *input_ptr = input + n * input_batch_size +
                 c * in_height_width + h * in_width + w;
 
             for (int i = 0; i < 8; ++i) {
@@ -575,7 +579,7 @@ void Conv2dK3x3Winograd::TransformInput8x8(const OpContext *context,
               input_ptr += in_width;
             }
 
-            float *output_ptr =
+            T *output_ptr =
                 output + n * output_batch_size + c * tile_count + tile_index;
             for (int i = 0; i < 8; ++i) {
               float d0, d1, d2, d3, d4, d5, d6, d7;
@@ -616,14 +620,15 @@ void Conv2dK3x3Winograd::TransformInput8x8(const OpContext *context,
 }
 
 // NTOB => NToOB => NOHoWo
-void Conv2dK3x3Winograd::TransformOutput4x4(const OpContext *context,
-                                            const float *input,
-                                            index_t batch,
-                                            index_t out_height,
-                                            index_t out_width,
-                                            index_t out_channels,
-                                            index_t tile_count,
-                                            float *output) {
+template<typename T>
+void Conv2dK3x3Winograd<T>::TransformOutput4x4(const OpContext *context,
+                                               const T *input,
+                                               index_t batch,
+                                               index_t out_height,
+                                               index_t out_width,
+                                               index_t out_channels,
+                                               index_t tile_count,
+                                               T *output) {
   const index_t stride = out_channels * tile_count;
   const index_t input_batch_size = 16 * stride;
   const index_t out_image_size = out_height * out_width;
@@ -644,7 +649,7 @@ void Conv2dK3x3Winograd::TransformOutput4x4(const OpContext *context,
             float s0, s1, s2, s3, s4, s5, s6, s7;
             float v0, v1, v2, v3;
 
-            const float *input_ptr =
+            const T *input_ptr =
                 input + n * input_batch_size + m * tile_count + tile_offset;
             d0 = input_ptr[0];
             d1 = input_ptr[1 * stride];
@@ -680,7 +685,7 @@ void Conv2dK3x3Winograd::TransformOutput4x4(const OpContext *context,
             v2 = s2 - s4 - s6;
             v3 = s3 - s5 - s7;
 
-            float *output_ptr = output + n * output_batch_size +
+            T *output_ptr = output + n * output_batch_size +
                 m * out_image_size + h * out_width + w;
             output_ptr[0] = v0;
             output_ptr[1] = v1;
@@ -710,14 +715,15 @@ void Conv2dK3x3Winograd::TransformOutput4x4(const OpContext *context,
 ⎢                             ⎥
 ⎣0  1  -1  32  -32  1   -1   1⎦
  */
-void Conv2dK3x3Winograd::TransformOutput8x8(const OpContext *context,
-                                            const float *input,
-                                            index_t batch,
-                                            index_t out_height,
-                                            index_t out_width,
-                                            index_t out_channels,
-                                            index_t tile_count,
-                                            float *output) {
+template<typename T>
+void Conv2dK3x3Winograd<T>::TransformOutput8x8(const OpContext *context,
+                                               const T *input,
+                                               index_t batch,
+                                               index_t out_height,
+                                               index_t out_width,
+                                               index_t out_channels,
+                                               index_t tile_count,
+                                               T *output) {
   const index_t stride = out_channels * tile_count;
   const index_t input_batch_size = 64 * stride;
   const index_t out_image_size = out_height * out_width;
@@ -733,7 +739,7 @@ void Conv2dK3x3Winograd::TransformOutput8x8(const OpContext *context,
         float s[8][6];
         for (index_t h = 0; h < out_height; h += 6) {
           for (index_t w = 0; w < out_width; w += 6) {
-            const float *input_ptr =
+            const T *input_ptr =
                 input + n * input_batch_size + m * tile_count + tile_offset;
             for (int i = 0; i < 8; ++i) {
               float d0, d1, d2, d3, d4, d5, d6, d7;
@@ -764,7 +770,7 @@ void Conv2dK3x3Winograd::TransformOutput8x8(const OpContext *context,
               input_ptr += 8 * stride;
             }
 
-            float *output_ptr = output + n * output_batch_size +
+            T *output_ptr = output + n * output_batch_size +
                 m * out_image_size + h * out_width + w;
 
             for (int i = 0; i < 6; ++i) {
@@ -803,12 +809,16 @@ void Conv2dK3x3Winograd::TransformOutput8x8(const OpContext *context,
 
 void RegisterConv2dK3x3WinogradDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
-      registry, Conv2dK3x3Winograd, delegator::Conv2dParam,
+      registry, Conv2dK3x3Winograd<float>, delegator::Conv2dParam,
       MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
                             float, ImplType::NEON, K3x3Winograd));
+
+  MACE_REGISTER_BF16_DELEGATOR(
+      registry, Conv2dK3x3Winograd<BFloat16>, delegator::Conv2dParam,
+      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+                            BFloat16, ImplType::NEON, K3x3Winograd));
 }
 
-}  // namespace fp32
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace
