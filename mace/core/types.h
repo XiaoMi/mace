@@ -69,6 +69,8 @@ enum FrameworkType {
   TENSORFLOW = 0,
   CAFFE = 1,
   ONNX = 2,
+  MEGENGINE = 3,
+  PYTORCH = 4
 };
 
 template <typename T>

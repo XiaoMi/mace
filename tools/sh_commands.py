@@ -53,7 +53,8 @@ def strip_invalid_utf8(str):
 def split_stdout(stdout_str):
     stdout_str = strip_invalid_utf8(stdout_str)
     # Filter out last empty line
-    return [l.strip() for l in stdout_str.split('\n') if len(l.strip()) > 0]
+    return [line.strip() for line in stdout_str.split('\n') if
+            len(line.strip()) > 0]
 
 
 def make_output_processor(buff):
@@ -659,7 +660,7 @@ def validate_model(abi,
                 sh.rm("-rf", "%s/%s" % (model_output_dir, formatted_name))
             device.pull_from_data_dir(formatted_name, model_output_dir)
 
-    if platform == "tensorflow" or platform == "onnx":
+    if platform == "tensorflow" or platform == "onnx" or platform == "pytorch":
         validate(platform, model_file_path, "",
                  "%s/%s" % (model_output_dir, input_file_name),
                  "%s/%s" % (model_output_dir, output_file_name), device_type,

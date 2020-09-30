@@ -190,6 +190,10 @@ def convert_model(conf, quantize_stat):
         from transform import megengine_converter
         converter = megengine_converter.MegengineConverter(
             option, conf["model_file_path"])
+    elif platform == Platform.PYTORCH:
+        from transform import pytorch_converter
+        converter = pytorch_converter.PytorchConverter(
+            option, conf["model_file_path"])
     else:
         mace_check(False, "Mace do not support platorm %s yet." % platform)
 

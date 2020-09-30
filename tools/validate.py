@@ -216,6 +216,48 @@ def validate_tf_model(platform, device_type, model_file,
                                    validation_threshold, log_file)
 
 
+def validate_pytorch_model(platform, device_type, model_file,
+                           input_file, mace_out_file,
+                           input_names, input_shapes, input_data_formats,
+                           output_names, output_shapes, output_data_formats,
+                           validation_threshold, input_data_types, log_file):
+    import torch
+    loaded_model = torch.jit.load(model_file)
+    pytorch_inputs = []
+    for i in range(len(input_names)):
+        input_value = load_data(
+            common.formatted_file_name(input_file, input_names[i]),
+            input_data_types[i])
+        input_value = input_value.reshape(input_shapes[i])
+        if input_data_formats[i] == common.DataFormat.NHWC and \
+                len(input_shapes[i]) == 4:
+            input_value = input_value.transpose((0, 3, 1, 2))
+        input_value = torch.from_numpy(input_value)
+        pytorch_inputs.append(input_value)
+    with torch.no_grad():
+        pytorch_outputs = loaded_model(*pytorch_inputs)
+
+    if isinstance(pytorch_outputs, torch.Tensor):
+        pytorch_outputs = [pytorch_outputs]
+    else:
+        if not isinstance(pytorch_outputs, (list, tuple)):
+            print('return type {} unsupported yet'.format(
+                type(pytorch_outputs)))
+            sys.exit(1)
+    for i in range(len(output_names)):
+        value = pytorch_outputs[i].numpy()
+        output_file_name = common.formatted_file_name(
+            mace_out_file, output_names[i])
+        mace_out_value = load_data(output_file_name)
+        # MACE: NHWC, pytorch: NCHW, conversion is needed
+        if output_data_formats[i] == common.DataFormat.NHWC and \
+                len(output_shapes[i]) == 4:
+            mace_out_value = mace_out_value.reshape(output_shapes[i])\
+                .transpose((0, 3, 1, 2))
+        compare_output(platform, device_type, output_names[i], mace_out_value,
+                       value, validation_threshold, log_file)
+
+
 def validate_caffe_model(platform, device_type, model_file, input_file,
                          mace_out_file, weight_file,
                          input_names, input_shapes, input_data_formats,
@@ -418,6 +460,13 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                           output_names, output_shapes, output_data_formats,
                           validation_threshold, input_data_types,
                           log_file)
+    elif platform == 'pytorch':
+        validate_pytorch_model(platform, device_type,
+                               model_file, input_file, mace_out_file,
+                               input_names, input_shapes, input_data_formats,
+                               output_names, output_shapes,
+                               output_data_formats, validation_threshold,
+                               input_data_types, log_file)
     elif platform == 'caffe':
         validate_caffe_model(platform, device_type, model_file,
                              input_file, mace_out_file, weight_file,

@@ -88,6 +88,7 @@ class FrameworkType(Enum):
     CAFFE = 1
     ONNX = 2
     MEGENGINE = 3
+    PYTORCH = 4
 
 
 MaceSupportedOps = [
