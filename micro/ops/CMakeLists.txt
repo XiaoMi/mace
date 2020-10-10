@@ -1,7 +1,6 @@
 set(MICRO_OPS_SRCS
   shape.cc
   reduce.cc
-  reshape.cc
   matmul.cc
   nhwc/depthwise_conv_2d_ref.cc
   nhwc/conv_2d_c4_s4.cc
@@ -30,6 +29,8 @@ set(MICRO_OPS_SRCS
   squeeze.cc
   activation.cc
 )
+
+add_subdirectory(nhwc)
 
 add_library(micro_ops
   ${MICRO_OPS_SRCS}

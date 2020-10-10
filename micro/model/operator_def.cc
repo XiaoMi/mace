@@ -23,11 +23,22 @@ MACE_DEFINE_STRING_FUNC(OperatorDef, name, name_)
 MACE_DEFINE_STRING_FUNC(OperatorDef, type, type_)
 MACE_DEFINE_OBJECT_FUNC(OperatorDef, int32_t, device_type)
 MACE_DEFINE_PTR_ARRAY_FUNC(OperatorDef, Argument, arg, args_)
-MACE_DEFINE_PTR_ARRAY_FUNC(OperatorDef, OutputShape,
-                           output_shape, output_shapes_)
+MACE_DEFINE_PTR_ARRAY_FUNC(OperatorDef,
+                           OutputShape,
+                           output_shape,
+                           output_shapes_)
 MACE_DEFINE_ARRAY_FUNC(OperatorDef, DataType, output_type, output_types_)
+MACE_DEFINE_ARRAY_FUNC(OperatorDef,
+                       QuantizeActivationInfo,
+                       quantize_info,
+                       quantize_info_);
 // the mem_offset is the mem_id in proto file
 MACE_DEFINE_ARRAY_FUNC(OperatorDef, int32_t, mem_offset, mem_offsets_)
+
+MACE_DEFINE_OBJECT_FUNC(QuantizeActivationInfo, float, scale);
+MACE_DEFINE_OBJECT_FUNC(QuantizeActivationInfo, int32_t, zero_point);
+MACE_DEFINE_OBJECT_FUNC(QuantizeActivationInfo, float, minval);
+MACE_DEFINE_OBJECT_FUNC(QuantizeActivationInfo, float, maxval);
 
 }  // namespace model
 }  // namespace micro

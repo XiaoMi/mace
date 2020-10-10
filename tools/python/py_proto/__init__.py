@@ -27,6 +27,7 @@ try:
     device.execute("bazel version")
 except:  # noqa
     MaceLogger.warning("No bazel, use cmake.")
+    device.execute("bash tools/cmake/cmake-generate-proto-py-host.sh")
 else:
     try:
         device.execute("bazel build //mace/proto:mace_py")

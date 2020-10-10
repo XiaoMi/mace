@@ -17,7 +17,9 @@
 
 #include <stdint.h>
 
-#include "micro/include/port/define.h"
+#ifndef NULL
+#define NULL 0
+#endif
 
 namespace micro {
 
@@ -61,7 +63,7 @@ class Graph;
 class Operator;
 }  // namespace framework
 
-struct MACE_API MaceMicroEngineConfig {
+struct MaceMicroEngineConfig {
   model::NetDef *net_def_;
   const uint8_t *model_data_;
   framework::Graph *graph_;
@@ -73,7 +75,7 @@ struct MACE_API MaceMicroEngineConfig {
   uint32_t scratch_buffer_size_;
 };
 
-class MACE_API MaceMicroEngine {
+class MaceMicroEngine {
  public:
   MaceMicroEngine() {}
   ~MaceMicroEngine() {}

@@ -33,6 +33,9 @@ class MicroOpConverter:
     def convert_filters_format(self):
         arg_format = ConverterUtil.get_arg(self.net_def,
                                            MaceKeyword.mace_filter_format_str)
+        if (arg_format.i == DataFormat.OHWI.value):
+            return
+
         mace_check(arg_format.i == DataFormat.OIHW.value, "Invalid model")
         arg_format.i = DataFormat.OHWI.value
 
@@ -40,7 +43,8 @@ class MicroOpConverter:
         for op in self.net_def.op:
             # OIHW => OHWI
             if (op.type == MaceOp.Conv2D.name or
-                op.type == MaceOp.DepthwiseConv2d.name) and \
+                op.type == MaceOp.DepthwiseConv2d.name or
+                op.type == MaceOp.FullyConnected.name) and \
                     op.input[1] not in transposed_filter:
                 print("transform filter: %s" % op.type)
                 filter = self._consts[op.input[1]]

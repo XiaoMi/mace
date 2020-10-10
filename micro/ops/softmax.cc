@@ -36,7 +36,8 @@ MaceStatus SoftmaxOp::OnInit() {
 
 MaceStatus SoftmaxOp::Run() {
   MACE_RETURN_IF_ERROR(ResizeOutputShape(OUTPUT, input_dim_size_, input_dims_));
-  if (NHWC == data_format_) {  // NHWC
+  // TODO(ZhangZhimin): Walkarounds for AUTO data format
+  if (NHWC == data_format_ || AUTO == data_format_) {  // NHWC
     return RunForNHWC();
   } else {
     MACE_NOT_IMPLEMENTED;

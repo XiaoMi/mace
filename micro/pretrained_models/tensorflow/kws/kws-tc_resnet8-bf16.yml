@@ -1,0 +1,25 @@
+library_name: kws-tc_resnet8
+target_abis: [host]
+model_graph_format: file
+model_data_format: file
+models:
+  kws_tc_resnet8_bf16:
+    platform: tensorflow
+    model_file_path: https://cdn.cnbj1.fds.api.mi-img.com/mace/miai-models/micro/tensorflow/kws/kws-tc_resnet8.pb
+    model_sha256_checksum: c552cf79cb64d3c755ae7d867c1c78b13f55f7589d46def1f70ce657c0db0d79
+    subgraphs:
+      - input_tensors:
+          - input
+        input_shapes:
+          - 1,98,40,1
+        output_tensors:
+          - output/softmax
+        output_shapes:
+          - 1,12
+    runtime: cpu
+    data_type: bf16_fp32
+    limit_opencl_kernel_time: 0
+    nnlib_graph_mode: 0
+    obfuscate: 0
+    winograd: 0
+    quantize: 0

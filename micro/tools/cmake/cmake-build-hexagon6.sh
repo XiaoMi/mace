@@ -10,17 +10,18 @@ if [ -z "$HEXAGON_SDK_ROOT" ]; then
   echo "HEXAGON_SDK_ROOT is undefined";
 fi
 
-BUILD_DIR=build/cmake-build/hexagon6
+BUILD_DIR=build/micro/hexagon6
 mkdir -p ${BUILD_DIR}
 cd ${BUILD_DIR}
 
-cmake ../../.. \
+cmake ../../../micro \
   -DHEXAGON_SDK_ROOT=${HEXAGON_SDK_ROOT} \
   -DHEXAGON_TOOLS=${HEXAGON_TOOLS} \
+  -DMACE_MICRO_ENABLE_EXAMPLES=OFF \
   -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain/hexagon6.toolchain.cmake \
   -DCMAKE_INSTALL_PREFIX=install \
   $@ || exit 1
 
-cmake --build . -- -j || exit 1
+cmake --build . --target install -- -j || exit 1
 
 cd ../../..

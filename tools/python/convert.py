@@ -123,6 +123,8 @@ def convert_model(conf, quantize_stat):
         option.change_concat_ranges = conf[ModelKeys.change_concat_ranges]
     if ModelKeys.cl_mem_type in conf:
         option.cl_mem_type = conf[ModelKeys.cl_mem_type]
+    if ModelKeys.platform in conf:
+        option.platform = conf[ModelKeys.platform]
     if ModelKeys.runtime in conf:
         option.device = conf[ModelKeys.runtime]
         if option.device == DeviceType.CPU_GPU:
@@ -189,6 +191,10 @@ def convert_model(conf, quantize_stat):
     elif platform == Platform.MEGENGINE:
         from transform import megengine_converter
         converter = megengine_converter.MegengineConverter(
+            option, conf["model_file_path"])
+    elif platform == Platform.KERAS:
+        from transform import keras_converter
+        converter = keras_converter.KerasConverter(
             option, conf["model_file_path"])
     else:
         mace_check(False, "Mace do not support platorm %s yet." % platform)

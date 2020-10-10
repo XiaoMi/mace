@@ -22,13 +22,15 @@ from transform.base_converter import MaceOp
 class ScratchComputer:
     def __init__(self, net_def, model_conf):
         self.net_def = net_def
+        self.model_conf = model_conf
         if ModelKeys.quantize in model_conf and \
                 model_conf[ModelKeys.quantize] == 1:
             self.default_data_type = mace_pb2.DT_UINT8
         else:
             self.default_data_type = mace_pb2.DT_FLOAT
         self._scratch_map = {
-            MaceOp.Conv2D: self.scratch_size_no_need,
+            MaceOp.Conv2D: self.scratch_size_conv,
+            MaceOp.FullyConnected: self.scratch_size_no_need,
             MaceOp.Squeeze: self.scratch_size_of_squeeze,
             MaceOp.Softmax: self.scratch_size_no_need,
             MaceOp.Eltwise: self.scratch_size_eltwise,
@@ -39,7 +41,7 @@ class ScratchComputer:
             MaceOp.BiasAdd: self.scratch_size_no_need,
             MaceOp.BatchNorm: self.scratch_size_no_need,
             MaceOp.Shape: self.scratch_size_no_need,
-            MaceOp.Reshape: self.scratch_size_no_need,
+            MaceOp.Reshape: self.scratch_size_of_reshape,
             MaceOp.ExpandDims: self.scratch_size_of_expand_dims,
             MaceOp.Concat: self.scratch_size_of_concat,
             MaceOp.MatMul: self.scratch_size_of_matmul,
@@ -47,6 +49,8 @@ class ScratchComputer:
             MaceOp.DepthwiseConv2d: self.scratch_size_of_depthwise_conv,
             MaceOp.ArgMax: self.scratch_size_no_need,
             MaceOp.Cast: self.scratch_size_no_need,
+            MaceOp.Quantize: self.scratch_size_no_need,
+            MaceOp.Dequantize: self.scratch_size_no_need,
         }
 
     def compute_size(self):
@@ -80,8 +84,32 @@ class ScratchComputer:
             return 2
         elif data_type == mace_pb2.DT_UINT8:
             return 1
+        elif data_type == mace_pb2.DT_INT16:
+            return 2
+        elif data_type == mace_pb2.DT_INT8:
+            return 1
         else:
             mace_check(False, "Invalid data type: %s" % data_type)
+
+    def scratch_size_conv(self, op_def):
+        if (ModelKeys.quantize in self.model_conf
+                and self.model_conf[ModelKeys.quantize] == 1):
+            output_channels = op_def.output_shape[0].dims[3]
+            cmsis_bias_bytes = \
+                self.get_data_bytes(mace_pb2.DT_INT32) * output_channels
+
+            input_dims = self.get_op_input_dims(op_def, 0)
+            filter_dims = self.get_op_input_dims(op_def, 1)
+            cmsis_nn_buffer_bytes = \
+                2 \
+                * input_dims[3] \
+                * filter_dims[2] \
+                * filter_dims[1] \
+                * self.get_data_bytes(mace_pb2.DT_INT16)
+
+            return cmsis_nn_buffer_bytes + cmsis_bias_bytes
+        else:
+            return 0
 
     def scratch_size_of_expand_dims(self, op_def):
         output_dim_size = len(op_def.output_shape[0].dims)
@@ -89,9 +117,22 @@ class ScratchComputer:
         return output_dim_size * data_type_bytes
 
     def scratch_size_of_matmul(self, op_def):
-        output_dim_size = len(op_def.output_shape[0].dims)
-        data_type_bytes = self.get_data_bytes(mace_pb2.DT_INT32)
-        return output_dim_size * data_type_bytes
+        if (ModelKeys.quantize in self.model_conf
+                and self.model_conf[ModelKeys.quantize] == 1):
+            output_dim_bytes = \
+                len(op_def.output_shape[0].dims) \
+                * self.get_data_bytes(mace_pb2.DT_INT32)
+
+            cols = op_def.output_shape[0].dims[1]
+            cmsis_bias_bytes = cols * self.get_data_bytes(mace_pb2.DT_INT32)
+
+            return output_dim_bytes + cmsis_bias_bytes
+        else:
+            output_dim_bytes = \
+                len(op_def.output_shape[0].dims) \
+                * self.get_data_bytes(mace_pb2.DT_INT32)
+
+            return output_dim_bytes
 
     def get_op_input_dims(self, op_def, idx):
         input_name = op_def.input[idx]
@@ -107,8 +148,7 @@ class ScratchComputer:
     def scratch_size_of_pooling(self, op_def):
         input0_dims = self.get_op_input_dims(op_def, 0)
         channels = input0_dims[3]
-        mace_check(channels > 0,
-                   "can not inference pooling's input shape.")
+        mace_check(channels > 0, "can not inference pooling's input shape.")
 
         int_bytes = self.get_data_bytes(mace_pb2.DT_INT32)
         float_bytes = self.get_data_bytes(mace_pb2.DT_FLOAT)
@@ -116,14 +156,30 @@ class ScratchComputer:
         return channels * (int_bytes + float_bytes)
 
     def scratch_size_of_depthwise_conv(self, op_def):
-        filter_dims = self.get_op_input_dims(op_def, 1)
-        k_batch = filter_dims[0]
-        block_size = k_batch
-        if block_size > 4:
-            block_size = 4
-        k_channels = filter_dims[3]
-        float_bytes = self.get_data_bytes(mace_pb2.DT_FLOAT)
-        return block_size * 4 * k_channels * float_bytes
+        if (ModelKeys.quantize in self.model_conf
+                and self.model_conf[ModelKeys.quantize] == 1):
+            output_channels = op_def.output_shape[0].dims[3]
+            cmsis_bias_and_quant_bytes = \
+                self.get_data_bytes(mace_pb2.DT_INT32) * output_channels * 3
+
+            input_dims = self.get_op_input_dims(op_def, 0)
+            filter_dims = self.get_op_input_dims(op_def, 1)
+            cmsis_nn_buffer_bytes = \
+                input_dims[3] \
+                * filter_dims[2] \
+                * filter_dims[1] \
+                * self.get_data_bytes(mace_pb2.DT_INT16)
+
+            return cmsis_nn_buffer_bytes + cmsis_bias_and_quant_bytes
+        else:
+            filter_dims = self.get_op_input_dims(op_def, 1)
+            k_batch = filter_dims[0]
+            block_size = k_batch
+            if block_size > 4:
+                block_size = 4
+            k_channels = filter_dims[3]
+            float_bytes = self.get_data_bytes(mace_pb2.DT_FLOAT)
+            return block_size * 4 * k_channels * float_bytes
 
     def scratch_size_of_squeeze(self, op_def):
         input0_dims = self.get_op_input_dims(op_def, 0)
@@ -136,3 +192,11 @@ class ScratchComputer:
     def scratch_size_of_concat(self, op_def):
         # On a 64bit operating system, one pointer data need 8 bytes
         return len(op_def.input) * self.get_data_bytes(mace_pb2.DT_INT32) * 3
+
+    def scratch_size_of_reshape(self, op_def):
+        shape_dims = self.get_op_input_dims(op_def, 1)
+        shape_size = 1
+        for i in range(len(shape_dims)):
+            shape_size *= shape_dims[i]
+
+        return shape_size * self.get_data_bytes(mace_pb2.DT_INT32)

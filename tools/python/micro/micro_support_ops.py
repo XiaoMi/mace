@@ -67,6 +67,9 @@ McSupportedOps = [
                  MaceOp.Eltwise.name, mace_pb2.DT_FLOAT, None),
     OpDescriptor('micro/ops/eltwise.h', 'EltwiseOp<int32_t>',
                  MaceOp.Eltwise.name, mace_pb2.DT_INT32, None),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/arm_eltwise_int8.h',
+                 'ArmEltwiseInt8Op',
+                 MaceOp.Eltwise.name, mace_pb2.DT_INT8, None),
     OpDescriptor('micro/ops/activation.h', 'ActivationOp',
                  MaceOp.Activation.name, mace_pb2.DT_FLOAT, DataFormat.NHWC),
     OpDescriptor('micro/ops/strided_slice.h', 'StridedSliceOp<mifloat>',
@@ -92,8 +95,12 @@ McSupportedOps = [
                  DataFormat.NHWC),
     OpDescriptor('micro/ops/shape.h', 'ShapeOp', MaceOp.Shape.name,
                  mace_pb2.DT_FLOAT, DataFormat.NHWC),
-    OpDescriptor('micro/ops/reshape.h', 'ReshapeOp', MaceOp.Reshape.name,
+    OpDescriptor('micro/ops/reshape.h', 'ReshapeOp<mifloat>',
+                 MaceOp.Reshape.name,
                  mace_pb2.DT_FLOAT, DataFormat.NHWC),
+    OpDescriptor('micro/ops/reshape.h', 'ReshapeOp<int8_t>',
+                 MaceOp.Reshape.name,
+                 mace_pb2.DT_INT8, DataFormat.NHWC),
     OpDescriptor('micro/ops/expand_dims.h', 'ExpandDimsOp',
                  MaceOp.ExpandDims.name, mace_pb2.DT_FLOAT, DataFormat.NHWC),
     OpDescriptor('micro/ops/concat.h', 'ConcatOp<mifloat>', MaceOp.Concat.name,
@@ -118,6 +125,36 @@ McSupportedOps = [
                  'DepthwiseConv2dKB1S4Op',
                  MaceOp.DepthwiseConv2d.name, mace_pb2.DT_FLOAT,
                  DataFormat.NHWC, 'kb1s4'),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/quantize.h',
+                 'QuantizeOp',
+                 MaceOp.Quantize.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/dequantize.h',
+                 'DequantizeOp',
+                 MaceOp.Dequantize.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/arm_conv_2d_int8.h',
+                 'ArmConv2dInt8Op',
+                 MaceOp.Conv2D.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/arm_depthwise_conv_2d_int8.h',
+                 'ArmDepthwiseConv2dInt8Op',
+                 MaceOp.DepthwiseConv2d.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/arm_pooling_int8.h',
+                 'ArmPoolingInt8Op',
+                 MaceOp.Pooling.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC),
+    OpDescriptor('micro/ops/squeeze.h', 'SqueezeOp', MaceOp.Squeeze.name,
+                 mace_pb2.DT_INT8, None),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/arm_softmax_int8.h',
+                 'ArmSoftmaxInt8Op',
+                 MaceOp.Softmax.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC),
+    OpDescriptor('micro/ops/nhwc/cmsis_nn/arm_mat_mul_int8.h',
+                 'ArmMatMulInt8Op',
+                 MaceOp.MatMul.name, mace_pb2.DT_INT8,
+                 DataFormat.NHWC)
 ]
 
 
@@ -126,7 +163,9 @@ class OpResolver:
         self.net_def = pb_model
         self.op_desc_map = {}
         self.op_desc_list = []
-        if model_conf[ModelKeys.platform] == Platform.TENSORFLOW:
+        platform = model_conf[ModelKeys.platform]
+        if platform == Platform.TENSORFLOW or \
+           platform == Platform.KERAS:
             self.default_data_format = DataFormat.NHWC
         else:
             self.default_data_format = DataFormat.NCHW
@@ -134,7 +173,7 @@ class OpResolver:
               self.default_data_format)
         if ModelKeys.quantize in model_conf and \
                 model_conf[ModelKeys.quantize] == 1:
-            self.default_data_type = mace_pb2.DT_UINT8
+            self.default_data_type = mace_pb2.DT_INT8
         else:
             self.default_data_type = \
                 model_conf.get(ModelKeys.data_type, mace_pb2.DT_FLOAT)
@@ -218,7 +257,7 @@ class OpResolver:
         if not data_type_match:
             return False
         op_tag = self.get_op_tag(op_def)
-        if op_tag != op_desc.tag:
+        if (op_desc.tag) and (op_tag != op_desc.tag):
             return False
         return True
 
@@ -261,6 +300,7 @@ class OpResolver:
                            "not support op type %s, data type is %s, format is %s" %  # noqa
                            (op_def.type, self.get_op_data_type(op_def),
                             self.get_op_data_format(op_def)))
+
                 if op_def.type not in self.op_desc_map:
                     self.op_desc_map[op_def.type] = []
             else:

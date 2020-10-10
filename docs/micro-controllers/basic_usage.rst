@@ -1,128 +1,217 @@
 Basic usage for Micro Controllers
 ==================================
 
+MACE Micro is a lightweight neural network inference engine for MCUs and low-power DSPs.
+At now we support Cortex-M MCUs and Qualcomm Hexagon DSPs. You can get our projects from GitHub.
 
-Build and run an example model
--------------------------------
+Get MACE Micro Projects
+-----------------------
 
-At first, make sure the environment has been set up correctly already (refer to :doc:`../installation/env_requirement`).
+MACE Micro is a sub project of MACE, so you can get it from MACE.
 
-The followings are instructions about how to quickly build and run a provided model in
-`MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__.
+.. code-block:: sh
 
-Here we use the har-cnn model as an example.
+    git clone https://github.com/XiaoMi/mace.git
+    # Inits submodules by yourself
+    cd mace && git submodule update --init micro && cd ..
 
-**Commands**
+Environment Requirements
+------------------------
 
-    1. Pull `MACE <https://github.com/XiaoMi/mace>`__ project.
+On a ubuntu18.04/20.04 PC, do the following steps.
 
-    .. code-block:: sh
+.. code-block:: sh
 
-        git clone https://github.com/XiaoMi/mace.git
-        cd mace/
-        git fetch --all --tags --prune
+    apt-get update
+    apt-get install -y wget
 
-        # Checkout the latest tag (i.e. release version)
-        tag_name=`git describe --abbrev=0 --tags`
-        git checkout tags/${tag_name}
+    apt-get install -y g++
+    # Required for Cortex-M MCUs
+    apt-get install -y gcc-arm-none-eabi
+    apt-get install -y python3 python3-pip
 
-    .. note::
+    python3 -m pip install jinja2 pyyaml sh numpy six filelock
+    # Installs cmake above 3.13.0
+    wget https://cdn.cnbj1.fds.api.mi-img.com/mace/third-party/cmake-3.18.3-Linux-x86_64.sh
+    chmod +x cmake-3.18.3-Linux-x86_64.sh && ./cmake-3.18.3-Linux-x86_64.sh --skip-license --prefix=/usr
 
-        It's highly recommended to use a release version instead of master branch.
+    python3 -m pip install -U pip
+    # The Tensorflow version depends on your model
+    # The Tensroflow 1.x frozen model and Tensorflow 2.x Keras model are both supported
+    python3 -m pip install tensorflow==2.3.0
+    python3 -m pip install tensorflow_model_optimization
 
+You also can use a docker as the environment.
 
-    2. Pull `MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__ project.
+.. code-block:: sh
 
-    .. code-block:: sh
-
-        git clone https://github.com/XiaoMi/mace-models.git
-
-
-    3. Convert the pre-trained har-cnn model to c++ code.
-
-    .. code-block:: sh
-
-        cd path/to/mace
-        # output lib path: build/har-cnn/model/har_cnn_micro.tar.gz
-        CONF_FILE=/path/to/mace-models/micro-models/har-cnn/har-cnn.yml
-        python tools/python/convert.py --config=$CONF_FILE --enable_micro
-
-
-    4. Build Micro-Controllers engine and models to library on host.
-
-    .. code-block:: sh
-
-        cd micro
-        ./tools/cmake/cmake-build-host.sh
-
-    .. note::
-
-        - The build result ``build/cmake-build/host/libmicro.a``'s abi is host, if you want to run the model on micro controllers, you should build the code with the right toolchain, for example
-
-    .. code-block:: sh
-        cd micro
-        export HEXAGON_SDK_ROOT=/home/user/Qualcomm/Hexagon_SDK/3.4.1
-        export HEXAGON_TOOLS=/home/user/Qualcomm/HEXAGON_Tools/6.4.06
-        ./tools/cmake/cmake-build-hexagon6.sh
-
-    5. Run the model on host.
-
-    .. code-block:: sh
-
-        CONF_FILE=/path/to/mace-models/micro-models/har-cnn/har-cnn.yml
-        # Run
-        python tools/python/run_micro.py --config $CONF_FILE --model_name har_cnn --build
-
-    	# Test model run time
-        python tools/python/run_micro.py --config $CONF_FILE --model_name har_cnn --build --round=100
-
-    	# Validate the correctness by comparing the results against the
-    	# original model and framework, measured with cosine distance for similarity.
-    	python tools/python/run_micro.py --config $CONF_FILE --model_name har_cnn --build --validate
-        # Validate the layers' correctness.
-        python tools/python/run_micro.py --config $CONF_FILE --model_name har_cnn --build --validate --layers 0:-1
+    cd mace/docker/mace-micro-dev
+    docker build . -f mace-micro-dev.dockerfile --tag mace-micro-dev
+    cd ../../..
+    # Maps your workspace to docker container
+    docker run -ti -v $(pwd):/workspace/ -w /workspace  mace-micro-dev
 
 
+Convert a model to c++ code
+----------------------------
 
-Deploy your model into applications
+Here we use a pre-trained model of the MNIST database,
+
+.. code-block:: sh
+
+    cd mace
+    # Converts a tensorflow 2.x keras model, you need install python3 and tensorflow==2.x additional
+    python3 tools/python/convert.py --config=micro/pretrained_models/keras/mnist/mnist.yml --enable_micro
+
+
+Model config file
+-----------------
+
+The following is a completed model config file,
+
+.. code-block:: sh
+
+    library_name: har
+    target_abis: [host]
+    model_graph_format: file
+    model_data_format: file
+    models:
+    har_int8:
+        platform: keras
+        model_file_path: https://cdn.cnbj1.fds.api.mi-img.com/mace/miai-models/micro/keras/har/har.h5
+        model_sha256_checksum: ec0477b8e489541bb34377c9cabc42ee6cefa8bdf0a9f726e06be1b967ea1dcd
+        subgraphs:
+        - input_tensors:
+            - "conv2d_1_input:0"
+            input_shapes:
+            - 1, 90, 3, 1
+            input_ranges:
+            - -5, 15
+            output_tensors:
+            - "dense_3/Softmax:0"
+            output_shapes:
+            - "1, 6"
+        runtime: cpu
+        data_type: fp32_fp32
+        limit_opencl_kernel_time: 0
+        nnlib_graph_mode: 0
+        obfuscate: 0
+        winograd: 0
+        quantize: 1
+        quantize_schema: int8
+        quantize_range_file: /workspace/mace/micro/pretrained_models/keras/har/har.range
+
+For the bfloat16 model,
+
+.. code-block:: yaml
+
+    data_type: bf16_fp32
+
+For the int8 model,
+
+.. code-block:: yaml
+
+    quantize: 1
+    quantize_schema: int8
+    # Required when your model has not quantize info
+    quantize_range_file: range_file_path
+
+
+
+Build MACE Micro and models libraries
+--------------------------------------
+
+Here, we build the MACE Micro engine and models to libraries on a linux host machine. The CMake build parameters depends on your model config file.
+
+For float32 model,
+
+.. code-block:: sh
+
+    ./micro/tools/cmake/cmake-build-host.sh
+
+For bfloat16 model,
+
+.. code-block:: sh
+
+    ./micro/tools/cmake/cmake-build-host.sh -DMACE_MICRO_ENABLE_BFLOAT16=ON
+
+.. note::
+
+    You can only use either float32 or bfloat16
+
+For int8 model,
+
+.. code-block:: sh
+
+    ./micro/tools/cmake/cmake-build-host.sh -DMACE_MICRO_ENABLE_CMSIS=ON
+
+Use libraries directly
+-----------------------
+
+With these steps, we can find necessary libraries and headers in the "build/micro/host/install" directory, you can use the libraries directly.
+
+.. code-block:: sh
+
+    # Builds example
+    g++ micro/examples/classifier/main.cc -DMICRO_MODEL_NAME=mnist -DMICRO_DATA_NAME=mnist  -I build/micro/host/install/include/ -L build/micro/host/install/lib/ -lmicro  -lmodels -lmicro -o mnist
+    # Runs the mnist example
+    ./mnist
+
+
+Code example
 ------------------------------------
 
-Please refer to \ ``/mace/micro/tools/micro_run.cc`` for full usage. The following list the key steps.
+The following code is the mnist example source files, which the main steps is annotated
 
 .. code-block:: cpp
 
-    // Include the headers
-    #include "micro/include/public/micro.h"
+    #include "data/mnist.h"
 
-    // 1. Create MaceMicroEngine instance
-    MaceMicroEngine *micro_engine = nullptr;
-    MaceStatus status = har_cnn::GetMicroEngineSingleton(&micro_engine);
+    #include <cstdio>
 
-    // 1. Create and register Input buffers
-    std::vector<std::shared_ptr<char>> inputs;
-    std::vector<int32_t> input_sizes;
-    for (size_t i = 0; i < input_shapes.size(); ++i) {
-      input_sizes.push_back(std::accumulate(input_shapes[i].begin(),
-                                            input_shapes[i].end(), sizeof(float),
-                                            std::multiplies<int32_t>()));
-      inputs.push_back(std::shared_ptr<char>(new char[input_sizes[i]],
-                                             std::default_delete<char[]>()));
+    // Include MACE Micro header
+    #include "micro.h"
+
+    namespace micro {
+    namespace minst {
+
+    // We use forward declaration to avoid include the special engine header
+    MaceStatus GetMicroEngineSingleton(MaceMicroEngine **engine);
+
     }
-    // TODO: fill data into input buffers
-    for (size_t i = 0; i < input_names.size(); ++i) {
-      micro_engine->RegisterInputData(i, inputs[i].get(),
-                                      input_shapes[i].data());
-    }
+    }  // namespace micro
 
-    // 3. Run the model
-    MaceStatus status = micro_engine->Run();
+    int main() {
+      // Step 1, get the mnist micro engine
+      micro::MaceMicroEngine *micro_engine = NULL;
+      micro::MaceStatus status =
+          micro::mnist::GetMicroEngineSingleton(&micro_engine);
 
-    // 4. Get the results
-    for (size_t i = 0; i < output_names.size(); ++i) {
-      void *output_buffer = nullptr;
-      const int32_t *output_dims = nullptr;
+      // Step 2, set input data
+      static float *input_data = data_mnist_4;
+      int32_t input_dims[4] = {1, 28, 28, 1};
+      micro_engine->RegisterInputData(0, input_data, input_dims);
+
+      // Step3, run the inference
+      micro_engine->Run();
+
+      // Step 4, get output data
+      float *output_buffer = NULL;
+      const int32_t *output_dims = NULL;
       uint32_t dim_size = 0;
-      MaceStatus status =
-          micro_engine->GetOutputData(i, &output_buffer, &output_dims, &dim_size);
-      // TODO: the result data is in output_buffer, you can not delete output_buffer.
+      micro_engine->GetOutputData(
+          0, reinterpret_cast<void **>(&output_buffer), &output_dims, &dim_size);
+
+      for (int32_t i = 0; i < output_dims[1]; ++i) {
+        printf("%d: %f\n", i, output_buffer[i]);
+      }
+
+      return 0;
     }
+
+For more examples, goto the directory "micro/examples"
+
+Performance
+-----------
+
+We deploy a `HAR-CNN <https://github.com/Shahnawax/HAR-CNN-Keras>`__ int8 model on the NUCLEO-F767ZI(Cortex-M7) board. Each inference of HAR CNN model takes 12 ms.

@@ -1,5 +1,3 @@
-
-
 add_executable(micro_ops_test
   micro/ops/stack_test.cc
   micro/ops/reshape_test.cc
@@ -20,6 +18,7 @@ add_executable(micro_ops_test
   micro/ops/softmax_test.cc
   micro/ops/bias_add_test.cc
   micro/ops/expand_dims_test.cc
+  micro/ops/concat_test.cc
 )
 target_link_libraries(micro_ops_test
   PRIVATE micro_base
@@ -36,7 +35,8 @@ if(MICRO_MODEL_NAME)
     micro/codegen/engine_test.cc
   )
   target_link_libraries(micro_cc_test
-    micro_engine
+    micro
+    models
     gtest
     gtest_main
   )

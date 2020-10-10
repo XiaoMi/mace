@@ -1,18 +1,17 @@
 #!/bin/bash
-if [ -z "$GCC_ARM_ROOT" ]; then
-  echo "GCC_ARM_ROOT is undefined";
-fi
 
-BUILD_DIR=build/cmake-build/gcc-arm-none-eabi
+BUILD_DIR=build/micro/gcc-arm-none-eabi
+
 mkdir -p ${BUILD_DIR}
 cd ${BUILD_DIR}
 
-cmake ../../.. \
-  -DGCC_ARM_ROOT=${GCC_ARM_ROOT} \
+cmake ../../../micro \
   -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain/gcc-arm-none-eabi.cmake \
+  -DMACE_MICRO_ENABLE_CMSIS=ON \
   -DCMAKE_INSTALL_PREFIX=install \
+  -DMACE_MICRO_ENABLE_TESTS=OFF \
   $@ || exit 1
 
-cmake --build . -- -j || exit 1
+cmake --build . --target install -- -j || exit 1
 
 cd ../../..

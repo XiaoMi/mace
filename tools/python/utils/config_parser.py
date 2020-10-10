@@ -151,6 +151,7 @@ class Platform(Enum):
     CAFFE = 1
     ONNX = 2
     MEGENGINE = 3
+    KERAS = 4
 
 
 def parse_platform(str):

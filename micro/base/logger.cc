@@ -30,7 +30,7 @@ const int32_t kInt8ValueBufferLength = 4;
 const int32_t kFloatValueBufferLength = 21;
 
 inline bool IsValidLogLevel(const LogLevel level) {
-  return level >= CLEAN && level < INVALID_MAX;
+  return level < INVALID_MAX;
 }
 
 char LogLevelToShortStr(LogLevel level) {

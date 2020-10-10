@@ -201,6 +201,39 @@ MaceStatus Operator::ResizeOutputShape(uint32_t idx, uint32_t dim_size,
   return MACE_SUCCESS;
 }
 
+QuantizeInfo Operator::GetInputQuantizeInfo(uint32_t idx) {
+  const OpIOInfo *input_info = op_context_->input_info(idx);
+  const uint32_t op_def_idx = input_info->op_def_idx_;
+  if (kIdxConstTensor == op_def_idx) {
+    const model::ConstTensor *const_tensor =
+        engine_config_->net_def_->tensor(input_info->output_idx_);
+    QuantizeInfo quantize_info;
+    quantize_info.scale = const_tensor->scale();
+    quantize_info.zero = const_tensor->zero_point();
+    return quantize_info;
+  } else if (kIdxModelInput == op_def_idx) {
+    MACE_ASSERT1(false, "Unexpected, the model input has no quantize info");
+  } else {
+    const model::OperatorDef *pre_op_def =
+        engine_config_->net_def_->op(op_def_idx);
+    model::QuantizeActivationInfo quantize_activation_info =
+        pre_op_def->quantize_info(input_info->output_idx_);
+    QuantizeInfo quantize_info;
+    quantize_info.scale = quantize_activation_info.scale();
+    quantize_info.zero = quantize_activation_info.zero_point();
+    return quantize_info;
+  }
+}
+
+QuantizeInfo Operator::GetOutputQuantizeInfo(uint32_t idx) {
+  QuantizeInfo quantize_info;
+  model::QuantizeActivationInfo quantize_activation_info =
+      op_def_->quantize_info(idx);
+  quantize_info.scale = quantize_activation_info.scale();
+  quantize_info.zero = quantize_activation_info.zero_point();
+  return quantize_info;
+}
+
 #ifndef MACE_DEFINE_GET_ARG_BY_NAME_FUNC
 #define MACE_DEFINE_GET_ARG_BY_NAME_FUNC(T, FUNC)                   \
 template <>                                                         \

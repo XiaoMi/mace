@@ -23,6 +23,22 @@
 namespace micro {
 namespace model {
 
+class QuantizeActivationInfo {
+ public:
+  MACE_DEFINE_HARD_CODE_MAGIC(QuantizeActivationInfo)
+
+  MACE_DECLARE_OBJECT_FUNC(float, scale);
+  MACE_DECLARE_OBJECT_FUNC(int32_t, zero_point);
+  MACE_DECLARE_OBJECT_FUNC(float, minval);
+  MACE_DECLARE_OBJECT_FUNC(float, maxval);
+
+ private:
+  SerialFloat scale_;
+  SerialInt32 zero_point_;
+  SerialFloat minval_;
+  SerialFloat maxval_;
+};
+
 class OperatorDef : public Serialize {
  public:
   MACE_DEFINE_HARD_CODE_MAGIC(OperatorDef)
@@ -35,6 +51,7 @@ class OperatorDef : public Serialize {
   MACE_DECLARE_PTR_ARRAY_FUNC(Argument, arg);
   MACE_DECLARE_PTR_ARRAY_FUNC(OutputShape, output_shape);
   MACE_DECLARE_ARRAY_FUNC(DataType, output_type);
+  MACE_DECLARE_ARRAY_FUNC(QuantizeActivationInfo, quantize_info);
   // the mem_offset is the mem_id in proto file
   MACE_DECLARE_ARRAY_FUNC(int32_t, mem_offset);
 
@@ -48,6 +65,7 @@ class OperatorDef : public Serialize {
   SerialArray<Argument> args_;
   SerialArray<OutputShape> output_shapes_;
   SerialArray<DataType> output_types_;
+  SerialArray<QuantizeActivationInfo> quantize_info_;
   SerialArray<SerialInt32> mem_offsets_;
 };
 

@@ -40,10 +40,8 @@ class MatMulOp : public framework::Operator {
   uint32_t input_b_dim_size_;
 
   const mifloat *bias_;
-#ifndef MACE_MICRO_NDEBUG
   const int32_t *bias_dims_;
   uint32_t bias_dim_size_;
-#endif
 
   mifloat *output_;
 
