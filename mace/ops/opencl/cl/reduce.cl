@@ -73,9 +73,7 @@ __kernel void reduce(OUT_OF_RANGE_PARAMS
 #endif
   local_buffer[index] = part_result;
 
-#ifdef NON_QUALCOMM_ADRENO
   barrier(CLK_LOCAL_MEM_FENCE);
-#endif
 
   if (w == 0 && h == 0) {
 #if REDUCE_TYPE == 1
