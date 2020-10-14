@@ -24,5 +24,5 @@ cmake -DMACE_ENABLE_NEON=OFF         \
       -DMACE_ENABLE_CODE_MODE=${MACE_ENABLE_CODE_MODE}    \
       -DCMAKE_INSTALL_PREFIX=install \
       ../../..
-make -j6 VERBOSE=1 && make install
+make -j$(nproc) VERBOSE=1 && make install
 cd ../../..

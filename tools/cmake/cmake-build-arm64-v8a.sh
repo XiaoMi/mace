@@ -47,5 +47,5 @@ cmake -DANDROID_ABI="arm64-v8a" \
       -DMACE_ENABLE_RPCMEM=ON                                 \
       -DCMAKE_INSTALL_PREFIX=install      \
       ../../..
-make -j6 VERBOSE=1 && make install
+make -j$(nproc) VERBOSE=1 && make install
 cd ../../..
