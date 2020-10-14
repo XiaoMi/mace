@@ -11,6 +11,7 @@ load(
     "if_android",
     "if_android_armv7",
     "if_bfloat16_enabled",
+    "if_fp16_enabled",
     "if_hexagon_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
@@ -46,6 +47,9 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -85,6 +89,9 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -112,6 +119,10 @@ cc_library(
         [
             "arm/bf16/*.cc",
         ],
+    )) + if_fp16_enabled(glob(
+        [
+            "arm/fp16/*.cc",
+        ],
     )),
     hdrs = glob(
         [
@@ -125,6 +136,10 @@ cc_library(
     )) + if_bfloat16_enabled(glob(
         [
             "arm/bf16/*.h",
+        ],
+    )) + if_fp16_enabled(glob(
+        [
+            "arm/fp16/*.h",
         ],
     )),
     copts = [
@@ -142,6 +157,9 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -225,6 +243,9 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -265,6 +286,9 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),

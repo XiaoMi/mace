@@ -131,6 +131,9 @@ void RegisterConv2dDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Conv2d<BFloat16>, delegator::Conv2dParam,
       MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, BFloat16, ImplType::REF));
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, Conv2d<float16_t>, delegator::Conv2dParam,
+      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, float16_t, ImplType::REF));
 }
 
 }  // namespace ref

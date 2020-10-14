@@ -406,6 +406,8 @@ void RegisterDepthwiseConv2d(OpRegistry *op_registry) {
                    DepthwiseConv2dOp, DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "DepthwiseConv2d",
                         DepthwiseConv2dOp, DeviceType::CPU);
+  MACE_REGISTER_FP16_OP(op_registry, "DepthwiseConv2d",
+                         DepthwiseConv2dOp, DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",

@@ -89,6 +89,7 @@ FPDataTypeStrs = [
     "fp16_fp32",
     "fp32_fp32",
     "bf16_fp32",
+    "fp16_fp16",
 ]
 
 FPDataType = Enum('GPUDataType', [(ele, ele) for ele in FPDataTypeStrs],
@@ -180,6 +181,15 @@ def bfloat16_enabled(configs):
         model_config = configs[YAMLKeyword.models][model_name]
         dtype = model_config.get(YAMLKeyword.data_type, FPDataType.fp16_fp32)
         if dtype == FPDataType.bf16_fp32:
+            return True
+    return False
+
+
+def fp16_enabled(configs):
+    for model_name in configs[YAMLKeyword.models]:
+        model_config = configs[YAMLKeyword.models][model_name]
+        dtype = model_config.get(YAMLKeyword.data_type, FPDataType.fp16_fp32)
+        if dtype == FPDataType.fp16_fp16:
             return True
     return False
 
@@ -765,6 +775,7 @@ def build_model_lib(configs, address_sanitizer, debug_mode):
             enable_opencl=opencl_enabled(configs),
             enable_quantize=quantize_enabled(configs),
             enable_bfloat16=bfloat16_enabled(configs),
+            enable_fp16=fp16_enabled(configs),
             address_sanitizer=address_sanitizer,
             symbol_hidden=get_symbol_hidden_mode(debug_mode),
             debug_mode=debug_mode
@@ -927,6 +938,7 @@ def build_mace_run(configs, target_abi, toolchain,
         enable_opencl=opencl_enabled(configs),
         enable_quantize=quantize_enabled(configs),
         enable_bfloat16=bfloat16_enabled(configs),
+        enable_fp16=fp16_enabled(configs),
         address_sanitizer=address_sanitizer,
         symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),
         debug_mode=debug_mode,

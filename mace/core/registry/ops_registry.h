@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "mace/core/bfloat16.h"
+#include "mace/core/fp16.h"
 #include "mace/core/types.h"
 #include "mace/core/ops/operator.h"
 #include "mace/core/ops/op_condition_builder.h"
@@ -101,6 +102,27 @@ class OpRegistry {
 #define MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, op_type, class_name, device)
 #endif  // MACE_ENABLE_BFLOAT16
 #endif  // MACE_REGISTER_BF16_OP_BY_CLASS
+
+#ifndef MACE_REGISTER_FP16_OP
+#ifdef MACE_ENABLE_FP16
+#define MACE_REGISTER_FP16_OP(op_registry, op_type, class_name, device) \
+    MACE_REGISTER_OP(op_registry, op_type, class_name, device, float16_t)
+#else
+#define MACE_REGISTER_FP16_OP(op_registry, op_type, class_name, device)
+#endif  // MACE_ENABLE_FP16
+#endif  // MACE_REGISTER_FP16_OP
+
+#ifndef MACE_REGISTER_FP16_OP_BY_CLASS
+#ifdef MACE_ENABLE_FP16
+#define MACE_REGISTER_FP16_OP_BY_CLASS(op_registry, op_type, \
+                                       class_name, device)   \
+    MACE_REGISTER_OP_BY_CLASS(op_registry, op_type,           \
+                              class_name, device, float16_t)
+#else
+#define MACE_REGISTER_FP16_OP_BY_CLASS(op_registry, op_type, \
+                                       class_name, device)
+#endif  // MACE_ENABLE_FP16
+#endif  // MACE_REGISTER_FP16_OP_BY_CLASS
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_REGISTER_GPU_OP(op_registry, op_type, class_name) \

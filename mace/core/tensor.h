@@ -46,7 +46,8 @@ namespace mace {
     break;                            \
   }
 
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) \
+    || defined(MACE_ENABLE_FP16)
 #define MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)             \
   MACE_CASE(float16_t, MACE_SINGLE_ARG(STATEMENTS))
 #else
@@ -59,6 +60,13 @@ namespace mace {
 #else
 #define MACE_TYPE_ENUM_SWITCH_CASE_BFLOAT16(STATEMENTS)
 #endif  // MACE_ENABLE_BFLOAT16
+
+#ifdef MACE_ENABLE_FP16
+#define MACE_TYPE_ENUM_SWITCH_CASE_FP16(STATEMENTS)             \
+  MACE_CASE(float16_t, MACE_SINGLE_ARG(STATEMENTS))
+#else
+#define MACE_TYPE_ENUM_SWITCH_CASE_FP16(STATEMENTS)
+#endif  // MACE_ENABLE_FP16
 
 #if MACE_ENABLE_OPENCL
 #define MACE_TYPE_ENUM_SWITCH_CASE_OPENCL(STATEMENTS)           \

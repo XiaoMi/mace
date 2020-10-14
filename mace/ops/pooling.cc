@@ -518,6 +518,8 @@ void RegisterPooling(OpRegistry *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Pooling", PoolingOp,
                         DeviceType::CPU);
+  MACE_REGISTER_FP16_OP(op_registry, "Pooling", PoolingOp,
+                         DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,

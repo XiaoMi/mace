@@ -182,6 +182,8 @@ def parse_internal_data_type(str):
         return mace_pb2.DT_FLOAT
     elif str == 'bf16_fp32':
         return mace_pb2.DT_BFLOAT16
+    elif str == 'fp16_fp16':
+        return mace_pb2.DT_FLOAT16
     else:
         return mace_pb2.DT_HALF
 

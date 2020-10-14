@@ -12,6 +12,7 @@ load(
     "if_hta_enabled",
     "if_neon_enabled",
     "if_bfloat16_enabled",
+    "if_fp16_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
 )
@@ -42,6 +43,10 @@ cc_test(
         [
             "mace/ops/arm/bf16/*.cc",
         ]
+    )) + if_fp16_enabled(glob(
+        [
+            "mace/ops/arm/fp16/*.cc",
+        ]
     )) + if_opencl_enabled(glob(
         [
             "mace/ops/opencl/*.cc",
@@ -66,6 +71,9 @@ cc_test(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_hta_enabled([

@@ -101,6 +101,11 @@ def parse_args():
         default=True,
         help="Whether to use bfloat16")
     parser.add_argument(
+        "--enable_fp16",
+        type=str2bool,
+        default=False,
+        help="Whether to use armv8.2")
+    parser.add_argument(
         "--enable_rpcmem",
         type=str2bool,
         default=True,
@@ -180,6 +185,7 @@ def main(unused_args):
             enable_neon=FLAGS.enable_neon,
             enable_quantize=FLAGS.enable_quantize,
             enable_bfloat16=FLAGS.enable_bfloat16,
+            enable_fp16=FLAGS.enable_fp16,
             enable_rpcmem=FLAGS.enable_rpcmem,
             enable_hta=FLAGS.enable_hta,
             address_sanitizer=FLAGS.address_sanitizer,
