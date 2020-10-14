@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/reduce.h"
 
+#include <algorithm>
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -58,24 +60,23 @@ MaceStatus ReduceKernel::Compute(
                                               kernel_name,
                                               built_options,
                                               &kernel_));
-
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  if (runtime->gpu_type() == GPUType::QUALCOMM_ADRENO) {
-    const uint32_t wave_size =
-        static_cast<uint32_t>(runtime->GetKernelWaveSize(kernel_));
-    gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * channel_blocks)};
-  } else {
-    // Ensure each kernel has at least 4 input elements.
-    gws = {4, image_size / 16, static_cast<uint32_t>(batch * channel_blocks)};
-    if (gws[1] == 0) {
-      gws[1] = 1;
-    } else if (gws[1] > 16) {
-      gws[1] = 16;
-    }
+  // In the reduce.cl file, the computation is divided into two steps.
+  // The first step computes `compute_size` times parallelly, and the second
+  // step computes `group_num` times. In order to speed up the computation, we
+  // make the computation times of these two steps as uniform as possible.
+  uint32_t local_wg_size = static_cast<uint32_t>(sqrt(in_height * in_width));
+  // Increase the times of the second step for it's not parallel
+  local_wg_size *= 2;
+  local_wg_size = std::min(local_wg_size, kwg_size_);
+  gws = {4, local_wg_size / 4, static_cast<uint32_t>(batch * channel_blocks)};
+  if (gws[1] == 0) {
+    gws[1] = 1;
   }
+
   lws = {gws[0], gws[1], 1};
   const int group_num = lws[0] * lws[1] * lws[2];
   // Each kernel intends to compute compute_size elements.
