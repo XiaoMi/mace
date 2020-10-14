@@ -377,6 +377,22 @@ class OpsTestNet {
     }
   }
 
+  template <DeviceType D, typename Src, typename Dst>
+  void Cast(const std::string &src_name, const std::string &dst_name) {
+    Tensor *input = ws_.GetTensor(src_name);
+    Tensor *output = ws_.CreateTensor(
+        dst_name, OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<Dst>::v(), input->is_weight());
+    output->Resize(input->shape());
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard output_guard(output);
+    auto input_data = input->data<Src>();
+    auto output_data = output->mutable_data<Dst>();
+    for (index_t i = 0; i < input->size(); ++i) {
+      output_data[i] = input_data[i];
+    }
+  }
+
   // Create standalone tensor on device D with T type.
   template <typename T, DeviceType D = DeviceType::CPU>
   std::unique_ptr<Tensor> CreateTensor(

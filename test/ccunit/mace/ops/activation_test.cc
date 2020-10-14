@@ -417,6 +417,61 @@ TEST_F(ActivationOpTest, Quantized) {
   TestQuantized(37, "RELUX");
 }
 
+#ifdef MACE_ENABLE_BFLOAT16
+namespace {
+void TestBFloat16(const char *activation) {
+  OpsTestNet net;
+
+  static unsigned int seed = time(NULL);
+  index_t batch = 3 + (rand_r(&seed) % 10);
+  index_t channels = 3 + (rand_r(&seed) % 10);
+  index_t height = 3 + (rand_r(&seed) % 10);
+  index_t width = 3 + (rand_r(&seed) % 10);
+
+  // Add input data
+  net.AddRandomInput<CPU, float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<CPU, float>("Alpha", {channels}, true);
+  net.Cast<CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<CPU, float, BFloat16>("Alpha", "BF16Alpha");
+
+  OpDefBuilder("Activation", "ActivationTest")
+      .Input("Input")
+      .Input("Alpha")
+      .Output("Output")
+      .AddStringArg("activation", activation)
+      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("max_limit", 6)
+      .AddIntArg("T", static_cast<int>(DT_FLOAT))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  OpDefBuilder("Activation", "BF16ActivationTest")
+      .Input("BF16Input")
+      .Input("BF16Alpha")
+      .Output("BF16Output")
+      .AddStringArg("activation", activation)
+      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("max_limit", 6)
+      .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  net.Cast<CPU, BFloat16, float>("BF16Output", "CastOutput");
+
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("CastOutput"), 1e-5);
+}
+}  // namespace
+
+TEST_F(ActivationOpTest, BFloat16) {
+  TestBFloat16("RELU");
+  TestBFloat16("LEAKYRELU");
+  TestBFloat16("RELUX");
+  TestBFloat16("PRELU");
+  TestBFloat16("TANH");
+  TestBFloat16("SIGMOID");
+}
+#endif  // MACE_ENABLE_BFLOAT16
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

@@ -492,6 +492,71 @@ TEST_F(DepthwiseConv2dOpTest, Quant) {
   TestQuant(3, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
 }
 
+namespace {
+void TestBFloat16(const index_t batch,
+                  const index_t multiplier,
+                  const index_t in_channels,
+                  const index_t in_height,
+                  const index_t in_width,
+                  const index_t k_height,
+                  const index_t k_width,
+                  enum Padding padding_type,
+                  const std::vector<int> &strides) {
+  OpsTestNet net;
+  const index_t out_channels = multiplier * in_channels;
+  net.AddRandomInput<CPU, float>(
+      "Input", {batch, in_channels, in_height, in_width}, false, false);
+  net.AddRandomInput<CPU, float>(
+      "Filter", {multiplier, in_channels, k_height, k_width}, true, false);
+  net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
+  net.Cast<CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<CPU, float, BFloat16>("Filter", "BF16Filter");
+  net.Cast<CPU, float, BFloat16>("Bias", "BF16Bias");
+
+  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_FLOAT))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  OpDefBuilder("DepthwiseConv2d", "BF16DepthwiseConv2DTest")
+      .Input("BF16Input")
+      .Input("BF16Filter")
+      .Input("BF16Bias")
+      .Output("BF16Output")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  net.Cast<CPU, BFloat16, float>("BF16Output", "CastOutput");
+
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("CastOutput"), 1e-4);
+}
+}  // namespace
+
+TEST_F(DepthwiseConv2dOpTest, BFloat16) {
+  TestBFloat16(1, 1, 1024, 7, 7, 3, 3, VALID, {1, 1});
+  TestBFloat16(1, 1, 1024, 7, 7, 3, 3, SAME, {1, 1});
+  TestBFloat16(1, 1, 1024, 7, 7, 3, 3, FULL, {1, 1});
+  TestBFloat16(1, 2, 1024, 7, 7, 3, 3, SAME, {1, 1});
+  TestBFloat16(1, 2, 1024, 7, 7, 3, 3, SAME, {2, 2});
+  TestBFloat16(1, 1, 512, 14, 14, 3, 3, SAME, {1, 1});
+  TestBFloat16(1, 1, 512, 14, 13, 5, 5, SAME, {2, 2});
+  TestBFloat16(1, 1, 256, 28, 28, 3, 3, SAME, {1, 1});
+  TestBFloat16(1, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
+  TestBFloat16(3, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

@@ -37,9 +37,7 @@ extern void RegisterGemvDelegator(OpDelegatorRegistry *registry);
 
 #ifdef MACE_ENABLE_NEON
 namespace arm {
-namespace fp32 {
 extern void RegisterConv2dK3x3WinogradDelegator(OpDelegatorRegistry *registry);
-}  // namespace fp32
 
 extern void RegisterActivationDelegator(OpDelegatorRegistry *registry);
 extern void RegisterBiasAddDelegator(OpDelegatorRegistry *registry);
@@ -98,7 +96,7 @@ void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_NEON
-  arm::fp32::RegisterConv2dK3x3WinogradDelegator(registry);
+  arm::RegisterConv2dK3x3WinogradDelegator(registry);
 
   arm::RegisterActivationDelegator(registry);
   arm::RegisterBiasAddDelegator(registry);

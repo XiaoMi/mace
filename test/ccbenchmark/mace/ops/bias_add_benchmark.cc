@@ -68,24 +68,31 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   }                                                                       \
   MACE_BENCHMARK(MACE_BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
-#define MACE_BM_BIAS_ADD(N, C, H, W)                 \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, CPU);  \
+#ifdef MACE_ENABLE_QUANTIZE
+#define MACE_BM_BIAS_ADD_Q8_MACRO(N, C, H, W)      \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, CPU)
+#else
+#define MACE_BM_BIAS_ADD_Q8_MACRO(N, C, H, W)
+#endif  // MACE_ENABLE_QUANTIZE
+#ifdef MACE_ENABLE_BFLOAT16
+#define MACE_BM_BIAS_ADD_BF16_MACRO(N, C, H, W)      \
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, BFloat16, CPU)
+#else
+#define MACE_BM_BIAS_ADD_BF16_MACRO(N, C, H, W)
+#endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_OPENCL
+#define MACE_BM_BIAS_ADD_GPU_MACRO(N, C, H, W)       \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU);
-#elif defined(MACE_ENABLE_OPENCL)
+  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU)
+#else
+#define MACE_BM_BIAS_ADD_GPU_MACRO(N, C, H, W)
+#endif  // MACE_ENABLE_OPENCL
+
 #define MACE_BM_BIAS_ADD(N, C, H, W)                 \
   MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU);
-#elif defined(MACE_ENABLE_QUANTIZE)
-#define MACE_BM_BIAS_ADD(N, C, H, W)                 \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, uint8_t, CPU);
-#define MACE_BM_BIAS_ADD(N, C, H, W)                 \
-  MACE_BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);
-#endif
+  MACE_BM_BIAS_ADD_Q8_MACRO(N, C, H, W);             \
+  MACE_BM_BIAS_ADD_BF16_MACRO(N, C, H, W);           \
+  MACE_BM_BIAS_ADD_GPU_MACRO(N, C, H, W)
 
 MACE_BM_BIAS_ADD(1, 1, 512, 512);
 MACE_BM_BIAS_ADD(1, 3, 128, 128);

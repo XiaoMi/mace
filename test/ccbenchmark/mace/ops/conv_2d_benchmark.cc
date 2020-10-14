@@ -42,7 +42,7 @@ void Conv2d(int iters,
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
@@ -169,26 +169,31 @@ void Conv2d<CPU, uint8_t>(int iters,
       MACE_BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##\
         DILATION##_##P##_##OC##_##TYPE##_##DEVICE)
 
-#if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
-#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU);     \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, uint8_t, CPU)
-#elif defined(MACE_ENABLE_OPENCL)
-#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU)
-#elif defined(MACE_ENABLE_QUANTIZE)
-#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
+#ifdef MACE_ENABLE_QUANTIZE
+#define MACE_BM_CONV_2D_Q8_MACRO(N, C, H, W, KH, KW, S, D, P, OC)        \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, uint8_t, CPU)
 #else
-#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU)
-#endif
+#define MACE_BM_CONV_2D_Q8_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
+#endif  // MACE_ENABLE_QUANTIZE
+#ifdef MACE_ENABLE_BFLOAT16
+#define MACE_BM_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, D, P, OC)      \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, BFloat16, CPU)
+#else
+#define MACE_BM_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
+#endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_OPENCL
+#define MACE_BM_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, D, P, OC)       \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU)
+#else
+#define MACE_BM_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
+#endif  // MACE_ENABLE_OPENCL
 
+#define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
+  MACE_BM_CONV_2D_Q8_MACRO(N, C, H, W, KH, KW, S, D, P, OC);             \
+  MACE_BM_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, D, P, OC);           \
+  MACE_BM_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
 
 // Filter sizes and data alignments
 MACE_BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, 1, VALID, 128);

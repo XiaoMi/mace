@@ -110,46 +110,16 @@ class Gemm : public delegator::Gemm {
 
   void UnpackOutput(const T *packed_output,
                     MatrixMap<T> *output);
-  template<int RowBlockSize, int ColBlockSize>
-  void Unpack(const T *packed_output,
-              MatrixMap<T> *output) {
-    const index_t rows = output->rows();
-    const index_t cols = output->cols();
-    for (index_t r = 0; r < rows; ++r) {
-      for (index_t c = 0; c < cols; ++c) {
-        *output->data(r, c) = packed_output[r * ColBlockSize + c];
-      }
-    }
-  }
 
-  template<int WidthBlockSize, int DepthBlockSize>
-  void Pack(const MatrixMap<const T> &matrix,
-            MatrixMajor dst_major,
-            T *packed_matrix) {
-    const index_t rows = matrix.rows();
-    const index_t cols = matrix.cols();
-    index_t depth = cols;
-    if (dst_major == RowMajor) {
-      // rhs
-      depth = rows;
-    }
-    const index_t depth_padded = RoundUp(depth, static_cast<index_t>(4));
-    memset(static_cast<void *>(packed_matrix), 0,
-           sizeof(T) * WidthBlockSize * depth_padded);
-    if (dst_major == ColMajor) {
-      for (index_t c = 0; c < cols; ++c) {
-        for (index_t r = 0; r < rows; ++r) {
-          packed_matrix[c * WidthBlockSize + r] = matrix(r, c);
-        }
-      }
-    } else {
-      for (index_t r = 0; r < rows; ++r) {
-        for (index_t c = 0; c < cols; ++c) {
-          packed_matrix[r * WidthBlockSize + c] = matrix(r, c);
-        }
-      }
-    }
-  }
+  void Unpack4x8(const T *packed_output, MatrixMap<T> *output);
+  void Unpack8x8(const T *packed_output, MatrixMap<T> *output);
+
+  void Pack4x4(const MatrixMap<const T> &matrix,
+               MatrixMajor dst_major,
+               T *packed_matrix);
+  void Pack8x4(const MatrixMap<const T> &matrix,
+               MatrixMajor dst_major,
+               T *packed_matrix);
 
  private:
   Buffer pack_cache_;
