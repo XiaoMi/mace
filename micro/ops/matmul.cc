@@ -27,8 +27,14 @@ MaceStatus MatMulOp::OnInit() {
   transpose_b_ = GetArgByName("transpose_b", false);
   input_a_ = GetInputData<mifloat>(INPUT_A);
   input_b_ = GetInputData<mifloat>(INPUT_B);
-  bias_ = GetInputSize() > 3 ? GetInputData<mifloat>(BIAS) : NULL;
   output_ = GetOutputData<mifloat>(OUTPUT);
+
+  bias_ = NULL;
+  if (GetInputSize() >= 3) {
+    bias_ = GetInputData<mifloat>(BIAS);
+    bias_dim_size_ = GetInputShapeDimSize(BIAS);
+    bias_dims_ = GetInputShapeDims(BIAS);
+  }
 
   input_a_dim_size_ = GetInputShapeDimSize(INPUT_A);
   input_b_dim_size_ = GetInputShapeDimSize(INPUT_B);
