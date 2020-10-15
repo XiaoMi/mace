@@ -98,10 +98,10 @@ MaceStatus Gemv<mifloat>::Compute(const mifloat *lhs_data,
         float sum2 = 0;
         float sum3 = 0;
         if (bias_data != NULL) {
-          sum0 = bias_data[0];
-          sum1 = bias_data[1];
-          sum2 = bias_data[2];
-          sum3 = bias_data[3];
+          sum0 = bias_data[h + 0];
+          sum1 = bias_data[h + 1];
+          sum2 = bias_data[h + 2];
+          sum3 = bias_data[h + 3];
         }
         const int32_t lhs_h_base0 = (lhs_b_base + h) * lhs_width;
         const int32_t lhs_h_base1 = lhs_h_base0 + lhs_width;
