@@ -20,7 +20,7 @@ Please make sure you have CMake installed.
 
     .. code-block:: sh
 
-        RUNTIME=GPU bash tools/cmake/cmake-build-armeabi-v7a.sh
+        RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
 
 which generate libraries in ``build/cmake-build/armeabi-v7a``, you can use either static libraries or the ``libmace.so`` shared library.
 

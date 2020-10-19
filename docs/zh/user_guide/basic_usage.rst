@@ -20,7 +20,7 @@
 
     .. code-block:: sh
 
-        RUNTIME=GPU bash tools/cmake/cmake-build-armeabi-v7a.sh
+        RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
 
 编译安装位置为 ``build/cmake-build/armeabi-v7a``, 可以使用 libmace 静态库或者动态库。
 
