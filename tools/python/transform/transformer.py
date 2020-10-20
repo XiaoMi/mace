@@ -867,7 +867,9 @@ class Transformer(base_converter.ConverterInterface):
             if (((op.type == MaceOp.Conv2D.name
                   or op.type == MaceOp.DepthwiseConv2d.name
                   or op.type == MaceOp.FullyConnected.name
-                  or op.type == MaceOp.MatMul.name)
+                  or (op.type == MaceOp.MatMul.name
+                      and self._option.device == DeviceType.CPU.value
+                      and not self._option.quantize))
                  and len(op.input) == 2)
                 or (op.type == MaceOp.Deconv2D.name
                     and ((ConverterUtil.get_arg(

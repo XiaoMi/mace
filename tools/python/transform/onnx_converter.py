@@ -604,8 +604,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         for output in node.outputs:
             op.output.append(output)
             if with_shape:
+                output_shape = op.output_shape.add()
                 if output in self._graph_shapes_dict:
-                    output_shape = op.output_shape.add()
                     shape_info = self._graph_shapes_dict[output]
                     output_shape.dims.extend(shape_info)
 
