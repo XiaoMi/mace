@@ -26,20 +26,20 @@ namespace delegator {
 
 struct ActivationParam : public DelegatorParam {
   explicit ActivationParam(ActivationType type, const float limit,
-                           const float leakyrelu_coefficient)
+                           const float activation_coefficient)
       : type_(type), limit_(limit),
-        leakyrelu_coefficient_(leakyrelu_coefficient) {}
+        activation_coefficient_(activation_coefficient) {}
 
   ActivationType type_;
   const float limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
 };
 
 class Activation : public OpDelegator {
  public:
   explicit Activation(const ActivationParam &param)
       : OpDelegator(param), type_(param.type_), limit_(param.limit_),
-        leakyrelu_coefficient_(param.leakyrelu_coefficient_) {}
+        activation_coefficient_(param.activation_coefficient_) {}
   virtual ~Activation() = default;
 
   MACE_DEFINE_DELEGATOR_CREATOR(Activation)
@@ -51,7 +51,7 @@ class Activation : public OpDelegator {
  protected:
   ActivationType type_;
   const float limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
 };
 
 }  // namespace delegator

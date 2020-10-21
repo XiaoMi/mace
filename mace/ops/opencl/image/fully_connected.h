@@ -40,7 +40,7 @@ class FullyConnectedKernel : public OpenCLFullyConnectedKernel {
       const Tensor *bias,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient,
+      const float activation_coefficient,
       Tensor *output) override;
 
  private:

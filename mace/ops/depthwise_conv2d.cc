@@ -52,12 +52,12 @@ class DepthwiseConv2dOpBase : public ConvPool2dOpBase {
             Operation::GetOptionalArg<std::string>("activation",
                                                    "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-            "leakyrelu_coefficient", 0.0f)) {}
+        activation_coefficient_(Operation::GetOptionalArg<float>(
+            "activation_coefficient", 0.0f)) {}
  protected:
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
 };
 
 template<DeviceType D, class T>
@@ -73,8 +73,8 @@ class DepthwiseConv2dOp<DeviceType::CPU, T> : public DepthwiseConv2dOpBase {
                 context->workspace(),
                 MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
                                    T, kCpuImplType),
-                delegator::ActivationParam(activation_, relux_max_limit_,
-                                           leakyrelu_coefficient_))),
+                delegator::ActivationParam(
+                    activation_, relux_max_limit_, activation_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
@@ -389,7 +389,7 @@ class DepthwiseConv2dOp<DeviceType::GPU, float> :
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), padding_type_, paddings_,
                             dilations_.data(), activation_, relux_max_limit_,
-                            leakyrelu_coefficient_, output);
+                            activation_coefficient_, output);
   }
 
  private:

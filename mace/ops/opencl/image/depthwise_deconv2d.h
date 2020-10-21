@@ -42,7 +42,7 @@ class DepthwiseDeconv2dKernel : public OpenCLDepthwiseDeconv2dKernel {
       const int group,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient,
+      const float activation_coefficient,
       const std::vector<index_t> &output_shape,
       Tensor *output) override;
 

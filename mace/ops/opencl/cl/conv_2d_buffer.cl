@@ -22,7 +22,7 @@ __kernel void conv2d(BUFFER_OUT_OF_RANGE_PARAMS
                      __private const int dilated_h_offset,
                      __private const int dilated_w_offset,
                      __private const float relux_max_limit,
-                     __private const float leakyrelu_coefficient,
+                     __private const float activation_coefficient,
                      __global OUT_DATA_TYPE *output) {
   const int out_wc_blk_idx = get_global_id(0);
   const int out_hb_idx = get_global_id(1);
@@ -108,11 +108,11 @@ __kernel void conv2d(BUFFER_OUT_OF_RANGE_PARAMS
     }
   }
 
-#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0 = do_activation(out0, relux_max_limit, leakyrelu_coefficient);
-  out1 = do_activation(out1, relux_max_limit, leakyrelu_coefficient);
-  out2 = do_activation(out2, relux_max_limit, leakyrelu_coefficient);
-  out3 = do_activation(out3, relux_max_limit, leakyrelu_coefficient);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID) || defined(USE_ELU)
+  out0 = do_activation(out0, relux_max_limit, activation_coefficient);
+  out1 = do_activation(out1, relux_max_limit, activation_coefficient);
+  out2 = do_activation(out2, relux_max_limit, activation_coefficient);
+  out3 = do_activation(out3, relux_max_limit, activation_coefficient);
 #endif
 
   int out_offset = mad24(mad24(mad24(batch_idx, out_height, out_height_idx),

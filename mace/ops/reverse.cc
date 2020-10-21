@@ -32,6 +32,8 @@ class ReverseOp<DeviceType::CPU, T> : public Operation {
     const Tensor *input = this->Input(INPUT);
     const Tensor *axis = this->Input(AXIS);
     Tensor *output = this->Output(OUTPUT);
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard axis_guard(axis);
 
     MACE_CHECK(axis->dim_size() == 1, "Only support reverse in one axis now");
 

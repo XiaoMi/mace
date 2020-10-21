@@ -123,6 +123,16 @@ void Activation<uint8_t>::ActivateSigmoid(utils::ThreadPool *thread_pool,
   MACE_NOT_IMPLEMENTED;
 }
 
+template<>
+void Activation<uint8_t>::ActivateElu(utils::ThreadPool *thread_pool,
+                                      const Tensor *input,
+                                      Tensor *output) {
+  MACE_UNUSED(thread_pool);
+  MACE_UNUSED(input);
+  MACE_UNUSED(output);
+  MACE_NOT_IMPLEMENTED;
+}
+
 }  // namespace arm
 }  // namespace ops
 }  // namespace mace

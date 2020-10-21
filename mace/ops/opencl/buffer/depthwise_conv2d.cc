@@ -32,7 +32,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            const int *dilations,
                            const ActivationType activation,
                            const float relux_max_limit,
-                           const float leakyrelu_coefficient,
+                           const float activation_coefficient,
                            const bool input_changed,
                            Tensor *output,
                            StatsFuture *future) {
@@ -79,6 +79,9 @@ MaceStatus DepthwiseConv2d(OpContext *context,
       case LEAKYRELU:
         built_options.emplace("-DUSE_LEAKYRELU");
         break;
+      case ELU:
+        built_options.emplace("-DUSE_ELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
@@ -119,7 +122,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     kernel->setArg(idx++, static_cast<int32_t>(
         dilations[1] * in_channel));
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, leakyrelu_coefficient);
+    kernel->setArg(idx++, activation_coefficient);
     kernel->setArg(idx++, *(output->opencl_buffer()));
   }
 
@@ -147,7 +150,7 @@ MaceStatus DepthwiseConv2dKernel::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
-    const float leakyrelu_coefficient,
+    const float activation_coefficient,
     Tensor *output) {
   StatsFuture pad_future, dw_conv_future;
   index_t filter_w = filter->dim(3);
@@ -242,7 +245,7 @@ MaceStatus DepthwiseConv2dKernel::Compute(
       depthwise::DepthwiseConv2d(
           context, &kernels_[1], padded_input_ptr, filter, bias, strides,
           dilations, activation, relux_max_limit,
-          leakyrelu_coefficient, input_changed, output, &dw_conv_future));
+          activation_coefficient, input_changed, output, &dw_conv_future));
   MergeMultipleFutureWaitFn({pad_future, dw_conv_future}, context->future());
   return MaceStatus::MACE_SUCCESS;
 }

@@ -980,10 +980,7 @@ class Transformer(base_converter.ConverterInterface):
                                          [ActivationType.RELU.name,
                                           ActivationType.RELUX.name])
                     else:
-                        fold_consumer = (
-                            act_type != ActivationType.PRELU.name
-                            and act_type != ActivationType.ELU.name
-                        )
+                        fold_consumer = (act_type != ActivationType.PRELU.name)
                     # during quantization, only fold relu/relux
                     if (self._option.quantize_stat or self._option.quantize) \
                             and act_type not in [ActivationType.RELU.name,
@@ -997,7 +994,7 @@ class Transformer(base_converter.ConverterInterface):
                         if arg.name == MaceKeyword.mace_activation_type_str \
                                 or arg.name == \
                                     MaceKeyword.mace_activation_max_limit_str \
-                                or arg.name == MaceKeyword.mace_activation_leakyrelu_coefficient_str:  # noqa
+                                or arg.name == MaceKeyword.mace_activation_coefficient_str:  # noqa
                             op.arg.extend([arg])
 
                     self.replace_quantize_info(op, consumer_op)

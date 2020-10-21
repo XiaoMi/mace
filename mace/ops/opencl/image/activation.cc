@@ -99,12 +99,12 @@ MaceStatus ActivationKernel::Compute(
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
     kernel_.setArg(idx++, *(input->opencl_image()));
-    if (activation_ == PRELU || activation_ == ELU) {
+    if (activation_ == PRELU) {
       MACE_CHECK_NOTNULL(alpha);
       kernel_.setArg(idx++, *(alpha->opencl_image()));
     }
     kernel_.setArg(idx++, relux_max_limit_);
-    kernel_.setArg(idx++, leakyrelu_coefficient_);
+    kernel_.setArg(idx++, activation_coefficient_);
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();

@@ -22,11 +22,11 @@ namespace image {
 BatchNormKernel::BatchNormKernel(const float epsilon,
                                  const ActivationType activation,
                                  const float relux_max_limit,
-                                 const float leakyrelu_coefficient)
+                                 const float activation_coefficient)
     : epsilon_(epsilon),
       activation_(activation),
       relux_max_limit_(relux_max_limit),
-      leakyrelu_coefficient_(leakyrelu_coefficient) {}
+      activation_coefficient_(activation_coefficient) {}
 
 MaceStatus BatchNormKernel::Compute(
     OpContext *context,
@@ -75,6 +75,8 @@ MaceStatus BatchNormKernel::Compute(
         break;
       case LEAKYRELU:built_options.emplace("-DUSE_LEAKYRELU");
         break;
+      case ELU: built_options.emplace("-DUSE_ELU");
+        break;
       default:LOG(FATAL) << "Unknown activation type: " << activation_;
     }
 
@@ -99,7 +101,7 @@ MaceStatus BatchNormKernel::Compute(
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit_);
-    kernel_.setArg(idx++, leakyrelu_coefficient_);
+    kernel_.setArg(idx++, activation_coefficient_);
 
     input_shape_ = input->shape();
   }

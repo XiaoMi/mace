@@ -37,7 +37,7 @@ class BatchNormKernel : public OpenCLBatchNormKernel {
       const float epsilon,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient);
+      const float activation_coefficient);
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,
                      const Tensor *scale,
@@ -50,7 +50,7 @@ class BatchNormKernel : public OpenCLBatchNormKernel {
   const float epsilon_;
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

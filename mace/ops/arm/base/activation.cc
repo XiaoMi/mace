@@ -81,6 +81,11 @@ void Activation<T>::DoActivation(const OpContext *context,
       break;
     }
 
+    case ELU: {
+      ActivateElu(&thread_pool, input, output);
+      break;
+    }
+
     case NOOP: {
       break;
     }
@@ -164,7 +169,7 @@ void Activation<T>::ActivateLeakyRelu(utils::ThreadPool *thread_pool,
   auto output_data = output->mutable_data<T>();
   const index_t input_size = input->size();
   const float32x4_t vzero = vdupq_n_f32(0.f);
-  const float32x4_t valpha = vdupq_n_f32(leakyrelu_coefficient_);
+  const float32x4_t valpha = vdupq_n_f32(activation_coefficient_);
   const index_t block_count = input_size / 4;
 
   thread_pool->Compute1D(
@@ -188,7 +193,7 @@ void Activation<T>::ActivateLeakyRelu(utils::ThreadPool *thread_pool,
   // remain
   for (index_t i = block_count * 4; i < input_size; ++i) {
     output_data[i] = std::max(input_data[i], 0.f) +
-        std::min(input_data[i], 0.f) * leakyrelu_coefficient_;
+        std::min(input_data[i], 0.f) * activation_coefficient_;
   }
 }
 
@@ -226,6 +231,28 @@ void Activation<T>::ActivateSigmoid(utils::ThreadPool *thread_pool,
       0, input_size, 1);
 }
 
+template<typename T>
+void Activation<T>::ActivateElu(utils::ThreadPool *thread_pool,
+                                const Tensor *input,
+                                Tensor *output) {
+  const auto *input_data = input->data<T>();
+  auto *output_data = output->mutable_data<T>();
+  const index_t input_size = input->size();
+
+  thread_pool->Compute1D(
+      [=](index_t start, index_t end, index_t step) {
+        for (index_t i = start; i < end; i += step) {
+          const auto in_val = input_data[i];
+          if (in_val < 0) {
+            output_data[i] = (std::exp(in_val) - 1) * activation_coefficient_;
+          } else {
+            output_data[i] = in_val;
+          }
+        }
+      },
+      0, input_size, 1);
+}
+
 void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Activation<float>, delegator::ActivationParam,
@@ -240,7 +267,7 @@ void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Activation<BFloat16>, delegator::ActivationParam,
       MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, BFloat16,
-      ImplType::NEON));
+                         ImplType::NEON));
 }
 
 }  // namespace arm

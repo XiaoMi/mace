@@ -46,7 +46,7 @@ MaceStatus Conv2dKernel::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
-    const float leakyrelu_coefficient,
+    const float activation_coefficient,
     const int winograd_blk_size,
     Tensor *output) {
   MACE_UNUSED(winograd_blk_size);
@@ -148,14 +148,14 @@ MaceStatus Conv2dKernel::Compute(
       return conv2d::Conv2d1x1(
           context, &kernels_[1], pad_input, filter, bias, strides,
           activation, relux_max_limit,
-          leakyrelu_coefficient, input_changed, output, &conv_future);
+          activation_coefficient, input_changed, output, &conv_future);
     };
   } else {
     conv_func = [&](const Tensor *pad_input, Tensor *output) -> MaceStatus {
       return conv2d::Conv2dGeneral(
           context, &kernels_[1], pad_input, filter, bias, strides, dilations,
           activation, relux_max_limit,
-          leakyrelu_coefficient, input_changed, output, &conv_future);
+          activation_coefficient, input_changed, output, &conv_future);
     };
   }
   MACE_RETURN_IF_ERROR(conv_func(padded_input_ptr, output));
