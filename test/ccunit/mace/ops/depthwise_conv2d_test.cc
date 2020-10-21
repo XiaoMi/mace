@@ -492,6 +492,7 @@ TEST_F(DepthwiseConv2dOpTest, Quant) {
   TestQuant(3, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
 }
 
+#ifdef MACE_ENABLE_BFLOAT16
 namespace {
 void TestBFloat16(const index_t batch,
                   const index_t multiplier,
@@ -556,6 +557,8 @@ TEST_F(DepthwiseConv2dOpTest, BFloat16) {
   TestBFloat16(1, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
   TestBFloat16(3, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
 }
+
+#endif  // MACE_ENABLE_BFLOAT16
 
 }  // namespace test
 }  // namespace ops

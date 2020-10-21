@@ -144,7 +144,7 @@ inline void vst3q(float *ptr, float32x4x3_t v) {
 }
 
 inline float32x8_t vld1o(float *ptr) {
-  return {vld1q_f32(ptr), vld1q_f32(ptr + 4)};
+  return {{vld1q_f32(ptr), vld1q_f32(ptr + 4)}};
 }
 
 inline void vst1o(float *ptr, float32x8_t v) {
@@ -209,8 +209,8 @@ inline float32x4_t vld1q(const BFloat16 *ptr) {
 // load of 2 4D vectors and perform de-interleaving
 inline float32x4x2_t vld2q_bf16(const uint16_t *ptr) {
   uint16x4x2_t u = vld2_u16(ptr);
-  return {vreinterpretq_f32_u32(vshll_n_u16(u.val[0], 16)),
-          vreinterpretq_f32_u32(vshll_n_u16(u.val[1], 16))};
+  return {{vreinterpretq_f32_u32(vshll_n_u16(u.val[0], 16)),
+           vreinterpretq_f32_u32(vshll_n_u16(u.val[1], 16))}};
 }
 
 inline float32x4x2_t vld2q_bf16(const BFloat16 *ptr) {
@@ -228,9 +228,9 @@ inline float32x4x2_t vld2q(const BFloat16 *ptr) {
 // load of 3 4D vectors and perform de-interleaving
 inline float32x4x3_t vld3q_bf16(const uint16_t *ptr) {
   uint16x4x3_t u = vld3_u16(ptr);
-  return {vreinterpretq_f32_u32(vshll_n_u16(u.val[0], 16)),
-          vreinterpretq_f32_u32(vshll_n_u16(u.val[1], 16)),
-          vreinterpretq_f32_u32(vshll_n_u16(u.val[2], 16))};
+  return {{vreinterpretq_f32_u32(vshll_n_u16(u.val[0], 16)),
+           vreinterpretq_f32_u32(vshll_n_u16(u.val[1], 16)),
+           vreinterpretq_f32_u32(vshll_n_u16(u.val[2], 16))}};
 }
 
 inline float32x4x3_t vld3q_bf16(const BFloat16 *ptr) {
@@ -264,8 +264,8 @@ inline void vst1q(BFloat16 *ptr, const float32x4_t v) {
 
 // store of 2 4D vectors and perform interleaving
 inline void vst2q_bf16(uint16_t *ptr, const float32x4x2_t v) {
-  uint16x4x2_t u = {vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16),
-                    vshrn_n_u32(vreinterpretq_u32_f32(v.val[1]), 16)};
+  uint16x4x2_t u = {{vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16),
+                     vshrn_n_u32(vreinterpretq_u32_f32(v.val[1]), 16)}};
   vst2_u16(ptr, u);
 }
 
@@ -283,9 +283,9 @@ inline void vst2q(BFloat16 *ptr, const float32x4x2_t v) {
 
 // store of 3 4D vectors and perform interleaving
 inline void vst3q_bf16(uint16_t *ptr, const float32x4x3_t v) {
-  uint16x4x3_t u = {vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16),
+  uint16x4x3_t u = {{vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16),
                     vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16),
-                    vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16)};
+                    vshrn_n_u32(vreinterpretq_u32_f32(v.val[0]), 16)}};
   vst3_u16(ptr, u);
 }
 
@@ -304,8 +304,8 @@ inline void vst3q(BFloat16 *ptr, const float32x4x3_t v) {
 // load of 8D vector
 inline float32x8_t vld1o_bf16(const uint16_t *ptr) {
   uint16x8_t u = vld1q_u16(ptr);
-  return {vreinterpretq_f32_u32(vshll_n_u16(vget_low_u16(u), 16)),
-          vreinterpretq_f32_u32(vshll_n_u16(vget_high_u16(u), 16))};
+  return {{vreinterpretq_f32_u32(vshll_n_u16(vget_low_u16(u), 16)),
+           vreinterpretq_f32_u32(vshll_n_u16(vget_high_u16(u), 16))}};
 }
 
 inline float32x8_t vld1o_bf16(const BFloat16 *ptr) {

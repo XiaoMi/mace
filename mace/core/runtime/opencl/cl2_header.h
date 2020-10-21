@@ -37,7 +37,7 @@
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif  // MACE_OS_MAC
 
-#include "CL/cl2.hpp"
+#include <CL/cl2.hpp>
 
 #ifdef MACE_OS_MAC
 #pragma GCC diagnostic pop

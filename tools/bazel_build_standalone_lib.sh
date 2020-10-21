@@ -40,8 +40,8 @@ enable_cpu=true
 enable_gpu=false
 enable_dsp=false
 enable_apu=false
-enable_quantize=true
-enable_bfloat16=true
+enable_quantize=false
+enable_bfloat16=false
 enable_rpcmem=true
 static_lib=false
 symbol_hidden=
@@ -96,6 +96,12 @@ for opt in "${@}";do
       ;;
     static|-static|--static)
       static_lib=true
+      ;;
+    quantize|-quantize|--quantize)
+      enable_quantize=true
+      ;;
+    bfloat16|-bfloat16|--bfloat16)
+      enable_bfloat16=true
       ;;
     help|-help|--help)
       helper

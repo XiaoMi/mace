@@ -10,6 +10,7 @@ build --copt=-D_GLIBCXX_USE_C99_MATH_TR1
 build --copt=-DMACE_OBFUSCATE_LITERALS
 build --copt=-DGEMMLOWP_USE_MACE_THREAD_POOL
 build --copt=-DMACE_DEPTHWISE_U8_USE_MULTI_THREAD
+build --copt=-O2
 
 # Usage example: bazel build --config android
 build:android --define linux_base=true
@@ -20,6 +21,7 @@ build:android --linkopt=-lm
 build:android --distinct_host_configuration=true
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:android --copt=-Oz
 build:android --copt -Wall
 build:android --copt -Wno-mismatched-tags
 build:android --copt -Wno-missing-braces
@@ -75,20 +77,27 @@ build:aarch64_linux_gnu --copt -Wno-implicit-fallthrough
 
 # Usage example: bazel build --config optimization
 build:optimization -c opt
-build:optimization --copt=-O3
 build:optimization --linkopt=-Wl,--strip-all
 build:optimization --copt=-ffunction-sections
 build:optimization --copt=-fdata-sections
 build:optimization --linkopt=-Wl,--gc-sections
+build:optimization --copt=-fno-rtti
+build:optimization --copt=-fno-exceptions
+build:optimization --copt=-DGOOGLE_PROTOBUF_NO_RTTI
+build:optimization --copt=-DPROTOBUF_USE_EXCEPTIONS=0
 
 # Usage example: bazel build --config optimization_darwin
-build:optimization_darwin --copt=-O3
 build:optimization_darwin --copt=-ffunction-sections
 build:optimization_darwin --copt=-fdata-sections
 build:optimization_darwin --linkopt=-Wl,-dead_strip
+build:optimization_darwin --copt=-fno-rtti
+build:optimization_darwin --copt=-fno-exceptions
+build:optimization_darwin --copt=-DGOOGLE_PROTOBUF_NO_RTTI
+build:optimization_darwin --copt=-DPROTOBUF_USE_EXCEPTIONS=0
 
 # Usage example: bazel build --config symbol_hidden
 build:symbol_hidden --copt=-fvisibility=hidden
+build:symbol_hidden --copt=-fvisibility-inlines-hidden
 
 # Usage example: bazel build --config debug
 build:debug -c dbg
