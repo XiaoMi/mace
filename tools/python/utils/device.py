@@ -51,8 +51,8 @@ def execute(cmd, verbose=True):
             print(line)
         buf.append(line)
 
-    for l in p.stdout:
-        line = l.strip()
+    for li in p.stdout:
+        line = li.strip()
         if verbose:
             print(line)
         buf.append(line)

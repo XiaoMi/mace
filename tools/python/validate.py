@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import os.path
 import numpy as np
 import six
@@ -204,6 +205,48 @@ def validate_tf_model(model_file,
                                    validation_threshold, log_file)
 
 
+def validate_pytorch_model(model_file,
+                           input_file, mace_out_file,
+                           input_names, input_shapes, input_data_formats,
+                           output_names, output_shapes, output_data_formats,
+                           validation_threshold, input_data_types, log_file):
+    import torch
+    loaded_model = torch.jit.load(model_file)
+    pytorch_inputs = []
+    for i in range(len(input_names)):
+        input_value = load_data(
+            util.formatted_file_name(input_file, input_names[i]),
+            input_data_types[i])
+        input_value = input_value.reshape(input_shapes[i])
+        if input_data_formats[i] == DataFormat.NHWC and \
+                len(input_shapes[i]) == 4:
+            input_value = input_value.transpose((0, 3, 1, 2))
+        input_value = torch.from_numpy(input_value)
+        pytorch_inputs.append(input_value)
+    with torch.no_grad():
+        pytorch_outputs = loaded_model(*pytorch_inputs)
+
+    if isinstance(pytorch_outputs, torch.Tensor):
+        pytorch_outputs = [pytorch_outputs]
+    else:
+        if not isinstance(pytorch_outputs, (list, tuple)):
+            print('return type {} unsupported'.format(type(pytorch_outputs)))
+            sys.exit(1)
+    for i in range(len(output_names)):
+        value = pytorch_outputs[i].numpy()
+        output_file_name = util.formatted_file_name(
+            mace_out_file, output_names[i])
+        mace_out_value = load_data(output_file_name)
+        # MACE: always returns tensor of dim 1
+        # pytorch: NCHW, conversion is needed
+        if output_data_formats[i] == DataFormat.NHWC and \
+                len(output_shapes[i]) == 4:
+            mace_out_value = mace_out_value.reshape(output_shapes[i])\
+                .transpose((0, 3, 1, 2))
+        compare_output(output_names[i], mace_out_value,
+                       value, validation_threshold, log_file)
+
+
 def validate_caffe_model(model_file, input_file,
                          mace_out_file, weight_file,
                          input_names, input_shapes, input_data_formats,
@@ -387,6 +430,12 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                           output_node, output_shape, output_data_format,
                           validation_threshold, input_data_type,
                           log_file)
+    elif platform == Platform.PYTORCH:
+        validate_pytorch_model(model_file, input_file, mace_out_file,
+                               input_node, input_shape, input_data_format,
+                               output_node, output_shape, output_data_format,
+                               validation_threshold, input_data_type,
+                               log_file)
     elif platform == Platform.CAFFE:
         validate_caffe_model(model_file,
                              input_file, mace_out_file, weight_file,
