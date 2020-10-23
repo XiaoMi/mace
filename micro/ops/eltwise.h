@@ -19,31 +19,13 @@
 #include "micro/base/utils.h"
 #include "micro/framework/operator.h"
 #include "micro/framework/scratch_buffer.h"
+#include "micro/base/types.h"
 
 namespace micro {
 namespace ops {
 
-namespace eltwise {  // for redefine
-enum Type {
-  SUM = 0,
-  SUB = 1,
-  PROD = 2,
-  DIV = 3,
-  MIN = 4,
-  MAX = 5,
-  NEG = 6,
-  ABS = 7,
-  SQR_DIFF = 8,
-  POW = 9,
-  EQUAL = 10,
-  FLOOR_DIV = 11,
-  CLIP = 12,
-  SIGN = 13,
-  NONE = 14,
-};
+namespace eltwise {
 
-bool ShapeIsEqual(const int32_t *dims0,
-                  const int32_t *dims1, uint32_t dim_size);
 int32_t GetIndex(const int32_t *shape, const int32_t *index, int32_t dim_size);
 void IncreaseIndex(const int32_t *shape, int32_t **index, int32_t dim_size);
 template<typename T>
@@ -202,9 +184,8 @@ class EltwiseOp : public framework::Operator {
       if (input1_size == 1) {
         TensorScalarEltwise(type_, input0_, input1_[0],
                             input0_size, swapped, output_ptr);
-      } else if (eltwise::ShapeIsEqual(input0_dims_,
-                                       input1_shape,
-                                       input0_dim_size_)) {
+      } else if (base::ShapeIsEqual(input0_dims_, input1_shape,
+                                    input0_dim_size_)) {
         TensorEltwise(type_, input0_, input1_, input0_size,
                       swapped, output_ptr);
       } else if (need_general_broadcast) {

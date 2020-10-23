@@ -36,8 +36,7 @@ add_library(micro_ops
   ${MICRO_OPS_SRCS}
 )
 target_link_libraries(micro_ops
-  micro_base
-  micro_framework
+  PRIVATE micro_base
 )
 
 

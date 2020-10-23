@@ -16,6 +16,7 @@
 #define MICRO_TEST_CCUTILS_MICRO_OPS_SUBSTITUTE_OP_H_
 
 #include "micro/base/logging.h"
+#include "micro/base/types.h"
 #include "micro/base/utils.h"
 #include "micro/include/public/micro.h"
 
@@ -43,9 +44,13 @@ class SubstituteOp {
   ~SubstituteOp() {}
 
   SubstituteOp &AddInput(const void *input,
-                         const int32_t *dims, const uint32_t dims_size);
+                         const int32_t *dims,
+                         const uint32_t dims_size,
+                         QuantizeInfo quant_info = QuantizeInfo{0.0f, 0});
   SubstituteOp &AddOutput(void *output,
-                          int32_t *dims, const uint32_t dims_size);
+                          int32_t *dims,
+                          const uint32_t dims_size,
+                          QuantizeInfo quant_info = QuantizeInfo{0.0f, 0});
 
   template<typename T>
   SubstituteOp &AddArg(const char *name, T value) {
@@ -106,6 +111,9 @@ class SubstituteOp {
                                const int32_t *input_dims);
   MaceStatus ReuseInputBufferForOutput(uint32_t output_idx, uint32_t input_idx);
 
+  QuantizeInfo GetInputQuantizeInfo(uint32_t idx);
+  QuantizeInfo GetOutputQuantizeInfo(uint32_t idx);
+
   template<typename T>
   const T *GetInputData(uint32_t idx) {
     return static_cast<const T *>(DoGetInputData(idx));
@@ -120,11 +128,13 @@ class SubstituteOp {
   const void *inputs_[kMaxInputNum];
   const int32_t *input_dims_[kMaxInputNum];
   uint32_t input_dim_sizes_[kMaxInputNum];
+  QuantizeInfo input_quant_info_[kMaxInputNum];
   uint32_t input_idx_;
 
   void *outputs_[kMaxOutputNum];
   int32_t *output_dims_[kMaxOutputNum];
   uint32_t output_dim_sizes_[kMaxOutputNum];
+  QuantizeInfo output_quant_info_[kMaxOutputNum];
   uint32_t output_idx_;
 
   // for arg

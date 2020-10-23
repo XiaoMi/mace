@@ -24,11 +24,6 @@ namespace micro {
 
 struct MaceMicroEngineConfig;
 
-struct QuantizeInfo {
-  float scale;
-  float zero;
-};
-
 namespace model {
 class Argument;
 class OperatorDef;
@@ -90,7 +85,6 @@ class Operator {
   MaceStatus ReuseInputBufferForOutput(uint32_t output_idx, uint32_t input_idx);
 
   QuantizeInfo GetInputQuantizeInfo(uint32_t idx);
-
   QuantizeInfo GetOutputQuantizeInfo(uint32_t idx);
 
   template<typename T>

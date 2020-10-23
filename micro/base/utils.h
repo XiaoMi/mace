@@ -26,6 +26,8 @@ uint32_t strlen(const char *str);
 int32_t strcmp(const char *str1, const char *str2);
 void memcpy(void *dst, const void *src, uint32_t bytes);
 int32_t GetShapeSize(uint32_t dim_size, const int32_t *dims);
+bool ShapeIsEqual(const int32_t *dims0,
+                  const int32_t *dims1, uint32_t dim_size);
 float sqrt(float x);
 int32_t ceil(float f);
 int32_t floor(float f);

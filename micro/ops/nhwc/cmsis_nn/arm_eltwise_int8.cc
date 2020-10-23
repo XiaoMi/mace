@@ -17,6 +17,7 @@
 #include <arm_nnfunctions.h>
 
 #include "micro/base/logging.h"
+#include "micro/base/types.h"
 #include "micro/base/utils.h"
 #include "micro/ops/nhwc/cmsis_nn/utilities.h"
 
@@ -24,19 +25,15 @@ namespace micro {
 namespace ops {
 
 MaceStatus ArmEltwiseInt8Op::OnInit() {
+  MACE_ASSERT(GetInputSize() == 2);
+
   input0_ = GetInputData<int8_t>(INPUT0);
   input0_dims_ = GetInputShapeDims(INPUT0);
   input0_dim_size_ = GetInputShapeDimSize(INPUT0);
 
-  if (GetInputSize() >= 2) {
-    input1_ = GetInputData<int8_t>(INPUT1);
-    input1_dims_ = GetInputShapeDims(INPUT1);
-    input1_dim_size_ = GetInputShapeDimSize(INPUT1);
-  } else {
-    input1_ = NULL;
-    input1_dims_ = NULL;
-    input1_dim_size_ = 0;
-  }
+  input1_ = GetInputData<int8_t>(INPUT1);
+  input1_dims_ = GetInputShapeDims(INPUT1);
+  input1_dim_size_ = GetInputShapeDimSize(INPUT1);
 
   output_ = GetOutputData<int8_t>(OUTPUT);
 
@@ -48,11 +45,15 @@ MaceStatus ArmEltwiseInt8Op::OnInit() {
 }
 
 MaceStatus ArmEltwiseInt8Op::Run() {
-  MACE_ASSERT1(GetInputSize() < 3,
-               "Element-Wise does not support 3 or higher inputs,"
-               " you could change your model to multiple Element-Wise");
+  MACE_ASSERT1(GetInputSize() == 2,
+               "ArmEltwiseInt8Op only supports 2 inputs");
+  MACE_ASSERT(input0_dim_size_ == input1_dim_size_);
+  MACE_ASSERT(base::ShapeIsEqual(input0_dims_, input1_dims_, input1_dim_size_));
 
-  if (type_ == 0) {
+  MACE_RETURN_IF_ERROR(
+          ResizeOutputShape(OUTPUT, input0_dim_size_, input0_dims_));
+
+  if (type_ == eltwise::SUM) {
     QuantizeInfo input_quantize_info0 = GetInputQuantizeInfo(0);
     QuantizeInfo input_quantize_info1 = GetInputQuantizeInfo(1);
     QuantizeInfo output_quantize_info = GetOutputQuantizeInfo(OUTPUT);

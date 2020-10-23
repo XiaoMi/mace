@@ -24,26 +24,32 @@ namespace framework {
 SubstituteOp::SubstituteOp()
     : input_idx_(0), output_idx_(0), arg_idx_(0), repeat_arg_idx_(0) {}
 
-SubstituteOp &SubstituteOp::AddInput(
-    const void *input, const int32_t *dims, const uint32_t dims_size) {
+SubstituteOp &SubstituteOp::AddInput(const void *input,
+                                     const int32_t *dims,
+                                     const uint32_t dims_size,
+                                     QuantizeInfo quant_info) {
   MACE_ASSERT1(input != NULL || dims != NULL || dims_size == 0,
                "Invalid param");
   MACE_ASSERT1(input_idx_ < kMaxInputNum, "Not enough mem.");
   inputs_[input_idx_] = input;
   input_dims_[input_idx_] = dims;
   input_dim_sizes_[input_idx_] = dims_size;
+  input_quant_info_[input_idx_] = quant_info;
   ++input_idx_;
   return *this;
 }
 
-SubstituteOp &SubstituteOp::AddOutput(
-    void *output, int32_t *dims, const uint32_t dims_size) {
+SubstituteOp &SubstituteOp::AddOutput(void *output,
+                                      int32_t *dims,
+                                      const uint32_t dims_size,
+                                      QuantizeInfo quant_info) {
   MACE_ASSERT1(output != NULL || dims != NULL || dims_size == 0,
                "Invalid param");
   MACE_ASSERT1(output_idx_ < kMaxOutputNum, "Not enough mem.");
   outputs_[output_idx_] = output;
   output_dims_[output_idx_] = dims;
   output_dim_sizes_[output_idx_] = dims_size;
+  output_quant_info_[output_idx_] = quant_info;
   ++output_idx_;
   return *this;
 }
@@ -84,6 +90,14 @@ uint32_t SubstituteOp::GetOutputShapeDimSize(uint32_t idx) {
 const int32_t *SubstituteOp::GetOutputShapeDims(uint32_t idx) {
   MACE_ASSERT1(idx < output_idx_, "idx is not valid");
   return output_dims_[idx];
+}
+
+QuantizeInfo SubstituteOp::GetInputQuantizeInfo(uint32_t idx) {
+  return input_quant_info_[idx];
+}
+
+QuantizeInfo SubstituteOp::GetOutputQuantizeInfo(uint32_t idx) {
+  return output_quant_info_[idx];
 }
 
 MaceStatus SubstituteOp::ResizeOutputShape(uint32_t idx,

@@ -47,12 +47,12 @@ MaceStatus ArmConv2dInt8Op::Compute(int32_t (&output_dims)[4]) {
   conv_params.output_offset = output_quantize_info.zero;
   conv_params.activation.min = -128;
   conv_params.activation.max = 127;
-  conv_params.stride.w = strides_[0];
-  conv_params.stride.h = strides_[1];
-  conv_params.padding.w = padding_sizes_[0] / 2;
-  conv_params.padding.h = padding_sizes_[1] / 2;
-  conv_params.dilation.w = dilations_[0];
-  conv_params.dilation.h = dilations_[1];
+  conv_params.stride.w = strides_[1];
+  conv_params.stride.h = strides_[0];
+  conv_params.padding.w = padding_sizes_[1] / 2;
+  conv_params.padding.h = padding_sizes_[0] / 2;
+  conv_params.dilation.w = dilations_[1];
+  conv_params.dilation.h = dilations_[0];
 
   ScratchBuffer scratch_buffer(engine_config_);
 
@@ -63,6 +63,9 @@ MaceStatus ArmConv2dInt8Op::Compute(int32_t (&output_dims)[4]) {
     quant_params.multiplier[i] = multiplier;
     quant_params.shift[i] = shift;
   }
+
+  MACE_ASSERT(input_dims_[0] == 1);
+  MACE_ASSERT(dilations_[0] == 1 && dilations_[1] == 1);
 
   cmsis_nn_dims input_dims;
   input_dims.n = input_dims_[0];

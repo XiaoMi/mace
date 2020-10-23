@@ -61,6 +61,8 @@ MaceStatus ArmMatMulInt8Op::Run() {
   MACE_ASSERT(input_a_dim_size_ == 2);
   MACE_ASSERT(input_b_dim_size_ == 2);
 
+  MACE_ASSERT(input_a_dims_[0] == 1);
+
   MACE_ASSERT(transpose_b_);
   MACE_ASSERT(!transpose_a_);
 
@@ -111,9 +113,9 @@ MaceStatus ArmMatMulInt8Op::Run() {
   }
 
   arm_status status = arm_nn_vec_mat_mult_t_s8(
-      input_a_, input_b_, bias, output_, -input_quantize_info_a.zero, 0,
-      output_quantize_info.zero, multiplier, shift, rhs_cols, rhs_rows, -128,
-      127);
+      input_a_, input_b_, bias, output_, -input_quantize_info_a.zero,
+      input_quantize_info_b.zero, output_quantize_info.zero, multiplier, shift,
+      rhs_cols, rhs_rows, -128, 127);
 
   MACE_ASSERT(status == ARM_MATH_SUCCESS);
 

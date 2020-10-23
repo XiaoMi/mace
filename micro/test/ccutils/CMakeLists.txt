@@ -7,6 +7,7 @@ add_library(micro_ccutils
 
 target_include_directories(micro_ccutils PUBLIC .)
 target_link_libraries(micro_ccutils micro_base micro_framework_for_optest)
+target_compile_options(micro_ccutils PUBLIC "-std=c++11")
 
 if(HEXAGON_STUB)
   add_library(micro_rpc_stub

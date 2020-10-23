@@ -19,8 +19,8 @@
 #include "micro/base/logging.h"
 #include "micro/base/utils.h"
 #include "micro/framework/scratch_buffer.h"
-#include "micro/ops/nhwc/cmsis_nn/utilities.h"
 #include "micro/include/utils/macros.h"
+#include "micro/ops/nhwc/cmsis_nn/utilities.h"
 
 namespace micro {
 namespace ops {
@@ -30,7 +30,6 @@ void ArmPoolingInt8Op::MaxPooling(const mifloat *input,
                                   const int32_t *stride_hw,
                                   const int32_t *dilation_hw,
                                   const int32_t *pad_hw) {
-  MACE_UNUSED(filter_hw);
   MACE_UNUSED(dilation_hw);
 
   cmsis_nn_context ctx;
@@ -45,6 +44,8 @@ void ArmPoolingInt8Op::MaxPooling(const mifloat *input,
   pool_params.padding.h = pad_hw[0];
   pool_params.padding.w = pad_hw[1];
 
+  MACE_ASSERT(input_dims_[0] == 1);
+
   cmsis_nn_dims input_dims;
   input_dims.n = input_dims_[0];
   input_dims.h = input_dims_[1];
@@ -53,10 +54,8 @@ void ArmPoolingInt8Op::MaxPooling(const mifloat *input,
   const int8_t *input_data = reinterpret_cast<const int8_t *>(input);
 
   cmsis_nn_dims filter_dims;
-  filter_dims.n = filter_dims_[0];
-  filter_dims.h = filter_dims_[1];
-  filter_dims.w = filter_dims_[2];
-  filter_dims.c = filter_dims_[3];
+  filter_dims.h = filter_hw[0];
+  filter_dims.w = filter_hw[1];
 
   cmsis_nn_dims output_dims;
   output_dims.n = output_dims_[0];
@@ -74,7 +73,6 @@ void ArmPoolingInt8Op::AvgPooling(const mifloat *input,
                                   const int32_t *stride_hw,
                                   const int32_t *dilation_hw,
                                   const int32_t *pad_hw) {
-  MACE_UNUSED(filter_hw);
   MACE_UNUSED(dilation_hw);
 
   const int32_t out_width = output_dims_[2];
@@ -82,8 +80,12 @@ void ArmPoolingInt8Op::AvgPooling(const mifloat *input,
 
   cmsis_nn_context ctx;
   ctx.size = arm_avgpool_s8_get_buffer_size(out_width, in_channels);
-  MACE_ASSERT(ctx.size == 0);
-  ctx.buf = NULL;
+  ScratchBuffer scratch_buffer(engine_config_);
+  if (ctx.size > 0) {
+    ctx.buf = scratch_buffer.GetBuffer<int8_t>(ctx.size);
+  } else {
+    ctx.buf = NULL;
+  }
 
   cmsis_nn_pool_params pool_params;
   pool_params.activation.min = -128;
@@ -93,6 +95,8 @@ void ArmPoolingInt8Op::AvgPooling(const mifloat *input,
   pool_params.padding.h = pad_hw[0];
   pool_params.padding.w = pad_hw[1];
 
+  MACE_ASSERT(input_dims_[0] == 1);
+
   cmsis_nn_dims input_dims;
   input_dims.n = input_dims_[0];
   input_dims.h = input_dims_[1];
@@ -101,10 +105,8 @@ void ArmPoolingInt8Op::AvgPooling(const mifloat *input,
   const int8_t *input_data = reinterpret_cast<const int8_t *>(input);
 
   cmsis_nn_dims filter_dims;
-  filter_dims.n = filter_dims_[0];
-  filter_dims.h = filter_dims_[1];
-  filter_dims.w = filter_dims_[2];
-  filter_dims.c = filter_dims_[3];
+  filter_dims.h = filter_hw[0];
+  filter_dims.w = filter_hw[1];
 
   cmsis_nn_dims output_dims;
   output_dims.n = output_dims_[0];

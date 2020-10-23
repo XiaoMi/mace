@@ -17,6 +17,7 @@
 
 #include "micro/base/logger.h"
 #include "micro/base/logging.h"
+#include "micro/base/types.h"
 #include "micro/base/utils.h"
 #include "micro/framework/op_context.h"
 #include "micro/framework/operator.h"
@@ -26,28 +27,6 @@
 
 namespace micro {
 namespace ops {
-
-namespace eltwise {  // for redefine
-
-enum Type {
-  SUM = 0,
-  SUB = 1,
-  PROD = 2,
-  DIV = 3,
-  MIN = 4,
-  MAX = 5,
-  NEG = 6,
-  ABS = 7,
-  SQR_DIFF = 8,
-  POW = 9,
-  EQUAL = 10,
-  FLOOR_DIV = 11,
-  CLIP = 12,
-  SIGN = 13,
-  NONE = 14,
-};
-
-}  // namespace eltwise
 
 class ArmEltwiseInt8Op : public framework::Operator {
  public:

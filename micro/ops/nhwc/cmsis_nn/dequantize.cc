@@ -36,8 +36,6 @@ MaceStatus DequantizeOp::OnInit() {
 MaceStatus DequantizeOp::Run() {
   MACE_RETURN_IF_ERROR(ResizeOutputShape(OUTPUT, input_dim_size_, input_dims_));
 
-  const micro::OpIOInfo *input_info = op_context_->input_info(INPUT);
-
   QuantizeInfo input_quantize_info = GetInputQuantizeInfo(INPUT);
 
   float scale = input_quantize_info.scale;

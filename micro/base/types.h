@@ -52,6 +52,35 @@ MACE_MAPPING_DATA_TYPE_AND_ENUM(int32_t, DT_INT32);
 MACE_MAPPING_DATA_TYPE_AND_ENUM(BFloat16, DT_BFLOAT16);
 #endif
 
+struct QuantizeInfo {
+  float scale;
+  int32_t zero;
+};
+
+namespace ops {
+namespace eltwise {  // for redefine
+
+enum Type {
+  SUM = 0,
+  SUB = 1,
+  PROD = 2,
+  DIV = 3,
+  MIN = 4,
+  MAX = 5,
+  NEG = 6,
+  ABS = 7,
+  SQR_DIFF = 8,
+  POW = 9,
+  EQUAL = 10,
+  FLOOR_DIV = 11,
+  CLIP = 12,
+  SIGN = 13,
+  NONE = 14,
+};
+
+}  // namespace eltwise
+}  // namespace ops
+
 }  // namespace micro
 
 #endif  // MICRO_BASE_TYPES_H_

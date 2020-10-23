@@ -35,6 +35,9 @@ MaceStatus ArmSoftmaxInt8Op::OnInit() {
 
   output_ = GetOutputData<mifloat>(OUTPUT);
 
+  bool use_log = GetArgByName("use_log", false);
+  MACE_ASSERT1(!use_log, "The argument \"use_log\" is unsupported");
+
   return MACE_SUCCESS;
 }
 
