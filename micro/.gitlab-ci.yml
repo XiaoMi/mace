@@ -1,3 +1,8 @@
+before_script:
+  - git submodule deinit -f .
+  - git submodule sync
+  - git submodule update --init .
+
 stages:
   - convert
   - build
@@ -6,23 +11,18 @@ stages:
 model-convert:
   stage: convert
   script:
-    - rm -rf mace-models
-    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
-    - >
-    - CONF_FILE=mace-models/micro-models/har-cnn/har-cnn.yml
-    - python tools/python/convert.py --config=${CONF_FILE} --enable_micro
+    - bash micro/tools/ci/model_convert.sh
   artifacts:
     paths:
       - mace-models
     untracked: true
 
-host-build:
+cross-build:
   stage: build
   script:
-    - cd micro && ./tools/cmake/cmake-build-host.sh -DMICRO_MODEL_NAME=har_cnn
+    - bash micro/tools/ci/cross_build.sh
+    - bash micro/tools/ci/host_build_and_run_examples.sh
+    - bash micro/tools/ci/host_build_and_run_tests.sh
+    # The mbed-cli protobuf version conflicts with others
+    # - bash micro/tools/ci/build_mbed_example.sh
 
-host-test:
-  stage: test
-  script:
-    - CONF_FILE=mace-models/micro-models/har-cnn/har-cnn.yml
-    - python tools/python/run_micro.py --config $CONF_FILE --build --validate --model_name har_cnn

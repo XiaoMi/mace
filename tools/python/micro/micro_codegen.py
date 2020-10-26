@@ -57,14 +57,31 @@ class MicroCodeGen:
         with open(output_path, "w") as f:
             f.write(source)
 
+    def gen_micro_source_from_array(self, model_tag, embed_data,
+                                    jinja_file_name, output_path):
+        cwd = os.path.dirname(__file__)
+        j2_env = Environment(loader=FileSystemLoader(cwd), trim_blocks=True)
+
+        template_name = JINJA2_DIR + jinja_file_name
+
+        hex_bytes_string = ", ".join(map(hex, embed_data))
+
+        source = j2_env.get_template(template_name).render(
+            model_tag=model_tag,
+            hex_bytes_string=hex_bytes_string,
+            data_size=len(embed_data),
+        )
+        with open(output_path, "w") as f:
+            f.write(source)
+
     def gen_net_def_data(self, model_tag, model_def_data, output_path):
         embed_data = np.frombuffer(model_def_data, dtype=np.uint8)
-        self.gen_micro_source_from_bytes(
-            model_tag, embed_data, 'micro_net_def.h.jinja2', output_path)
+        self.gen_micro_source_from_array(model_tag, embed_data,
+                                         'micro_net_def.h.jinja2', output_path)
 
     def gen_graph_data(self, model_tag, graph_data, output_path):
         embed_data = np.frombuffer(graph_data, dtype=np.uint8)
-        self.gen_micro_source_from_bytes(model_tag, embed_data,
+        self.gen_micro_source_from_array(model_tag, embed_data,
                                          'micro_graph_data.h.jinja2',
                                          output_path)
 
@@ -82,7 +99,7 @@ class MicroCodeGen:
 
     def gen_model_data(self, model_tag, model_param_data, output_path):
         embed_data = np.frombuffer(model_param_data, dtype=np.uint8)
-        self.gen_micro_source_from_bytes(model_tag, embed_data,
+        self.gen_micro_source_from_array(model_tag, embed_data,
                                          'micro_model_data.h.jinja2',
                                          output_path)
 

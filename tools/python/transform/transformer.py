@@ -33,6 +33,7 @@ from transform.base_converter import MaceTransposableDataFormatOps  # noqa
 from transform.base_converter import PaddingMode
 from transform.base_converter import ReduceType
 from transform.base_converter import TransformerRule
+from utils.config_parser import Platform
 from quantize import quantize_util
 from utils.util import mace_check
 
@@ -121,6 +122,10 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_mul_max_to_prelu,
             TransformerRule.TRANSFORM_EXPAND_DIMS_TO_RESHAPE:
                 self.transform_expand_dims_to_reshape,
+            TransformerRule.QUANTIZE_FOLD_RELU:
+                self.quantize_fold_relu,
+            TransformerRule.TRANSFORM_KERAS_QUANTIZE_INFO:
+                self.transform_keras_quantize_info
         }
 
         self._option = option
@@ -1010,7 +1015,7 @@ class Transformer(base_converter.ConverterInterface):
         """Transform global conv to fc should be placed after transposing
         input/output and filter"""
 
-        if self._option.quantize:
+        if self._option.quantize or self._option.platform == Platform.KERAS:
             return
 
         net = self._model
@@ -1119,9 +1124,10 @@ class Transformer(base_converter.ConverterInterface):
         transposed_filter = set()
         transposed_deconv_filter = set()
 
-        if ((self._option.quantize and
+        if (((self._option.quantize and
                 self._option.device == DeviceType.CPU.value) or
-                self._option.device == DeviceType.APU.value):
+                self._option.device == DeviceType.APU.value) and
+                (not self._option.quantize_schema == MaceKeyword.mace_int8)):
             print("Transpose filters to OHWI")
             if filter_format == DataFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
@@ -1310,6 +1316,9 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def transform_matmul_to_fc(self):
+        if self._option.platform == Platform.KERAS:
+            return
+
         net = self._model
         filter_format = self.filter_format()
         for op in net.op:
@@ -1701,6 +1710,8 @@ class Transformer(base_converter.ConverterInterface):
                 if self._option.quantize_schema == \
                         MaceKeyword.mace_apu_16bit_per_tensor:
                     data_type_arg.i = mace_pb2.DT_INT16
+                elif self._option.quantize_schema == MaceKeyword.mace_int8:
+                    data_type_arg.i = mace_pb2.DT_INT8
                 else:
                     data_type_arg.i = mace_pb2.DT_UINT8
             elif data_type_arg.i == mace_pb2.DT_UINT8:
@@ -1714,6 +1725,13 @@ class Transformer(base_converter.ConverterInterface):
                 mace_check(op.type == MaceOp.Quantize.name
                            or op.type == MaceOp.Dequantize.name,
                            "Only Quantization ops support int16, "
+                           "but got %s(%s)" % (op.name, op.type))
+            elif data_type_arg.i == mace_pb2.DT_INT8 \
+                and self._option.quantize_schema == \
+                    MaceKeyword.mace_int8:
+                mace_check(op.type == MaceOp.Quantize.name
+                           or op.type == MaceOp.Dequantize.name,
+                           "Only Quantization ops support int8, "
                            "but got %s(%s)" % (op.name, op.type))
             else:
                 mace_check(op.type == MaceOp.Quantize.name,
@@ -1739,6 +1757,8 @@ class Transformer(base_converter.ConverterInterface):
             if self._option.quantize_schema == \
                     MaceKeyword.mace_apu_16bit_per_tensor:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT16)
+            elif self._option.quantize_schema == MaceKeyword.mace_int8:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT8)
             else:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, input_node.data_format)
@@ -1766,6 +1786,8 @@ class Transformer(base_converter.ConverterInterface):
             if self._option.quantize_schema == \
                     MaceKeyword.mace_apu_16bit_per_tensor:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT16)
+            elif self._option.quantize_schema == MaceKeyword.mace_int8:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT8)
             else:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, output_node.data_format)
@@ -1828,6 +1850,10 @@ class Transformer(base_converter.ConverterInterface):
                 quantized_tensor = \
                     quantize_util.quantize_int16(tensor.float_data)
                 tensor.data_type = mace_pb2.DT_INT16
+            elif self._option.quantize_schema == MaceKeyword.mace_int8:
+                quantized_tensor = quantize_util.quantize_int8(
+                    tensor.float_data)
+                tensor.data_type = mace_pb2.DT_INT8
             else:
                 non_zero = self._option.device == DeviceType.CPU.value
                 quantized_tensor = quantize_util.quantize(tensor.float_data,
@@ -1890,6 +1916,9 @@ class Transformer(base_converter.ConverterInterface):
             minval = -maxval
             scale = maxval / 2**15
             zero = 0
+        elif quantize_schema == MaceKeyword.mace_int8:
+            scale, zero, minval, maxval = quantize_util.adjust_range_int8(
+                minval, maxval)
         else:
             scale, zero, minval, maxval = \
                 quantize_util.adjust_range(minval, maxval, self._option.device,
@@ -2001,6 +2030,9 @@ class Transformer(base_converter.ConverterInterface):
                         min_val = -max_val
                         scale = max_val / 2**15
                         zero = 0
+                    elif quantize_schema == MaceKeyword.mace_int8:
+                        scale, zero, min_val, max_val = \
+                            quantize_util.adjust_range_int8(min_val, max_val)
                     else:
                         scale, zero, min_val, max_val = \
                             quantize_util.adjust_range(min_val, max_val,
@@ -2042,6 +2074,10 @@ class Transformer(base_converter.ConverterInterface):
                     minval = -maxval
                     scale = maxval / 2**15
                     zero = 0
+                elif quantize_schema == MaceKeyword.mace_int8:
+                    scale, zero, minval, maxval = \
+                        quantize_util.adjust_range_int8(
+                            input_node.range[0], input_node.range[1])
                 else:
                     scale, zero, minval, maxval = \
                         quantize_util.adjust_range(input_node.range[0],
@@ -2619,3 +2655,38 @@ class Transformer(base_converter.ConverterInterface):
                 del op.arg[:]
                 return True
         return False
+
+    def quantize_fold_relu(self):
+        if self._option.quantize_schema != MaceKeyword.mace_int8:
+            return
+
+        net = self._model
+
+        for op in net.op:
+            if op.type == MaceOp.Activation.name:
+                act_type_arg = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_activation_type_str)
+                act_type = act_type_arg.s.decode()
+
+                if act_type in ["RELU", "RELUX"]:
+                    producer = self._producer[op.input[0]]
+                    # The type of "producer" is not limited to MatMul,
+                    # you can try other types
+                    if producer.type == MaceOp.MatMul.name:
+                        self.replace_quantize_info(producer, op)
+                        self.safe_remove_node(op, producer)
+                        return True
+
+        return False
+
+    def transform_keras_quantize_info(self):
+        mace_check(self._option.platform == Platform.KERAS, "For KERAS models")
+        changed = False
+        for op in self._model.op:
+            for i in range(len(op.quantize_info)):
+                if not op.output[i] in self._quantize_activation_info:
+                    self._quantize_activation_info[op.output[i]] = \
+                        op.quantize_info[i]
+                    changed = True
+
+        return changed

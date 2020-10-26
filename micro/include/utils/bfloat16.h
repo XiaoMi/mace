@@ -32,7 +32,14 @@ union Sphinx {
 
 class BFloat16 {
  public:
-  BFloat16();
+  BFloat16() {}
+
+  explicit BFloat16(float value) { data_ = Sphinx(value).i >> 16; }
+
+  explicit BFloat16(int value) {
+    data_ = Sphinx(static_cast<float>(value)).i >> 16;
+  }
+
 
   operator float() const {
     return Sphinx(static_cast<uint32_t>(data_ << 16)).f;

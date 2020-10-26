@@ -105,6 +105,16 @@ MaceStatus Operator::ResizeOutputShape(uint32_t idx, uint32_t dim_size,
   return fake_op_->ResizeOutputShape(idx, dim_size, dims);
 }
 
+QuantizeInfo Operator::GetInputQuantizeInfo(uint32_t idx) {
+  return fake_op_->GetInputQuantizeInfo(idx);
+}
+
+QuantizeInfo Operator::GetOutputQuantizeInfo(uint32_t idx) {
+  return fake_op_->GetOutputQuantizeInfo(idx);
+}
+
+
+
 #ifndef MACE_DEFINE_GET_ARG_BY_NAME_FUNC
 #define MACE_DEFINE_GET_ARG_BY_NAME_FUNC(T, FUNC)                   \
 template <>                                                         \

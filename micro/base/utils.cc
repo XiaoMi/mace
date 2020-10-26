@@ -105,5 +105,25 @@ float log(float x) {
   return ::log(x);
 }
 
+
+template <typename T>
+const T &max(const T &a, const T &b) {
+  return (a < b) ? b : a;
+}
+
+template <typename T>
+const T &min(const T &a, const T &b) {
+  return (a < b) ? a : b;
+}
+
+bool ShapeIsEqual(const int32_t *dims0,
+                  const int32_t *dims1, uint32_t dim_size) {
+  while (dim_size-- > 0) {
+    if (dims0[dim_size] != dims1[dim_size])
+      return false;
+  }
+  return true;
+}
+
 }  // namespace base
 }  // namespace micro

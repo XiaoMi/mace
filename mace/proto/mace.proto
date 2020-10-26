@@ -16,6 +16,7 @@ enum DataType {
   DT_FLOAT16 = 5;
   DT_BFLOAT16 = 6;
   DT_INT16 = 7;
+  DT_INT8 = 8;
 }
 
 enum MemoryType {

@@ -15,6 +15,8 @@
 
 #include "micro/ops/test_utils.h"
 
+#include <random>
+
 namespace micro {
 namespace ops {
 namespace test {
@@ -64,6 +66,30 @@ void FillRandomInput(void *input, const int32_t shape_size) {
   mem[0] = port::api::NowMicros() % 256;
   for (int32_t i = 1; i < shape_size; ++i) {
     mem[i] = (kRandA * mem[i - 1] + kRandB) % kRandM;
+  }
+}
+
+void FillUniformRandomInput(float *input,
+                            const int32_t shape_size,
+                            float low,
+                            float up) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(low, up);
+  for (int n = 0; n < shape_size; ++n) {
+    input[n] = dis(gen);
+  }
+}
+
+void FillNormalRandomInput(float *input,
+                           const int32_t shape_size,
+                           float mean,
+                           float std) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::normal_distribution<float> dis(mean, std);
+  for (int n = 0; n < shape_size; ++n) {
+    input[n] = dis(gen);
   }
 }
 

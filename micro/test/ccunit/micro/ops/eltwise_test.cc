@@ -14,8 +14,10 @@
 
 #include "gtest/gtest.h"
 #include "micro/ops/eltwise.h"
+#include "micro/ops/nhwc/cmsis_nn/arm_eltwise_int8.h"
 #include "micro/ops/gtest_utils.h"
 #include "micro/ops/substitute_op.h"
+#include "micro/ops/test_quantize_utils.h"
 #include "micro/ops/test_utils.h"
 
 namespace micro {
@@ -493,6 +495,91 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcastCPU) {
   SimpleTensorEltwise(eltwise::EQUAL, input0_9, dims1123, input1_9,
                       dims1121, output_9, expect_9, dims1123);
 }
+
+#ifdef MACE_MICRO_ENABLE_CMSIS
+
+namespace {
+
+void TestEltwiseQuantInt8(const int32_t *input_dims,
+                          const uint32_t input_dim_size,
+                          eltwise::Type type) {
+  int32_t shape_size = base::GetShapeSize(input_dim_size, input_dims);
+  float *input0 = new float[shape_size];
+  float *input1 = new float[shape_size];
+  FillNormalRandomInput(input0, shape_size);
+  FillNormalRandomInput(input1, shape_size);
+  float *expect_output = new float[shape_size];
+  const uint32_t MAX_OUTPUT_NUM = 10;
+  int32_t *expect_output_dims = new int32_t[MAX_OUTPUT_NUM];
+
+  EltwiseOp<float> eltwsie_op;
+  framework::SubstituteOp substitude_op;
+  substitude_op.AddInput(input0, input_dims, input_dim_size)
+      .AddInput(input1, input_dims, input_dim_size)
+      .AddArg("type", static_cast<int>(type))
+      .AddOutput(expect_output, expect_output_dims, MAX_OUTPUT_NUM);
+  eltwsie_op.Init(
+      NULL, reinterpret_cast<framework::OpContext *>(&substitude_op), NULL);
+  eltwsie_op.Run();
+  uint32_t expect_output_dim_size = substitude_op.GetOutputShapeDimSize(0);
+
+  int8_t *input0_int8 = new int8_t[shape_size];
+  int8_t *input1_int8 = new int8_t[shape_size];
+  int8_t *output_int8 = new int8_t[shape_size];
+  float *output = new float[shape_size];
+  int32_t *output_dims = new int32_t[MAX_OUTPUT_NUM];
+  QuantizeInfo input_quant_info0;
+  QuantizeInfo input_quant_info1;
+  AutoQuantizeInt8(input0, shape_size, input0_int8, &input_quant_info0.scale,
+                   &input_quant_info0.zero);
+  AutoQuantizeInt8(input1, shape_size, input1_int8, &input_quant_info1.scale,
+                   &input_quant_info1.zero);
+  QuantizeInfo output_quant_info = {0.0f, 0};
+  AdjustRangeInt8(expect_output, shape_size, &output_quant_info.scale,
+                  &output_quant_info.zero);
+
+  ArmEltwiseInt8Op eltwsie_op_int8;
+  framework::SubstituteOp substitude_op_int8;
+  substitude_op_int8
+      .AddInput(input0_int8, input_dims, input_dim_size, input_quant_info0)
+      .AddInput(input1_int8, input_dims, input_dim_size, input_quant_info1)
+      .AddArg("type", static_cast<int>(type))
+      .AddOutput(output_int8, output_dims, MAX_OUTPUT_NUM, output_quant_info);
+  eltwsie_op_int8.Init(
+      NULL, reinterpret_cast<framework::OpContext *>(&substitude_op_int8),
+      NULL);
+  eltwsie_op_int8.Run();
+  uint32_t output_dim_size = substitude_op_int8.GetOutputShapeDimSize(0);
+
+  Dequantize(output_int8, shape_size, output_quant_info.scale,
+             output_quant_info.zero, output);
+
+  ExpectTensorSimilar(expect_output, expect_output_dims, expect_output_dim_size,
+                      output, output_dims, output_dim_size, 0.1);
+
+  delete[] input0;
+  delete[] input1;
+  delete[] expect_output;
+  delete[] expect_output_dims;
+  delete[] input0_int8;
+  delete[] input1_int8;
+  delete[] output_int8;
+  delete[] output;
+  delete[] output_dims;
+}
+
+}  // namespace
+
+TEST_F(EltwiseOpTest, QuantInt8) {
+  const int32_t input_dims0[4] = {1, 32, 32, 16};
+  TestEltwiseQuantInt8(input_dims0, 4, eltwise::SUM);
+  const int32_t input_dims1[4] = {2, 31, 31, 17};
+  TestEltwiseQuantInt8(input_dims1, 4, eltwise::SUM);
+  const int32_t input_dims2[2] = {1, 31};
+  TestEltwiseQuantInt8(input_dims2, 2, eltwise::SUM);
+}
+
+#endif
 
 }  // namespace test
 }  // namespace ops

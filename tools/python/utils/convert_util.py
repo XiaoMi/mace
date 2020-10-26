@@ -48,6 +48,10 @@ def merge_params(net_def, data_type):
             data = bytearray(
                 np.array(tensor.int32_data).astype(np.uint8).tolist())
             tensor.data_size = len(tensor.int32_data)
+        elif tensor.data_type == mace_pb2.DT_INT8:
+            data = bytearray(
+                np.array(tensor.int32_data).astype(np.uint8).tolist())
+            tensor.data_size = len(tensor.int32_data)
         elif tensor.data_type == mace_pb2.DT_FLOAT16:
             data = bytearray(
                 np.array(tensor.float_data).astype(np.float16).tobytes())
@@ -85,6 +89,8 @@ def merge_params(net_def, data_type):
             del tensor.int32_data[:]
         elif tensor.data_type == mace_pb2.DT_UINT8:
             del tensor.int32_data[:]
+        elif tensor.data_type == mace_pb2.DT_INT8:
+            del tensor.int32_data[:]
 
     return net_def, model_data
 
@@ -100,5 +106,7 @@ def data_type_to_np_dt(data_type, default_np_dt):
         return np.uint8
     elif data_type == mace_pb2.DT_BFLOAT16:
         return np.uint16
+    elif data_type == mace_pb2.DT_INT8:
+        return np.int8
     else:
         return np.float32

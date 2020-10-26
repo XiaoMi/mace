@@ -74,6 +74,8 @@ uint32_t Operator::GetInputSize() {
 }
 
 const void *Operator::DoGetInputData(uint32_t idx) {
+  MACE_ASSERT(idx < GetInputSize());
+
   const void *data = NULL;
   const OpIOInfo *input_info = op_context_->input_info(idx);
   const uint32_t op_def_idx = input_info->op_def_idx_;
@@ -94,6 +96,8 @@ const void *Operator::DoGetInputData(uint32_t idx) {
 }
 
 uint32_t Operator::GetInputShapeDimSize(uint32_t idx) {
+  MACE_ASSERT(idx < GetInputSize());
+
   uint32_t dim_size = 0;
   const OpIOInfo *input_info = op_context_->input_info(idx);
   const uint32_t op_def_idx = input_info->op_def_idx_;
@@ -115,6 +119,8 @@ uint32_t Operator::GetInputShapeDimSize(uint32_t idx) {
 }
 
 const int32_t *Operator::GetInputShapeDims(uint32_t idx) {
+  MACE_ASSERT(idx < GetInputSize());
+
   const int32_t *dims = NULL;
   const OpIOInfo *input_info = op_context_->input_info(idx);
   const uint32_t op_def_idx = input_info->op_def_idx_;
@@ -138,14 +144,20 @@ uint32_t Operator::GetOutputSize() {
 }
 
 DataType Operator::GetOutputDataType(uint32_t idx) {
+  MACE_ASSERT(idx < GetOutputSize());
+
   return op_def_->output_type(idx);
 }
 
 void *Operator::DoGetOutputData(uint32_t idx) {
+  MACE_ASSERT(idx < GetOutputSize());
+
   return engine_config_->tensor_mem_ + op_def_->mem_offset(idx);
 }
 
 uint32_t Operator::GetOutputShapeDimSize(uint32_t idx) {
+  MACE_ASSERT(idx < GetOutputSize());
+
   uint32_t dim_size = 0;
   model::OutputShape *output_shape =
       const_cast<model::OutputShape *>(op_context_->output_resize_shape(idx));
@@ -156,6 +168,8 @@ uint32_t Operator::GetOutputShapeDimSize(uint32_t idx) {
 }
 
 const int32_t *Operator::GetOutputShapeDims(uint32_t idx) {
+  MACE_ASSERT(idx < GetOutputSize());
+
   const int32_t *dims = NULL;
   model::OutputShape *output_shape =
       const_cast<model::OutputShape *>(op_context_->output_resize_shape(idx));
@@ -167,6 +181,8 @@ const int32_t *Operator::GetOutputShapeDims(uint32_t idx) {
 
 MaceStatus Operator::ResizeOutputShape(uint32_t idx, uint32_t dim_size,
                                        const int32_t *dims) {
+  MACE_ASSERT(idx < GetOutputSize());
+
   model::OutputShape *output_shape =
       const_cast<model::OutputShape *>(op_context_->output_resize_shape(idx));
 #ifndef MACE_MICRO_NDEBUG
@@ -199,6 +215,44 @@ MaceStatus Operator::ResizeOutputShape(uint32_t idx, uint32_t dim_size,
     base::memcpy(output_shape->mutable_dim(), dims, dim_size * sizeof(int32_t));
   }
   return MACE_SUCCESS;
+}
+
+QuantizeInfo Operator::GetInputQuantizeInfo(uint32_t idx) {
+  MACE_ASSERT(idx < GetInputSize());
+
+  QuantizeInfo quantize_info = {0.0f, 0};
+  const OpIOInfo *input_info = op_context_->input_info(idx);
+  const uint32_t op_def_idx = input_info->op_def_idx_;
+  if (kIdxConstTensor == op_def_idx) {
+    const model::ConstTensor *const_tensor =
+        engine_config_->net_def_->tensor(input_info->output_idx_);
+    quantize_info.scale = const_tensor->scale();
+    quantize_info.zero = const_tensor->zero_point();
+    return quantize_info;
+  } else if (kIdxModelInput == op_def_idx) {
+    MACE_ASSERT1(false, "Unexpected, the model input has no quantize info");
+  } else {
+    const model::OperatorDef *pre_op_def =
+        engine_config_->net_def_->op(op_def_idx);
+    model::QuantizeActivationInfo quantize_activation_info =
+        pre_op_def->quantize_info(input_info->output_idx_);
+    quantize_info.scale = quantize_activation_info.scale();
+    quantize_info.zero = quantize_activation_info.zero_point();
+    return quantize_info;
+  }
+
+  return quantize_info;
+}
+
+QuantizeInfo Operator::GetOutputQuantizeInfo(uint32_t idx) {
+  MACE_ASSERT(idx < GetOutputSize());
+
+  QuantizeInfo quantize_info;
+  model::QuantizeActivationInfo quantize_activation_info =
+      op_def_->quantize_info(idx);
+  quantize_info.scale = quantize_activation_info.scale();
+  quantize_info.zero = quantize_activation_info.zero_point();
+  return quantize_info;
 }
 
 #ifndef MACE_DEFINE_GET_ARG_BY_NAME_FUNC

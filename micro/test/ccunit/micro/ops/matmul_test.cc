@@ -15,8 +15,10 @@
 #include "gtest/gtest.h"
 #include "micro/ops/gtest_utils.h"
 #include "micro/ops/matmul.h"
+#include "micro/ops/nhwc/cmsis_nn/arm_mat_mul_int8.h"
 #include "micro/ops/substitute_op.h"
 #include "micro/ops/test_utils.h"
+#include "micro/ops/test_quantize_utils.h"
 
 namespace micro {
 namespace ops {
@@ -93,6 +95,94 @@ TEST_F(MatMulOpTest, SimpleCPU) {
   Simple1();
   Simple2();
 }
+
+#ifdef MACE_MICRO_ENABLE_CMSIS
+
+namespace {
+
+void TestMatMulQuantInt8(int32_t lhs_rows, int32_t lhs_cols, int32_t rhs_cols) {
+  uint32_t input0_size = lhs_rows * lhs_cols;
+  uint32_t input1_size = lhs_cols * rhs_cols;
+  uint32_t output_size = lhs_rows * rhs_cols;
+  float *input0 = new float[input0_size];
+  float *input1 = new float[input1_size];
+  FillNormalRandomInput(input0, input0_size);
+  FillNormalRandomInput(input1, input1_size);
+  float *expect_output = new float[output_size];
+  const uint32_t MAX_OUTPUT_NUM = 10;
+  int32_t *expect_output_dims = new int32_t[MAX_OUTPUT_NUM];
+
+  const int32_t input0_dims[2] = {lhs_rows, lhs_cols};
+  // mat0 * tranpose(mat1)
+  const int32_t input1_dims[2] = {rhs_cols, lhs_cols};
+
+  MatMulOp matmul_op;
+  framework::SubstituteOp substitude_op;
+  substitude_op.AddInput(input0, input0_dims, 2)
+      .AddInput(input1, input1_dims, 2)
+      .AddArg("transpose_a", false)
+      .AddArg("transpose_b", true)
+      .AddOutput(expect_output, expect_output_dims, MAX_OUTPUT_NUM);
+  matmul_op.Init(NULL, reinterpret_cast<framework::OpContext *>(&substitude_op),
+                 NULL);
+  matmul_op.Run();
+  uint32_t expect_output_dim_size = substitude_op.GetOutputShapeDimSize(0);
+
+  int8_t *input0_int8 = new int8_t[input0_size];
+  int8_t *input1_int8 = new int8_t[input1_size];
+  int8_t *output_int8 = new int8_t[output_size];
+  float *output = new float[output_size];
+  int32_t *output_dims = new int32_t[MAX_OUTPUT_NUM];
+  QuantizeInfo input_quant_info0;
+  QuantizeInfo input_quant_info1;
+  AutoQuantizeInt8(input0, input0_size, input0_int8, &input_quant_info0.scale,
+                   &input_quant_info0.zero);
+  AutoQuantizeInt8Symmetric(input1, input1_size, input1_int8,
+                            &input_quant_info1.scale);
+  QuantizeInfo output_quant_info = {0.0f, 0};
+  AdjustRangeInt8(expect_output, output_size, &output_quant_info.scale,
+                  &output_quant_info.zero);
+
+  ArmMatMulInt8Op matmul_op_int8;
+  framework::SubstituteOp substitude_op_int8;
+  substitude_op_int8.AddInput(input0_int8, input0_dims, 2, input_quant_info0)
+      .AddInput(input1_int8, input1_dims, 2, input_quant_info1)
+      .AddArg("transpose_a", false)
+      .AddArg("transpose_b", true)
+      .AddOutput(output_int8, output_dims, MAX_OUTPUT_NUM, output_quant_info);
+  matmul_op_int8.Init(
+      NULL, reinterpret_cast<framework::OpContext *>(&substitude_op_int8),
+      NULL);
+  matmul_op_int8.Run();
+  uint32_t output_dim_size = substitude_op_int8.GetOutputShapeDimSize(0);
+
+  Dequantize(output_int8, output_size, output_quant_info.scale,
+             output_quant_info.zero, output);
+
+  ExpectTensorSimilar(expect_output, expect_output_dims, expect_output_dim_size,
+                      output, output_dims, output_dim_size, 0.1);
+
+  delete[] input0;
+  delete[] input1;
+  delete[] expect_output;
+  delete[] expect_output_dims;
+  delete[] input0_int8;
+  delete[] input1_int8;
+  delete[] output_int8;
+  delete[] output;
+  delete[] output_dims;
+}
+
+}  // namespace
+
+TEST_F(MatMulOpTest, QuantInt8) {
+  TestMatMulQuantInt8(1, 8, 4);
+  TestMatMulQuantInt8(1, 1001, 63);
+  // WARNING(ZhangZhimin): Batch inputs is unsupported
+  // TestMatMulQuantInt8(3, 100, 100);
+}
+
+#endif
 
 }  // namespace test
 }  // namespace ops

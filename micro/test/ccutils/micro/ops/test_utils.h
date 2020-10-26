@@ -38,6 +38,16 @@ T *input = common::test::GetGlobalBuffer()->GetBuffer<T>(shape_size); \
 micro::ops::test::FillRandomInput(input, shape_size * sizeof(T))
 #endif
 
+void FillUniformRandomInput(float *input,
+                            const int32_t shape_size,
+                            float low = -50.0f,
+                            float up = 50.0f);
+
+void FillNormalRandomInput(float *input,
+                           const int32_t shape_size,
+                           float mean = 0.0f,
+                           float std = 1.0f);
+
 }  // namespace test
 }  // namespace ops
 }  // namespace micro

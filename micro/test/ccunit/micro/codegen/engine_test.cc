@@ -33,8 +33,9 @@ class EngineTest : public ::testing::Test {
 
 void OutputAllInfo() {
   MaceMicroEngine *micro_engine = NULL;
-  MACE_ASSERT(MICRO_MODEL_NAME::GetMicroEngineSingleton(&micro_engine)
-                  == MACE_SUCCESS && micro_engine != NULL);
+  MACE_ASSERT(MICRO_MODEL_NAME::GetMicroEngineSingleton(&micro_engine) ==
+                  MACE_SUCCESS &&
+              micro_engine != NULL);
 
   float input_buffer[1 * 1 * 128 * 9] = {0};
   int32_t input_shape[] = {1, 1, 128, 9};

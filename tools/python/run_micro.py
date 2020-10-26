@@ -43,11 +43,15 @@ def join_2d_array(xs):
 def build_engine(model_name, data_type):
     mace_check(flags.model_name is not None and len(model_name) > 0,
                "you should specify model name for build.")
-    command = "cd micro && tools/cmake/cmake-build-host.sh" \
-              " -DMICRO_MODEL_NAME=%s -DCMAKE_BUILD_TYPE=Release" % model_name
+    command = ("micro/tools/cmake/cmake-build-host.sh"
+               " -DMICRO_MODEL_NAME=%s -DMACE_MICRO_ENABLE_CMSIS=ON"
+               " -DCMAKE_BUILD_TYPE=Release" % model_name)
     if data_type == mace_pb2.DT_BFLOAT16:
-        command += " -DMACE_ENABLE_BFLOAT16=ON"
+        command += " -DMACE_MICRO_ENABLE_BFLOAT16=ON"
         print("The current engine's data type is bfloat16.")
+    else:
+        command += " -DMACE_MICRO_ENABLE_BFLOAT16=OFF"
+
     device.execute(command)
 
 
@@ -168,8 +172,9 @@ def run_model_with_conf(flags, args, model_name, model_conf):
     if flags.vlog_level > 0:
         envs += ["MACE_CPP_MIN_VLOG_LEVEL=%s" % flags.vlog_level]
 
-    target = Target("micro/build/cmake-build/host/tools/micro_run_static", [],
-                    opts=opts, envs=envs)
+    target = Target("build/micro/host/tools/micro_run_static", [],
+                    opts=opts,
+                    envs=envs)
     run_target.run_target(target_abi, install_dir, target,
                           device_ids="host")
 

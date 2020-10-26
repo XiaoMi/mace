@@ -71,6 +71,14 @@ class QuantizedData(object):
         self._maxval = maxval
 
 
+def adjust_range_int8(in_min, in_max):
+    in_min = min(0.0, in_min)
+    in_max = max(0.0, in_max)
+    scale = (in_max - in_min) / 255
+    zero = int(-in_min / scale - 128)
+    return scale, zero, in_min, in_max
+
+
 def adjust_range(in_min, in_max, device, non_zero):
     if device in [DeviceType.HEXAGON.value, DeviceType.HTA.value]:
         return adjust_range_for_hexagon(in_min, in_max)
@@ -150,6 +158,29 @@ def quantize_with_scale_and_zero(data, scale, zero):
     quantized_data.data = output
     quantized_data.scale = scale
     quantized_data.zero = zero
+    return quantized_data
+
+
+def quantize_int8(data):
+    np_data = np.array(data).astype(float)
+    in_min = np_data.min()
+    in_max = np_data.max()
+
+    in_min = min(0.0, in_min)
+    in_max = max(0.0, in_max)
+    max_abs = max(abs(in_min), abs(in_max))
+    zero = 0
+    scale = max_abs / 127
+
+    output = np.clip((np.round(zero + np_data / scale).astype(np.int32)),
+                     -127, 127)
+
+    quantized_data = QuantizedData()
+    quantized_data.data = output
+    quantized_data.scale = scale
+    quantized_data.zero = zero
+    quantized_data.minval = -127 * scale
+    quantized_data.maxval = 127 * scale
     return quantized_data
 
 

@@ -33,7 +33,6 @@ from utils.util import mace_check
 
 NetDefExcludeFields = {
     'OperatorDef': [
-        'quantize_info',
         'node_id',
         'op_id',
         'padding',
@@ -48,13 +47,15 @@ class MicroConverter:
                  model_name, offset16=False, write_magic=False):
         self.model_conf = model_conf
         data_type = model_conf.get(ModelKeys.data_type, mace_pb2.DT_FLOAT)
+        # self.net_def.arg
+        if model_conf.get(ModelKeys.quantize_schema) == "int8":
+            data_type = mace_pb2.DT_INT8
         self.net_def = MicroIoConverter.convert(net_def, data_type)
         self.model_weights = model_weights
         self.model_name = model_name
         self.offset16 = offset16
         self.write_magic = write_magic
         self.code_gen = MicroCodeGen()
-        data_type = model_conf.get(ModelKeys.data_type, mace_pb2.DT_FLOAT)
         self.np_data_type = data_type_to_np_dt(data_type, np.float32)
         self.gen_folder = 'micro/codegen/'
         util.mkdir_p(self.gen_folder)
@@ -146,7 +147,15 @@ class MicroConverter:
         tmp_workspace_file = "WORKSPACE"
         os.system("mkdir -p %s && touch %s/%s" %
                   (tmp_dir, tmp_dir, tmp_workspace_file))
-        tar_command = "tar --exclude=micro/tools --exclude=micro/test "
+        tar_command = "tar --exclude=micro/tools"
+        tar_command += " --exclude=micro/test"
+        tar_command += " --exclude=micro/build"
+        tar_command += " --exclude=micro/cmake"
+        tar_command += " --exclude=micro/codegen"
+        tar_command += " --exclude=micro/dockerfiles"
+        tar_command += " --exclude=micro/examples"
+        tar_command += " --exclude=micro/third_party"
+        tar_command += " --exclude=micro/pretrained_models"
         tar_command += " ".join(exclude_list)
         tar_command += " -zcf " + tar_package_path
         tar_command += " micro -C %s %s" % (tmp_dir, tmp_workspace_file)

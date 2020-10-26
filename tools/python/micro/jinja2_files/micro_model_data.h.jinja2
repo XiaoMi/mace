@@ -20,7 +20,7 @@ namespace micro {
 namespace {{model_tag}} {
 
 const uint8_t kModelData[{{ data_size }}] = {
-  {% for d in embed_data %}{{"0x%02X, " % d }}{%endfor%}
+    {{ hex_bytes_string }}
 };
 
 }  // namespace {{model_tag}}

@@ -22,12 +22,14 @@ mace/codegen/version/
 mace/codegen/engine/
 mace/codegen/lib/
 
-micro/codegen/models/
-micro/codegen/engines/
-
 examples/android/macelibrary/src/main/cpp/mace/
 examples/android/macelibrary/src/main/cpp/include/
 examples/android/macelibrary/src/main/cpp/lib/arm64-v8a/
 examples/android/macelibrary/src/main/jniLibs/arm64-v8a/
 
 tools/python/py_proto/*_pb2.py
+
+micro/codegen/models/
+micro/codegen/engines/
+micro/examples/micro
+micro/build

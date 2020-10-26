@@ -1,5 +1,3 @@
-
-
 add_executable(micro_ops_test
   micro/ops/stack_test.cc
   micro/ops/reshape_test.cc
@@ -20,25 +18,23 @@ add_executable(micro_ops_test
   micro/ops/softmax_test.cc
   micro/ops/bias_add_test.cc
   micro/ops/expand_dims_test.cc
+  micro/ops/concat_test.cc
 )
+
+if(MACE_MICRO_ENABLE_CMSIS)
+  target_link_libraries(micro_ops_test
+    PRIVATE micro_ops_nhwc_cmsis_nn
+  )
+  target_compile_options(micro_ops_test
+    PRIVATE "-DMACE_MICRO_ENABLE_CMSIS=ON"
+  )
+endif()
+
 target_link_libraries(micro_ops_test
   PRIVATE micro_base
-  PRIVATE micro_ops_for_test
+  PRIVATE micro_ops
+  PRIVATE micro_framework_for_optest
   PRIVATE micro_ccutils
   PRIVATE gtest
   PRIVATE gtest_main
 )
-
-if(MICRO_MODEL_NAME)
-  add_executable(micro_cc_test
-    micro/model/net_def_test.cc
-    micro/framework/graph_test.cc
-    micro/codegen/engine_test.cc
-  )
-  target_link_libraries(micro_cc_test
-    micro_engine
-    gtest
-    gtest_main
-  )
-  target_compile_definitions(micro_cc_test PRIVATE "-DMICRO_MODEL_NAME=${MICRO_MODEL_NAME}")
-endif()

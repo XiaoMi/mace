@@ -17,8 +17,8 @@
 
 #include "micro/base/logging.h"
 #include "micro/base/types.h"
-#include "micro/include/public/micro.h"
 #include "micro/framework/scratch_buffer.h"
+#include "micro/include/public/micro.h"
 
 namespace micro {
 
@@ -84,6 +84,9 @@ class Operator {
                                const int32_t *input_dims);
   MaceStatus ReuseInputBufferForOutput(uint32_t output_idx, uint32_t input_idx);
 
+  QuantizeInfo GetInputQuantizeInfo(uint32_t idx);
+  QuantizeInfo GetOutputQuantizeInfo(uint32_t idx);
+
   template<typename T>
   const T *GetInputData(uint32_t idx) {
     return static_cast<const T *>(DoGetInputData(idx));
@@ -101,7 +104,7 @@ class Operator {
   const model::OperatorDef *op_def_;
   MaceMicroEngineConfig *engine_config_;
 
- private:
+ protected:
   OpContext *op_context_;
 };
 

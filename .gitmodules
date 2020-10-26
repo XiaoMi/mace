@@ -1,0 +1,13 @@
+[submodule "micro/third_party/CMSIS_5"]
+	path = micro/third_party/CMSIS_5
+	url = https://github.com/ARM-software/CMSIS_5.git
+	shallow = true
+[submodule "micro/third_party/googletest"]
+	path = micro/third_party/googletest
+	url = https://github.com/google/googletest.git
+	shallow = true
+[submodule "micro/third_party/gflags"]
+	path = micro/third_party/gflags
+	url = https://github.com/gflags/gflags.git
+	shallow = true
+

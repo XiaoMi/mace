@@ -49,7 +49,7 @@ void PoolingRefOp::MaxPooling(const mifloat *input,
         }
         for (int32_t fh = 0; fh < filter_hw[0]; ++fh) {
           int32_t inh = inh_addr + dilation_hw[0] * fh;
-          if (inh < 0 && inh >= in_height) {
+          if (inh < 0 || inh >= in_height) {
             continue;
           }
           int32_t in_h_base = (in_b_base + inh) * in_width;

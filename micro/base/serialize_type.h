@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "micro/include/public/micro.h"
+#include "micro/include/port/define.h"
 
 namespace micro {
 

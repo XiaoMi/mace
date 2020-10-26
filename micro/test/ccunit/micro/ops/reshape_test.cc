@@ -33,7 +33,7 @@ void TestReshapeOp(
     T *y, int32_t *y_dims, const uint32_t y_dim_size,
     const T *e, const int32_t *e_dims, const uint32_t e_dim_size) {
 
-  ReshapeOp reshape_op;
+  ReshapeOp<T> reshape_op;
   framework::SubstituteOp substitude_op;
   substitude_op.AddInput(input, input_dims, input_dim_size)
       .AddInput(shape, shape_dims, 1)
