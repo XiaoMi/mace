@@ -26,6 +26,16 @@ if [[ "$RUNMODE" == "code" ]]; then
     MACE_ENABLE_CODE_MODE=ON
 fi
 
+MACE_ENABLE_QUANTIZE=OFF
+if [[ "$QUANTIZE" == "ON" ]]; then
+    MACE_ENABLE_QUANTIZE=ON
+fi
+
+DMACE_ENABLE_BFLOAT16=OFF
+if [[ "$BFLOAT16" == "ON" ]]; then
+    DMACE_ENABLE_BFLOAT16=ON
+fi
+
 mkdir -p ${BUILD_DIR} && cd ${BUILD_DIR}
 cmake -DANDROID_ABI="arm64-v8a" \
       -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake \
@@ -33,12 +43,12 @@ cmake -DANDROID_ABI="arm64-v8a" \
       -DCMAKE_BUILD_TYPE=Release          \
       -DANDROID_STL=c++_shared            \
       -DMACE_ENABLE_NEON=ON               \
-      -DMACE_ENABLE_QUANTIZE=ON           \
+      -DMACE_ENABLE_QUANTIZE=${MACE_ENABLE_QUANTIZE}         \
       -DMACE_ENABLE_OPENCL=${MACE_ENABLE_OPENCL}             \
       -DMACE_ENABLE_HEXAGON_DSP=${MACE_ENABLE_HEXAGON_DSP}   \
       -DMACE_ENABLE_HEXAGON_HTA=${MACE_ENABLE_HEXAGON_HTA}   \
       -DMACE_ENABLE_MTK_APU=${MACE_ENABLE_MTK_APU}           \
-      -DMACE_ENABLE_BFLOAT16=ON           \
+      -DMACE_ENABLE_BFLOAT16=${DMACE_ENABLE_BFLOAT16}        \
       -DMACE_ENABLE_OPT_SIZE=ON           \
       -DMACE_ENABLE_OBFUSCATE=ON          \
       -DMACE_ENABLE_TESTS=ON              \

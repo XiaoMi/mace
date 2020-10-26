@@ -152,6 +152,7 @@ class Platform(Enum):
     ONNX = 2
     MEGENGINE = 3
     KERAS = 4
+    PYTORCH = 5
 
 
 def parse_platform(str):

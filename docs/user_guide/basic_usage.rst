@@ -45,7 +45,7 @@ Here we use the mobilenet-v2 model as an example.
         cd path/to/mace
         # Build library
         # output lib path: build/lib
-        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-static]
+        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-quantize][-static]
 
     .. note::
 

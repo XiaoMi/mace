@@ -61,7 +61,8 @@ PlatformTypeStrs = [
     "caffe",
     "onnx",
     "megengine",
-    "keras"
+    "keras",
+    "pytorch",
 ]
 PlatformType = Enum('PlatformType', [(ele, ele) for ele in PlatformTypeStrs],
                     type=str)
@@ -521,6 +522,13 @@ def format_model_config(flags):
                 if not isinstance(value, list):
                     subgraph[key] = [value]
                 subgraph[key] = [str(v) for v in subgraph[key]]
+# --inputs_shapes will be passed to ELF file `mace_run_static', if input_shapes
+# contains spaces, such as: '1, 3, 224, 224', because mace_run.cc use gflags to
+# parse command line arguments, --input_shapes 1, 3, 224, 224 will be passed as
+# `--input_shapes 1,'. So we strip out spaces here.
+                if key in [YAMLKeyword.input_shapes,
+                           YAMLKeyword.output_shapes]:
+                    subgraph[key] = [e.replace(' ', '') for e in subgraph[key]]
             input_size = len(subgraph[YAMLKeyword.input_tensors])
             output_size = len(subgraph[YAMLKeyword.output_tensors])
 

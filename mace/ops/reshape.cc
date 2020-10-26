@@ -169,7 +169,7 @@ void RegisterReshape(OpRegistry *op_registry) {
                          int has_data_format =
                              ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                                  *op, "has_data_format", 0);
-                         if (has_data_format) {
+                         if (has_data_format && op->input_size() == 1) {
                            return {DeviceType::CPU, DeviceType::GPU};
                          }
 
@@ -183,7 +183,8 @@ void RegisterReshape(OpRegistry *op_registry) {
                              op->output_shape(0).dims_size();
                          if (op_data_format == DataFormat::NHWC &&
                              4 == tensor_shape_info->at(input_0).size() &&
-                             (out_dims_size == 4 || out_dims_size == 2)) {
+                             (out_dims_size == 4 || out_dims_size == 2) &&
+                             op->input_size() == 1) {
                            return {DeviceType::CPU, DeviceType::GPU};
                          }
 

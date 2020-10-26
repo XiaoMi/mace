@@ -350,6 +350,7 @@ class Transformer(base_converter.ConverterInterface):
             input_info.dims.extend(input_node.shape)
             input_info.data_type = input_node.data_type
 
+        # tools/python/convert.py sets option.check_nodes
         output_nodes = self._option.check_nodes.values()
         for output_node in output_nodes:
             output_info = net.output_info.add()
@@ -872,7 +873,9 @@ class Transformer(base_converter.ConverterInterface):
             if (((op.type == MaceOp.Conv2D.name
                   or op.type == MaceOp.DepthwiseConv2d.name
                   or op.type == MaceOp.FullyConnected.name
-                  or op.type == MaceOp.MatMul.name)
+                  or (op.type == MaceOp.MatMul.name
+                      and self._option.device == DeviceType.CPU.value
+                      and not self._option.quantize))
                  and len(op.input) == 2)
                 or (op.type == MaceOp.Deconv2D.name
                     and ((ConverterUtil.get_arg(
@@ -1321,12 +1324,18 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             # transform `input(4D) -> reshape(2D) -> matmul` to `fc(2D)`
             # fc output is 2D in transformer, using as 4D in op kernel
-            # work for TensorFlow
+            # work for TensorFlow/PyTorch/ONNX
+            framework = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_framework_type_str).i
+            is_torch = framework == FrameworkType.PYTORCH.value
+            is_tf = framework == FrameworkType.TENSORFLOW.value
+            is_onnx = framework == FrameworkType.ONNX.value
+
             if op.type == MaceOp.Reshape.name and \
                     len(op.input) == 2 and \
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
-                    filter_format == DataFormat.HWIO and \
+                    (is_tf or is_torch or is_onnx) and \
                     op.input[0] in self._producer:
                 input_op = self._producer[op.input[0]]
                 input_shape = input_op.output_shape[0].dims
@@ -1341,8 +1350,13 @@ class Transformer(base_converter.ConverterInterface):
                             is_fc = False
                         else:
                             weight = self._consts[matmul_op.input[1]]
-                            if len(weight.dims) != 2 or \
-                               weight.dims[0] != op.output_shape[0].dims[1]:
+                            od = op.output_shape[0].dims
+                            wd = weight.dims
+                            if len(wd) != 2:
+                                is_fc = False
+                            # tf fc weight: IO; onnx/pytorch fc weight: OI
+                            if (is_tf and wd[0] != od[1]) or \
+                                    ((is_torch or is_onnx) and wd[1] != od[1]):
                                 is_fc = False
                     if is_fc:
                         print('convert reshape and matmul to fc')
@@ -1353,24 +1367,40 @@ class Transformer(base_converter.ConverterInterface):
                             matmul_op.type = MaceOp.FullyConnected.name
                             weight_data = np.array(weight.float_data).reshape(
                                 weight.dims)
-                            weight.dims[:] = input_shape[1:] + \
-                                [weight_data.shape[1]]
+                            if is_tf:
+                                weight.dims[:] = input_shape[1:] + \
+                                    [weight_data.shape[1]]
+                            if is_torch or is_onnx:
+                                in_data_format = ConverterUtil.data_format(
+                                    input_op)
+                                # OI+NCHW[2:]=OIHW
+                                if in_data_format == DataFormat.NCHW:
+                                    weight.dims.extend(input_shape[2:])
+                                # OI+NHWC[1:3]=OIHW
+                                else:
+                                    weight.dims.extend(input_shape[1:3])
                         return True
 
             # transform `fc1(2D) -> matmul` to `fc1(2D) -> fc1(2D)`
             if op.type == MaceOp.MatMul.name and \
-                    filter_format == DataFormat.HWIO and \
+                    (is_tf or is_torch or is_onnx) and \
                     op.input[1] in self._consts:
                 producer = self._producer[op.input[0]]
                 weight = self._consts[op.input[1]]
                 if len(weight.dims) == 2 and self.is_after_fc(op) and \
                         len(producer.output_shape[0].dims) == 2 and \
-                        weight.dims[0] == producer.output_shape[0].dims[1]:
+                        ((is_tf and weight.dims[0] == producer.output_shape[0].dims[1]) or  # noqa
+                         (is_torch and weight.dims[1] == producer.output_shape[0].dims[1]) or  # noqa
+                         (is_onnx and weight.dims[1] == producer.output_shape[0].dims[1])):  # noqa
                     six.print_('convert matmul to fc')
                     op.type = MaceOp.FullyConnected.name
                     weight_data = np.array(weight.float_data).reshape(
                         weight.dims)
-                    weight.dims[:] = [1, 1] + list(weight_data.shape)
+                    # only 1 of the 2 branches can be executed
+                    if is_tf:
+                        weight.dims[:] = [1, 1] + list(weight_data.shape)
+                    if is_torch or is_onnx:
+                        weight.dims.extend([1, 1])
                     return True
 
             if self._option.device == DeviceType.APU.value:
@@ -2293,7 +2323,7 @@ class Transformer(base_converter.ConverterInterface):
             dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
             shape_tensor = None
             if len(op.input) == 1:
-                print("Transform Caffe Reshape")
+                print("Transform Caffe or PyTorch Reshape")
                 dims = []
                 axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
                 # transform caffe reshape op

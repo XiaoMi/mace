@@ -604,8 +604,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         for output in node.outputs:
             op.output.append(output)
             if with_shape:
+                output_shape = op.output_shape.add()
                 if output in self._graph_shapes_dict:
-                    output_shape = op.output_shape.add()
                     shape_info = self._graph_shapes_dict[output]
                     output_shape.dims.extend(shape_info)
 
@@ -950,7 +950,8 @@ class OnnxConverter(base_converter.ConverterInterface):
                     node.inputs[0] not in self._consts:
                 const_name = node.inputs[1]
                 const_tensor = self._consts[const_name]
-                if len(const_tensor.dims) == 0:
+                dims = const_tensor.dims
+                if len(dims) == 0 or (len(dims) == 1 and dims[0] == 1):
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
                     if const_tensor.data_type == mace_pb2.DT_INT32:
@@ -970,7 +971,8 @@ class OnnxConverter(base_converter.ConverterInterface):
                     node.inputs[1] not in self._consts:
                 const_name = node.inputs[0]
                 const_tensor = self._consts[const_name]
-                if len(const_tensor.dims) == 0:
+                dims = const_tensor.dims
+                if len(dims) == 0 or (len(dims) == 1 and dims[0] == 1):
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
                     if const_tensor.data_type == mace_pb2.DT_INT32:

@@ -632,6 +632,9 @@ class DeviceWrapper:
                     'Run model {} on {}'.format(model_name, self.device_name)))
 
             model_config = configs[YAMLKeyword.models][model_name]
+            if model_config[YAMLKeyword.platform] == 'pytorch':
+                mace_check(flags.layers == "-1", "Device",
+                           'extracting intermediate layer output is not supported in pytorch JIT yet')  # noqa
             model_runtime = model_config[YAMLKeyword.runtime]
             subgraphs = model_config[YAMLKeyword.subgraphs]
 

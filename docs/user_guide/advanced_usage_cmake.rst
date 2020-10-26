@@ -175,7 +175,7 @@ After that you can rebuild the engine.
     
     .. code-block:: bash
 
-        RUNTIME=GPU RUNMODE=code bash tools/cmake/cmake-build-armeabi-v7a.sh
+        RUNTIME=GPU RUNMODE=code QUANTIZE=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
 
 ``RUNMODE=code`` means you compile and link model library with MACE engine.
 
