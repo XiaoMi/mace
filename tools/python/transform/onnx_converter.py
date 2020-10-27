@@ -415,6 +415,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         ConverterUtil.add_data_format_arg(self._mace_net_def,
                                           self._data_format)
+        ConverterUtil.set_framework_type(
+            self._mace_net_def, FrameworkType.ONNX.value)
         onnx_model = onnx.load(src_model_file)
 
         ir_version = onnx_model.ir_version

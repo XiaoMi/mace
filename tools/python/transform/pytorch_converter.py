@@ -204,6 +204,8 @@ class PytorchConverter(base_converter.ConverterInterface):
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NCHW)
+        ConverterUtil.set_framework_type(
+            self._mace_net_def, FrameworkType.PYTORCH.value)
         self._op_converters = {
             NodeKind.AdaptiveAvgPool2D: self.convert_pool,
             NodeKind.Add: self.convert_add,

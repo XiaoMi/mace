@@ -1322,8 +1322,7 @@ class Transformer(base_converter.ConverterInterface):
             # transform `input(4D) -> reshape(2D) -> matmul` to `fc(2D)`
             # fc output is 2D in transformer, using as 4D in op kernel
             # work for TensorFlow/PyTorch/ONNX
-            framework = ConverterUtil.get_arg(
-                op, MaceKeyword.mace_framework_type_str).i
+            framework = ConverterUtil.framework_type(net)
             is_torch = framework == FrameworkType.PYTORCH.value
             is_tf = framework == FrameworkType.TENSORFLOW.value
             is_onnx = framework == FrameworkType.ONNX.value
@@ -1333,7 +1332,8 @@ class Transformer(base_converter.ConverterInterface):
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
                     (is_tf or is_torch or is_onnx) and \
-                    op.input[0] in self._producer:
+                    op.input[0] in self._producer and \
+                    op.output[0] in self._consumers:
                 input_op = self._producer[op.input[0]]
                 input_shape = input_op.output_shape[0].dims
                 # check input op
