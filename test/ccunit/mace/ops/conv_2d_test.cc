@@ -684,7 +684,7 @@ void TestComplexConvNxN(const std::vector<index_t> &shape,
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
         .AddStringArg("activation", "LEAKYRELU")
-        .AddFloatArg("leakyrelu_coefficient", 0.1)
+        .AddFloatArg("activation_coefficient", 0.1)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
 
@@ -709,7 +709,7 @@ void TestComplexConvNxN(const std::vector<index_t> &shape,
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
         .AddStringArg("activation", "LEAKYRELU")
-        .AddFloatArg("leakyrelu_coefficient", 0.1)
+        .AddFloatArg("activation_coefficient", 0.1)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .AddIntArg("wino_block_size", wino_blk_size)
         .Finalize(net.NewOperatorDef());

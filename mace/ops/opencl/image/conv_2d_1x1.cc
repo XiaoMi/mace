@@ -77,7 +77,7 @@ MaceStatus Conv2dK1x1(OpContext *context,
                       const int *dilations,
                       const ActivationType activation,
                       const float relux_max_limit,
-                      const float leakyrelu_coefficient,
+                      const float activation_coefficient,
                       std::vector<index_t> *prev_input_shape,
                       Tensor *output,
                       uint32_t *kwg_size) {
@@ -135,6 +135,10 @@ MaceStatus Conv2dK1x1(OpContext *context,
         built_options.emplace("-DUSE_LEAKYRELU");
         break;
       }
+      case ELU: {
+        built_options.emplace("-DUSE_ELU");
+        break;
+      }
       default: {
         LOG(FATAL) << "Unknown activation type: " << activation;
       }
@@ -165,7 +169,7 @@ MaceStatus Conv2dK1x1(OpContext *context,
     kernel->setArg(idx++, *(output->opencl_image()));
     // FIXME handle flexable data type: half not supported
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, leakyrelu_coefficient);
+    kernel->setArg(idx++, activation_coefficient);
     kernel->setArg(idx++, static_cast<int>(input_height));
     kernel->setArg(idx++, static_cast<int>(input_width));
     kernel->setArg(idx++, static_cast<int>(input_channel_blocks));

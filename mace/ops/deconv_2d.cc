@@ -56,8 +56,8 @@ class Deconv2dOp<DeviceType::CPU, T> : public Deconv2dOpBase {
                 context->workspace(),
                 MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
                                    T, kCpuImplType),
-                delegator::ActivationParam(activation_, relux_max_limit_,
-                                           leakyrelu_coefficient_))),
+                delegator::ActivationParam(
+                    activation_, relux_max_limit_, activation_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
@@ -228,7 +228,7 @@ class Deconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
 
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), in_paddings.data(), activation_,
-                            relux_max_limit_, leakyrelu_coefficient_,
+                            relux_max_limit_, activation_coefficient_,
                             out_shape, output);
   }
 

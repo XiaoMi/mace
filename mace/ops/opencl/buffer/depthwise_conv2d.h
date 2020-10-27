@@ -39,7 +39,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            const int *dilations,
                            const ActivationType activation,
                            const float relux_max_limit,
-                           const float leakyrelu_coefficient,
+                           const float activation_coefficient,
                            const bool input_changed,
                            Tensor *output,
                            StatsFuture *future);
@@ -59,7 +59,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient,
+      const float activation_coefficient,
       Tensor *output) override;
 
  private:

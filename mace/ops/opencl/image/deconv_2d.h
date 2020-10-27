@@ -41,7 +41,7 @@ class Deconv2dKernel : public OpenCLDeconv2dKernel {
       const int *padding_data,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient,
+      const float activation_coefficient,
       const std::vector<index_t> &output_shape,
       Tensor *output) override;
 

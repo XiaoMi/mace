@@ -45,6 +45,8 @@ class Activation : public delegator::Activation {
                     Tensor *output);
   void ActivateSigmoid(utils::ThreadPool *thread_pool, const Tensor *input,
                        Tensor *output);
+  void ActivateElu(utils::ThreadPool *thread_pool, const Tensor *input,
+                   Tensor *output);
 };
 
 }  // namespace arm

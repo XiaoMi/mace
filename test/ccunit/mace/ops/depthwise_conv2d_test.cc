@@ -261,7 +261,7 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
         .AddStringArg("activation", "LEAKYRELU")
-        .AddFloatArg("leakyrelu_coefficient", 0.1)
+        .AddFloatArg("activation_coefficient", 0.1)
         .Finalize(net.NewOperatorDef());
 
     // Run on cpu
@@ -284,7 +284,7 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .AddStringArg("activation", "LEAKYRELU")
-        .AddFloatArg("leakyrelu_coefficient", 0.1)
+        .AddFloatArg("activation_coefficient", 0.1)
         .Finalize(net.NewOperatorDef());
 
     net.RunOp(DeviceType::GPU);

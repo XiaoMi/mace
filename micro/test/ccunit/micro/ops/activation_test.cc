@@ -67,7 +67,7 @@ void TestSimpleLeakyRelu() {
   framework::SubstituteOp substitude_op;
   substitude_op.AddInput(input, input_dims, 4)
       .AddRepeatArg("activation", activation_type, arg_type_len)
-      .AddArg("leakyrelu_coefficient", 0.1f)
+      .AddArg("activation_coefficient", 0.1f)
       .AddOutput(output, output_dims, 4);
 
   activation_op.Init(NULL, reinterpret_cast<framework::OpContext *>(

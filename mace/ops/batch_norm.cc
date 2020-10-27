@@ -50,7 +50,7 @@ class BatchNormOp<DeviceType::CPU, T> : public Operation {
                         Operation::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                     Operation::GetOptionalArg<float>("max_limit", 0.0f),
-                    Operation::GetOptionalArg<float>("leakyrelu_coefficient",
+                    Operation::GetOptionalArg<float>("activation_coefficient",
                                                      0.0f)))) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -168,13 +168,13 @@ class BatchNormOp<DeviceType::GPU, float> : public Operation {
     ActivationType activation = ops::StringToActivationType(
         Operation::GetOptionalArg<std::string>("activation", "NOOP"));
     float relux_max_limit = Operation::GetOptionalArg<float>("max_limit", 0.0f);
-    float leakyrelu_coefficient = Operation::GetOptionalArg<float>(
-        "leakyrelu_coefficient", 0.0f);
+    float activation_coefficient = Operation::GetOptionalArg<float>(
+        "activation_coefficient", 0.0f);
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::BatchNormKernel>(
-          epsilon, activation, relux_max_limit, leakyrelu_coefficient);
+          epsilon, activation, relux_max_limit, activation_coefficient);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

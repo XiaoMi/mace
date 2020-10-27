@@ -35,9 +35,9 @@ class ActivationKernel : public OpenCLActivationKernel {
  public:
   ActivationKernel(ActivationType type,
                    float relux_max_limit,
-                   float leakyrelu_coefficient)
+                   float activation_coefficient)
       : activation_(type), relux_max_limit_(relux_max_limit),
-        leakyrelu_coefficient_(leakyrelu_coefficient) {}
+        activation_coefficient_(activation_coefficient) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -48,7 +48,8 @@ class ActivationKernel : public OpenCLActivationKernel {
  private:
   ActivationType activation_;
   float relux_max_limit_;
-  float leakyrelu_coefficient_;
+  float activation_coefficient_;
+
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

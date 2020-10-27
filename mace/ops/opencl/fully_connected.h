@@ -34,7 +34,7 @@ class OpenCLFullyConnectedKernel {
       const Tensor *bias,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient,
+      const float activation_coefficient,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLFullyConnectedKernel);
 };

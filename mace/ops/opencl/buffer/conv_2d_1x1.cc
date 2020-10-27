@@ -31,7 +31,7 @@ MaceStatus Conv2d1x1(OpContext *context,
                      const int *strides,
                      const ActivationType activation,
                      const float relux_max_limit,
-                     const float leakyrelu_coefficient,
+                     const float activation_coefficient,
                      const bool input_changed,
                      Tensor *output,
                      StatsFuture *future) {
@@ -75,6 +75,9 @@ MaceStatus Conv2d1x1(OpContext *context,
       case LEAKYRELU:
         built_options.emplace("-DUSE_LEAKYRELU");
         break;
+      case ELU:
+        built_options.emplace("-DUSE_ELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
@@ -110,7 +113,7 @@ MaceStatus Conv2d1x1(OpContext *context,
     kernel->setArg(idx++, strides[0]);
     kernel->setArg(idx++, strides[1]);
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, leakyrelu_coefficient);
+    kernel->setArg(idx++, activation_coefficient);
     kernel->setArg(idx++, *(output->opencl_buffer()));
   }
 

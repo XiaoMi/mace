@@ -108,7 +108,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .AddFloatArg("epsilon", 1e-3)
       .Output("OutputNCHW")
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("activation_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
   // run cpu
@@ -131,7 +131,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("activation_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
   net.Setup(DeviceType::GPU);

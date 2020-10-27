@@ -70,6 +70,7 @@ TFSupportedOps = [
     'DepthwiseConv2dNative',
     'DepthToSpace',
     'Div',
+    'Elu',
     'Equal',
     'ExpandDims',
     'ExtractImagePatches',
@@ -190,6 +191,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
     }
 
     activation_type = {
+        TFOpType.Elu.name: ActivationType.ELU,
         TFOpType.Relu.name: ActivationType.RELU,
         TFOpType.Relu6.name: ActivationType.RELUX,
         TFOpType.Tanh.name: ActivationType.TANH,
@@ -232,6 +234,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.DepthwiseConv2dNative.name: self.convert_conv2d,
             TFOpType.DepthToSpace.name: self.convert_space_depth,
             TFOpType.Div.name: self.convert_elementwise,
+            TFOpType.Elu.name: self.convert_activation,
             TFOpType.Equal.name: self.convert_elementwise,
             TFOpType.ExpandDims.name: self.convert_expand_dims,
             TFOpType.ExtractImagePatches.name:
@@ -668,11 +671,18 @@ class TensorflowConverter(base_converter.ConverterInterface):
             limit_arg = op.arg.add()
             limit_arg.name = MaceKeyword.mace_activation_max_limit_str
             limit_arg.f = 6.0
-        elif tf_op.type == TFOpType.LeakyRelu.name:
+        elif tf_op.type == TFOpType.LeakyRelu.name or \
+                tf_op.type == TFOpType.Elu.name:
             alpha_arg = op.arg.add()
             alpha_arg.name = \
-                MaceKeyword.mace_activation_leakyrelu_coefficient_str
-            alpha_arg.f = tf_op.get_attr(tf_alpha_str)
+                MaceKeyword.mace_activation_coefficient_str
+            try:
+                alpha_arg.f = tf_op.get_attr(tf_alpha_str)
+            except ValueError:
+                if tf_op.type == TFOpType.LeakyRelu.name:
+                    alpha_arg.f = 0.0
+                else:
+                    alpha_arg.f = 1.0
 
     def convert_fill(self, tf_op):
         op = self.convert_general_op(tf_op)

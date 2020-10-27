@@ -13,7 +13,7 @@ __kernel void fully_connected(OUT_OF_RANGE_PARAMS
                               __private const int input_width,
                               __private const int input_channel,
                               __private const float relux_max_limit,
-                              __private const float leakyrelu_coefficient) {
+                              __private const float activation_coefficient) {
   const int batch_idx = get_global_id(0);
   const int out_blk_idx = get_global_id(1);
   const int input_chan_blk = (input_channel + 3) >> 2;
@@ -57,8 +57,8 @@ __kernel void fully_connected(OUT_OF_RANGE_PARAMS
     input_coord.y++;
   }
 
-#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-  result = do_activation(result, relux_max_limit, leakyrelu_coefficient);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID) || defined(USE_ELU)
+  result = do_activation(result, relux_max_limit, activation_coefficient);
 #endif
 
   WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
@@ -79,7 +79,7 @@ __kernel void fully_connected_width(OUT_OF_RANGE_PARAMS
                                     __private const int in_chan_blks,
                                     __private const int out_blks,
                                     __private const float relux_max_limit,
-                                    __private const float leakyrelu_coefficient) {
+                                    __private const float activation_coefficient) {
   const int inter_out_idx = get_global_id(0);
   const int width_blk_idx = get_global_id(1);
   const int width_blk_count = global_size_dim1;
@@ -149,8 +149,8 @@ __kernel void fully_connected_width(OUT_OF_RANGE_PARAMS
       inter_idx += 4;
     }
 
-#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-    result = do_activation(result, relux_max_limit, leakyrelu_coefficient);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID) || defined(USE_ELU)
+    result = do_activation(result, relux_max_limit, activation_coefficient);
 #endif
 
     WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);

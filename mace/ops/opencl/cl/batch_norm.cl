@@ -12,7 +12,7 @@ __kernel void batch_norm(OUT_OF_RANGE_PARAMS
 #endif
                          __write_only image2d_t output,
                          __private const float relux_max_limit,
-                         __private const float leakyrelu_coefficient) {
+                         __private const float activation_coefficient) {
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);
@@ -44,8 +44,8 @@ __kernel void batch_norm(OUT_OF_RANGE_PARAMS
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
   DATA_TYPE4 out = mad(in, bn_scale, bn_offset);
 
-#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out = do_activation(out, relux_max_limit, leakyrelu_coefficient);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID) || defined(USE_ELU)
+  out = do_activation(out, relux_max_limit, activation_coefficient);
 #endif
 
   WRITE_IMAGET(output, (int2)(pos, hb), out);

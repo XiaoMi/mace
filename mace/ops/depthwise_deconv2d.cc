@@ -55,8 +55,8 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, T>
                 context->workspace(),
                 MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
                                    T, kCpuImplType),
-                delegator::ActivationParam(activation_, relux_max_limit_,
-                                           leakyrelu_coefficient_))),
+                delegator::ActivationParam(
+                    activation_, relux_max_limit_, activation_coefficient_))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
@@ -209,7 +209,7 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, float> : public Deconv2dOpBase {
                             group_,
                             activation_,
                             relux_max_limit_,
-                            leakyrelu_coefficient_,
+                            activation_coefficient_,
                             out_shape,
                             output);
   }

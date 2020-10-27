@@ -73,7 +73,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
                            const int *dilations,
                            const ActivationType activation,
                            const float relux_max_limit,
-                           const float leakyrelu_coefficient,
+                           const float activation_coefficient,
                            std::vector<index_t> *prev_input_shape,
                            Tensor *output,
                            uint32_t *kwg_size) {
@@ -129,6 +129,9 @@ MaceStatus DepthwiseConv2d(OpContext *context,
       case LEAKYRELU:
         built_options.emplace("-DUSE_LEAKYRELU");
         break;
+      case ELU:
+        built_options.emplace("-DUSE_ELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
@@ -162,7 +165,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     }
     kernel->setArg(idx++, *(output->opencl_image()));
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, leakyrelu_coefficient);
+    kernel->setArg(idx++, activation_coefficient);
     kernel->setArg(idx++, static_cast<int16_t>(input_height));
     kernel->setArg(idx++, static_cast<int16_t>(input_width));
     kernel->setArg(idx++, static_cast<int16_t>(input_channel_blocks));
@@ -204,7 +207,7 @@ MaceStatus DepthwiseConv2dKernel::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
-    const float leakyrelu_coefficient,
+    const float activation_coefficient,
     Tensor *output) {
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
@@ -243,7 +246,7 @@ MaceStatus DepthwiseConv2dKernel::Compute(
 
   return depthwise::DepthwiseConv2d(
       context, &kernel_, input, filter, bias, strides[0], paddings.data(),
-      dilations, activation, relux_max_limit, leakyrelu_coefficient,
+      dilations, activation, relux_max_limit, activation_coefficient,
       &input_shape_, output, &kwg_size_);
 }
 

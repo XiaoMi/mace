@@ -66,7 +66,7 @@ void TestSimpleLeakyRelu() {
       .Input("Input")
       .Output("Output")
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("activation_coefficient", 0.1)
       .Finalize(net.NewOperatorDef());
 
   // Run
@@ -243,15 +243,14 @@ void TestSimpleElu() {
   // Add input data
   net.AddInputFromArray<D, float>(
       "Input", {2, 2, 2, 2},
-      {-7, 7, -6, 6, -5, -5, -4, -4, -3, 3, -2, 2, -1, -1, 0, 0});
-  net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0}, true);
+      {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
   if (D == DeviceType::GPU) {
     OpDefBuilder("Activation", "EluTest")
         .Input("Input")
-        .Input("Alpha")
         .Output("Output")
         .AddStringArg("activation", "ELU")
+        .AddFloatArg("activation_coefficient", 2.0)
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -261,9 +260,9 @@ void TestSimpleElu() {
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Activation", "EluTest")
         .Input("InputNCHW")
-        .Input("Alpha")
         .Output("OutputNCHW")
         .AddStringArg("activation", "ELU")
+        .AddFloatArg("activation_coefficient", 2.0)
         .Finalize(net.NewOperatorDef());
 
     // Run
@@ -275,9 +274,9 @@ void TestSimpleElu() {
   auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2},
       {-1.998176236068891, 7, -1.9950424956466672, 6, -1.986524106001829,
-       -2.9797861590027437, -1.9633687222225316, -2.9450530833337973,
+       5, -1.9633687222225316, 4,
        -1.900425863264272, 3, -1.7293294335267746, 2, -1.2642411176571153,
-       -1.896361676485673, 0, 0});
+       1, 0, 0});
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
@@ -439,7 +438,7 @@ void TestBFloat16(const char *activation) {
       .Input("Alpha")
       .Output("Output")
       .AddStringArg("activation", activation)
-      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("activation_coefficient", 0.1)
       .AddFloatArg("max_limit", 6)
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
@@ -450,7 +449,7 @@ void TestBFloat16(const char *activation) {
       .Input("BF16Alpha")
       .Output("BF16Output")
       .AddStringArg("activation", activation)
-      .AddFloatArg("leakyrelu_coefficient", 0.1)
+      .AddFloatArg("activation_coefficient", 0.1)
       .AddFloatArg("max_limit", 6)
       .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
       .Finalize(net.NewOperatorDef());

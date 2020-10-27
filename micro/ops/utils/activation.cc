@@ -31,17 +31,17 @@ MaceStatus Activation::Init(const framework::Operator *op) {
     atcivation_type = "NOOP";
   }
   const float max_limit = op->GetArgByName("max_limit", 0.0f);
-  const float leakyrelu_coefficient =
-      op->GetArgByName("leakyrelu_coefficient", 0.0f);
+  const float activation_coefficient =
+      op->GetArgByName("activation_coefficient", 0.0f);
 
-  return Init(atcivation_type, max_limit, leakyrelu_coefficient);
+  return Init(atcivation_type, max_limit, activation_coefficient);
 }
 
 MaceStatus Activation::Init(const char *type, const float limit,
-                            const float leakyrelu_coefficient) {
+                            const float activation_coefficient) {
   type_ = StringToActivationType(type);
   limit_ = limit;
-  leakyrelu_coefficient_ = leakyrelu_coefficient;
+  activation_coefficient_ = activation_coefficient;
 
   return MACE_SUCCESS;
 }
@@ -71,7 +71,7 @@ MaceStatus Activation::Compute(const mifloat *input_ptr,
       for (int32_t i = 0; i < size; ++i) {
         float input = *input_ptr;
         *output_ptr = base::max(input, 0.f) +
-            base::min(input, 0.f) * leakyrelu_coefficient_;  // NOLINT
+            base::min(input, 0.f) * activation_coefficient_;  // NOLINT
         ++input_ptr;
         ++output_ptr;
       }

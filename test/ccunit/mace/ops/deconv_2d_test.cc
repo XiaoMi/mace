@@ -421,7 +421,7 @@ void TestComplexDeconvNxN(const int batch,
           .AddIntsArg("padding_values", paddings)
           .AddIntArg("framework_type", model_type)
           .AddStringArg("activation", "LEAKYRELU")
-          .AddFloatArg("leakyrelu_coefficient", 0.1)
+          .AddFloatArg("activation_coefficient", 0.1)
           .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
           .Finalize(net.NewOperatorDef());
     } else {
@@ -459,7 +459,7 @@ void TestComplexDeconvNxN(const int batch,
           .AddIntsArg("padding_values", paddings)
           .AddIntArg("framework_type", model_type)
           .AddStringArg("activation", "LEAKYRELU")
-          .AddFloatArg("leakyrelu_coefficient", 0.1)
+          .AddFloatArg("activation_coefficient", 0.1)
           .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
           .Finalize(net.NewOperatorDef());
     } else {

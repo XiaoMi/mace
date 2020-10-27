@@ -42,12 +42,12 @@ class FullyConnectedOpBase : public Operation {
             Operation::GetOptionalArg<std::string>("activation",
                                                    "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-            "leakyrelu_coefficient", 0.0f)) {}
+        activation_coefficient_(Operation::GetOptionalArg<float>(
+            "activation_coefficient", 0.0f)) {}
  protected:
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
 
   MACE_OP_INPUT_TAGS(INPUT, WEIGHT, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
@@ -64,9 +64,8 @@ class FullyConnectedOp<DeviceType::CPU, T> : public FullyConnectedOpBase {
         activation_delegator_(delegator::Activation::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, T, kCpuImplType),
-            delegator::ActivationParam(activation_,
-                                       relux_max_limit_,
-                                       leakyrelu_coefficient_))),
+            delegator::ActivationParam(
+                activation_, relux_max_limit_, activation_coefficient_))),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
@@ -215,7 +214,7 @@ class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
         " don't match.");
     return kernel_->Compute(
         context, input, weight, bias, activation_, relux_max_limit_,
-        leakyrelu_coefficient_, output);
+        activation_coefficient_, output);
   }
 
  private:

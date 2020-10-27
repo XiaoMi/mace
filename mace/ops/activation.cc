@@ -47,14 +47,14 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
                 activation_type_,
                 Operation::GetOptionalArg<float>("max_limit", 0.f),
                 Operation::GetOptionalArg<float>(
-                    "leakyrelu_coefficient", 0.f)))) {}
+                    "activation_coefficient", 0.f)))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
-    if (activation_type_ == PRELU || activation_type_ == ELU) {
+    if (activation_type_ == PRELU) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input));
       const T *input_ptr = input->data<T>();
       T *output_ptr = output->mutable_data<T>();
@@ -63,8 +63,8 @@ class ActivationOp<DeviceType::CPU, T> : public Operation {
       const T *alpha_ptr = alpha->data<T>();
       const index_t outer_size = output->dim(0);
       const index_t inner_size = output->dim(2) * output->dim(3);
-      ActivationWithAlpha(context, input_ptr, outer_size, input->dim(1),
-                          inner_size, alpha_ptr, activation_type_, output_ptr);
+      PReLUActivation(context, input_ptr, outer_size, input->dim(1),
+                      inner_size, alpha_ptr, output_ptr);
     } else {
       activation_delegator_->Compute(context, input, output);
     }
@@ -86,17 +86,17 @@ class ActivationOp<DeviceType::GPU, float> : public Operation {
         Operation::GetOptionalArg<std::string>("activation",
                                               "NOOP"));
     auto relux_max_limit = Operation::GetOptionalArg<float>("max_limit", 0.0f);
-    auto leakyrelu_coefficient =
-        Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f);
+    auto activation_coefficient =
+        Operation::GetOptionalArg<float>("activation_coefficient", 0.0f);
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       mem_type = MemoryType::GPU_IMAGE;
       kernel_ = make_unique<opencl::image::ActivationKernel>(
-          type, relux_max_limit, leakyrelu_coefficient);
+          type, relux_max_limit, activation_coefficient);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
-    if (type == ActivationType::PRELU || type == ActivationType::ELU) {
+    if (type == ActivationType::PRELU) {
       MACE_CHECK(TransformFilter(
           context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);

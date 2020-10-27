@@ -68,7 +68,7 @@ class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
                         Operation::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                     Operation::GetOptionalArg<float>("max_limit", 0.0f),
-                    Operation::GetOptionalArg<float>("leakyrelu_coefficient",
+                    Operation::GetOptionalArg<float>("activation_coefficient",
                                                      0.0f)))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
@@ -190,8 +190,8 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
             Operation::GetOptionalArg<std::string>("activation",
                                                    "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-            "leakyrelu_coefficient", 0.0f)) {}
+        activation_coefficient_(Operation::GetOptionalArg<float>(
+            "activation_coefficient", 0.0f)) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(INPUT);
@@ -414,7 +414,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
  private:
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
   std::vector<int32_t> bias_;
 
  private:
@@ -433,8 +433,8 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
             Operation::GetOptionalArg<std::string>("activation",
                                                    "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(Operation::GetOptionalArg<float>(
-              "leakyrelu_coefficient", 0.0f)),
+        activation_coefficient_(Operation::GetOptionalArg<float>(
+              "activation_coefficient", 0.0f)),
         wino_block_size_(Operation::GetOptionalArg<int>("wino_block_size", 0)) {
     MemoryType mem_type;
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
@@ -488,13 +488,13 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), padding_type_, paddings_,
                             dilations_.data(), activation_, relux_max_limit_,
-                            leakyrelu_coefficient_, wino_block_size_, output);
+                            activation_coefficient_, wino_block_size_, output);
   }
 
  private:
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
   std::unique_ptr<OpenCLConv2dKernel> kernel_;
   int wino_block_size_;
 

@@ -138,7 +138,7 @@ void Random(const index_t batch,
       .Input("Bias")
       .Output("OutputNCHW")
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1f)
+      .AddFloatArg("activation_coefficient", 0.1f)
       .Finalize(net.NewOperatorDef());
 
   // run cpu
@@ -158,7 +158,7 @@ void Random(const index_t batch,
       .Input("Bias")
       .Output("Output")
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1f)
+      .AddFloatArg("activation_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 

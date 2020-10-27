@@ -250,14 +250,14 @@ void EluBenchmark(int iters, int batch, int channels, int height, int width) {
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddRandomInput<D, T>("Alpha", {channels}, true);
 
   OpDefBuilder("Activation", "EluBM")
       .Input("Input")
-      .Input("Alpha")
       .Output("Output")
       .AddStringArg("activation", "ELU")
+      .AddFloatArg("activation_coefficient", 1.0)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+
       .Finalize(net.NewOperatorDef());
 
   // Warm-up

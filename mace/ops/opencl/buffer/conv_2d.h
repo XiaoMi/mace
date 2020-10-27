@@ -38,7 +38,7 @@ extern MaceStatus Conv2d1x1(OpContext *context,
                             const int *strides,
                             const ActivationType activation,
                             const float relux_max_limit,
-                            const float leakyrelu_coefficient,
+                            const float activation_coefficient,
                             const bool input_changed,
                             Tensor *output,
                             StatsFuture *future);
@@ -52,7 +52,7 @@ extern MaceStatus Conv2dGeneral(OpContext *context,
                                 const int *dilations,
                                 const ActivationType activation,
                                 const float relux_max_limit,
-                                const float leakyrelu_coefficient,
+                                const float activation_coefficient,
                                 const bool input_changed,
                                 Tensor *output,
                                 StatsFuture *future);
@@ -81,7 +81,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      const float leakyrelu_coefficient,
+      const float activation_coefficient,
       const int winograd_blk_size,
       Tensor *output) override;
 

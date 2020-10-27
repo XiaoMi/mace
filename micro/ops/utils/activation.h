@@ -44,7 +44,7 @@ class Activation {
 
   MaceStatus Init(const framework::Operator *op);
   MaceStatus Init(const char *type, const float limit,
-                  const float leakyrelu_coefficient);
+                  const float activation_coefficient);
   MaceStatus Compute(const mifloat *input_ptr,
                      const int32_t size, mifloat *output_ptr);
   ActivationType GetActivationType();
@@ -55,7 +55,7 @@ class Activation {
  private:
   ActivationType type_;
   float limit_;
-  float leakyrelu_coefficient_;
+  float activation_coefficient_;
 };
 
 }  // namespace ops

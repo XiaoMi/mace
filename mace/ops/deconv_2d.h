@@ -43,8 +43,8 @@ class Deconv2dOpBase : public Operation {
                                                    "NOOP"))),
         relux_max_limit_(
             Operation::GetOptionalArg<float>("max_limit", 0.0f)),
-        leakyrelu_coefficient_(
-            Operation::GetOptionalArg<float>("leakyrelu_coefficient", 0.0f)) {}
+        activation_coefficient_(
+            Operation::GetOptionalArg<float>("activation_coefficient", 0.0f)) {}
 
  protected:
   std::vector<int> strides_;  // [stride_h, stride_w]
@@ -54,7 +54,7 @@ class Deconv2dOpBase : public Operation {
   const FrameworkType model_type_;
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float leakyrelu_coefficient_;
+  const float activation_coefficient_;
 };
 
 }  // namespace ops

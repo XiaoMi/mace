@@ -629,18 +629,16 @@ class OnnxConverter(base_converter.ConverterInterface):
         type_arg.s = six.b(self.activation_type[node.op_type].name)
 
         if "alpha" in node.attrs:
-            alpha_tensor_name = node.name + '_alpha'
-            alpha_value = np.array([node.attrs["alpha"]])
-            self.add_tensor(alpha_tensor_name, alpha_value.reshape(-1).shape,
-                            mace_pb2.DT_FLOAT, alpha_value)
-            op.input.extend([alpha_tensor_name])
+            alpha_value = node.attrs["alpha"]
         else:
             if node.op_type == OnnxOpType.LeakyRelu.name:
                 alpha_value = 0.01
+            elif node.op_type == OnnxOpType.Elu.name:
+                alpha_value = 1.0
             else:
                 alpha_value = 0
         alpha_arg = op.arg.add()
-        alpha_arg.name = MaceKeyword.mace_activation_leakyrelu_coefficient_str
+        alpha_arg.name = MaceKeyword.mace_activation_coefficient_str
         alpha_arg.f = alpha_value
 
     def convert_affine(self, node):

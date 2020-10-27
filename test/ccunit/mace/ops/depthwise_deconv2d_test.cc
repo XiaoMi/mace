@@ -206,7 +206,7 @@ void RandomTest(index_t batch,
       .AddIntArg("group", channel)
       .AddIntsArg("dilations", {1, 1})
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1f)
+      .AddFloatArg("activation_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
       .Finalize(net.NewOperatorDef());
   // Run
@@ -229,7 +229,7 @@ void RandomTest(index_t batch,
       .AddIntsArg("padding_values", {padding, padding})
       .AddIntArg("group", channel)
       .AddStringArg("activation", "LEAKYRELU")
-      .AddFloatArg("leakyrelu_coefficient", 0.1f)
+      .AddFloatArg("activation_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 

@@ -68,7 +68,7 @@ MaceStatus Conv2dKernel::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
-    const float leakyrelu_coefficient,
+    const float activation_coefficient,
     const int wino_blk_size,
     Tensor *output) {
   index_t kernel_h = filter->dim(2);
@@ -116,7 +116,7 @@ MaceStatus Conv2dKernel::Compute(
                                   paddings.data(),
                                   activation,
                                   relux_max_limit,
-                                  leakyrelu_coefficient,
+                                  activation_coefficient,
                                   wino_blk_size,
                                   &input_shape_,
                                   output,
@@ -135,7 +135,7 @@ MaceStatus Conv2dKernel::Compute(
                         dilations,
                         activation,
                         relux_max_limit,
-                        leakyrelu_coefficient,
+                        activation_coefficient,
                         &input_shape_,
                         output,
                         &kwg_size_[0]);
@@ -153,7 +153,7 @@ MaceStatus Conv2dKernel::Compute(
                         dilations,
                         activation,
                         relux_max_limit,
-                        leakyrelu_coefficient,
+                        activation_coefficient,
                         &input_shape_,
                         output,
                         &kwg_size_[0]);
@@ -171,7 +171,7 @@ MaceStatus Conv2dKernel::Compute(
                     dilations,
                     activation,
                     relux_max_limit,
-                    leakyrelu_coefficient,
+                    activation_coefficient,
                     &input_shape_,
                     output,
                     &kwg_size_[0]);

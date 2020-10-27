@@ -9,7 +9,7 @@ __kernel void conv_2d(OUT_OF_RANGE_PARAMS
 #endif
                       __write_only image2d_t output,
                       __private const float relux_max_limit,
-                      __private const float leakyrelu_coefficient,
+                      __private const float activation_coefficient,
                       __private const int in_height,
                       __private const int in_width,
                       __private const int in_ch_blks,
@@ -125,11 +125,11 @@ __kernel void conv_2d(OUT_OF_RANGE_PARAMS
     }
   }
 
-#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0 = do_activation(out0, relux_max_limit, leakyrelu_coefficient);
-  out1 = do_activation(out1, relux_max_limit, leakyrelu_coefficient);
-  out2 = do_activation(out2, relux_max_limit, leakyrelu_coefficient);
-  out3 = do_activation(out3, relux_max_limit, leakyrelu_coefficient);
+#if  defined(USE_RELU) || defined(USE_LEAKYRELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID) || defined(USE_ELU)
+  out0 = do_activation(out0, relux_max_limit, activation_coefficient);
+  out1 = do_activation(out1, relux_max_limit, activation_coefficient);
+  out2 = do_activation(out2, relux_max_limit, activation_coefficient);
+  out3 = do_activation(out3, relux_max_limit, activation_coefficient);
 #endif
 
   const int out_x_base = mul24(out_ch_blk, out_width);

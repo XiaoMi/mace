@@ -199,11 +199,11 @@ MaceStatus NetDefAdapter::AdaptNetDef(
         input_data_format, input_shape, -1));
   }
 
-  OpConditionContext context(ws_, &tensor_shape_map);
   DataFormat op_output_data_format;
   MemoryType op_output_mem_type;
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     OperatorDef op_def(net_def->op(idx));
+    OpConditionContext context(ws_, &tensor_shape_map);
     context.set_operator_def(&op_def);
     // Select device
     MACE_RETURN_IF_ERROR(this->AdaptDevice(&context,
