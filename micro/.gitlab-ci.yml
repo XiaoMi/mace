@@ -1,3 +1,8 @@
+default:
+  tags:
+    - mace-micro
+  image: mace-micro-dev
+
 before_script:
   - git submodule deinit -f .
   - git submodule sync
@@ -23,6 +28,5 @@ cross-build:
     - bash micro/tools/ci/cross_build.sh
     - bash micro/tools/ci/host_build_and_run_examples.sh
     - bash micro/tools/ci/host_build_and_run_tests.sh
-    # The mbed-cli protobuf version conflicts with others
-    # - bash micro/tools/ci/build_mbed_example.sh
+    - bash micro/tools/ci/build_mbed_example.sh
 

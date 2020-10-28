@@ -3,7 +3,7 @@
 rm -rf mace-models
 rm -rf build/micro
 
-GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@git.n.xiaomi.com:applied-machine-learning/sysml/mace-models.git
+GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@git.n.xiaomi.com:applied-machine-learning/sysml/mace-models.git || exit -1
 
 git submodule update --init . || exit -1
 
