@@ -15,124 +15,164 @@
 #include "mace/ops/opencl/image/reduce.h"
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 namespace mace {
 namespace ops {
 namespace opencl {
 namespace image {
 
+namespace {
+const index_t TILE_SIZE = 16;
+
+cl::Image *InitScratchImageAndGetPointer(OpContext *context, DataType dtype,
+                                         ScratchImage *scratch_image,
+                                         const std::vector<index_t> &shape) {
+  std::vector<size_t> image_shape;
+  OpenCLUtil::CalImage2DShape(shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
+
+  auto mace_image = scratch_image->Scratch(
+      context->device()->allocator(), image_shape, dtype);
+  cl::Image *image = static_cast<cl::Image *>(mace_image->buffer());
+
+  return image;
+}
+
+}  // namespace
+
+MaceStatus ReduceKernel::BuildReduceKernel(OpenCLRuntime *runtime) {
+  std::set<std::string> built_options;
+  MACE_OUT_OF_RANGE_CONFIG;
+  MACE_NON_UNIFORM_WG_CONFIG;
+  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("reduce");
+  built_options.emplace("-Dreduce=" + kernel_name);
+  built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
+  built_options.emplace(MakeString("-DREDUCE_TYPE=", reduce_type_));
+  MACE_RETURN_IF_ERROR(runtime->BuildKernel(
+      "reduce", kernel_name, built_options, &kernel_));
+  kwg_size_ =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus ReduceKernel::GraduallyComputeReduce(
+    OpContext *context, const index_t batch, const index_t channel_blocks,
+    const index_t in_height, const index_t in_width,
+    const index_t out_height, const index_t out_width,
+    const index_t org_height, const index_t org_width,
+    const cl::Image *input, cl::Image *output) {
+  MACE_OUT_OF_RANGE_DEFINITION;
+  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  if (kernel_.get() == nullptr) {
+    MACE_RETURN_IF_ERROR(BuildReduceKernel(runtime));
+  }
+
+  const uint32_t gws[3] = {static_cast<uint32_t>(out_width),
+                           static_cast<uint32_t>(out_height),
+                           static_cast<uint32_t>(batch * channel_blocks)};
+  std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+
+  MACE_OUT_OF_RANGE_INIT(kernel_);
+  uint32_t idx = 0;
+  MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
+  MACE_SET_3D_GWS_ARGS(kernel_, gws);
+  kernel_.setArg(idx++, *input);
+  kernel_.setArg(idx++, static_cast<int>(out_height));
+  kernel_.setArg(idx++, static_cast<int>(out_width));
+  kernel_.setArg(idx++, static_cast<int>(in_height));
+  kernel_.setArg(idx++, static_cast<int>(in_width));
+  kernel_.setArg(idx++, static_cast<int>(org_height));
+  kernel_.setArg(idx++, static_cast<int>(org_width));
+  kernel_.setArg(idx++, static_cast<int>(channel_blocks));
+  kernel_.setArg(idx++, *output);
+
+  std::string tuning_key = Concat(
+      "reduce_opencl_kernel", gws[0], gws[1], gws[2]);
+
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+                                           gws, lws, context->future()));
+  MACE_OUT_OF_RANGE_VALIDATION;
+
+  return MaceStatus::MACE_SUCCESS;
+}
+
 MaceStatus ReduceKernel::Compute(
     OpContext *context,
     const Tensor *input,
     Tensor *output) {
   MACE_CHECK_NOTNULL(input);
-  index_t batch = input->dim(0);
-  const index_t in_height = input->dim(1);
-  const index_t in_width = input->dim(2);
+  const index_t batch = input->dim(0);
+  const index_t org_height = input->dim(1);
+  const index_t org_width = input->dim(2);
+  index_t in_height = org_height;
+  index_t in_width = org_width;
   const index_t channels = input->dim(3);
   const index_t channel_blocks = RoundUpDiv4(channels);
-  const uint32_t image_size = static_cast<uint32_t >(in_height * in_width);
 
-  std::vector<uint32_t> gws(3);
-  std::vector<uint32_t> lws(3);
   std::vector<index_t> output_shape{batch, 1, 1, channels};
   std::vector<size_t> output_image_shape;
   OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
                               &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
-  MACE_OUT_OF_RANGE_DEFINITION;
-
-  if (kernel_.get() == nullptr) {
-    std::set<std::string> built_options;
-    MACE_OUT_OF_RANGE_CONFIG;
-    MACE_NON_UNIFORM_WG_CONFIG;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("reduce");
-    built_options.emplace("-Dreduce=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
-    built_options.emplace(MakeString("-DREDUCE_TYPE=", reduce_type_));
-    if (runtime->gpu_type() != GPUType::QUALCOMM_ADRENO) {
-      built_options.emplace("-DNON_QUALCOMM_ADRENO");
-    }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("reduce",
-                                              kernel_name,
-                                              built_options,
-                                              &kernel_));
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  }
-
-  // In the reduce.cl file, the computation is divided into two steps.
-  // The first step computes `compute_size` times parallelly, and the second
-  // step computes `group_num` times. In order to speed up the computation, we
-  // make the computation times of these two steps as uniform as possible.
-  uint32_t local_wg_size = static_cast<uint32_t>(sqrt(in_height * in_width));
-  // Increase the times of the second step for it's not parallel
-  local_wg_size *= 2;
-  local_wg_size = std::min(local_wg_size, kwg_size_);
-  gws = {4, local_wg_size / 4, static_cast<uint32_t>(batch * channel_blocks)};
-  if (gws[1] == 0) {
-    gws[1] = 1;
-  }
-
-  lws = {gws[0], gws[1], 1};
-  const int group_num = lws[0] * lws[1] * lws[2];
-  // Each kernel intends to compute compute_size elements.
-  const int compute_size = (image_size + group_num - 1) / group_num;
-  const int last_index = image_size % group_num;
-  const float scale = 1.f / (in_width * in_height);
-
-  MACE_OUT_OF_RANGE_INIT(kernel_);
-  if (!IsVecEqual(input_shape_, input->shape())) {
-    uint32_t idx = 0;
-    MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
-    MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, (group_num * 4 * sizeof(float)),
-                   nullptr);
-    kernel_.setArg(idx++, static_cast<int32_t>(group_num));
-    kernel_.setArg(idx++, static_cast<int32_t>(compute_size));
-    kernel_.setArg(idx++, static_cast<int32_t>(last_index));
-    kernel_.setArg(idx++, static_cast<int32_t>(in_height));
-    kernel_.setArg(idx++, static_cast<int32_t>(in_width));
-    kernel_.setArg(idx++, scale);
-    kernel_.setArg(idx++, static_cast<int32_t>(channel_blocks));
-    kernel_.setArg(idx++, *(output->opencl_image()));
-
-    input_shape_ = input->shape();
-  }
-
-  cl::Event event;
-  cl_int error;
-  if (runtime->IsNonUniformWorkgroupsSupported()) {
-    error = runtime->command_queue().enqueueNDRangeKernel(
-        kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  MaceStatus result = MaceStatus::MACE_RUNTIME_ERROR;
+  if (in_height <= TILE_SIZE && in_width <= TILE_SIZE) {
+    result = GraduallyComputeReduce(context, batch, channel_blocks, in_height,
+                                    in_width, 1, 1, org_height, org_width,
+                                    input->opencl_image(),
+                                    output->opencl_image());
   } else {
-    std::vector<uint32_t> roundup_gws(lws.size());
-    for (size_t i = 0; i < lws.size(); ++i) {
-      roundup_gws[i] = RoundUp(gws[i], lws[i]);
-    }
-    error = runtime->command_queue().enqueueNDRangeKernel(
-        kernel_, cl::NullRange,
-        cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
-  }
-  MACE_CL_RET_STATUS(error);
-  MACE_OUT_OF_RANGE_VALIDATION;
+    ScratchImageManager *scratch_manager =
+        context->device()->gpu_runtime()->scratch_image_manager();
+    ScratchImage scratch_inter_image(scratch_manager);
+    auto out_height = RoundUpDiv(in_height, TILE_SIZE);
+    auto out_width = RoundUpDiv(in_width, TILE_SIZE);
+    const std::vector<index_t> inter_shape =
+        {{batch, out_height, out_width, channels}};
+    cl::Image *inter_image = InitScratchImageAndGetPointer(
+        context, input->dtype(), &scratch_inter_image, inter_shape);
+    result = GraduallyComputeReduce(context, batch, channel_blocks, in_height,
+                                    in_width, out_height, out_width,
+                                    org_height, org_width,
+                                    input->opencl_image(), inter_image);
+    MACE_RETURN_IF_ERROR(result);
 
-  if (context->future() != nullptr) {
-    context->future()->wait_fn = [runtime, event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
+    in_height = out_height;
+    in_width = out_width;
+    out_height = RoundUpDiv(in_height, TILE_SIZE);
+    out_width = RoundUpDiv(in_width, TILE_SIZE);
+
+    if (in_height > TILE_SIZE || in_width > TILE_SIZE) {
+      ScratchImage scratch_inter2_image(scratch_manager);
+      const std::vector<index_t> inter2_shape =
+          {{batch, out_height, out_width, channels}};
+      cl::Image *inter2_image = InitScratchImageAndGetPointer(
+          context, input->dtype(), &scratch_inter2_image, inter2_shape);
+
+      while (out_height > 1 || out_width > 1) {
+        result = GraduallyComputeReduce(context, batch, channel_blocks,
+                                        in_height, in_width, out_height,
+                                        out_width, org_height, org_width,
+                                        inter_image, inter2_image);
+        MACE_RETURN_IF_ERROR(result);
+        in_height = out_height;
+        in_width = out_width;
+        out_height = RoundUpDiv(in_height, TILE_SIZE);
+        out_width = RoundUpDiv(in_width, TILE_SIZE);
+        std::swap(inter_image, inter2_image);
       }
-    };
+    }
+
+    result = GraduallyComputeReduce(context, batch, channel_blocks, in_height,
+                                    in_width, 1, 1, org_height, org_width,
+                                    inter_image, output->opencl_image());
   }
 
-  return MaceStatus::MACE_SUCCESS;
+  return result;
 }
 
 }  // namespace image
