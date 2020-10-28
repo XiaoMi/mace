@@ -43,6 +43,15 @@ class ReduceKernel : public OpenCLReduceKernel {
       Tensor *output) override;
 
  private:
+  MaceStatus BuildReduceKernel(OpenCLRuntime *runtime);
+  MaceStatus GraduallyComputeReduce(
+      OpContext *context, const index_t batch, const index_t channel_blocks,
+      const index_t in_height, const index_t in_width,
+      const index_t out_height, const index_t out_width,
+      const index_t org_height, const index_t org_width,
+      const cl::Image *input, cl::Image *output);
+
+ private:
   ReduceType reduce_type_;
   const std::vector<int> axis_;
   cl::Kernel kernel_;
