@@ -209,6 +209,8 @@ class CaffeConverter(base_converter.ConverterInterface):
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NCHW)
+        ConverterUtil.set_framework_type(
+            self._mace_net_def, FrameworkType.CAFFE.value)
         self._caffe_net = CaffeNet()
         self._caffe_layers = caffe_pb2.NetParameter()
         caffe_weights = caffe_pb2.NetParameter()

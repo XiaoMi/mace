@@ -714,3 +714,17 @@ class ConverterUtil(object):
             return DataFormat.OIHW
         else:
             return None
+
+    @staticmethod
+    def set_framework_type(net, framework_type):
+        framework_type_arg = net.arg.add()
+        framework_type_arg.name = MaceKeyword.mace_framework_type_str
+        framework_type_arg.i = framework_type
+
+    @staticmethod
+    def framework_type(net):
+        framework_type_arg = ConverterUtil.get_arg(
+            net, MaceKeyword.mace_framework_type_str)
+        if framework_type_arg is None:
+            return None
+        return framework_type_arg.i
