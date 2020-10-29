@@ -39,7 +39,7 @@ class HexagonDevice : public CPUDevice {
   HexagonDevice(DeviceType device_type,
 #ifdef MACE_ENABLE_OPENCL
                 utils::ThreadPool *thread_pool,
-                std::unique_ptr<GPUDevice> gpu_device);
+                std::unique_ptr<GPUDevice> gpu_device = nullptr);
 #else
                 utils::ThreadPool *thread_pool);
 #endif  // MACE_ENABLE_OPENCL

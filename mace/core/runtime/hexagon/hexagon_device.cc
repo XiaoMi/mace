@@ -32,16 +32,18 @@ HexagonDevice::HexagonDevice(DeviceType device_type,
 
 #ifdef MACE_ENABLE_OPENCL
 GPURuntime *HexagonDevice::gpu_runtime() {
+  MACE_CHECK_NOTNULL(gpu_device_);
   return gpu_device_->gpu_runtime();
 }
 #endif  // MACE_ENABLE_OPENCL
 
 Allocator *HexagonDevice::allocator() {
 #ifdef MACE_ENABLE_OPENCL
-  return gpu_device_->allocator();
-#else
-  return allocator_.get();
+  if (gpu_device_ != nullptr) {
+    return gpu_device_->allocator();
+  }
 #endif  // MACE_ENABLE_OPENCL
+  return allocator_.get();
 }
 
 DeviceType HexagonDevice::device_type() const {

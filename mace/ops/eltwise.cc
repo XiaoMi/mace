@@ -22,6 +22,7 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -1198,6 +1199,27 @@ void RegisterEltwise(OpRegistry *op_registry) {
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Eltwise", EltwiseOp);
+  MACE_REGISTER_OP_CONDITION(
+      op_registry, OpConditionBuilder("Eltwise").SetDevicePlacerFunc(
+                       [](OpConditionContext *context) -> std::set<DeviceType> {
+                         auto op = context->operator_def();
+                         if (op->output_shape_size() != op->output_size()) {
+                           return {DeviceType::CPU, DeviceType::GPU};
+                         }
+
+                         int input_size = op->input_size();
+                         auto ws = context->workspace();
+                         for (int i = 0; i < input_size; ++i) {
+                           if (ws->HasTensor(op->input(i)) &&
+                               ws->GetTensor(op->input(i))->is_weight()) {
+                             int dims = ws->GetTensor(op->input(i))->dim_size();
+                             if (dims != 1 && dims != 4) {
+                               return {DeviceType::CPU};
+                             }
+                           }
+                         }
+                         return {DeviceType::CPU, DeviceType::GPU};
+                       }));
 }
 
 }  // namespace ops

@@ -279,8 +279,7 @@ class DeviceWrapper:
                 if os.path.exists(opencl_parameter_file):
                     self.push(opencl_parameter_file, self.data_dir)
 
-            if self.system == SystemType.android \
-                    and device_type == common.DeviceType.HEXAGON:
+            if self.system == SystemType.android:
                 self.push(
                     "third_party/nnlib/%s/libhexagon_controller.so" % abi,
                     self.data_dir)
