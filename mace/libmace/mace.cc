@@ -578,8 +578,9 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
   }
 #endif
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-  if (device_type_ == DeviceType::HEXAGON
-      || device_type_ == DeviceType::HTA) {
+  if (device_type_ == DeviceType::HEXAGON) {
+    device_.reset(new HexagonDevice(device_type_, thread_pool_.get()));
+  } else if (device_type_ == DeviceType::HTA) {
 #ifdef MACE_ENABLE_OPENCL
     device_.reset(new HexagonDevice(
         device_type_, thread_pool_.get(),
