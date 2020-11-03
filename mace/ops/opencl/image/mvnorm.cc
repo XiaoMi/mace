@@ -85,7 +85,7 @@ MaceStatus MVNormKernel::DoCompute(
 
   const std::vector<index_t > mean_shape = {batch, 1, 1, channels};
   std::vector<size_t> mean_image_shape;
-  OpenCLUtil::CalImage2DShape(mean_shape, OpenCLBufferType::IN_OUT_HEIGHT,
+  OpenCLUtil::CalImage2DShape(mean_shape, OpenCLBufferType::IN_OUT_CHANNEL,
                               &mean_image_shape);
   ScratchImageManager *scratch_manager =
       context->device()->gpu_runtime()->scratch_image_manager();

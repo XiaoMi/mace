@@ -17,12 +17,13 @@
 #include <set>
 #include <vector>
 
-#include "mace/ops/common/reduce_type.h"
 #include "mace/core/future.h"
 #include "mace/core/ops/operator.h"
+#include "mace/core/quantize.h"
 #include "mace/core/registry/ops_registry.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/core/tensor.h"
+#include "mace/ops/common/reduce_type.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/reduce.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -75,9 +76,11 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
     Simplify(input);
-    // Use the same scale and zero point with input and output.
-    output->SetScale(input->scale());
-    output->SetZeroPoint(input->zero_point());
+    if (reduce_type_ != SUM) {
+      // Use the same scale and zero point with input and output.
+      output->SetScale(input->scale());
+      output->SetZeroPoint(input->zero_point());
+    }
     output->Resize(out_shape_);
     Compute(context, input, output);
     return MaceStatus::MACE_SUCCESS;
@@ -139,10 +142,12 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
   }
 
   void Reduce1Dims(const OpContext *context,
-                   const T *input,
+                   const Tensor *input_tensor,
                    ReduceType type,
-                   T *output) {
+                   Tensor *output_tensor) {
     MACE_UNUSED(context);
+    const T *input = input_tensor->data<T>();
+    T *output = output_tensor->mutable_data<T>();
     if (reduce_first_axis_) {
       if (type == ReduceType::MEAN) {
         T tmp = 0.f;
@@ -183,12 +188,14 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
   }
 
   void Reduce2Dims(const OpContext *context,
-                   const T *input,
+                   const Tensor *input_tensor,
                    ReduceType type,
-                   T *output) {
+                   Tensor *output_tensor) {
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
+    const T *input = input_tensor->data<T>();
+    T *output = output_tensor->mutable_data<T>();
     if (reduce_first_axis_) {
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         if (type == ReduceType::MEAN) {
@@ -285,12 +292,14 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
   }
 
   void Reduce3Dims(const OpContext *context,
-                   const T *input,
+                   const Tensor *input_tensor,
                    ReduceType type,
-                   T *output) {
+                   Tensor *output_tensor) {
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
+    const T *input = input_tensor->data<T>();
+    T *output = output_tensor->mutable_data<T>();
     if (reduce_first_axis_) {
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         if (type == ReduceType::MEAN) {
@@ -407,8 +416,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
             for (int j = 0; j < data_reshape_[2]; ++j) {
               for (int k = 0; k < data_reshape_[1]; ++k) {
                 output[i * data_reshape_[2] + j] +=
-                    input[(i * data_reshape_[1] + k) * data_reshape_[2]
-                        + j];
+                    input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
               }
             }
           }
@@ -420,12 +428,14 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
   }
 
   void Reduce4Dims(const OpContext *context,
-                   const T *input,
+                   const Tensor *input_tensor,
                    ReduceType type,
-                   T *output) {
+                   Tensor *output_tensor) {
     utils::ThreadPool
         &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
+    const T *input = input_tensor->data<T>();
+    T *output = output_tensor->mutable_data<T>();
     if (reduce_first_axis_) {
       thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                                 index_t start1, index_t end1, index_t step1) {
@@ -587,18 +597,17 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
 
   void Compute(const OpContext *context, const Tensor *input, Tensor *output) {
     Tensor::MappingGuard input_mapper(input);
-    const T *input_ptr = input->data<T>();
     Tensor::MappingGuard output_map(output);
     T *output_ptr = output->mutable_data<T>();
     memset(static_cast<void *>(output_ptr), 0, output->size() * sizeof(T));
     switch (data_reshape_.size()) {
-      case 1:Reduce1Dims(context, input_ptr, reduce_type_, output_ptr);
+      case 1:Reduce1Dims(context, input, reduce_type_, output);
         break;
-      case 2:Reduce2Dims(context, input_ptr, reduce_type_, output_ptr);
+      case 2:Reduce2Dims(context, input, reduce_type_, output);
         break;
-      case 3:Reduce3Dims(context, input_ptr, reduce_type_, output_ptr);
+      case 3:Reduce3Dims(context, input, reduce_type_, output);
         break;
-      case 4:Reduce4Dims(context, input_ptr, reduce_type_, output_ptr);
+      case 4:Reduce4Dims(context, input, reduce_type_, output);
         break;
       default:MACE_CHECK(false, "not implemented in mace")
           << "data reshape size" << data_reshape_.size()
@@ -617,8 +626,10 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
 template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
     const OpContext *context,
-    const uint8_t *input, ReduceType type, uint8_t *output) {
+    const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
   MACE_UNUSED(context);
+  const uint8_t *input = input_tensor->data<uint8_t>();
+  uint8_t *output = output_tensor->mutable_data<uint8_t>();
   if (reduce_first_axis_) {
     if (type == ReduceType::MEAN) {
       uint32_t tmp = 0;
@@ -640,11 +651,15 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
       }
       output[0] = tmp;
     } else if (type == ReduceType::SUM) {
-      uint32_t tmp = 0;
+      int32_t sum = 0;
+      const auto in_zero_point = input_tensor->zero_point();
+      const auto out_zero_point = output_tensor->zero_point();
+      const auto scale = input_tensor->scale() / output_tensor->scale();
       for (int i = 0; i < data_reshape_[0]; ++i) {
-        tmp = tmp + input[i];
+        sum = sum + input[i];
       }
-      output[0] = static_cast<uint8_t>(tmp + data_reshape_[0] / 2);
+      const float f = (sum - in_zero_point * data_reshape_[0]) * scale;
+      output[0] = Saturate<uint8_t>(std::roundf(f + out_zero_point));
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -656,10 +671,12 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce1Dims(
 template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
     const OpContext *context,
-    const uint8_t *input, ReduceType type, uint8_t *output) {
+    const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
+  const uint8_t *input = input_tensor->data<uint8_t>();
+  uint8_t *output = output_tensor->mutable_data<uint8_t>();
   if (reduce_first_axis_) {
     thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
       if (type == ReduceType::MEAN) {
@@ -687,13 +704,17 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
           }
           output[i] = tmp;
         }
-      }  else if (type == ReduceType::SUM) {
+      } else if (type == ReduceType::SUM) {
+        const auto in_zero_point = input_tensor->zero_point();
+        const auto out_zero_point = output_tensor->zero_point();
+        const auto scale = input_tensor->scale() / output_tensor->scale();
         for (index_t i = start; i < end; i += step) {
-          uint32_t tmp = 0;
+          int32_t sum = 0;
           for (int j = 0; j < data_reshape_[0]; ++j) {
-            tmp += input[j * data_reshape_[1] + i];
+            sum += input[j * data_reshape_[1] + i];
           }
-          output[i] = static_cast<uint8_t>(tmp + data_reshape_[0] / 2);
+          const float f = (sum - in_zero_point * data_reshape_[0]) * scale;
+          output[i] = Saturate<uint8_t>(std::roundf(f + out_zero_point));
         }
       } else {
         MACE_NOT_IMPLEMENTED;
@@ -727,12 +748,16 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
           output[i] = tmp;
         }
       } else if (type == ReduceType::SUM) {
+        const auto in_zero_point = input_tensor->zero_point();
+        const auto out_zero_point = output_tensor->zero_point();
+        const auto scale = input_tensor->scale() / output_tensor->scale();
         for (index_t i = start; i < end; i += step) {
-          uint32_t tmp = 0;
+          int32_t sum = 0;
           for (int j = 0; j < data_reshape_[1]; ++j) {
-            tmp += input[i * data_reshape_[1] + j];
+            sum += input[i * data_reshape_[1] + j];
           }
-          output[i] = static_cast<uint8_t>(tmp + data_reshape_[1] / 2);
+          const float f = (sum - in_zero_point * data_reshape_[1]) * scale;
+          output[i] = Saturate<uint8_t>(std::roundf(f + out_zero_point));
         }
       } else {
         MACE_NOT_IMPLEMENTED;
@@ -744,10 +769,12 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce2Dims(
 template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
     const OpContext *context,
-    const uint8_t *input, ReduceType type, uint8_t *output) {
+    const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
+  const uint8_t *input = input_tensor->data<uint8_t>();
+  uint8_t *output = output_tensor->mutable_data<uint8_t>();
   if (reduce_first_axis_) {
     thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
       if (type == ReduceType::MEAN) {
@@ -787,15 +814,19 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
           output[i] = tmp;
         }
       } else if (type == ReduceType::SUM) {
+        const auto in_zero_point = input_tensor->zero_point();
+        const auto out_zero_point = output_tensor->zero_point();
+        const auto scale = input_tensor->scale() / output_tensor->scale();
         for (index_t i = start; i < end; i += step) {
-          uint32_t tmp = 0;
+          int32_t sum = 0;
           for (int j = 0; j < data_reshape_[2]; ++j) {
             for (int k = 0; k < data_reshape_[0]; ++k) {
-              tmp += input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
+              sum += input[(k * data_reshape_[1] + i) * data_reshape_[2] + j];
             }
           }
-          index_t dim = data_reshape_[0] * data_reshape_[2];
-          output[i] = static_cast<uint8_t>(tmp + dim / 2);
+          const auto count = data_reshape_[2] * data_reshape_[0];
+          const float f = (sum - in_zero_point * count) * scale;
+          output[i] = Saturate<uint8_t>(std::roundf(f + out_zero_point));
         }
       } else {
         MACE_NOT_IMPLEMENTED;
@@ -841,14 +872,18 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
           }
         }
       } else if (type == ReduceType::SUM) {
+        const auto in_zero_point = input_tensor->zero_point();
+        const auto out_zero_point = output_tensor->zero_point();
+        const auto scale = input_tensor->scale() / output_tensor->scale();
         for (index_t i = start0; i < end0; i += step0) {
           for (index_t j = start1; j < end1; j += step1) {
-            uint32_t tmp = 0;
+            int32_t sum = 0;
             for (int k = 0; k < data_reshape_[1]; ++k) {
-              tmp += input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
+              sum += input[(i * data_reshape_[1] + k) * data_reshape_[2] + j];
             }
+            const float f = (sum - in_zero_point * data_reshape_[1]) * scale;
             output[i * data_reshape_[2] + j] =
-                static_cast<uint8_t>(tmp + data_reshape_[1] / 2);
+                Saturate<uint8_t>(std::roundf(f + out_zero_point));
           }
         }
       } else {
@@ -861,10 +896,12 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce3Dims(
 template<>
 void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
     const OpContext *context,
-    const uint8_t *input, ReduceType type, uint8_t *output) {
+    const Tensor *input_tensor, ReduceType type, Tensor *output_tensor) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
+  const uint8_t *input = input_tensor->data<uint8_t>();
+  uint8_t *output = output_tensor->mutable_data<uint8_t>();
   if (reduce_first_axis_) {
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
@@ -914,18 +951,22 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
           }
         }
       } else if (type == ReduceType::SUM) {
+        const auto in_zero_point = input_tensor->zero_point();
+        const auto out_zero_point = output_tensor->zero_point();
+        const auto scale = input_tensor->scale() / output_tensor->scale();
         for (index_t i = start0; i < end0; i += step0) {
           for (index_t j = start1; j < end1; j += step1) {
-            uint32_t tmp = 0;
+            int32_t sum = 0;
             for (int k = 0; k < data_reshape_[2]; ++k) {
               for (int t = 0; t < data_reshape_[0]; ++t) {
-                tmp += input[((t * data_reshape_[1] + i) *
+                sum += input[((t * data_reshape_[1] + i) *
                     data_reshape_[2] + k) * data_reshape_[3] + j];
               }
             }
-            index_t dim = data_reshape_[0] * data_reshape_[2];
+            const auto count = data_reshape_[2] * data_reshape_[0];
+            const float f = (sum - in_zero_point * count) * scale;
             output[i * data_reshape_[3] + j] =
-                static_cast<uint8_t>(tmp + dim / 2);
+                Saturate<uint8_t>(std::roundf(f + out_zero_point));
           }
         }
       } else {
@@ -983,18 +1024,22 @@ void ReduceOp<DeviceType::CPU, uint8_t>::Reduce4Dims(
           }
         }
       } else if (type == ReduceType::SUM) {
+        const auto in_zero_point = input_tensor->zero_point();
+        const auto out_zero_point = output_tensor->zero_point();
+        const auto scale = input_tensor->scale() / output_tensor->scale();
         for (index_t i = start0; i < end0; i += step0) {
           for (index_t j = start1; j < end1; j += step1) {
-            uint32_t tmp = 0;
+            int32_t sum = 0;
             for (int k = 0; k < data_reshape_[1]; ++k) {
               for (int t = 0; t < data_reshape_[3]; ++t) {
-                tmp += input[((i * data_reshape_[1] + k) *
+                sum += input[((i * data_reshape_[1] + k) *
                     data_reshape_[2] + j) * data_reshape_[3] + t];
               }
             }
-            index_t dim = data_reshape_[1] * data_reshape_[3];
+            const auto count = data_reshape_[1] * data_reshape_[3];
+            const float f = (sum - in_zero_point * count) * scale;
             output[i * data_reshape_[2] + j] =
-                static_cast<uint8_t>(tmp + dim / 2);
+                Saturate<uint8_t>(std::roundf(f + out_zero_point));
           }
         }
       } else {
