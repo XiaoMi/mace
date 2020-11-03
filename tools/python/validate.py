@@ -408,6 +408,54 @@ def validate_megengine_model(model_file, input_file,
                        mge_output_value, validation_threshold, log_file)
 
 
+def validate_keras_model(model_file,
+                         input_file, mace_out_file,
+                         input_names, input_shapes, input_data_formats,
+                         output_names, output_shapes, output_data_formats,
+                         validation_threshold, input_data_types, log_file):
+    from tensorflow import keras
+    import tensorflow_model_optimization as tfmot
+
+    if not os.path.isfile(model_file):
+        util.MaceLogger.error(
+            VALIDATION_MODULE,
+            "Input model file '" + model_file + "' does not exist!")
+
+    with tfmot.quantization.keras.quantize_scope():
+        keras_model = keras.models.load_model(model_file, compile=False)
+
+        input = []
+        for i in range(len(input_names)):
+            input_value = load_data(
+                util.formatted_file_name(input_file, input_names[i]),
+                input_data_types[i])
+            input_value = input_value.reshape(input_shapes[i])
+            if input_data_formats[i] == DataFormat.NCHW and \
+                    len(input_shapes[i]) == 4:
+                input_value = input_value.transpose((0, 2, 3, 1))
+            elif input_data_formats[i] == DataFormat.OIHW and \
+                    len(input_shapes[i]) == 4:
+                # OIHW -> HWIO
+                input_value = input_value.transpose((2, 3, 1, 0))
+            input.append(input_value)
+
+        output_values = keras_model.predict(input)
+
+        for i in range(len(output_names)):
+            output_file_name = util.formatted_file_name(
+                mace_out_file, output_names[i])
+            mace_out_value = load_data(
+                output_file_name,
+                get_data_type_by_value(output_values[i]))
+            if output_data_formats[i] == DataFormat.NCHW and \
+                    len(output_shapes[i]) == 4:
+                mace_out_value = mace_out_value. \
+                    reshape(output_shapes[i]).transpose((0, 2, 3, 1))
+            compare_output(output_names[i],
+                           mace_out_value, output_values[i],
+                           validation_threshold, log_file)
+
+
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
              input_shape, output_shape, input_data_format,
              output_data_format, input_node, output_node,
@@ -458,3 +506,11 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                                  output_data_format,
                                  validation_threshold,
                                  input_data_type, log_file)
+    elif platform == Platform.KERAS:
+        validate_keras_model(model_file, input_file, mace_out_file,
+                             input_node, input_shape, input_data_format,
+                             output_node, output_shape, output_data_format,
+                             validation_threshold, input_data_type,
+                             log_file)
+    else:
+        mace_check(False, "Unsupported platform")
