@@ -1,7 +1,5 @@
 #! /bin/bash
 
-git submodule update --init .
-
 rm -rf build/micro
 ./micro/tools/cmake/cmake-build-host.sh \
 -DMACE_MICRO_ENABLE_TESTS=ON \

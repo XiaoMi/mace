@@ -1,7 +1,5 @@
 #! /bin/bash
 
-git submodule update --init .
-
 echo "Builds host float32"
 rm -rf build/micro
 ./micro/tools/cmake/cmake-build-host.sh \

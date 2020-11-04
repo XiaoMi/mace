@@ -20,6 +20,8 @@ from transform.base_converter import ReduceType
 from transform.base_converter import RoundMode
 from tensorflow import keras
 from tensorflow.python.keras.layers import convolutional
+from tensorflow.python.keras import activations
+
 from quantize import quantize_util
 from utils.util import mace_check
 
@@ -31,6 +33,8 @@ from tensorflow_model_optimization.python.core.\
     quantization.keras.quantize_wrapper import QuantizeWrapper
 from tensorflow_model_optimization.python.core.\
     quantization.keras.quantize_annotate import QuantizeAnnotate
+
+import numpy as np
 
 padding_mode = {
     "valid": PaddingMode.VALID,
@@ -74,7 +78,7 @@ def get_output(keras_op):
         return keras_op.output
 
 
-activation_type = {
+activation_types_dict = {
     "relu": ActivationType.RELU,
     # 'relu6': ActivationType.RELUX,
     # 'PReLU': ActivationType.PRELU,
@@ -89,6 +93,7 @@ class KerasConverter(base_converter.ConverterInterface):
 
     def __init__(self, option, src_model_file):
         self._op_converters = {
+            keras.layers.InputLayer: self.convert_input_layer,
             keras.layers.Flatten: self.convert_flatten,
             keras.layers.Dense: self.convert_dense,
             keras.layers.Conv2D: self.convert_conv2d,
@@ -96,6 +101,11 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.Dropout: self.convert_dropout,
             keras.layers.DepthwiseConv2D: self.convert_depthwise_conv2d,
             keras.layers.Softmax: self.convert_softmax,
+            keras.layers.BatchNormalization: self.convert_batch_normalization,
+            keras.layers.Activation: self.convert_activation,
+            keras.layers.GlobalAveragePooling2D:
+                self.convert_global_average_pooling2d,
+            keras.layers.Add: self.convert_add,
             QuantizeLayer: self.convert_quantize_layer,
             QuantizeWrapper: self.convert_quantize_wrapper,
         }
@@ -106,7 +116,8 @@ class KerasConverter(base_converter.ConverterInterface):
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NHWC)
 
         with tfmot.quantization.keras.quantize_scope():
-            self._keras_model = keras.models.load_model(src_model_file)
+            self._keras_model = keras.models.load_model(src_model_file,
+                                                        compile=False)
 
     def run(self):
         for op in self._keras_model.layers:
@@ -141,10 +152,24 @@ class KerasConverter(base_converter.ConverterInterface):
         framework_type_arg.i = FrameworkType.KERAS.value
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
-        op.input.append(get_input(keras_op).name)
-        op.output.append(get_output(keras_op).name)
+        input = get_input(keras_op)
+        if isinstance(input, list):
+            for e in input:
+                op.input.append(e.name)
+        else:
+            op.input.append(input.name)
+
+        output = get_output(keras_op)
+        mace_check(not isinstance(output, list), "only support one output")
+        op.output.append(output.name)
         output_shape = op.output_shape.add()
-        output_shape.dims.extend(keras_shape2list(get_output(keras_op).shape))
+        output_shape.dims.extend(keras_shape2list(output.shape))
+
+        return op
+
+    def convert_input_layer(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Identity.name
 
         return op
 
@@ -268,6 +293,100 @@ class KerasConverter(base_converter.ConverterInterface):
 
         return op
 
+    def convert_batch_normalization(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.BatchNorm.name
+        gamma = keras_op.gamma.numpy()
+        beta = keras_op.beta.numpy()
+        mean = keras_op.moving_mean.numpy()
+        variance = keras_op.moving_variance.numpy()
+        epsilon = keras_op.epsilon
+        scale = (1.0 / np.sqrt(variance + epsilon)) * gamma
+        offset = (-mean * scale) + beta
+        scale_name = keras_op.name + '/scale:0'
+        offset_name = keras_op.name + '/offset:0'
+        self.add_numpy_tensor(scale_name, scale)
+        self.add_numpy_tensor(offset_name, offset)
+        op.input.extend([scale_name, offset_name])
+
+        return op
+
+    def convert_global_average_pooling2d(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Reduce.name
+
+        reduce_type_arg = op.arg.add()
+        reduce_type_arg.name = MaceKeyword.mace_reduce_type_str
+        reduce_type_arg.i = ReduceType.MEAN.value
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.ints.extend([1, 2])
+        keep_dims_arg = op.arg.add()
+        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
+        keep_dims_arg.i = 1
+
+        origin_output_shape = copy.deepcopy(op.output_shape[0].dims)
+        op.output_shape[0].dims.insert(1, 1)
+        op.output_shape[0].dims.insert(1, 1)
+
+        output_name = op.output[0]
+        del op.output[:]
+        output_name_mid = output_name + "_mid_reshape"
+        op.output.append(output_name_mid)
+        op_reshape = self._mace_net_def.op.add()
+        op_reshape.name = keras_op.name + "_reshape"
+        op_reshape.type = MaceOp.Reshape.name
+        op_reshape.input.append(output_name_mid)
+        op_reshape.output.append(output_name)
+        output_shape = op_reshape.output_shape.add()
+        output_shape.dims.extend(origin_output_shape)
+
+        t_shape = list(origin_output_shape)
+        shape_tensor_name = op_reshape.name + "_dest_shape"
+        self.add_tensor(
+            shape_tensor_name, [len(t_shape)], mace_pb2.DT_INT32, t_shape
+        )
+        op_reshape.input.append(shape_tensor_name)
+
+        data_type_arg = op_reshape.arg.add()
+        data_type_arg.name = "T"
+        data_type_arg.i = dtype2mtype(keras_op.dtype)
+        framework_type_arg = op_reshape.arg.add()
+        framework_type_arg.name = MaceKeyword.mace_framework_type_str
+        framework_type_arg.i = FrameworkType.KERAS.value
+        ConverterUtil.add_data_format_arg(op_reshape, DataFormat.NHWC)
+
+        return op_reshape
+
+    def convert_activation(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        activation = keras_op.activation
+
+        if activation == activations.linear:
+            op.type = MaceOp.Identity.name
+        elif activation is activations.relu:
+            op.type = MaceOp.Activation.name
+            type_arg = op.arg.add()
+            type_arg.name = MaceKeyword.mace_activation_type_str
+            type_arg.s = six.b("RELU")
+        elif activation == activations.softmax:
+            op.type = MaceOp.Softmax.name
+        else:
+            mace_check(False, "Unsupported activation")
+
+        return op
+
+    def convert_add(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Eltwise.name
+
+        type_arg = op.arg.add()
+        type_arg.name = MaceKeyword.mace_element_type_str
+        type_arg.i = EltwiseType.SUM.value
+
+        return op
+
     def convert_quantize_layer(self, keras_op):
         op = self._mace_net_def.op.add()
         op.name = keras_op.name
@@ -328,6 +447,24 @@ class KerasConverter(base_converter.ConverterInterface):
         tensor.float_data.extend(keras_tensor.numpy().flat)
         return tensor
 
+    def add_numpy_tensor(self, name, np_tensor):
+        tensor = self._mace_net_def.tensors.add()
+        tensor.name = name
+        tensor.dims.extend(np_tensor.shape)
+        tensor.data_type = dtype2mtype(np_tensor.dtype)
+        tensor.float_data.extend(np_tensor.flat)
+        return tensor
+
+    def add_tensor(self, name, shape, data_type, value):
+        tensor = self._mace_net_def.tensors.add()
+        tensor.name = name
+        tensor.dims.extend(list(shape))
+        tensor.data_type = data_type
+        if data_type == mace_pb2.DT_INT32:
+            tensor.int32_data.extend(value)
+        else:
+            tensor.float_data.extend(value)
+
     def split_activation_op(self, keras_op, op):
         activation = keras_op.get_config()["activation"]
         if "class_name" in activation:
@@ -358,7 +495,7 @@ class KerasConverter(base_converter.ConverterInterface):
                 activation_op.type = MaceOp.Activation.name
                 type_arg = activation_op.arg.add()
                 type_arg.name = MaceKeyword.mace_activation_type_str
-                type_arg.s = six.b(activation_type[activation].name)
+                type_arg.s = six.b(activation_types_dict[activation].name)
 
             activation_op.input.append(activation_tmp_name)
             activation_op.output.append(get_output(keras_op).name)
