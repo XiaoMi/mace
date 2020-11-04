@@ -846,9 +846,8 @@ MaceStatus MaceEngine::Impl::TransposeInput(
         } else {
           LOG(FATAL) << "Invalid net data type: " << net_data_type_;
         }
-#ifdef MACE_ENABLE_BFLOAT16  // todo(lichao): add float16 macro
-      } else if (input_dt == DataType::DT_FLOAT16 ||
-                 input_dt == DataType::DT_BFLOAT16) {
+#ifdef MACE_ENABLE_BFLOAT16
+      } else if (input_dt == DataType::DT_BFLOAT16) {
         auto *input_data = input_tensor->mutable_data<BFloat16>();
         return ops::Transpose(thread_pool_.get(),
                               input.second.data<float>().get(),
@@ -856,6 +855,16 @@ MaceStatus MaceEngine::Impl::TransposeInput(
                               dst_dims,
                               input_data);
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+      } else if (input_dt == DataType::DT_FLOAT16) {
+        auto *input_data = input_tensor->mutable_data<float16_t>();
+        return ops::Transpose(thread_pool_.get(),
+                              input.second.data<float>().get(),
+                              input.second.shape(),
+                              dst_dims,
+                              input_data);
+#endif  // MACE_ENABLE_FP16
+
       } else if (input_dt == DataType::DT_INT32) {
         auto input_data = input_tensor->mutable_data<int>();
         return ops::Transpose(thread_pool_.get(),
@@ -882,15 +891,23 @@ MaceStatus MaceEngine::Impl::TransposeInput(
     } else {
       LOG(FATAL) << "Invalid net data type: " << net_data_type_;
     }
-#ifdef MACE_ENABLE_BFLOAT16  // todo(lichao): add float16 macro
-  } else if (input_dt == DataType::DT_FLOAT16 ||
-             input_dt == DataType::DT_BFLOAT16) {
+#ifdef MACE_ENABLE_BFLOAT16
+  } else if (input_dt == DataType::DT_BFLOAT16) {
     auto input_data = input_tensor->mutable_data<BFloat16>();
     const float *data = input.second.data().get();
     for (index_t i = 0; i < input_tensor->size(); ++i) {
       input_data[i] = data[i];
     }
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+  } else if (input_dt == DataType::DT_FLOAT16) {
+    auto input_data = input_tensor->mutable_data<float16_t>();
+    const float *data = input.second.data().get();
+    for (index_t i = 0; i < input_tensor->size(); ++i) {
+      input_data[i] = data[i];
+    }
+#endif  // MACE_ENABLE_FP16
+
   } else if (input_dt == DataType::DT_INT32) {
     auto input_data = input_tensor->mutable_data<int>();
     memcpy(input_data, input.second.data().get(),
@@ -963,6 +980,15 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
                               dst_dims,
                               output->second.data<float>().get());
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+      } else if (output_dt == DataType::DT_FLOAT16) {
+        auto output_data = output_tensor->data<float16_t>();
+        return ops::Transpose(thread_pool_.get(),
+                              output_data,
+                              output_tensor->shape(),
+                              dst_dims,
+                              output->second.data<float>().get());
+#endif  // MACE_ENABLE_FP16
       } else {
         LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
         return MaceStatus::MACE_INVALID_ARGS;
@@ -993,6 +1019,14 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
           data[i] = output_data[i];
         }
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+      } else if (output_dt == DataType::DT_FLOAT16) {
+        const auto *output_data = output_tensor->data<float16_t>();
+        float *data = output->second.data<float>().get();
+        for (index_t i = 0; i < output_tensor->size(); ++i) {
+          data[i] = output_data[i];
+        }
+#endif  // MACE_ENABLE_FP16
       } else {
         LOG(FATAL) << "MACE do not support the output data type: " << output_dt;
       }

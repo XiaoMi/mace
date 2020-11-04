@@ -156,6 +156,9 @@ void RegisterGemmDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Gemm<BFloat16>, delegator::GemmParam,
       MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, BFloat16, ImplType::REF));
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, Gemm<float16_t>, delegator::GemmParam,
+      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float16_t, ImplType::REF));
 }
 
 }  // namespace ref

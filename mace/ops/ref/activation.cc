@@ -130,6 +130,10 @@ void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Activation<BFloat16>, delegator::ActivationParam,
       MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, BFloat16, ImplType::REF));
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, Activation<float16_t>, delegator::ActivationParam,
+      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                         float16_t, ImplType::REF));
 }
 
 }  // namespace ref

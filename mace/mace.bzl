@@ -109,6 +109,12 @@ def if_bfloat16_enabled(a):
         "//conditions:default": [],
     })
 
+def if_fp16_enabled(a):
+    return select({
+        "//mace:fp16_enabled": a,
+        "//conditions:default": [],
+    })
+
 def if_rpcmem_enabled(a, default_value = []):
     return select({
         "//mace:rpcmem_enabled": a,

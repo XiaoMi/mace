@@ -23,6 +23,24 @@ namespace mace {
 namespace ops {
 namespace arm {
 
+extern template void Gemm<float16_t>::Pack8x4(
+    const MatrixMap<const float16_t> &matrix,
+    MatrixMajor dst_major, float16_t *packed_matrix);
+extern template void Gemm<float16_t>::Unpack8x8(
+    const float16_t *packed_output, MatrixMap<float16_t> *output);
+extern template void Gemm<float16_t>::PackLhs(
+    const MatrixMap<const float16_t> &lhs, float16_t *packed_lhs);
+extern template void Gemm<float16_t>::PackRhs(
+    const MatrixMap<const float16_t> &rhs, float16_t *packed_rhs);
+extern template void Gemm<float16_t>::UnpackOutput(
+    const float16_t *packed_output, MatrixMap<float16_t> *output);
+extern template MaceStatus Gemm<float16_t>::Compute(
+    const OpContext *context, const Tensor *lhs, const Tensor *rhs,
+    const index_t batch, const index_t rows, const index_t cols,
+    const index_t depth, const MatrixMajor lhs_major,
+    const MatrixMajor rhs_major, const MatrixMajor output_major,
+    const bool lhs_batched, const bool rhs_batched, Tensor *output);
+
 template<typename T>
 void Gemm<T>::Pack4x4(const MatrixMap<const T> &matrix,
                       MatrixMajor dst_major, T *packed_matrix) {
@@ -681,9 +699,9 @@ MaceStatus Gemm<T>::Compute(
                        depth_padded,
                        packed_output_data_block);
           MatrixMap<T> output_block = output_matrix.block(start_row,
-                                                              start_col,
-                                                              row_block_len,
-                                                              col_block_len);
+                                                          start_col,
+                                                          row_block_len,
+                                                          col_block_len);
           UnpackOutput(packed_output_data_block, &output_block);
         }  // col_block_idx
       }  // row_block_idx
@@ -701,6 +719,10 @@ void RegisterGemmDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Gemm<BFloat16>, delegator::GemmParam,
       MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, BFloat16, ImplType::NEON));
+
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, Gemm<float16_t>, delegator::GemmParam,
+      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float16_t, ImplType::NEON));
 }
 
 }  // namespace arm

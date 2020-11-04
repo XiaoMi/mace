@@ -55,7 +55,8 @@ struct EnumToDataType;
   };
 
 MACE_MAPPING_DATA_TYPE_AND_ENUM(half, DT_HALF);
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) \
+    || defined(MACE_ENABLE_FP16)
 MACE_MAPPING_DATA_TYPE_AND_ENUM(float16_t, DT_FLOAT16);
 #endif
 #ifdef MACE_ENABLE_BFLOAT16

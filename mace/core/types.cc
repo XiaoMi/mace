@@ -26,6 +26,7 @@ bool DataTypeCanUseMemcpy(DataType dt) {
     case DT_UINT8:
     case DT_INT32:
     case DT_BFLOAT16:
+    case DT_FLOAT16:
       return true;
     default:
       return false;
@@ -38,7 +39,8 @@ std::string DataTypeToString(const DataType dt) {
       {DT_HALF, "DT_HALF"},
       {DT_UINT8, "DT_UINT8"},
       {DT_INT32, "DT_INT32"},
-      {DT_BFLOAT16, "DT_BFLOAT16"}};
+      {DT_BFLOAT16, "DT_BFLOAT16"},
+      {DT_FLOAT16, "DT_FLOAT16"}};
   MACE_CHECK(dt != DT_INVALID, "Not support Invalid data type");
   return dtype_string_map[dt];
 }
@@ -49,7 +51,8 @@ size_t GetEnumTypeSize(const DataType dt) {
       return sizeof(float);
     case DT_HALF:
       return sizeof(half);
-#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) || \
+    defined(MACE_ENABLE_FP16)
     case DT_FLOAT16:
       return sizeof(float16_t);
 #endif

@@ -133,6 +133,14 @@ config_setting(
 )
 
 config_setting(
+    name = "fp16_enabled",
+    define_values = {
+        "fp16": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "rpcmem_enabled",
     define_values = {
         "rpcmem": "true",

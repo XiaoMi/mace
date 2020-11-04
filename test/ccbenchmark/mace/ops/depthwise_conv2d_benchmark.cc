@@ -140,6 +140,12 @@ void DepthwiseConv2d(int iters,
 #else
 #define MACE_BM_DEPTHWISE_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, P, M)
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+#define MACE_BM_DEPTHWISE_CONV_2D_FP16_MACRO(N, C, H, W, KH, KW, S, P, M)     \
+  MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float16_t, CPU)
+#else
+#define MACE_BM_DEPTHWISE_CONV_2D_FP16_MACRO(N, C, H, W, KH, KW, S, P, M)
+#endif  // MACE_ENABLE_FP16
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_DEPTHWISE_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, P, M)       \
   MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, GPU);    \
@@ -152,6 +158,7 @@ void DepthwiseConv2d(int iters,
   MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, CPU);    \
   MACE_BM_DEPTHWISE_CONV_2D_Q8_MACRO(N, C, H, W, KH, KW, S, P, M);             \
   MACE_BM_DEPTHWISE_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, P, M);           \
+  MACE_BM_DEPTHWISE_CONV_2D_FP16_MACRO(N, C, H, W, KH, KW, S, P, M);          \
   MACE_BM_DEPTHWISE_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, P, M)
 
 MACE_BM_DEPTHWISE_CONV_2D(1, 32, 112, 112, 3, 3, 1, SAME, 1);

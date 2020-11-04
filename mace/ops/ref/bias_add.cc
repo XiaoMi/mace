@@ -152,6 +152,9 @@ void RegisterBiasAddDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_BF16_DELEGATOR(
       registry, BiasAdd<BFloat16>, DelegatorParam,
       MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, BFloat16, ImplType::REF));
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, BiasAdd<float16_t>, DelegatorParam,
+      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float16_t, ImplType::REF));
 }
 
 }  // namespace ref

@@ -13,6 +13,7 @@ load(
     "if_android_armv7",
     "if_apu_enabled",
     "if_bfloat16_enabled",
+    "if_fp16_enabled",
     "if_darwin",
     "if_hexagon_enabled",
     "if_hta_enabled",
@@ -44,6 +45,9 @@ cc_library(
         "-DMACE_ENABLE_QUANTIZE",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_hta_enabled([

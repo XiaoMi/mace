@@ -507,7 +507,7 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
 void RegisterConv2D(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU);
-
+  MACE_REGISTER_FP16_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU);
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
                    DeviceType::CPU, uint8_t);

@@ -27,6 +27,7 @@ namespace mace {
 namespace ops {
 namespace arm {
 
+
 template<typename T>
 class DepthwiseConv2dK3x3S1 : public DepthwiseConv2dKMxN<T> {
  public:

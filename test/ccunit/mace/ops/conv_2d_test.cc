@@ -1435,6 +1435,74 @@ TEST_F(Conv2dOpTest, BFloat16) {
   TestBFloat16(1, 128, 64, 32, 32, 7, 7, SAME, {3, 3});
 }
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+namespace {
+void TestFloat16(const index_t batch,
+                 const index_t out_channels,
+                 const index_t in_channels,
+                 const index_t in_height,
+                 const index_t in_width,
+                 const index_t k_height,
+                 const index_t k_width,
+                 enum Padding padding_type,
+                 const std::vector<int> &strides) {
+  OpsTestNet net;
+  net.AddRandomInput<CPU, float16_t>(
+      "Input", {batch, in_channels, in_height, in_width});
+  net.AddRandomInput<CPU, float16_t>(
+      "Filter", {out_channels, in_channels, k_height, k_width}, true);
+  net.AddRandomInput<CPU, float16_t>("Bias", {out_channels}, true);
+  net.Cast<CPU, float, float16_t>("Input", "FP16Input");
+  net.Cast<CPU, float, float16_t>("Filter", "FP16Filter");
+  net.Cast<CPU, float, float16_t>("Bias", "FP16Bias");
+
+  OpDefBuilder("Conv2D", "Conv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_FLOAT))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  OpDefBuilder("Conv2D", "FP16Conv2dTest")
+      .Input("FP16Input")
+      .Input("FP16Filter")
+      .Input("FP16Bias")
+      .Output("FP16Output")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_FLOAT16))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  net.Cast<CPU, float16_t, float>("FP16Output", "CastOutput");
+
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("CastOutput"), 1e-4);
+}
+}  // namespace
+
+TEST_F(Conv2dOpTest, float16_t) {
+  TestFloat16(1, 128, 64, 32, 32, 1, 1, VALID, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 3, 3, VALID, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 3, 3, SAME, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 3, 3, FULL, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 3, 3, SAME, {2, 2});
+  TestFloat16(1, 129, 63, 33, 31, 3, 3, SAME, {1, 1});
+  TestFloat16(9, 128, 64, 32, 32, 3, 3, SAME, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 1, 5, SAME, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 5, 5, SAME, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 5, 1, SAME, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 7, 7, SAME, {1, 1});
+  TestFloat16(1, 128, 64, 32, 32, 7, 7, SAME, {2, 2});
+  TestFloat16(1, 128, 64, 32, 32, 7, 7, SAME, {3, 3});
+}
+#endif  // MACE_ENABLE_FP16
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

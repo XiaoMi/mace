@@ -137,6 +137,10 @@ void RegisterDepthwiseConv2dDelegator(OpDelegatorRegistry *registry) {
       registry, DepthwiseConv2d<BFloat16>, delegator::DepthwiseConv2dParam,
       MACE_DELEGATOR_KEY(DepthwiseConv2d, DeviceType::CPU,
                          BFloat16, ImplType::REF));
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, DepthwiseConv2d<float16_t>, delegator::DepthwiseConv2dParam,
+      MACE_DELEGATOR_KEY(DepthwiseConv2d, DeviceType::CPU,
+                         float16_t, ImplType::REF));
 }
 
 }  // namespace ref

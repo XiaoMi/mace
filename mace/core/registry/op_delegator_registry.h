@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "mace/core/bfloat16.h"
+#include "mace/core/fp16.h"
 #include "mace/core/ops/op_delegator.h"
 #include "mace/core/types.h"
 #include "mace/proto/mace.pb.h"
@@ -100,6 +101,15 @@ class OpDelegatorRegistry {
 #define MACE_REGISTER_BF16_DELEGATOR(registry, class_name, param_name, key)
 #endif  // MACE_ENABLE_BFLOAT16
 #endif  // MACE_REGISTER_BF16_DELEGATOR
+
+#ifndef MACE_REGISTER_FP16_DELEGATOR
+#ifdef MACE_ENABLE_FP16
+#define MACE_REGISTER_FP16_DELEGATOR(registry, class_name, param_name, key) \
+  MACE_REGISTER_DELEGATOR(registry, class_name, param_name, key)
+#else
+#define MACE_REGISTER_FP16_DELEGATOR(registry, class_name, param_name, key)
+#endif  // MACE_ENABLE_FP16
+#endif  // MACE_REGISTER_FP16_DELEGATOR
 
 #ifndef MACE_DEFINE_DELEGATOR_CREATOR
 #define MACE_DEFINE_DELEGATOR_CREATOR(class_name)            \

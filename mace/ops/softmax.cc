@@ -526,6 +526,8 @@ void RegisterSoftmax(OpRegistry *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Softmax", SoftmaxOp,
                         DeviceType::CPU);
+  MACE_REGISTER_FP16_OP(op_registry, "Softmax", SoftmaxOp,
+                         DeviceType::CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,

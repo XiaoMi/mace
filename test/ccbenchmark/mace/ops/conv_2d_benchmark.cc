@@ -181,6 +181,12 @@ void Conv2d<CPU, uint8_t>(int iters,
 #else
 #define MACE_BM_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_FP16
+#define MACE_BM_CONV_2D_FP16_MACRO(N, C, H, W, KH, KW, S, D, P, OC)     \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float16_t, CPU)
+#else
+#define MACE_BM_CONV_2D_FP16_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
+#endif  // MACE_ENABLE_FP16
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, D, P, OC)       \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
@@ -193,6 +199,7 @@ void Conv2d<CPU, uint8_t>(int iters,
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
   MACE_BM_CONV_2D_Q8_MACRO(N, C, H, W, KH, KW, S, D, P, OC);             \
   MACE_BM_CONV_2D_BF16_MACRO(N, C, H, W, KH, KW, S, D, P, OC);           \
+  MACE_BM_CONV_2D_FP16_MACRO(N, C, H, W, KH, KW, S, D, P, OC);          \
   MACE_BM_CONV_2D_GPU_MACRO(N, C, H, W, KH, KW, S, D, P, OC)
 
 // Filter sizes and data alignments

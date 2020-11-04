@@ -152,6 +152,40 @@ inline void vst1o(float *ptr, float32x8_t v) {
   vst1q_f32(ptr + 4, v.val[1]);
 }
 
+#if defined(MACE_ENABLE_AMR82)
+
+// load of 4D vector
+inline float16x4_t vld1(const float16_t *ptr) {
+  return vld1_fp16(ptr);
+}
+
+// store of 4D vector
+inline void vst1(float16_t *ptr, float16x4_t v) {
+  vst1_fp16(ptr, v);
+}
+
+// load of 8D vector
+inline float16x8_t vld1q(const float16_t *ptr) {
+  return vld1q_fp16(ptr);
+}
+
+// load of 2 8D vectors and perform de-interleaving
+inline float16x8x2_t vld2q(const float16_t *ptr) {
+  return vld2q_fp16(ptr);
+}
+
+// store of 8D vector
+inline void vst1q(float16_t *ptr, const float16x8_t v) {
+  vst1q_fp16(ptr, v);
+}
+
+// store of 2 8D vectors and perform interleaving
+inline void vst2q(float16_t *ptr, const float16x8x2_t v) {
+  vst2q_fp16(ptr, v);
+}
+
+#endif  // MACE_ENABLE_FP16
+
 #if defined(MACE_ENABLE_BFLOAT16)
 
 // load of 2D vector
