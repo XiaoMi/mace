@@ -372,6 +372,15 @@ void TestQuant(const std::vector<index_t> &input_shape,
     net.TransformDataFormat<DeviceType::CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
+    OpDefBuilder("Quantize", "DoQuantizeOutput")
+        .Input("Output")
+        .Output("ExpectedQuantizedOutput")
+        .OutputType({DT_UINT8})
+        .AddIntArg("T", DT_UINT8)
+        .AddIntArg("non_zero", true)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+
     OpDefBuilder("Quantize", "QuantizeInput")
         .Input("Input")
         .Output("QuantizedInput")
@@ -392,7 +401,12 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .AddIntArg("has_data_format", 1)
         .AddIntArg("T", DT_UINT8)
         .Finalize(net.NewOperatorDef());
-    net.RunOp();
+    net.Setup(DeviceType::CPU);
+    Tensor *expect_quantize_output = net.GetTensor("ExpectedQuantizedOutput");
+    Tensor *quantize_output = net.GetTensor("QuantizedOutput");
+    quantize_output->SetScale(expect_quantize_output->scale());
+    quantize_output->SetZeroPoint(expect_quantize_output->zero_point());
+    net.Run();
 
     OpDefBuilder("Dequantize", "DeQuantizeTest")
         .Input("QuantizedOutput")
@@ -406,7 +420,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
                                *net.GetTensor("DequantizedOutput"), 0.01);
   };
 
-  for (ReduceType type : {MEAN, MIN, MAX}) {
+  for (ReduceType type : {MEAN, MIN, MAX, SUM}) {
     func(type);
   }
 }
