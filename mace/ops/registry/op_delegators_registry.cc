@@ -69,7 +69,11 @@ extern void RegisterGroupDeconv2dGeneralDelegator(
 
 extern void RegisterGemmDelegator(OpDelegatorRegistry *registry);
 extern void RegisterGemvDelegator(OpDelegatorRegistry *registry);
-
+#ifdef MACE_ENABLE_FP16
+extern void RegisterFP16DepthwiseConv2dK3x3Delegator(
+    OpDelegatorRegistry *registry);
+extern void RegisterFP16GemmDelegator(OpDelegatorRegistry *registry);
+#endif
 #ifdef MACE_ENABLE_QUANTIZE
 namespace q8 {
 extern void RegisterEltwiseDelegator(OpDelegatorRegistry *registry);
@@ -89,7 +93,6 @@ void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
   ref::RegisterDepthwiseDeconv2dDelegator(registry);
   ref::RegisterGemmDelegator(registry);
   ref::RegisterGemvDelegator(registry);
-
 #ifdef MACE_ENABLE_QUANTIZE
   ref::q8::RegisterEltwiseDelegator(registry);
   ref::q8::RegisterGemvDelegator(registry);
@@ -123,7 +126,10 @@ void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
 
   arm::RegisterGemmDelegator(registry);
   arm::RegisterGemvDelegator(registry);
-
+#ifdef MACE_ENABLE_FP16
+  arm::RegisterFP16DepthwiseConv2dK3x3Delegator(registry);
+  arm::RegisterFP16GemmDelegator(registry);
+#endif
 #ifdef MACE_ENABLE_QUANTIZE
   arm::q8::RegisterEltwiseDelegator(registry);
   arm::q8::RegisterGemvDelegator(registry);
