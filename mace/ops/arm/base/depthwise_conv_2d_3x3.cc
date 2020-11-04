@@ -20,16 +20,6 @@ namespace mace {
 namespace ops {
 namespace arm {
 
-extern template
-MaceStatus DepthwiseConv2dK3x3S1<float16_t>::DoCompute(
-    const DepthwiseConvComputeParam &p, const float16_t *filter_data,
-    const float16_t *input_data, float16_t *output_data);
-
-extern template
-MaceStatus DepthwiseConv2dK3x3S2<float16_t>::DoCompute(
-    const DepthwiseConvComputeParam &p, const float16_t *filter_data,
-    const float16_t *input_data, float16_t *output_data);
-
 namespace {
 template<typename T>
 void DepthwiseConv2d3x3Pixel(const T *in_base,
@@ -474,16 +464,6 @@ void RegisterDepthwiseConv2dK3x3Delegator(OpDelegatorRegistry *registry) {
       delegator::DepthwiseConv2dParam,
       MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
                             BFloat16, ImplType::NEON, K3x3S2));
-  MACE_REGISTER_FP16_DELEGATOR(
-      registry, DepthwiseConv2dK3x3S1<float16_t>,
-      delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
-                            float16_t, ImplType::NEON, K3x3S1));
-  MACE_REGISTER_FP16_DELEGATOR(
-      registry, DepthwiseConv2dK3x3S2<float16_t>,
-      delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
-                            float16_t, ImplType::NEON, K3x3S2));
 }
 
 }  // namespace arm

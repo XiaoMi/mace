@@ -403,6 +403,18 @@ MaceStatus DepthwiseConv2dK3x3S2<float16_t>::DoCompute(
   return MaceStatus::MACE_SUCCESS;
 }
 
+void RegisterFP16DepthwiseConv2dK3x3Delegator(OpDelegatorRegistry *registry) {
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, DepthwiseConv2dK3x3S1<float16_t>,
+      delegator::DepthwiseConv2dParam,
+      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
+                            float16_t, ImplType::NEON, K3x3S1));
+  MACE_REGISTER_FP16_DELEGATOR(
+      registry, DepthwiseConv2dK3x3S2<float16_t>,
+      delegator::DepthwiseConv2dParam,
+      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
+                            float16_t, ImplType::NEON, K3x3S2));
+}
 
 }  // namespace arm
 }  // namespace ops
