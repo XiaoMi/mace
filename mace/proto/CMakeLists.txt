@@ -6,10 +6,10 @@ macro(generate_proto proto_file)
   set(${basename}_proto_srcs  ${basename}.pb.cc)
 
   add_custom_command(
-      OUTPUT ${basename}_proto_files
+      OUTPUT ${basename}.pb.cc ${basename}.pb.h
       COMMAND ${PROTOC_BIN} --cpp_out ${CMAKE_CURRENT_BINARY_DIR} -I ${CMAKE_CURRENT_SOURCE_DIR} ${proto_file_abs}
       COMMENT "Generating ${basename}_proto_files from ${proto_file}"
-      DEPENDS protoc_bin
+      DEPENDS ${proto_file_abs} protoc_bin
       VERBATIM
   )
 
@@ -19,12 +19,11 @@ macro(generate_proto proto_file)
       OUTPUT ${PROTO_GENERATED_PY_FILES}
       COMMAND ${PROTOC_BIN} --python_out ${PROTO_PYTHON_DIR} -I ${CMAKE_CURRENT_SOURCE_DIR} ${proto_file_abs}
       COMMENT "Generating ${PROTO_GENERATED_PY_FILES} from ${proto_file}"
-      DEPENDS protoc_bin
+      DEPENDS ${proto_file_abs} protoc_bin
       VERBATIM
   )
 
-  add_custom_target(${basename}_proto_cpp DEPENDS ${basename}_proto_files
-        COMMENT "Checking if re-generation is required")
+  add_custom_target(${basename}_proto_cpp ALL DEPENDS ${basename}.pb.cc ${basename}.pb.h)
   add_custom_target(${basename}_proto_py ALL DEPENDS ${PROTO_GENERATED_PY_FILES})
 endmacro()
 
