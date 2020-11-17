@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "micro/ops/gtest_utils.h"
 #include "micro/ops/nhwc/depthwise_conv_2d_ref.h"
-#include "micro/ops/nhwc/cmsis_nn/arm_depthwise_conv_2d_int8.h"
+#include "micro/ops/cmsis_nn/arm_depthwise_conv_2d_int8.h"
 #include "micro/ops/substitute_op.h"
 #include "micro/ops/test_utils.h"
 #include "micro/ops/test_quantize_utils.h"

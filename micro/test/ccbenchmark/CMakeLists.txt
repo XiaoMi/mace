@@ -40,7 +40,7 @@ add_library(micro_benchmark_lib
 target_link_libraries(micro_benchmark_lib
   PUBLIC micro_base
   PUBLIC micro_ccutils
-  PUBLIC micro_ops_for_test
+  PUBLIC micro_ops
   PUBLIC micro_framework_for_optest
   PUBLIC micro_benchmark_utils
 )
@@ -53,7 +53,7 @@ if(NOT HEXAGON_STUB AND NOT HEXAGON)
   target_link_libraries(micro_cc_benchmark
     PRIVATE micro_base
     PRIVATE micro_ccutils
-    PRIVATE micro_ops_for_test
+    PRIVATE micro_ops
     PRIVATE micro_framework_for_optest
     PRIVATE micro_benchmark_utils
     -Wl,--whole-archive
@@ -99,7 +99,6 @@ if(HEXAGON)
     codegen/benchmark_skel.c
   )
   target_link_libraries(benchmark_idk_skel hexagon_sdk_headers_dsp)
-  target_compile_options(benchmark_idk_skel PRIVATE -fPIC)
 
   add_library(benchmark_skel SHARED
     micro/rpc/skel/benchmark.c

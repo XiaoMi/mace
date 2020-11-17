@@ -19,21 +19,10 @@ from utils.util import mace_check
 class GraphBuilder:
     def __init__(self, pb_model, op_resolver):
         self.net_def = pb_model
-        self.ops_desc_map = op_resolver.get_op_desc_map_from_model()
-        self.op_resolver = op_resolver
 
         self.init_output_cache()
         self.init_const_tensor_cache()
         self.init_model_input_cache()
-
-    def get_op_idx(self, op_def):
-        if op_def.type not in self.ops_desc_map:
-            return -1
-        op_desc_list = self.ops_desc_map[op_def.type]
-        for op_desc in op_desc_list:
-            if self.op_resolver.op_def_desc_matched(op_def, op_desc):
-                return op_desc.idx
-        return -1
 
     def init_output_cache(self):
         model_outputs = []
@@ -68,9 +57,8 @@ class GraphBuilder:
     def build(self):
         graph = micro_mem_pb2.Graph()
         graph.output_infos.extend(self.output_infos)
-        for op_def in self.net_def.op:
+        for idx, op_def in enumerate(self.net_def.op):
             op_context = graph.op_contexts.add()
-            idx = self.get_op_idx(op_def)
             mace_check(idx >= 0, "Error from the OpResolver.")
             op_context.op_idx = idx
 

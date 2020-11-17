@@ -30,7 +30,8 @@ class MicroCodeGen:
                                       jinja_file_name, output_path):
         cwd = os.path.dirname(__file__)
         j2_env = Environment(
-            loader=FileSystemLoader(cwd), trim_blocks=True)
+            loader=FileSystemLoader(cwd),
+            trim_blocks=True, keep_trailing_newline=True)
 
         template_name = JINJA2_DIR + jinja_file_name
         source = j2_env.get_template(template_name).render(
@@ -46,7 +47,8 @@ class MicroCodeGen:
                                     jinja_file_name, output_path):
         cwd = os.path.dirname(__file__)
         j2_env = Environment(
-            loader=FileSystemLoader(cwd), trim_blocks=True)
+            loader=FileSystemLoader(cwd),
+            trim_blocks=True, keep_trailing_newline=True)
 
         template_name = JINJA2_DIR + jinja_file_name
         source = j2_env.get_template(template_name).render(
@@ -60,7 +62,8 @@ class MicroCodeGen:
     def gen_micro_source_from_array(self, model_tag, embed_data,
                                     jinja_file_name, output_path):
         cwd = os.path.dirname(__file__)
-        j2_env = Environment(loader=FileSystemLoader(cwd), trim_blocks=True)
+        j2_env = Environment(loader=FileSystemLoader(
+            cwd), trim_blocks=True, keep_trailing_newline=True)
 
         template_name = JINJA2_DIR + jinja_file_name
 

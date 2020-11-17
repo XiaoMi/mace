@@ -48,7 +48,7 @@ void memset(T *src, T value, uint32_t size) {
 
 template<typename T>
 T accumulate_multi(const T *array, uint32_t array_start, uint32_t array_end) {
-  MACE_ASSERT(array_start >= 0 && array_start <= array_end);
+  MACE_ASSERT(array_start <= array_end);
   if (array == NULL || array_start == array_end) {
     return 1;
   }

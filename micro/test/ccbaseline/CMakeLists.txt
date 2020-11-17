@@ -19,7 +19,6 @@ if(HEXAGON AND MICRO_MODEL_NAME)
     codegen/macemc_skel.c
   )
   target_link_libraries(macemc_idl_skel  hexagon_sdk_headers_dsp)
-  target_compile_options(macemc_idl_skel PRIVATE "-fPIC")
 
   add_library(macemc_skel SHARED
     macemc/rpc/skel/macemc.cc

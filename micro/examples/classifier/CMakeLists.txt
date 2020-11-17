@@ -5,6 +5,6 @@ endif()
 
 add_executable(${MICRO_MODEL_NAME} main.cc)
 target_compile_options(${MICRO_MODEL_NAME} PRIVATE "-Wno-error")
-target_link_libraries(${MICRO_MODEL_NAME} micro models)
+target_link_libraries(${MICRO_MODEL_NAME} models micro)
 target_compile_definitions(${MICRO_MODEL_NAME} PRIVATE "-DMICRO_MODEL_NAME=${MICRO_MODEL_NAME}")
 target_compile_definitions(${MICRO_MODEL_NAME} PRIVATE "-DMICRO_DATA_NAME=${MICRO_DATA_NAME}")

@@ -46,7 +46,7 @@ model = tf.keras.models.Sequential(
         ),
         tf.keras.layers.MaxPool2D(pool_size=2),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dense(28, activation="relu"),
         tf.keras.layers.Dense(10, activation="softmax"),
     ]
 )

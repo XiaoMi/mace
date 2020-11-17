@@ -5,8 +5,8 @@ model_data_format: file
 models:
   mnist:
     platform: keras
-    model_file_path: https://cdn.cnbj1.fds.api.mi-img.com/mace/miai-models/micro/keras/mnist/mnist.h5
-    model_sha256_checksum: 85f2ffe02e1b9dd2d6ad3826b91ac134fed15b838bb92a1010f67c19d55b1f65
+    model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/micro/keras/mnist/mnist.h5
+    model_sha256_checksum: 134e9a632d6f541be4ea8b5eb6ed144b3bd96d1ef916778781b045854e05bdd6
     subgraphs:
       - input_tensors:
           - conv2d_input:0

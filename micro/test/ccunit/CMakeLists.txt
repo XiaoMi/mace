@@ -23,7 +23,7 @@ add_executable(micro_ops_test
 
 if(MACE_MICRO_ENABLE_CMSIS)
   target_link_libraries(micro_ops_test
-    PRIVATE micro_ops_nhwc_cmsis_nn
+    PRIVATE micro_ops_cmsis_nn
   )
   target_compile_options(micro_ops_test
     PRIVATE "-DMACE_MICRO_ENABLE_CMSIS=ON"
