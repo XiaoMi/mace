@@ -121,3 +121,15 @@ class MicroCodeGen:
         self.gen_micro_source_from_bytes(model_tag, '',
                                          'micro_engine_c_interface.cc.jinja2',
                                          output_path_cc)
+
+    def gen_cmake_file(self, output_path):
+        cwd = os.path.dirname(__file__)
+        j2_env = Environment(loader=FileSystemLoader(cwd), trim_blocks=True)
+
+        template_name = JINJA2_DIR + 'CMakeLists.txt.jinja2'
+
+        source = j2_env.get_template(template_name).render()
+        with open(output_path, "w") as f:
+            f.write(source)
+
+

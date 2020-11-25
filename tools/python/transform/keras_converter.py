@@ -78,6 +78,42 @@ def get_output(keras_op):
         return keras_op.output
 
 
+def get_output_max(keras_op):
+    for weight in keras_op.weights:
+        last_name = weight.name.split('/')[-1].split(':')[0]
+        if last_name in ["post_activation_max", "output_max"]:
+            return weight.numpy()
+
+    mace_check(False, "No output_max info in %s" % keras_op.name)
+
+
+def get_output_min(keras_op):
+    for weight in keras_op.weights:
+        last_name = weight.name.split('/')[-1].split(':')[0]
+        if last_name in ["post_activation_min", "output_min"]:
+            return weight.numpy()
+
+    mace_check(False, "No output_min info in %s" % keras_op.name)
+
+
+def get_quant_wrapper_kernel(quant_wrapper):
+    kernel_name = quant_wrapper.name + "/kernel:0"
+    return [x for x in quant_wrapper.weights if x.name == kernel_name ][0]
+
+
+def get_quant_wrapper_bias(quant_wrapper):
+    bias_name = quant_wrapper.name + "/bias:0"
+    bias = [x for x in quant_wrapper.weights if x.name == bias_name]
+    if len(bias) == 0:
+        return None
+    return bias[0]
+
+
+def get_quant_wrapper_depthwise_kernel(quant_wrapper):
+    depthwise_kernel_name = quant_wrapper.name + "/depthwise_kernel:0"
+    return [x for x in quant_wrapper.weights if x.name == depthwise_kernel_name][0]
+
+
 activation_types_dict = {
     "relu": ActivationType.RELU,
     # 'relu6': ActivationType.RELUX,
@@ -103,6 +139,8 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.Softmax: self.convert_softmax,
             keras.layers.BatchNormalization: self.convert_batch_normalization,
             keras.layers.Activation: self.convert_activation,
+            keras.layers.ReLU: self.convert_relu,
+            keras.layers.Concatenate: self.convert_concatenate,
             keras.layers.GlobalAveragePooling2D:
                 self.convert_global_average_pooling2d,
             keras.layers.Add: self.convert_add,
@@ -377,6 +415,25 @@ class KerasConverter(base_converter.ConverterInterface):
 
         return op
 
+    def convert_relu(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Activation.name
+        type_arg = op.arg.add()
+        type_arg.name = MaceKeyword.mace_activation_type_str
+        type_arg.s = six.b("RELU")
+
+        return op
+
+    def convert_concatenate(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Concat.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis = keras_op.axis
+        axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
+        axis_arg.i = axis
+
     def convert_add(self, keras_op):
         op = self.convert_general_op_with_input_output(keras_op)
         op.type = MaceOp.Eltwise.name
@@ -409,14 +466,14 @@ class KerasConverter(base_converter.ConverterInterface):
     def convert_quantize_wrapper(self, keras_op_wrapper):
         inside_layer = keras_op_wrapper.layer
         if isinstance(inside_layer, convolutional.DepthwiseConv2D):
-            inside_layer.depthwise_kernel = keras_op_wrapper.weights[1]
-            inside_layer.bias = keras_op_wrapper.weights[0]
+            inside_layer.depthwise_kernel = get_quant_wrapper_depthwise_kernel(keras_op_wrapper)
+            inside_layer.bias = get_quant_wrapper_bias(keras_op_wrapper)
         elif isinstance(inside_layer, convolutional.Conv):
-            inside_layer.kernel = keras_op_wrapper.weights[1]
-            inside_layer.bias = keras_op_wrapper.weights[0]
+            inside_layer.kernel = get_quant_wrapper_kernel(keras_op_wrapper)
+            inside_layer.bias = get_quant_wrapper_bias(keras_op_wrapper)
         elif isinstance(inside_layer, keras.layers.Dense):
-            inside_layer.kernel = keras_op_wrapper.weights[1]
-            inside_layer.bias = keras_op_wrapper.weights[0]
+            inside_layer.kernel = get_quant_wrapper_kernel(keras_op_wrapper)
+            inside_layer.bias = get_quant_wrapper_bias(keras_op_wrapper)
 
         # Adds input name for inside layers
         inside_layer.input_proxy = keras_op_wrapper.input
@@ -424,18 +481,24 @@ class KerasConverter(base_converter.ConverterInterface):
 
         op = self._op_converters[type(inside_layer)](inside_layer)
 
-        if isinstance(inside_layer, (convolutional.Conv, keras.layers.Dense)):
-            output_min = keras_op_wrapper.weights[6].numpy()
-            output_max = keras_op_wrapper.weights[7].numpy()
+        if isinstance(
+                inside_layer,
+                (convolutional.Conv, keras.layers.Dense, keras.layers.Activation)):
+            output_min = get_output_min(keras_op_wrapper)
+            output_max = get_output_max(keras_op_wrapper)
 
             if not isinstance(op, list):
                 self.add_quantize_info(op, output_min, output_max)
             else:
                 assert len(op) == 2
-                if op[1].type == MaceOp.Softmax.name:
+
+                if op[1] is None:
                     self.add_quantize_info(op[0], output_min, output_max)
                 else:
-                    self.add_quantize_info(op[1], output_min, output_max)
+                    if op[1].type == MaceOp.Softmax.name:
+                        self.add_quantize_info(op[0], output_min, output_max)
+                    else:
+                        self.add_quantize_info(op[1], output_min, output_max)
 
         return op
 

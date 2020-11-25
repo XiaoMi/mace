@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <cstdio>
-
+#include <time.h>
 #include "data.h"
 #include "micro.h"
 
@@ -28,10 +28,18 @@ MaceStatus GetMicroEngineSingleton(MaceMicroEngine **engine);
 int main() {
   micro::MaceMicroEngine *micro_engine = NULL;
   micro::MICRO_MODEL_NAME::GetMicroEngineSingleton(&micro_engine);
+  struct timespec start, end;
+  unsigned long long elapse;
 
   micro_engine->RegisterInputData(0, MICRO_DATA_NAME::input,
                                   MICRO_DATA_NAME::input_dims);
+
+  clock_gettime(CLOCK_REALTIME, &start);
   micro_engine->Run();
+  clock_gettime(CLOCK_REALTIME, &end);
+  elapse = (end.tv_sec - start.tv_sec) * 1000000000 +
+             (end.tv_nsec - start.tv_nsec);
+  printf("reference elapse time %lld ns\n", elapse);
 
   float *output_buffer = NULL;
   const int32_t *output_dims = NULL;

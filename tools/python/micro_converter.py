@@ -119,12 +119,17 @@ class MicroConverter:
             output_dir + 'micro_engine_c_interface.h',
             output_dir + 'micro_engine_c_interface.cc')
 
+    def gen_cmake_file(self):
+        output_dir = self.gen_folder + 'models/'
+        self.code_gen.gen_cmake_file(output_dir + 'CMakeLists.txt')
+
     def gen_code(self):
         MicroOpConverter(self.net_def, self.model_weights,
                          self.np_data_type).convert_op_params()
         self.gen_code_from_model(
             self.model_name, self.net_def, self.model_weights)
         self.gen_engine_interface_code(self.model_name)
+        self.gen_cmake_file()
 
     def package(self, tar_package_path):
         tmp_dir = "/tmp/micro"

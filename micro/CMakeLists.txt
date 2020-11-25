@@ -16,6 +16,7 @@ option(MACE_MICRO_ENABLE_TESTS "Whether to enable Mace Micro tests"         OFF)
 option(MACE_MICRO_ENABLE_EXAMPLES "Whether to enable Mace Micro examples"         OFF)
 option(MACE_MICRO_ENABLE_TOOLS "Whether to enable Mace Micro tools" OFF)
 option(MACE_MICRO_ENABLE_XTENSA "Whether to enable xa nnlib engine" OFF)
+option(MACE_MICRO_ENABLE_DYNAMIC_LIB "Whether to generate dynamic lib" OFF)
 
 if(MACE_MICRO_ARM_NONE)
   add_definitions(-DMACE_MICRO_ARM_NONE)
@@ -29,13 +30,17 @@ if(MACE_MICRO_NDEBUG)
   add_definitions(-DMACE_MICRO_NDEBUG)
 endif()
 
+if(MACE_MICRO_ENABLE_DYNAMIC_LIB)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 if(MACE_MICRO_GCC_ARM)
   include(cmake/config_gcc_arm.cmake)
 endif()
 
 #set CMAKE_BUILD_TYPE default value as Release
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release"
+  set(CMAKE_BUILD_TYPE "RELEASE"
         CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
         FORCE)
 endif()
@@ -45,12 +50,6 @@ message(STATUS "BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 set(MACE_MICRO_THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 set(MACE_MICRO_TOOLS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools)
 set(lib_micro_path ${CMAKE_CURRENT_BINARY_DIR}/libmicro.a)
-
-if(HEXAGON6 AND CMAKE_BUILD_TYPE STREQUAL "RELEASE")
-  # Does not work with "-O3"
-  add_compile_options(-O2)
-endif()
-
 
 add_library(micro STATIC IMPORTED)
 

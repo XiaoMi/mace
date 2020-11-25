@@ -1,6 +1,9 @@
 Operator lists
 ===============
 
+MACE Micro supported operators
+------------------------------
+
 Float32 and bfloat16 operators
 
 * batch_norm
@@ -32,3 +35,22 @@ Int8 operators
 * softmax
 * quantize
 * dequantize
+
+Tensorflow Keras Converter supported layers
+
+* InputLayer
+* Flatten
+* Dense
+* Conv2D
+* MaxPooling2D
+* Dropout
+* DepthwiseConv2D
+* Softmax
+* BatchNormalization
+* Activation
+* ReLU
+* Concatenate
+* GlobalAveragePooling2D
+* Add
+* QuantizeLayer
+* QuantizeWrapper

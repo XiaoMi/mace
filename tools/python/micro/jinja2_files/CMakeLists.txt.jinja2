@@ -1,0 +1,55 @@
+# Copyright 2020 The MACE Authors. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This is a generated file. DO NOT EDIT!
+cmake_minimum_required (VERSION 3.13 FATAL_ERROR)
+
+project(models)
+
+include_directories(../../../)
+
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
+
+SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
+message(WARNING "${SUBDIRS}")
+
+foreach (model IN LISTS SUBDIRS)
+    file(GLOB MNIST_MODEL_SRC "./${model}/*.*")
+    file(GLOB MNIST_ENGINE_SRC "../engines/${model}/*.*")
+    add_library(${model} STATIC
+        ${MNIST_MODEL_SRC}
+        ${MNIST_ENGINE_SRC}
+    )
+
+    target_link_libraries(${model}
+        micro
+    )
+
+    install(TARGETS ${model}
+        ARCHIVE DESTINATION lib
+    )
+endforeach()
+install(DIRECTORY ../engines/ DESTINATION include
+    FILES_MATCHING PATTERN "*micro_engine_c_interface.h"
+)
+
