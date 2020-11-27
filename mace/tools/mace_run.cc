@@ -339,10 +339,12 @@ bool RunModel(const std::string &model_name,
     dir_parent = opendir(FLAGS_input_dir.c_str());
     MACE_CHECK(dir_parent != nullptr, "Open input_dir ", FLAGS_input_dir,
                " failed: ", strerror(errno));
+    int input_file_count = 0;
+    std::string prefix = FormatName(input_names[0]);
     while ((entry = readdir(dir_parent))) {
       std::string file_name = std::string(entry->d_name);
-      std::string prefix = FormatName(input_names[0]);
       if (file_name.find(prefix) == 0) {
+        ++input_file_count;
         std::string suffix = file_name.substr(prefix.size());
 
         for (size_t i = 0; i < input_count; ++i) {
@@ -383,6 +385,10 @@ bool RunModel(const std::string &model_name,
     }
 
     closedir(dir_parent);
+    MACE_CHECK(
+        input_file_count != 0, "Found no input file name starts with \'",
+        prefix, "\' in: ", FLAGS_input_dir,
+        ", input file name should start with input tensor name.");
   } else {
     LOG(INFO) << "Warm up run";
     double warmup_millis;
