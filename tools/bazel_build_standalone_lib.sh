@@ -115,7 +115,7 @@ $(echo "$1" | cut -d '=' -f -1)"
   esac
 done
 
-if [[ "${enable_apu}" == true || "${abi}" != armeabi-v7a || "${abi}" != arm64-v8a ]];then
+if [[ "${enable_apu}" == true || ("${abi}" != armeabi-v7a && "${abi}" != arm64-v8a) ]];then
   enable_rpcmem=false
 fi
 
