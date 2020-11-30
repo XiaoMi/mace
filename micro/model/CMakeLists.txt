@@ -7,4 +7,7 @@ add_library(micro_model
   output_shape.cc
 )
 
-target_link_libraries(micro_model micro_base micro_include)
+target_link_libraries(micro_model
+  PUBLIC micro_base
+  PUBLIC micro_include
+)

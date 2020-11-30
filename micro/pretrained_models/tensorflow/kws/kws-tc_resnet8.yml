@@ -5,7 +5,7 @@ model_data_format: file
 models:
   kws_tc_resnet8:
     platform: tensorflow
-    model_file_path: https://cdn.cnbj1.fds.api.mi-img.com/mace/miai-models/micro/tensorflow/kws/kws-tc_resnet8.pb
+    model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/micro/tensorflow/kws/kws-tc_resnet8.pb
     model_sha256_checksum: c552cf79cb64d3c755ae7d867c1c78b13f55f7589d46def1f70ce657c0db0d79
     subgraphs:
       - input_tensors:

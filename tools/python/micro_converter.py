@@ -22,7 +22,6 @@ from micro.micro_codegen import MicroCodeGen
 from micro.micro_io_converter import MicroIoConverter
 from micro.micro_op_converter import MicroOpConverter
 from micro.micro_support_ops import OpResolver
-from micro.micro_support_ops import McSupportedOps
 from micro.proto_to_bytes import ProtoConverter
 from micro.scratch_computer import ScratchComputer
 from py_proto import mace_pb2
@@ -81,7 +80,7 @@ class MicroConverter:
                                        output_dir + 'micro_net_def_data.h')
 
         # gen operator array
-        (op_src_path_list, op_class_name_list) = \
+        (op_src_path_list, op_class_name_list, scratch_buffer_size) = \
             self.op_resolver.get_op_desc_list_from_model()
         self.code_gen.gen_ops_data(
             model_name, op_src_path_list, op_class_name_list,
@@ -93,9 +92,6 @@ class MicroConverter:
         graph_bytes = graph_converter.proto_to_bytes(graph)
         self.code_gen.gen_graph_data(model_name, graph_bytes,
                                      output_dir + 'micro_graph_data.h')
-
-        scratch_buffer_size = ScratchComputer(
-            net_def, self.model_conf).compute_size()
 
         # gen micro engine config
         engine_data = {}
@@ -131,18 +127,6 @@ class MicroConverter:
         self.gen_engine_interface_code(self.model_name)
 
     def package(self, tar_package_path):
-        (op_h_path_list, op_class_name_list) = \
-            self.op_resolver.get_op_desc_list_from_model()
-        all_op_header_list = [op_desc.src_path for op_desc in McSupportedOps]
-        op_h_exclude_list = []
-        for op_header in all_op_header_list:
-            if op_header not in op_h_path_list:
-                op_h_exclude_list.append(op_header)
-        op_cc_exclude_list = \
-            [op_h.replace(".h", ".cc") for op_h in op_h_exclude_list]
-        exclude_list = ["--exclude=" + op_h for op_h in op_h_exclude_list]
-        exclude_list.extend(
-            ["--exclude=" + op_h for op_h in op_cc_exclude_list])
         tmp_dir = "/tmp/micro"
         tmp_workspace_file = "WORKSPACE"
         os.system("mkdir -p %s && touch %s/%s" %
@@ -151,12 +135,10 @@ class MicroConverter:
         tar_command += " --exclude=micro/test"
         tar_command += " --exclude=micro/build"
         tar_command += " --exclude=micro/cmake"
-        tar_command += " --exclude=micro/codegen"
         tar_command += " --exclude=micro/dockerfiles"
         tar_command += " --exclude=micro/examples"
         tar_command += " --exclude=micro/third_party"
         tar_command += " --exclude=micro/pretrained_models"
-        tar_command += " ".join(exclude_list)
         tar_command += " -zcf " + tar_package_path
         tar_command += " micro -C %s %s" % (tmp_dir, tmp_workspace_file)
         os.system(tar_command)

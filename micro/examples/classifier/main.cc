@@ -40,7 +40,7 @@ int main() {
                               &output_dims, &dim_size);
 
   int32_t output_total_size = 1;
-  for (int32_t i = 0; i < dim_size; ++i) {
+  for (uint32_t i = 0; i < dim_size; ++i) {
     output_total_size *= output_dims[i];
   }
 

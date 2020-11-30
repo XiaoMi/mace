@@ -25,5 +25,4 @@ if(HEXAGON)
   target_link_libraries(micro_rpc_skel
     PUBLIC hexagon_sdk_headers_dsp
   )
-  target_compile_options(micro_rpc_skel PUBLIC "-fPIC")
 endif()

@@ -32,7 +32,7 @@ On a ubuntu18.04/20.04 PC, do the following steps.
 
     python3 -m pip install jinja2 pyyaml sh numpy six filelock
     # Installs cmake above 3.13.0
-    wget https://cdn.cnbj1.fds.api.mi-img.com/mace/third-party/cmake-3.18.3-Linux-x86_64.sh
+    wget https://cnbj1.fds.api.xiaomi.com/mace/third-party/cmake-3.18.3-Linux-x86_64.sh
     chmod +x cmake-3.18.3-Linux-x86_64.sh && ./cmake-3.18.3-Linux-x86_64.sh --skip-license --prefix=/usr
 
     python3 -m pip install -U pip
@@ -78,7 +78,7 @@ The following is a completed model config file,
     models:
     har_int8:
         platform: keras
-        model_file_path: https://cdn.cnbj1.fds.api.mi-img.com/mace/miai-models/micro/keras/har/har.h5
+        model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/micro/keras/har/har.h5
         model_sha256_checksum: ec0477b8e489541bb34377c9cabc42ee6cefa8bdf0a9f726e06be1b967ea1dcd
         subgraphs:
         - input_tensors:
@@ -173,7 +173,7 @@ The following code is the mnist example source files, which the main steps is an
     #include "micro.h"
 
     namespace micro {
-    namespace minst {
+    namespace mnist {
 
     // We use forward declaration to avoid include the special engine header
     MaceStatus GetMicroEngineSingleton(MaceMicroEngine **engine);

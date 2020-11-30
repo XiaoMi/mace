@@ -9,7 +9,10 @@ add_library(models
   ${micro_engine_c_srcs}
 )
 target_link_libraries(models
-  micro
+  PUBLIC micro_include
+  PRIVATE micro_base
+  PRIVATE micro_framework
+  PUBLIC micro_all_ops
 )
 
 install(TARGETS models

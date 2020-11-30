@@ -45,6 +45,7 @@ def build_engine(model_name, data_type):
                "you should specify model name for build.")
     command = ("micro/tools/cmake/cmake-build-host.sh"
                " -DMICRO_MODEL_NAME=%s -DMACE_MICRO_ENABLE_CMSIS=ON"
+               " -DMACE_MICRO_ENABLE_TOOLS=ON"
                " -DCMAKE_BUILD_TYPE=Release" % model_name)
     if data_type == mace_pb2.DT_BFLOAT16:
         command += " -DMACE_MICRO_ENABLE_BFLOAT16=ON"

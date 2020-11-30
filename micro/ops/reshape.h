@@ -70,7 +70,7 @@ class ReshapeOp : public framework::Operator {
   typedef T value_type;
 
   MaceStatus OnInit() {
-    input_ = GetInputData<ReshapeOp::value_type>(INPUT);
+    input_ = GetInputData<value_type>(INPUT);
     input_dims_ = GetInputShapeDims(INPUT);
     input_dim_size_ = GetInputShapeDimSize(INPUT);
 
@@ -78,7 +78,7 @@ class ReshapeOp : public framework::Operator {
     shape_dims_ = GetInputShapeDims(SHAPE);
     shape_dim_size_ = GetInputShapeDimSize(SHAPE);
 
-    output_ = GetOutputData<ReshapeOp::value_type>(OUTPUT);
+    output_ = GetOutputData<value_type>(OUTPUT);
     return MACE_SUCCESS;
   }
 
@@ -107,7 +107,7 @@ class ReshapeOp : public framework::Operator {
 
     // TODO(luxuhui): optimize this method by reusing buffer
     base::memcpy(output_, input_,
-                 input_data_size * sizeof(ReshapeOp::value_type));
+                 input_data_size * sizeof(value_type));
     return ResizeOutputShape(OUTPUT, shape_data_size, shape_data);
   }
 

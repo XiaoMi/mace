@@ -5,10 +5,10 @@ if [ -z "$HEXAGON_TOOLS" ]; then
   echo "HEXAGON_TOOLS is undefined";
 fi
 
-# HEXAGON_SDK_ROOT is the path of "Hexagon_SDK/3.*.*"
-if [ -z "$HEXAGON_SDK_ROOT" ]; then
-  echo "HEXAGON_SDK_ROOT is undefined";
-fi
+# # HEXAGON_SDK_ROOT is the path of "Hexagon_SDK/3.*.*"
+# if [ -z "$HEXAGON_SDK_ROOT" ]; then
+#   echo "HEXAGON_SDK_ROOT is undefined";
+# fi
 
 BUILD_DIR=build/micro/hexagon6
 mkdir -p ${BUILD_DIR}

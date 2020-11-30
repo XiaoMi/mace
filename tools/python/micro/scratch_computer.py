@@ -61,7 +61,7 @@ class ScratchComputer:
             size = self._scratch_map[op_def.type](op_def)
             if scratch_size < size:
                 scratch_size = size
-        print("micro scatch buffer size is: %s" % scratch_size)
+        print("micro scratch buffer size is: %s" % scratch_size)
         return scratch_size
 
     def scratch_size_no_need(self, op_def):

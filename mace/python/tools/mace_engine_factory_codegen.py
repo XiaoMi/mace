@@ -24,7 +24,8 @@ FLAGS = None
 def gen_mace_engine_factory(model_tags, embed_model_data, output_dir):
     cwd = os.path.dirname(__file__)
     j2_env = Environment(
-        loader=FileSystemLoader(cwd), trim_blocks=True)
+        loader=FileSystemLoader(cwd),
+        trim_blocks=True, keep_trailing_newline=True)
     # generate mace_run BUILD file
     template_name = 'mace_engine_factory.h.jinja2'
     model_tags = list(model_tags)

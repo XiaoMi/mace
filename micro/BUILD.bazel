@@ -1,7 +1,0 @@
-config_setting(
-    name = "hexagon_enabled",
-    define_values = {
-        "hexagon": "true",
-    },
-    visibility = ["//visibility:public"],
-)
