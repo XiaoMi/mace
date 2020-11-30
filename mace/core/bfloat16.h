@@ -116,6 +116,12 @@ class BFloat16 {
   }
 
   template<typename T>
+  bool operator!=(T value) const {
+    return Sphinx(
+        static_cast<uint32_t>(data_ << 16)).f != static_cast<float>(value);
+  }
+
+  template<typename T>
   void operator+=(T value) {
     data_ = Sphinx(Sphinx(static_cast<uint32_t>(data_ << 16)).f +
         static_cast<float>(value)).i >> 16;
@@ -146,6 +152,11 @@ class BFloat16 {
 template<>
 inline bool BFloat16::operator==(const BFloat16 &value) const {
   return data_ == value.data_;
+}
+
+template<>
+inline bool BFloat16::operator!=(const BFloat16 &value) const {
+  return data_ != value.data_;
 }
 
 template<>

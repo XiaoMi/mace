@@ -34,6 +34,7 @@ enum EltwiseType {
   CLIP = 12,
   SIGN = 13,
   NONE = 14,
+  NOT_EQUAL = 15,
 };
 
 }  // namespace ops

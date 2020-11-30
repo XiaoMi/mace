@@ -123,6 +123,7 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
     }
     if (dim_index >= input->dim_size()) {
       reduce_first_axis_ = true;
+      data_reshape_.push_back(1);
     } else {
       reduce_first_axis_ = bitmap[dim_index];
       data_reshape_.push_back(input->dim(dim_index));
@@ -610,8 +611,8 @@ class ReduceOp<DeviceType::CPU, T> : public ReduceOpBase {
       case 4:Reduce4Dims(context, input, reduce_type_, output);
         break;
       default:MACE_CHECK(false, "not implemented in mace")
-          << "data reshape size" << data_reshape_.size()
-          << "reduce first axis:" << reduce_first_axis_;
+          << ", data reshape size: " << data_reshape_.size()
+          << ", reduce first axis: " << reduce_first_axis_;
         break;
     }
   }
