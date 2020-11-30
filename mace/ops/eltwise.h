@@ -20,7 +20,9 @@
 namespace mace {
 namespace ops {
 
-inline bool IsLogicalType(EltwiseType type) { return type == EQUAL; }
+inline bool IsLogicalType(EltwiseType type) {
+  return type == EQUAL || type == NOT_EQUAL;
+}
 
 template <typename T> int Sign(T val) {
   return (T(0) < val) - (val < T(0));

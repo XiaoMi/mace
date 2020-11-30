@@ -95,6 +95,7 @@ TFSupportedOps = [
     'MirrorPad',
     'Mul',
     'Neg',
+    'NotEqual',
     'OneHot',
     'Pack',
     'Pad',
@@ -178,6 +179,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Minimum.name: EltwiseType.MIN,
         TFOpType.Maximum.name: EltwiseType.MAX,
         TFOpType.Neg.name: EltwiseType.NEG,
+        TFOpType.NotEqual.name: EltwiseType.NOT_EQUAL,
         TFOpType.Abs.name: EltwiseType.ABS,
         TFOpType.Pow.name: EltwiseType.POW,
         TFOpType.RealDiv.name: EltwiseType.DIV,
@@ -260,6 +262,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.MirrorPad.name: self.convert_pad,
             TFOpType.Mul.name: self.convert_elementwise,
             TFOpType.Neg.name: self.convert_elementwise,
+            TFOpType.NotEqual.name: self.convert_elementwise,
             TFOpType.OneHot.name: self.convert_one_hot,
             TFOpType.Pack.name: self.convert_stack,
             TFOpType.Pad.name: self.convert_pad,
@@ -485,7 +488,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         data_type_arg.name = 'T'
         try:
             dtype = tf_op.get_attr('T')
-            if dtype == tf.int32:
+            if dtype == tf.int32 or dtype == tf.bool:
                 data_type_arg.i = mace_pb2.DT_INT32
             elif dtype == tf.float32:
                 data_type_arg.i = self._option.data_type

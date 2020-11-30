@@ -211,6 +211,14 @@ inline void TensorGeneralBroadcastEltwise(
         IncreaseIndex(output_shape, &out_index);
       }
       break;
+    case NOT_EQUAL:
+      for (index_t i = 0; i < output_size; ++i) {
+        const index_t idx0 = GetIndex(input0_shape, out_index);
+        const index_t idx1 = GetIndex(input1_shape, out_index);
+        output[i] = input1[idx1] != input0[idx0];
+        IncreaseIndex(output_shape, &out_index);
+      }
+      break;
     default:LOG(FATAL) << "Eltwise op not support type " << type;
   }
 }
@@ -234,9 +242,9 @@ inline void TensorBroadcastEltwise(const OpContext *context,
       case SUM:
         if (coeff.empty()) {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  input0[i + d * common_size] + input1[i];
+              output[i + offset] = input0[i + offset] + input1[i];
             }
           }
         } else {
@@ -245,10 +253,10 @@ inline void TensorBroadcastEltwise(const OpContext *context,
             std::swap(coeff_copy[0], coeff_copy[1]);
           }
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  input0[i + d * common_size] * coeff_copy[0] +
-                      input1[i] * coeff_copy[1];
+              output[i + offset] = input0[i + offset] * coeff_copy[0] +
+                                   input1[i] * coeff_copy[1];
             }
           }
         }
@@ -256,41 +264,41 @@ inline void TensorBroadcastEltwise(const OpContext *context,
       case SUB:
         if (!swapped) {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  input0[i + d * common_size] - input1[i];
+              output[i + offset] = input0[i + offset] - input1[i];
             }
           }
         } else {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  input1[i] - input0[i + d * common_size];
+              output[i + offset] = input1[i] - input0[i + offset];
             }
           }
         }
         break;
       case PROD:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                input0[i + d * common_size] * input1[i];
+            output[i + offset] = input0[i + offset] * input1[i];
           }
         }
         break;
       case DIV:
         if (!swapped) {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  input0[i + d * common_size] / input1[i];
+              output[i + offset] = input0[i + offset] / input1[i];
             }
           }
         } else {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  input1[i] / input0[i + d * common_size];
+              output[i + offset] = input1[i] / input0[i + offset];
             }
           }
         }
@@ -298,98 +306,107 @@ inline void TensorBroadcastEltwise(const OpContext *context,
       case FLOOR_DIV:
         if (!swapped) {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  std::floor(input0[i + d * common_size] / input1[i]);
+              output[i + offset] = std::floor(input0[i + offset] / input1[i]);
             }
           }
         } else {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  std::floor(input1[i] / input0[i + d * common_size]);
+              output[i + offset] = std::floor(input1[i] / input0[i + offset]);
             }
           }
         }
         break;
       case MIN:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                std::min(input0[i + d * common_size], input1[i]);
+            output[i + offset] = std::min(input0[i + offset], input1[i]);
           }
         }
         break;
       case MAX:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                std::max(input0[i + d * common_size], input1[i]);
+            output[i + offset] = std::max(input0[i + offset], input1[i]);
           }
         }
         break;
       case SQR_DIFF:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                std::pow(input0[i + d * common_size] - input1[i], 2.f);
+            output[i + offset] = std::pow(input0[i + offset] - input1[i], 2.f);
           }
         }
         break;
       case POW:
         if (!swapped) {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  std::pow(input0[i + d * common_size], input1[i]);
+              output[i + offset] = std::pow(input0[i + offset], input1[i]);
             }
           }
         } else {
           for (index_t d = start0; d < end0; d += step0) {
+            index_t offset = d * common_size;
             for (index_t i = start1; i < end1; i += step1) {
-              output[i + d * common_size] =
-                  std::pow(input1[i], input0[i + d * common_size]);
+              output[i + offset] = std::pow(input1[i], input0[i + offset]);
             }
           }
         }
         break;
       case NEG:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] = -input0[i + d * common_size];
+            output[i + offset] = -input0[i + offset];
           }
         }
         break;
       case ABS:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                std::fabs(input0[i + d * common_size]);
+            output[i + offset] = std::fabs(input0[i + offset]);
           }
         }
         break;
       case EQUAL:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                input0[i + d * common_size] == input1[i];
+            output[i + offset] = input0[i + offset] == input1[i];
+          }
+        }
+        break;
+      case NOT_EQUAL:
+        for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
+          for (index_t i = start1; i < end1; i += step1) {
+            output[i + offset] = input0[i + offset] != input1[i];
           }
         }
         break;
       case CLIP:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                std::fmaxf(coeff[0],
-                           std::fminf(coeff[1], input0[i + d * common_size]));
+            output[i + offset] =
+                std::fmaxf(coeff[0], std::fminf(coeff[1], input0[i + offset]));
           }
         }
         break;
       case SIGN:
         for (index_t d = start0; d < end0; d += step0) {
+          index_t offset = d * common_size;
           for (index_t i = start1; i < end1; i += step1) {
-            output[i + d * common_size] =
-                Sign(input0[i + d * common_size]);
+            output[i + offset] = Sign(input0[i + offset]);
           }
         }
         break;
@@ -506,6 +523,11 @@ inline void TensorEltwise(const OpContext *context,
       case EQUAL:
         for (index_t i = start; i < end; i += step) {
           output[i] = input0[i] == input1[i];
+        }
+        break;
+      case NOT_EQUAL:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = input0[i] != input1[i];
         }
         break;
       case CLIP:
@@ -638,6 +660,11 @@ inline void TensorScalarEltwise(const OpContext *context,
           output[i] = input0[i] == input1;
         }
         break;
+      case NOT_EQUAL:
+        for (index_t i = start; i < end; i += step) {
+          output[i] = input0[i] != input1;
+        }
+        break;
       case CLIP:
         for (index_t i = start; i < end; i += step) {
           output[i] = std::fmaxf(coeff[0], std::fminf(coeff[1], input0[i]));
@@ -674,10 +701,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
       case SUM:
         if (coeff.empty()) {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = in0_ptr[i] + in1_ptr[c];
               }
@@ -689,10 +717,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
             std::swap(coeff_copy[0], coeff_copy[1]);
           }
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] =
                     in0_ptr[i] * coeff_copy[0] + in1_ptr[c] * coeff_copy[1];
@@ -704,10 +733,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
       case SUB:
         if (!swapped) {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = in0_ptr[i] - in1_ptr[c];
               }
@@ -715,10 +745,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
           }
         } else {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = in1_ptr[c] - in0_ptr[i];
               }
@@ -728,10 +759,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
         break;
       case PROD:
         for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
           for (index_t c = start1; c < end1; c += step1) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            const T *in0_ptr = input0 + (offset + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+            DstType *out_ptr = output + (offset + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = in0_ptr[i] * in1_ptr[c];
             }
@@ -741,10 +773,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
       case DIV:
         if (!swapped) {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = in0_ptr[i] / in1_ptr[c];
               }
@@ -752,10 +785,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
           }
         } else {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = in1_ptr[c] / in0_ptr[i];
               }
@@ -766,10 +800,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
       case FLOOR_DIV:
         if (!swapped) {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = std::floor(in0_ptr[i] / in1_ptr[c]);
               }
@@ -777,10 +812,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
           }
         } else {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = std::floor(in1_ptr[c] / in0_ptr[i]);
               }
@@ -790,10 +826,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
         break;
       case MIN:
         for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
           for (index_t c = start1; c < end1; c += step1) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            const T *in0_ptr = input0 + (offset + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+            DstType *out_ptr = output + (offset + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = std::min(in0_ptr[i], in1_ptr[c]);
             }
@@ -802,10 +839,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
         break;
       case MAX:
         for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
           for (index_t c = start1; c < end1; c += step1) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            const T *in0_ptr = input0 + (offset + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+            DstType *out_ptr = output + (offset + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = std::max(in0_ptr[i], in1_ptr[c]);
             }
@@ -814,10 +852,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
         break;
       case SQR_DIFF:
         for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
           for (index_t c = start1; c < end1; c += step1) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            const T *in0_ptr = input0 + (offset + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+            DstType *out_ptr = output + (offset + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = std::pow(in0_ptr[i] - in1_ptr[c], 2.f);
             }
@@ -827,10 +866,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
       case POW:
         if (!swapped) {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = std::pow(in0_ptr[i], in1_ptr[c]);
               }
@@ -838,10 +878,11 @@ inline void TensorEltwisePerChannel(const OpContext *context,
           }
         } else {
           for (index_t b = start0; b < end0; b += step0) {
+            index_t offset = b * channel;
             for (index_t c = start1; c < end1; c += step1) {
-              const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-              const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-              DstType *out_ptr = output + ((b * channel) + c) * image_size;
+              const T *in0_ptr = input0 + (offset + c) * image_size;
+              const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+              DstType *out_ptr = output + (offset + c) * image_size;
               for (index_t i = 0; i < image_size; ++i) {
                 out_ptr[i] = std::pow(in1_ptr[c], in0_ptr[i]);
               }
@@ -851,8 +892,9 @@ inline void TensorEltwisePerChannel(const OpContext *context,
         break;
       case NEG:
         for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
           for (index_t c = start1; c < end1; c += step1) {
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            DstType *out_ptr = output + (offset + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = -input0[i];
             }
@@ -870,12 +912,26 @@ inline void TensorEltwisePerChannel(const OpContext *context,
         break;
       case EQUAL:
         for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
           for (index_t c = start1; c < end1; c += step1) {
-            const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
-            const T *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
-            DstType *out_ptr = output + ((b * channel) + c) * image_size;
+            const T *in0_ptr = input0 + (offset + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+            DstType *out_ptr = output + (offset + c) * image_size;
             for (index_t i = 0; i < image_size; ++i) {
               out_ptr[i] = in0_ptr[i] == in1_ptr[c];
+            }
+          }
+        }
+        break;
+      case NOT_EQUAL:
+        for (index_t b = start0; b < end0; b += step0) {
+          index_t offset = b * channel;
+          for (index_t c = start1; c < end1; c += step1) {
+            const T *in0_ptr = input0 + (offset + c) * image_size;
+            const T *in1_ptr = input1 + (batch1 > 1 ? offset : 0);
+            DstType *out_ptr = output + (offset + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = in0_ptr[i] != in1_ptr[c];
             }
           }
         }
