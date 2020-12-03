@@ -173,22 +173,22 @@ class AndroidDevice(Device):
 
     def install_common_libs_for_target(self, target, install_dir):
         sn = self._device_id
-        dep_so_libs = execute(os.environ["ANDROID_NDK_HOME"] + "/ndk-depends "
-                              + target.path)
-        lib_file = ""
-        for dep in dep_so_libs.split("\n"):
-            if dep == "libgnustl_shared.so":
-                lib_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
-                           "%s/libgnustl_shared.so" \
-                           % (os.environ["ANDROID_NDK_HOME"], self._target_abi)
-            elif dep == "libc++_shared.so":
-                lib_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
-                           "%s/libc++_shared.so" \
-                           % (os.environ["ANDROID_NDK_HOME"], self._target_abi)
+        abi = self._target_abi
+        lib_file = "%s/sources/cxx-stl/llvm-libc++/libs/" \
+                   "%s/libc++_shared.so" \
+                   % (os.environ["ANDROID_NDK_HOME"], abi)
+        ndk_depends_path = os.environ["ANDROID_NDK_HOME"] + "/ndk-depends"
+        if os.path.exists(ndk_depends_path):
+            dep_so_libs = execute(ndk_depends_path + " " + target.path)
+            for dep in dep_so_libs.split("\n"):
+                if dep == "libgnustl_shared.so":
+                    lib_file = "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/" \
+                               "%s/libgnustl_shared.so" \
+                               % (os.environ["ANDROID_NDK_HOME"], abi)
+        else:
+            print("Find no ndk-depends, use default libc++_shared.so")
 
-        if lib_file:
-            execute("adb -s %s push %s %s" % (sn, lib_file, install_dir),
-                    False)
+        execute("adb -s %s push %s %s" % (sn, lib_file, install_dir), False)
 
     def run(self, target):
         tmpdirname = tempfile.mkdtemp()

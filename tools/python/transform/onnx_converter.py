@@ -255,7 +255,7 @@ class OnnxNode(object):
     def __init__(self, node):
         self.name = str(node.name)
         if self.name == '':
-            self.name = str(node.output)
+            self.name = str('_'.join(node.output))
         self.op_type = str(node.op_type)
         self.domain = str(node.domain)
         self.attrs = dict([(attr.name,
@@ -592,8 +592,8 @@ class OnnxConverter(base_converter.ConverterInterface):
         for n in graph_def.node:
             node = OnnxNode(n)
             mace_check(node.op_type in self._op_converters,
-                       "Mace does not support onnx op type %s yet"
-                       % node.op_type)
+                       "Mace does not support onnx op type %s(%s) yet"
+                       % (node.name, node.op_type))
             self._op_converters[node.op_type](node)
 
     def replace_input(self, node, orig, replace):

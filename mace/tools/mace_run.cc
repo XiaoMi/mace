@@ -171,6 +171,11 @@ bool RunModel(const std::string &model_name,
               const std::vector<DataFormat> &output_data_formats,
               float cpu_capability) {
   DeviceType device_type = ParseDeviceType(FLAGS_device);
+  bool mace_benchmark_op = false;
+  if (FLAGS_benchmark &&
+      (device_type == DeviceType::CPU || device_type == DeviceType::GPU)) {
+    mace_benchmark_op = true;
+  }
 
   int64_t t0 = NowMicros();
   // config runtime
@@ -448,7 +453,7 @@ bool RunModel(const std::string &model_name,
         MaceStatus run_status;
         RunMetadata metadata;
         RunMetadata *metadata_ptr = nullptr;
-        if (FLAGS_benchmark) {
+        if (mace_benchmark_op) {
           metadata_ptr = &metadata;
         }
 
@@ -488,7 +493,7 @@ bool RunModel(const std::string &model_name,
           } else {
             int64_t t1 = NowMicros();
             total_run_duration += (t1 - t0);
-            if (FLAGS_benchmark) {
+            if (mace_benchmark_op) {
               op_stat.StatMetadata(metadata);
             }
             break;
@@ -521,7 +526,7 @@ bool RunModel(const std::string &model_name,
     printf("========================================================\n");
     printf("time %15.3f %11.3f %11.3f %11.3f\n",
            cpu_capability, init_millis, warmup_millis, model_run_millis);
-    if (FLAGS_benchmark) {
+    if (mace_benchmark_op) {
       op_stat.PrintStat();
     }
   }
@@ -545,14 +550,17 @@ int Main(int argc, char **argv) {
 
   if (FLAGS_benchmark) {
     setenv("MACE_OPENCL_PROFILING", "1", 1);
+    setenv("MACE_HEXAGON_PROFILING", "1", 1);
   }
 
   LOG(INFO) << "model name: " << FLAGS_model_name;
   LOG(INFO) << "mace version: " << MaceVersion();
   LOG(INFO) << "input node: " << FLAGS_input_node;
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
+  LOG(INFO) << "input data_format: " << FLAGS_input_data_format;
   LOG(INFO) << "output node: " << FLAGS_output_node;
   LOG(INFO) << "output shape: " << FLAGS_output_shape;
+  LOG(INFO) << "output data_format: " << FLAGS_output_data_format;
   LOG(INFO) << "input_file: " << FLAGS_input_file;
   LOG(INFO) << "output_file: " << FLAGS_output_file;
   LOG(INFO) << "input dir: " << FLAGS_input_dir;

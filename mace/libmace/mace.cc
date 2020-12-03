@@ -25,6 +25,7 @@
 #include "mace/core/registry/op_delegator_registry.h"
 #include "mace/ops/common/transpose.h"
 #include "mace/ops/registry/registry.h"
+#include "mace/utils/conf_util.h"
 #include "mace/utils/math.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/stl_util.h"
@@ -793,7 +794,7 @@ MaceEngine::Impl::~Impl() {
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->PrintLog();
     }
-    if (VLOG_IS_ON(1)) {
+    if (EnvConfEnabled("MACE_HEXAGON_PROFILING")) {
       hexagon_controller_->GetPerfInfo();
     }
     MACE_CHECK(hexagon_controller_->TeardownGraph(), "hexagon teardown error");
@@ -928,24 +929,20 @@ MaceStatus MaceEngine::Impl::TransposeOutput(
         output->second.data_format() != DataFormat::NONE &&
         output->second.shape().size() == 4 &&
         output->second.data_format() != output_tensor->data_format()) {
-      VLOG(1) << "Transform output " << output->first << " from "
-              << static_cast<int>(output_tensor->data_format()) << " to "
-              << static_cast<int>(output->second.data_format());
       std::vector<int> dst_dims;
       if (output_tensor->data_format() == DataFormat::NCHW &&
           output->second.data_format() == DataFormat::NHWC) {
         dst_dims = {0, 2, 3, 1};
+        VLOG(1) << "Transform output " << output->first << " from NCHW to NHWC";
       } else if (output_tensor->data_format() == DataFormat::NHWC &&
           output->second.data_format() == DataFormat::NCHW) {
         dst_dims = {0, 3, 1, 2};
+        VLOG(1) << "Transform output " << output->first << " from NHWC to NCHW";
       } else {
         LOG(FATAL) << "Not supported output data format: "
                    << static_cast<int>(output->second.data_format()) << " vs "
                    << static_cast<int>(output_tensor->data_format());
       }
-      VLOG(1) << "Transform output " << output->first << " from "
-              << static_cast<int>(output_tensor->data_format()) << " to "
-              << static_cast<int>(output->second.data_format());
       std::vector<index_t> shape =
           TransposeShape<index_t, index_t>(output_tensor->shape(),
                                            dst_dims);

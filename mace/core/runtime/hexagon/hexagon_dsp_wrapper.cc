@@ -558,23 +558,18 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
   // handle hexagon output
   for (size_t i = 0; i < num_outputs; ++i) {
     size_t index = i * kNumMetaData;
-    std::vector<uint32_t> output_shape{
+    std::vector<index_t> output_shape{
         outputs[index].batches, outputs[index].height, outputs[index].width,
         outputs[index].depth};
     MACE_CHECK(output_shape.size() == output_info_[i].shape.size(),
                output_shape.size(), " vs ", output_info_[i].shape.size(),
                 " wrong output shape inferred");
-    for (size_t j = 0; j < output_shape.size(); ++j) {
-      MACE_CHECK(static_cast<index_t>(output_shape[j])
-                     == output_info_[i].shape[j],
-                 output_shape[j], " vs ", output_info_[i].shape[j],
-                 " wrong output shape[", j, "] inferred");
-    }
     auto output_tensor = output_tensors->at(output_info_[i].name);
     MACE_CHECK(static_cast<index_t>(outputs[index].data_valid_len)
                     == output_tensor->raw_size(),
                outputs[index].data_valid_len, " vs ", output_tensor->raw_size(),
                " wrong output bytes inferred.");
+    output_tensor->Reshape(output_shape);
   }
 
   if (log_execute_time_) {
