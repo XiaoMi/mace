@@ -51,6 +51,7 @@ extern void RegisterLpNorm(OpRegistry *op_registry);
 extern void RegisterLSTMNonlinear(OpRegistry *op_registry);
 extern void RegisterMatMul(OpRegistry *op_registry);
 extern void RegisterMVNorm(OpRegistry *op_registry);
+extern void RegisterNonlocalReshape(OpRegistry *op_registry);
 extern void RegisterOneHot(OpRegistry *op_registry);
 extern void RegisterPad(OpRegistry *op_registry);
 extern void RegisterPadContext(OpRegistry *op_registry);
@@ -132,6 +133,7 @@ void RegisterAllOps(OpRegistry *registry) {
   ops::RegisterLSTMNonlinear(registry);
   ops::RegisterMatMul(registry);
   ops::RegisterMVNorm(registry);
+  ops::RegisterNonlocalReshape(registry);
   ops::RegisterOneHot(registry);
   ops::RegisterPad(registry);
   ops::RegisterPadContext(registry);

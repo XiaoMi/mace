@@ -34,7 +34,7 @@ namespace mace {
 bool MemoryOptimizer::IsMemoryReuseOp(const std::string &op_type,
                                       const MemoryType mem_type) {
   static const std::unordered_set<std::string> kReuseOp = {
-      "Reshape", "Identity", "Squeeze", "ExpandDims"
+      "Reshape", "Identity", "Squeeze", "ExpandDims", "NonlocalReshape"
   };
   static const std::unordered_set<std::string> kGpuImageReuseOp = {
       "Identity", "Squeeze", "ExpandDims"

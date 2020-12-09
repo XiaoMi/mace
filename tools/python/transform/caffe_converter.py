@@ -204,6 +204,8 @@ class CaffeConverter(base_converter.ConverterInterface):
             'Bias': self.convert_bias,
             'ArgMax': self.convert_argmax,
             'ResizeNearest': self.convert_resize_nearest,
+            'NonlocalReshape': self.convert_nonlocal_reshape,
+            'MatMul': self.convert_matmul,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -974,3 +976,22 @@ class CaffeConverter(base_converter.ConverterInterface):
             op.output_type.extend([mace_pb2.DT_FLOAT])
         else:
             op.output_type.extend([mace_pb2.DT_INT32])
+
+    def convert_nonlocal_reshape(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.NonlocalReshape.name
+
+    def convert_matmul(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.matmul_param
+        op.type = MaceOp.MatMul.name
+
+        # transpose_a = caffe_op.get_attr('transpose_a')
+        transpose_a_arg = op.arg.add()
+        transpose_a_arg.name = MaceKeyword.mace_transpose_a_str
+        transpose_a_arg.i = int(param.transpose_a)
+
+        # transpose_b = caffe_op.get_attr('transpose_b')
+        transpose_b_arg = op.arg.add()
+        transpose_b_arg.name = MaceKeyword.mace_transpose_b_str
+        transpose_b_arg.i = int(param.transpose_b)
