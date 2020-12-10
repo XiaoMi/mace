@@ -132,6 +132,7 @@ MaceSupportedOps = [
     'DynamicLSTM',
     'MatMul',
     'MVNorm',
+    'NonlocalReshape',
     'OneHot',
     'Pad',
     'PadContext',
@@ -188,6 +189,8 @@ MaceFixedDataFormatOps = [MaceOp.BatchNorm,
                           MaceOp.SpaceToDepth,
                           MaceOp.LpNorm,
                           MaceOp.MVNorm,
+                          MaceOp.MatMul,
+                          MaceOp.NonlocalReshape,
                           MaceOp.GroupNorm]
 
 MaceTransposableDataFormatOps = [MaceOp.Activation,

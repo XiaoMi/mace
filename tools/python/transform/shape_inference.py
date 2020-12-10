@@ -52,12 +52,14 @@ class ShapeInference(object):
             MaceOp.Transpose.name: self.infer_shape_permute,
             MaceOp.PriorBox.name: self.infer_shape_prior_box,
             MaceOp.Reshape.name: self.infer_shape_reshape,
+            MaceOp.NonlocalReshape.name: self.infer_shape_nonlocal_reshape,
             MaceOp.ResizeBilinear.name: self.infer_shape_resize_bilinear,
             MaceOp.LpNorm.name: self.infer_shape_general,
             MaceOp.MVNorm.name: self.infer_shape_general,
             MaceOp.ResizeNearestNeighbor.name:
                 self.infer_shape_nearest_neighbor,
             MaceOp.ArgMax.name: self.infer_shape_argmax,
+            MaceOp.MatMul.name: self.infer_shape_matmul,
         }
 
         self._net = net
@@ -305,6 +307,14 @@ class ShapeInference(object):
             output_shape[axis] = dim
             self.add_output_shape(op, [output_shape])
 
+    def infer_shape_nonlocal_reshape(self, op):
+        output_shape = []
+        for i in range(0, 2):
+            output_shape.append(self._output_shape_cache[op.input[0]][i])
+        for i in range(2, 4):
+            output_shape.append(self._output_shape_cache[op.input[1]][i])
+        self.add_output_shape(op, [output_shape])
+
     def infer_shape_resize_bilinear(self, op):
         input_shape = self._output_shape_cache[op.input[0]]
         size = ConverterUtil.get_arg(
@@ -388,3 +398,23 @@ class ShapeInference(object):
 
         input_max_shape = self._output_shape_cache[op.input[max_idx]]
         self.add_output_shape(op, [input_max_shape])
+
+    def infer_shape_matmul(self, op):
+        input_shape = self._output_shape_cache[op.input[0]]
+        num_axes = len(input_shape)
+        tranpose_a = ConverterUtil.get_arg(op,
+                                           MaceKeyword.mace_transpose_a_str).i
+        tranpose_b = ConverterUtil.get_arg(op,
+                                           MaceKeyword.mace_transpose_b_str).i
+        if tranpose_a:
+            M = self._output_shape_cache[op.input[0]][num_axes - 1]
+        else:
+            M = self._output_shape_cache[op.input[0]][num_axes - 2]
+        if tranpose_b:
+            N = self._output_shape_cache[op.input[1]][num_axes - 2]
+        else:
+            N = self._output_shape_cache[op.input[1]][num_axes - 1]
+        output_shape = input_shape
+        output_shape[num_axes - 2] = M
+        output_shape[num_axes - 1] = N
+        self.add_output_shape(op, [output_shape])

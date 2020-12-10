@@ -546,6 +546,8 @@ message LayerParameter {
   optional WindowDataParameter window_data_param = 129;
   optional ShuffleChannelParameter shuffle_channel_param = 164;
   optional L2NormalizationParameter l2normalization_param = 208;
+  optional MatMulParameter matmul_param = 209;
+  optional GroupNormParameter group_norm_param = 210;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1958,4 +1960,9 @@ message ResizeNearestParameter {
   optional float height_scale = 1 [default = 2.0];
   optional float width_scale = 2 [default = 2.0];
 
+}
+
+message MatMulParameter {
+  optional bool transpose_a = 1[default = false];
+  optional bool transpose_b = 2[default = false];
 }

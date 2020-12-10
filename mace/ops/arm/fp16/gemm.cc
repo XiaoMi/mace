@@ -103,18 +103,18 @@ void Gemm<float16_t>::Pack8x4(const MatrixMap<const float16_t> &matrix,
         float16x8_t v5 = vld1q_f16(data5);
         float16x8_t v6 = vld1q_f16(data6);
         float16x8_t v7 = vld1q_f16(data7);
-        float16x8x2_t v02_intertwined = vzipq_f16(v0, v2);
-        float16x8x2_t v13_intertwined = vzipq_f16(v1, v3);
-        float16x8x2_t v46_intertwined = vzipq_f16(v4, v6);
-        float16x8x2_t v57_intertwined = vzipq_f16(v5, v7);
+        float16x8x2_t v04_intertwined = vzipq_f16(v0, v4);
+        float16x8x2_t v15_intertwined = vzipq_f16(v1, v5);
+        float16x8x2_t v26_intertwined = vzipq_f16(v2, v6);
+        float16x8x2_t v37_intertwined = vzipq_f16(v3, v7);
         float16x8x2_t v0246_intertwined =
-            vzipq_f16(v02_intertwined.val[0], v46_intertwined.val[0]);
+            vzipq_f16(v04_intertwined.val[0], v26_intertwined.val[0]);
         float16x8x2_t v0246n_intertwined =
-            vzipq_f16(v02_intertwined.val[1], v46_intertwined.val[1]);
+            vzipq_f16(v04_intertwined.val[1], v26_intertwined.val[1]);
         float16x8x2_t v1357_intertwined =
-            vzipq_f16(v13_intertwined.val[0], v57_intertwined.val[0]);
+            vzipq_f16(v15_intertwined.val[0], v37_intertwined.val[0]);
         float16x8x2_t v1357n_intertwined =
-            vzipq_f16(v13_intertwined.val[1], v57_intertwined.val[1]);
+            vzipq_f16(v15_intertwined.val[1], v37_intertwined.val[1]);
 
         float16x8x2_t v01234567_intertwined =
             vzipq_f16(v0246_intertwined.val[0], v1357_intertwined.val[0]);
@@ -230,18 +230,18 @@ void Gemm<float16_t>::Unpack8x8(const float16_t *packed_output,
         float16x8_t v5 = vld1q_f16(data5);
         float16x8_t v6 = vld1q_f16(data6);
         float16x8_t v7 = vld1q_f16(data7);
-        float16x8x2_t v02_intertwined = vzipq_f16(v0, v2);
-        float16x8x2_t v13_intertwined = vzipq_f16(v1, v3);
-        float16x8x2_t v46_intertwined = vzipq_f16(v4, v6);
-        float16x8x2_t v57_intertwined = vzipq_f16(v5, v7);
+        float16x8x2_t v04_intertwined = vzipq_f16(v0, v4);
+        float16x8x2_t v15_intertwined = vzipq_f16(v1, v5);
+        float16x8x2_t v26_intertwined = vzipq_f16(v2, v6);
+        float16x8x2_t v37_intertwined = vzipq_f16(v3, v7);
         float16x8x2_t v0246_intertwined =
-            vzipq_f16(v02_intertwined.val[0], v46_intertwined.val[0]);
+            vzipq_f16(v04_intertwined.val[0], v26_intertwined.val[0]);
         float16x8x2_t v0246n_intertwined =
-            vzipq_f16(v02_intertwined.val[1], v46_intertwined.val[1]);
+            vzipq_f16(v04_intertwined.val[1], v26_intertwined.val[1]);
         float16x8x2_t v1357_intertwined =
-            vzipq_f16(v13_intertwined.val[0], v57_intertwined.val[0]);
+            vzipq_f16(v15_intertwined.val[0], v37_intertwined.val[0]);
         float16x8x2_t v1357n_intertwined =
-            vzipq_f16(v13_intertwined.val[1], v57_intertwined.val[1]);
+            vzipq_f16(v15_intertwined.val[1], v37_intertwined.val[1]);
 
         float16x8x2_t v01234567_intertwined =
             vzipq_f16(v0246_intertwined.val[0], v1357_intertwined.val[0]);
@@ -352,14 +352,6 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "dup v21.8h, wzr \n"
         "dup v22.8h, wzr \n"
         "dup v23.8h, wzr \n"
-        "dup v24.8h, wzr \n"
-        "dup v25.8h, wzr \n"
-        "dup v26.8h, wzr \n"
-        "dup v27.8h, wzr \n"
-        "dup v28.8h, wzr \n"
-        "dup v29.8h, wzr \n"
-        "dup v30.8h, wzr \n"
-        "dup v31.8h, wzr \n"
 
         // prelogue
         "ld1 {v0.8h}, [%[lhs_ptr]], #16 \n"
@@ -395,14 +387,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
 
         "ld1 {v0.8h}, [%[lhs_ptr]], #16 \n"
 
-        "fmla v24.8h, v9.8h, v1.h[0] \n"
-        "fmla v25.8h, v9.8h, v1.h[1] \n"
-        "fmla v26.8h, v9.8h, v1.h[2] \n"
-        "fmla v27.8h, v9.8h, v1.h[3] \n"
-        "fmla v28.8h, v9.8h, v1.h[4] \n"
-        "fmla v29.8h, v9.8h, v1.h[5] \n"
-        "fmla v30.8h, v9.8h, v1.h[6] \n"
-        "fmla v31.8h, v9.8h, v1.h[7] \n"
+        "fmla v16.8h, v9.8h, v1.h[0] \n"
+        "fmla v17.8h, v9.8h, v1.h[1] \n"
+        "fmla v18.8h, v9.8h, v1.h[2] \n"
+        "fmla v19.8h, v9.8h, v1.h[3] \n"
+        "fmla v20.8h, v9.8h, v1.h[4] \n"
+        "fmla v21.8h, v9.8h, v1.h[5] \n"
+        "fmla v22.8h, v9.8h, v1.h[6] \n"
+        "fmla v23.8h, v9.8h, v1.h[7] \n"
 
         "ld1 {v1.8h}, [%[lhs_ptr]], #16 \n"
         "ld1 {v8.8h}, [%[rhs_ptr]], #16 \n"
@@ -419,14 +411,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
 
         "ld1 {v2.8h}, [%[lhs_ptr]], #16 \n"
 
-        "fmla v24.8h, v11.8h, v3.h[0] \n"
-        "fmla v25.8h, v11.8h, v3.h[1] \n"
-        "fmla v26.8h, v11.8h, v3.h[2] \n"
-        "fmla v27.8h, v11.8h, v3.h[3] \n"
-        "fmla v28.8h, v11.8h, v3.h[4] \n"
-        "fmla v29.8h, v11.8h, v3.h[5] \n"
-        "fmla v30.8h, v11.8h, v3.h[6] \n"
-        "fmla v31.8h, v11.8h, v3.h[7] \n"
+        "fmla v16.8h, v11.8h, v3.h[0] \n"
+        "fmla v17.8h, v11.8h, v3.h[1] \n"
+        "fmla v18.8h, v11.8h, v3.h[2] \n"
+        "fmla v19.8h, v11.8h, v3.h[3] \n"
+        "fmla v20.8h, v11.8h, v3.h[4] \n"
+        "fmla v21.8h, v11.8h, v3.h[5] \n"
+        "fmla v22.8h, v11.8h, v3.h[6] \n"
+        "fmla v23.8h, v11.8h, v3.h[7] \n"
 
         "ld1 {v3.8h}, [%[lhs_ptr]], #16 \n"
         "ld1 {v10.8h}, [%[rhs_ptr]], #16 \n"
@@ -442,14 +434,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "fmla v23.8h, v12.8h, v4.h[7] \n"
         "ld1 {v4.8h}, [%[lhs_ptr]], #16 \n"
 
-        "fmla v24.8h, v13.8h, v5.h[0] \n"
-        "fmla v25.8h, v13.8h, v5.h[1] \n"
-        "fmla v26.8h, v13.8h, v5.h[2] \n"
-        "fmla v27.8h, v13.8h, v5.h[3] \n"
-        "fmla v28.8h, v13.8h, v5.h[4] \n"
-        "fmla v29.8h, v13.8h, v5.h[5] \n"
-        "fmla v30.8h, v13.8h, v5.h[6] \n"
-        "fmla v31.8h, v13.8h, v5.h[7] \n"
+        "fmla v16.8h, v13.8h, v5.h[0] \n"
+        "fmla v17.8h, v13.8h, v5.h[1] \n"
+        "fmla v18.8h, v13.8h, v5.h[2] \n"
+        "fmla v19.8h, v13.8h, v5.h[3] \n"
+        "fmla v20.8h, v13.8h, v5.h[4] \n"
+        "fmla v21.8h, v13.8h, v5.h[5] \n"
+        "fmla v22.8h, v13.8h, v5.h[6] \n"
+        "fmla v23.8h, v13.8h, v5.h[7] \n"
 
         "ld1 {v5.8h}, [%[lhs_ptr]], #16 \n"
         "ld1 {v12.8h}, [%[rhs_ptr]], #16 \n"
@@ -469,14 +461,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
 
         "subs %[r_depth_block_count], %[r_depth_block_count], #1 \n"
 
-        "fmla v24.8h, v15.8h, v7.h[0] \n"
-        "fmla v25.8h, v15.8h, v7.h[1] \n"
-        "fmla v26.8h, v15.8h, v7.h[2] \n"
-        "fmla v27.8h, v15.8h, v7.h[3] \n"
-        "fmla v28.8h, v15.8h, v7.h[4] \n"
-        "fmla v29.8h, v15.8h, v7.h[5] \n"
-        "fmla v30.8h, v15.8h, v7.h[6] \n"
-        "fmla v31.8h, v15.8h, v7.h[7] \n"
+        "fmla v16.8h, v15.8h, v7.h[0] \n"
+        "fmla v17.8h, v15.8h, v7.h[1] \n"
+        "fmla v18.8h, v15.8h, v7.h[2] \n"
+        "fmla v19.8h, v15.8h, v7.h[3] \n"
+        "fmla v20.8h, v15.8h, v7.h[4] \n"
+        "fmla v21.8h, v15.8h, v7.h[5] \n"
+        "fmla v22.8h, v15.8h, v7.h[6] \n"
+        "fmla v23.8h, v15.8h, v7.h[7] \n"
 
         "ld1 {v7.8h}, [%[lhs_ptr]], #16 \n"
         "ld1 {v15.8h}, [%[rhs_ptr]], #16 \n"
@@ -494,14 +486,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "fmla v22.8h, v8.8h, v0.h[6] \n"
         "fmla v23.8h, v8.8h, v0.h[7] \n"
 
-        "fmla v24.8h, v9.8h, v1.h[0] \n"
-        "fmla v25.8h, v9.8h, v1.h[1] \n"
-        "fmla v26.8h, v9.8h, v1.h[2] \n"
-        "fmla v27.8h, v9.8h, v1.h[3] \n"
-        "fmla v28.8h, v9.8h, v1.h[4] \n"
-        "fmla v29.8h, v9.8h, v1.h[5] \n"
-        "fmla v30.8h, v9.8h, v1.h[6] \n"
-        "fmla v31.8h, v9.8h, v1.h[7] \n"
+        "fmla v16.8h, v9.8h, v1.h[0] \n"
+        "fmla v17.8h, v9.8h, v1.h[1] \n"
+        "fmla v18.8h, v9.8h, v1.h[2] \n"
+        "fmla v19.8h, v9.8h, v1.h[3] \n"
+        "fmla v20.8h, v9.8h, v1.h[4] \n"
+        "fmla v21.8h, v9.8h, v1.h[5] \n"
+        "fmla v22.8h, v9.8h, v1.h[6] \n"
+        "fmla v23.8h, v9.8h, v1.h[7] \n"
 
         "fmla v16.8h, v10.8h, v2.h[0] \n"
         "fmla v17.8h, v10.8h, v2.h[1] \n"
@@ -512,14 +504,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "fmla v22.8h, v10.8h, v2.h[6] \n"
         "fmla v23.8h, v10.8h, v2.h[7] \n"
 
-        "fmla v24.8h, v11.8h, v3.h[0] \n"
-        "fmla v25.8h, v11.8h, v3.h[1] \n"
-        "fmla v26.8h, v11.8h, v3.h[2] \n"
-        "fmla v27.8h, v11.8h, v3.h[3] \n"
-        "fmla v28.8h, v11.8h, v3.h[4] \n"
-        "fmla v29.8h, v11.8h, v3.h[5] \n"
-        "fmla v30.8h, v11.8h, v3.h[6] \n"
-        "fmla v31.8h, v11.8h, v3.h[7] \n"
+        "fmla v16.8h, v11.8h, v3.h[0] \n"
+        "fmla v17.8h, v11.8h, v3.h[1] \n"
+        "fmla v18.8h, v11.8h, v3.h[2] \n"
+        "fmla v19.8h, v11.8h, v3.h[3] \n"
+        "fmla v20.8h, v11.8h, v3.h[4] \n"
+        "fmla v21.8h, v11.8h, v3.h[5] \n"
+        "fmla v22.8h, v11.8h, v3.h[6] \n"
+        "fmla v23.8h, v11.8h, v3.h[7] \n"
 
         "fmla v16.8h, v12.8h, v4.h[0] \n"
         "fmla v17.8h, v12.8h, v4.h[1] \n"
@@ -530,14 +522,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "fmla v22.8h, v12.8h, v4.h[6] \n"
         "fmla v23.8h, v12.8h, v4.h[7] \n"
 
-        "fmla v24.8h, v13.8h, v5.h[0] \n"
-        "fmla v25.8h, v13.8h, v5.h[1] \n"
-        "fmla v26.8h, v13.8h, v5.h[2] \n"
-        "fmla v27.8h, v13.8h, v5.h[3] \n"
-        "fmla v28.8h, v13.8h, v5.h[4] \n"
-        "fmla v29.8h, v13.8h, v5.h[5] \n"
-        "fmla v30.8h, v13.8h, v5.h[6] \n"
-        "fmla v31.8h, v13.8h, v5.h[7] \n"
+        "fmla v16.8h, v13.8h, v5.h[0] \n"
+        "fmla v17.8h, v13.8h, v5.h[1] \n"
+        "fmla v18.8h, v13.8h, v5.h[2] \n"
+        "fmla v19.8h, v13.8h, v5.h[3] \n"
+        "fmla v20.8h, v13.8h, v5.h[4] \n"
+        "fmla v21.8h, v13.8h, v5.h[5] \n"
+        "fmla v22.8h, v13.8h, v5.h[6] \n"
+        "fmla v23.8h, v13.8h, v5.h[7] \n"
 
         "fmla v16.8h, v14.8h, v6.h[0] \n"
         "fmla v17.8h, v14.8h, v6.h[1] \n"
@@ -548,14 +540,14 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "fmla v22.8h, v14.8h, v6.h[6] \n"
         "fmla v23.8h, v14.8h, v6.h[7] \n"
 
-        "fmla v24.8h, v15.8h, v7.h[0] \n"
-        "fmla v25.8h, v15.8h, v7.h[1] \n"
-        "fmla v26.8h, v15.8h, v7.h[2] \n"
-        "fmla v27.8h, v15.8h, v7.h[3] \n"
-        "fmla v28.8h, v15.8h, v7.h[4] \n"
-        "fmla v29.8h, v15.8h, v7.h[5] \n"
-        "fmla v30.8h, v15.8h, v7.h[6] \n"
-        "fmla v31.8h, v15.8h, v7.h[7] \n"
+        "fmla v16.8h, v15.8h, v7.h[0] \n"
+        "fmla v17.8h, v15.8h, v7.h[1] \n"
+        "fmla v18.8h, v15.8h, v7.h[2] \n"
+        "fmla v19.8h, v15.8h, v7.h[3] \n"
+        "fmla v20.8h, v15.8h, v7.h[4] \n"
+        "fmla v21.8h, v15.8h, v7.h[5] \n"
+        "fmla v22.8h, v15.8h, v7.h[6] \n"
+        "fmla v23.8h, v15.8h, v7.h[7] \n"
 
         "st1 {v16.8h}, [%[packed_output_data]], #16 \n"
         "st1 {v17.8h}, [%[packed_output_data]], #16 \n"
@@ -565,14 +557,6 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
         "st1 {v21.8h}, [%[packed_output_data]], #16 \n"
         "st1 {v22.8h}, [%[packed_output_data]], #16 \n"
         "st1 {v23.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v24.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v25.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v26.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v27.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v28.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v29.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v30.8h}, [%[packed_output_data]], #16 \n"
-        "st1 {v31.8h}, [%[packed_output_data]], #16 \n"
     :  // outputs
     [lhs_ptr] "+r"(lhs_ptr),
     [rhs_ptr] "+r"(rhs_ptr),
@@ -583,8 +567,7 @@ void Gemm<float16_t>::ComputeBlock(const float16_t *packed_lhs_data,
     "cc", "memory",
         "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7",
         "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",
-        "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
-        "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
+        "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23");
   }
 }
 
