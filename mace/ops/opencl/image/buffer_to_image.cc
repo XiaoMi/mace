@@ -126,34 +126,15 @@ MaceStatus BufferToImage::Compute(
 
   const uint32_t kwg_size =
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {16, kwg_size / 16};
-
-  cl::Event event;
-  cl_int error;
-  if (runtime->IsNonUniformWorkgroupsSupported()) {
-    error = runtime->command_queue().enqueueNDRangeKernel(
-        kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1]),
-        cl::NDRange(lws[0], lws[1]), nullptr, &event);
-  } else {
-    std::vector<uint32_t> roundup_gws(lws.size());
-    for (size_t i = 0; i < lws.size(); ++i) {
-      roundup_gws[i] = RoundUp(gws[i], lws[i]);
-    }
-
-    error = runtime->command_queue().enqueueNDRangeKernel(
-        kernel_, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
-        cl::NDRange(lws[0], lws[1]), nullptr, &event);
+  std::vector<uint32_t> lws = {kwg_size, 1, 0};
+  if (type == CONV2D_FILTER) {
+    lws[0] = 16;
+    lws[1] = kwg_size / 16;
   }
-  MACE_CL_RET_STATUS(error);
+  std::string tuning_key = Concat(kernel_name, MakeString(input->shape()));
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key, gws,
+                                           lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  if (context->future() != nullptr) {
-    context->future()->wait_fn = [runtime, event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
-      }
-    };
-  }
 
   return MaceStatus::MACE_SUCCESS;
 }
