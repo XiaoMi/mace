@@ -1,1 +1,16 @@
-add_subdirectory(models)
+macro(SUBDIRLIST result curdir)
+file(GLOB children RELATIVE ${curdir} ${curdir}/*)
+set(DIR_LIST "")
+foreach(Entry ${children})
+  if(IS_DIRECTORY ${curdir}/${Entry})
+    list(APPEND DIR_LIST ${Entry})
+  endif()
+endforeach()
+set(${result} ${DIR_LIST})
+endmacro()
+
+SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
+
+foreach (MODEL_DIR IN LISTS SUBDIRS)
+  add_subdirectory(${MODEL_DIR})
+endforeach()

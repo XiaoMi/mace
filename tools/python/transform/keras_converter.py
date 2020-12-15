@@ -81,7 +81,8 @@ def get_output(keras_op):
 def get_output_max(keras_op):
     for weight in keras_op.weights:
         last_name = weight.name.split('/')[-1].split(':')[0]
-        if last_name in ["post_activation_max", "output_max"]:
+        if (last_name in
+                ["post_activation_max", "output_max", "pre_activation_max"]):
             return weight.numpy()
 
     mace_check(False, "No output_max info in %s" % keras_op.name)
@@ -90,28 +91,35 @@ def get_output_max(keras_op):
 def get_output_min(keras_op):
     for weight in keras_op.weights:
         last_name = weight.name.split('/')[-1].split(':')[0]
-        if last_name in ["post_activation_min", "output_min"]:
+        if (last_name in
+                ["post_activation_min", "output_min", "pre_activation_min"]):
             return weight.numpy()
 
     mace_check(False, "No output_min info in %s" % keras_op.name)
 
 
 def get_quant_wrapper_kernel(quant_wrapper):
-    kernel_name = quant_wrapper.name + "/kernel:0"
-    return [x for x in quant_wrapper.weights if x.name == kernel_name ][0]
+    for weight in quant_wrapper.weights:
+        if weight.name == quant_wrapper.name + "/kernel:0":
+            return weight
+
+    return None
 
 
 def get_quant_wrapper_bias(quant_wrapper):
-    bias_name = quant_wrapper.name + "/bias:0"
-    bias = [x for x in quant_wrapper.weights if x.name == bias_name]
-    if len(bias) == 0:
-        return None
-    return bias[0]
+    for weight in quant_wrapper.weights:
+        if weight.name == quant_wrapper.name + "/bias:0":
+            return weight
+
+    return None
 
 
 def get_quant_wrapper_depthwise_kernel(quant_wrapper):
-    depthwise_kernel_name = quant_wrapper.name + "/depthwise_kernel:0"
-    return [x for x in quant_wrapper.weights if x.name == depthwise_kernel_name][0]
+    for weight in quant_wrapper.weights:
+        if weight.name == quant_wrapper.name + "/depthwise_kernel:0":
+            return weight
+
+    return None
 
 
 activation_types_dict = {
@@ -466,7 +474,8 @@ class KerasConverter(base_converter.ConverterInterface):
     def convert_quantize_wrapper(self, keras_op_wrapper):
         inside_layer = keras_op_wrapper.layer
         if isinstance(inside_layer, convolutional.DepthwiseConv2D):
-            inside_layer.depthwise_kernel = get_quant_wrapper_depthwise_kernel(keras_op_wrapper)
+            inside_layer.depthwise_kernel = \
+                get_quant_wrapper_depthwise_kernel(keras_op_wrapper)
             inside_layer.bias = get_quant_wrapper_bias(keras_op_wrapper)
         elif isinstance(inside_layer, convolutional.Conv):
             inside_layer.kernel = get_quant_wrapper_kernel(keras_op_wrapper)
@@ -483,7 +492,8 @@ class KerasConverter(base_converter.ConverterInterface):
 
         if isinstance(
                 inside_layer,
-                (convolutional.Conv, keras.layers.Dense, keras.layers.Activation)):
+                (convolutional.Conv, keras.layers.Dense,
+                 keras.layers.Activation)):
             output_min = get_output_min(keras_op_wrapper)
             output_max = get_output_max(keras_op_wrapper)
 

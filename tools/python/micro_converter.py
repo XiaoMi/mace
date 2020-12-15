@@ -56,15 +56,12 @@ class MicroConverter:
         self.write_magic = write_magic
         self.code_gen = MicroCodeGen()
         self.np_data_type = data_type_to_np_dt(data_type, np.float32)
-        self.gen_folder = 'micro/codegen/'
-        util.mkdir_p(self.gen_folder)
+        self.model_dir = "micro/codegen/" + model_name + "/"
+        util.mkdir_p(self.model_dir)
         self.op_resolver = OpResolver(self.net_def, self.model_conf)
 
     def gen_code_from_model(self, model_name, pb_model, model_weights):
         net_def = pb_model
-        output_dir = self.gen_folder + 'models/' + model_name + '/'
-        shutil.rmtree(output_dir, ignore_errors=True)
-        util.mkdir_p(output_dir)
 
         # comput mem size and mem block offset and update the net_def,
         # should count before ProtoConverter
@@ -77,51 +74,50 @@ class MicroConverter:
         net_def_bytes = net_def_converter.proto_to_bytes(net_def)
         mace_check(net_def_bytes is not None, "proto_to_bytes failed.")
         self.code_gen.gen_net_def_data(model_name, net_def_bytes,
-                                       output_dir + 'micro_net_def_data.h')
+                                       self.model_dir + 'micro_net_def_data.h')
 
         # gen operator array
         (op_src_path_list, op_class_name_list, scratch_buffer_size) = \
             self.op_resolver.get_op_desc_list_from_model()
         self.code_gen.gen_ops_data(
             model_name, op_src_path_list, op_class_name_list,
-            output_dir + 'micro_ops_list.h')
+            self.model_dir + 'micro_ops_list.h')
 
         # gen the c++ Graph struct
         graph = GraphBuilder(net_def, self.op_resolver).build()
         graph_converter = ProtoConverter(self.offset16, self.write_magic)
         graph_bytes = graph_converter.proto_to_bytes(graph)
         self.code_gen.gen_graph_data(model_name, graph_bytes,
-                                     output_dir + 'micro_graph_data.h')
+                                     self.model_dir + 'micro_graph_data.h')
 
         # gen micro engine config
         engine_data = {}
         engine_data['tensor_mem_size'] = tensor_mem_size
         engine_data['input_size'] = len(net_def.input_info)
         engine_data['scratch_buffer_size'] = scratch_buffer_size
-        self.code_gen.gen_engin_config(model_name, engine_data,
-                                       output_dir + 'micro_engine_config.cc')
+        self.code_gen.gen_engin_config(
+            model_name,
+            engine_data,
+            self.model_dir + 'micro_engine_config.cc')
 
         # gen micro model tensor data
         tensor_bytes = bytearray(model_weights)
         self.code_gen.gen_model_data(model_name, tensor_bytes,
-                                     output_dir + 'micro_model_data.h')
+                                     self.model_dir + 'micro_model_data.h')
 
     def gen_engine_interface_code(self, model_name):
-        output_dir = self.gen_folder + 'engines/' + model_name + '/'
-        shutil.rmtree(output_dir, ignore_errors=True)
-        util.mkdir_p(output_dir)
         self.code_gen.gen_engine_factory(
             model_name,
-            output_dir + 'micro_engine_factory.h',
-            output_dir + 'micro_engine_factory.cc')
+            self.model_dir + 'micro_engine_factory.h',
+            self.model_dir + 'micro_engine_factory.cc')
         self.code_gen.gen_engine_c_interface(
             model_name,
-            output_dir + 'micro_engine_c_interface.h',
-            output_dir + 'micro_engine_c_interface.cc')
+            self.model_dir + 'micro_engine_c_interface.h',
+            self.model_dir + 'micro_engine_c_interface.cc')
 
-    def gen_cmake_file(self):
-        output_dir = self.gen_folder + 'models/'
-        self.code_gen.gen_cmake_file(output_dir + 'CMakeLists.txt')
+    def gen_cmake_file(self, model_name):
+        self.code_gen.gen_cmake_file(model_name,
+                                     self.model_dir + 'CMakeLists.txt')
 
     def gen_code(self):
         MicroOpConverter(self.net_def, self.model_weights,
@@ -129,7 +125,7 @@ class MicroConverter:
         self.gen_code_from_model(
             self.model_name, self.net_def, self.model_weights)
         self.gen_engine_interface_code(self.model_name)
-        self.gen_cmake_file()
+        self.gen_cmake_file(self.model_name)
 
     def package(self, tar_package_path):
         tmp_dir = "/tmp/micro"

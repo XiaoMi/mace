@@ -2667,9 +2667,12 @@ class Transformer(base_converter.ConverterInterface):
 
                 if act_type in ["RELU", "RELUX"]:
                     producer = self._producer[op.input[0]]
-                    self.replace_quantize_info(producer, op)
-                    self.safe_remove_node(op, producer)
-                    return True
+                    # The type of "producer" is not limited to MatMul,
+                    # you can try other types
+                    if producer.type == MaceOp.MatMul.name:
+                        self.replace_quantize_info(producer, op)
+                        self.safe_remove_node(op, producer)
+                        return True
 
         return False
 

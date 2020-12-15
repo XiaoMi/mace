@@ -16,7 +16,6 @@ option(MACE_MICRO_ENABLE_TESTS "Whether to enable Mace Micro tests"         OFF)
 option(MACE_MICRO_ENABLE_EXAMPLES "Whether to enable Mace Micro examples"         OFF)
 option(MACE_MICRO_ENABLE_TOOLS "Whether to enable Mace Micro tools" OFF)
 option(MACE_MICRO_ENABLE_XTENSA "Whether to enable xa nnlib engine" OFF)
-option(MACE_MICRO_ENABLE_DYNAMIC_LIB "Whether to generate dynamic lib" OFF)
 
 if(MACE_MICRO_ARM_NONE)
   add_definitions(-DMACE_MICRO_ARM_NONE)
@@ -28,10 +27,6 @@ endif()
 
 if(MACE_MICRO_NDEBUG)
   add_definitions(-DMACE_MICRO_NDEBUG)
-endif()
-
-if(MACE_MICRO_ENABLE_DYNAMIC_LIB)
-  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 if(MACE_MICRO_GCC_ARM)

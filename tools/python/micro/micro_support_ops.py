@@ -32,10 +32,11 @@ class OpResolver:
         self.net_def = pb_model
         self.op_desc_map = {}
         self.op_desc_list = []
-        if "backend" in model_conf:
-            self.backend = model_conf["backend"]
-        else:
-            self.backend = None
+
+        self.backend = None
+        if "micro" in model_conf:
+            if "backend" in model_conf["micro"]:
+                self.backend = model_conf["micro"]["backend"]
 
     def get_op_desc_list_from_model(self):
         op_class_name_list = []

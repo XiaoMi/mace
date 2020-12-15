@@ -16,16 +16,13 @@
 
 #include <stdint.h>
 
+#include "micro/codegen/{{model_tag}}/micro_graph_data.h"
+#include "micro/codegen/{{model_tag}}/micro_model_data.h"
+#include "micro/codegen/{{model_tag}}/micro_net_def_data.h"
+#include "micro/codegen/{{model_tag}}/micro_ops_list.h"
 #include "micro/framework/graph.h"
 #include "micro/include/public/micro.h"
 #include "micro/model/net_def.h"
-
-#include "micro/codegen/models/{{model_tag}}/micro_graph_data.h"
-#include "micro/codegen/models/{{model_tag}}/micro_model_data.h"
-#include "micro/codegen/models/{{model_tag}}/micro_net_def_data.h"
-#include "micro/codegen/models/{{model_tag}}/micro_ops_list.h"
-
-
 
 namespace micro {
 namespace {{model_tag}} {
