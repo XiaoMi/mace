@@ -35,7 +35,7 @@ endif()
 
 #set CMAKE_BUILD_TYPE default value as Release
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release"
+  set(CMAKE_BUILD_TYPE "RELEASE"
         CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
         FORCE)
 endif()
@@ -45,12 +45,6 @@ message(STATUS "BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 set(MACE_MICRO_THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 set(MACE_MICRO_TOOLS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools)
 set(lib_micro_path ${CMAKE_CURRENT_BINARY_DIR}/libmicro.a)
-
-if(HEXAGON6 AND CMAKE_BUILD_TYPE STREQUAL "RELEASE")
-  # Does not work with "-O3"
-  add_compile_options(-O2)
-endif()
-
 
 add_library(micro STATIC IMPORTED)
 

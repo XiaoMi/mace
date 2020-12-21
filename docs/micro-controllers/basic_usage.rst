@@ -71,35 +71,33 @@ The following is a completed model config file,
 
 .. code-block:: sh
 
-    library_name: har
+    library_name: mnist
     target_abis: [host]
     model_graph_format: file
     model_data_format: file
     models:
-    har_int8:
+      mnist_int8:
         platform: keras
-        model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/micro/keras/har/har.h5
-        model_sha256_checksum: ec0477b8e489541bb34377c9cabc42ee6cefa8bdf0a9f726e06be1b967ea1dcd
+        model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/micro/keras/mnist/mnist-int8.h5
+        model_sha256_checksum: 0ff90446134c41fb5e0524484cd9d7452282d3825f13b839c364a58abd0490ee
         subgraphs:
-        - input_tensors:
-            - "conv2d_1_input:0"
+          - input_tensors:
+              - conv2d_input:0
             input_shapes:
-            - 1, 90, 3, 1
+              - 1,28,28,1
             input_ranges:
-            - -5, 15
+              - 0,1
             output_tensors:
-            - "dense_3/Softmax:0"
+              - quant_dense_1/Softmax:0
             output_shapes:
-            - "1, 6"
+              - 1,10
+            validation_inputs_data:
+              - https://cnbj1.fds.api.xiaomi.com/mace/inputs/mnist4.npy
         runtime: cpu
-        data_type: fp32_fp32
-        limit_opencl_kernel_time: 0
-        nnlib_graph_mode: 0
-        obfuscate: 0
-        winograd: 0
         quantize: 1
         quantize_schema: int8
-        quantize_range_file: /workspace/mace/micro/pretrained_models/keras/har/har.range
+        micro:
+          backend: cmsis # Micro will use CMSIS_5 NN modules
 
 For the bfloat16 model,
 

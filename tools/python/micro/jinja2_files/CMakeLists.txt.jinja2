@@ -1,0 +1,18 @@
+add_library(model_{{model_tag}}
+  micro_engine_c_interface.cc
+  micro_engine_config.cc
+  micro_engine_factory.cc
+)
+
+target_link_libraries(model_{{model_tag}}
+  micro_ops
+)
+
+install(TARGETS model_{{model_tag}}
+  ARCHIVE DESTINATION lib
+)
+
+install(DIRECTORY . DESTINATION include
+  FILES_MATCHING PATTERN "*interface.h"
+)
+

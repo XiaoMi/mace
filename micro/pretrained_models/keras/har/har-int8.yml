@@ -19,11 +19,8 @@ models:
         output_shapes:
           - 1,6
     runtime: cpu
-    backend: cmsis
-    limit_opencl_kernel_time: 0
-    nnlib_graph_mode: 0
-    obfuscate: 0
-    winograd: 0
+    micro:
+      backend: cmsis
     quantize: 1
     quantize_schema: int8
     quantize_range_file: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/micro/keras/har/har.range

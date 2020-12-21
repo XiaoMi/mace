@@ -30,7 +30,7 @@ class Graph : public Serialize {
   MACE_DEFINE_HARD_CODE_MAGIC(Graph)
 
   MACE_DECLARE_PTR_ARRAY_FUNC(OpContext, op_context);
-  MACE_DECLARE_ARRAY_FUNC(uint32_t, input_op_idx);
+  MACE_DECLARE_PTR_ARRAY_FUNC(uint32_t, input_op_idx);
   MACE_DECLARE_PTR_ARRAY_FUNC(OpIOInfo, output_info);
 
   MaceStatus Init(MaceMicroEngineConfig *engine_config);

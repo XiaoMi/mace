@@ -1,20 +1,16 @@
-file(GLOB_RECURSE generated_models_srcs models *.cc)
-file(GLOB_RECURSE micro_engine_srcs engines micro_engine_factory.cc)
-file(GLOB_RECURSE micro_engine_c_srcs engines micro_engine_c_interface.cc)
+macro(SUBDIRLIST result curdir)
+file(GLOB children RELATIVE ${curdir} ${curdir}/*)
+set(DIR_LIST "")
+foreach(Entry ${children})
+  if(IS_DIRECTORY ${curdir}/${Entry})
+    list(APPEND DIR_LIST ${Entry})
+  endif()
+endforeach()
+set(${result} ${DIR_LIST})
+endmacro()
 
-#  Use ".keep.cc" as a source file when there are no model source files in "models" directory
-add_library(models
-  ${generated_models_srcs}
-  ${micro_engine_srcs}
-  ${micro_engine_c_srcs}
-)
-target_link_libraries(models
-  PUBLIC micro_include
-  PRIVATE micro_base
-  PRIVATE micro_framework
-  PUBLIC micro_all_ops
-)
+SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
-install(TARGETS models
-  ARCHIVE DESTINATION lib
-)
+foreach (MODEL_DIR IN LISTS SUBDIRS)
+  add_subdirectory(${MODEL_DIR})
+endforeach()

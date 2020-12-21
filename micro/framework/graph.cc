@@ -25,7 +25,7 @@ namespace micro {
 namespace framework {
 
 MACE_DEFINE_PTR_ARRAY_FUNC(Graph, OpContext, op_context, op_contexts_)
-MACE_DEFINE_ARRAY_FUNC(Graph, uint32_t, input_op_idx, input_op_idxs_);
+MACE_DEFINE_PTR_ARRAY_FUNC(Graph, uint32_t, input_op_idx, input_op_idxs_);
 MACE_DEFINE_PTR_ARRAY_FUNC(Graph, OpIOInfo, output_info, output_infos_);
 
 MaceStatus Graph::Init(MaceMicroEngineConfig *engine_config) {
@@ -54,9 +54,17 @@ MaceStatus Graph::RegisterInputData(MaceMicroEngineConfig *engine_config,
   engine_config->input_shapes_[idx] = input_dims;
 
   // update the op's input buffers
-  uint32_t op_idx = input_op_idx(idx);
-  framework::Operator *input_op = engine_config->op_array_[op_idx];
-  return input_op->OnInit();
+  const uint32_t *op_indices = input_op_idx(idx);
+  for (uint32_t i = 0; i < input_op_idx_size(); ++i) {
+    uint32_t op_idx = op_indices[i];
+    framework::Operator *input_op = engine_config->op_array_[op_idx];
+    MaceStatus status = input_op->OnInit();
+    if (status != MACE_SUCCESS) {
+      return status;
+    }
+  }
+
+  return MACE_SUCCESS;
 }
 
 MaceStatus Graph::Run(MaceMicroEngineConfig *engine_config) {

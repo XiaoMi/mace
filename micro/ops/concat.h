@@ -75,7 +75,7 @@ class ConcatOp : public framework::Operator {
       }
     }
 
-    return MaceStatus::MACE_SUCCESS;
+    return MACE_SUCCESS;
   }
 };
 

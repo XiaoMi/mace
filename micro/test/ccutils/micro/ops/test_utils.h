@@ -33,9 +33,9 @@ void AssertSameDims(const int32_t *x_dims, const uint32_t x_dim_size,
 void FillRandomInput(void *input, const int32_t shape_size);
 
 #ifndef MACE_DEFINE_RANDOM_INPUT
-#define MACE_DEFINE_RANDOM_INPUT(T, input, shape_size)                \
-T *input = common::test::GetGlobalBuffer()->GetBuffer<T>(shape_size); \
-micro::ops::test::FillRandomInput(input, shape_size * sizeof(T))
+#define MACE_DEFINE_RANDOM_INPUT(T, input, shape_size)                  \
+  T *input = common::test::GetGlobalBuffer()->GetBuffer<T>(shape_size); \
+  micro::ops::test::FillUniformRandomInput(input, shape_size)
 #endif
 
 void FillUniformRandomInput(float *input,
