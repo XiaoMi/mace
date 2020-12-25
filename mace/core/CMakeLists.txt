@@ -63,6 +63,7 @@ endif(MACE_ENABLE_HEXAGON_HTA)
 
 if(MACE_ENABLE_MTK_APU)
   set(CORE_SRCS ${CORE_SRCS} runtime/apu/apu_wrapper.cc)
+  set(CORE_SRCS ${CORE_SRCS} runtime/apu/mt67xx_apu_wrapper.cc)
   set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} apu-frontend)
 endif(MACE_ENABLE_MTK_APU)
 

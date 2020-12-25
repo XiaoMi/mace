@@ -26,6 +26,9 @@ from dana.dana_util import DanaUtil
 import layers_validate
 import sh_commands
 
+sys.path.insert(0, "tools/python")  # noqa
+from utils.device import AndroidDevice
+
 
 class DeviceWrapper:
     allow_scheme = ('ssh', 'adb')
@@ -125,6 +128,25 @@ class DeviceWrapper:
             except sh.ErrorReturnCode_1 as e:
                 six.print_('Push Failed !', e, file=sys.stderr)
                 raise e
+
+    def get_apu_ancient(self, enable_apu):
+        if enable_apu:
+            target_props = sh_commands.adb_getprop_by_serialno(self.address)
+            mace_check(len(target_props) > 0, "",
+                       "When compile apu lib you need connect phone")
+            android_ver = (int)(target_props["ro.build.version.release"])
+            if android_ver > 10:
+                return False
+            target_soc = target_props["ro.board.platform"]
+            if target_soc.startswith("mt67"):
+                return True
+        return False
+
+    def get_apu_so_paths(self):
+        target_props = sh_commands.adb_getprop_by_serialno(self.address)
+        target_soc = target_props["ro.board.platform"]
+        android_ver = (int)(target_props["ro.build.version.release"])
+        return AndroidDevice.get_apu_so_paths_by_props(android_ver, target_soc)
 
     def pull(self, src_path, file_name, dst_path='.'):
         if not os.path.exists(dst_path):
@@ -279,7 +301,8 @@ class DeviceWrapper:
                 if os.path.exists(opencl_parameter_file):
                     self.push(opencl_parameter_file, self.data_dir)
 
-            if self.system == SystemType.android:
+            if self.system == SystemType.android and \
+                    device_type != common.DeviceType.APU:
                 self.push(
                     "third_party/nnlib/%s/libhexagon_controller.so" % abi,
                     self.data_dir)
@@ -295,11 +318,10 @@ class DeviceWrapper:
                 elif apu_cache_policy == 2:
                     if os.path.exists(apu_binary_file):
                         self.push(apu_binary_file, self.data_dir)
-                        apu_binary_file = os.path.join(self.data_dir,
-                                                       os.path.basename(
-                                                           apu_binary_file))
-                self.push("third_party/apu/libapu-frontend.so",
-                          self.data_dir)
+                        apu_binary_file = os.path.join(
+                            self.data_dir, os.path.basename(apu_binary_file))
+                for so_path in self.get_apu_so_paths():
+                    self.push(so_path, self.data_dir)
 
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:

@@ -909,8 +909,8 @@ def convert_func(flags):
 ################################
 # run
 ################################
-def build_mace_run(configs, target_abi, toolchain,
-                   address_sanitizer, mace_lib_type, debug_mode):
+def build_mace_run(configs, target_abi, toolchain, address_sanitizer,
+                   mace_lib_type, debug_mode, device):
     library_name = configs[YAMLKeyword.library_name]
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -928,13 +928,15 @@ def build_mace_run(configs, target_abi, toolchain,
                    "You should convert model first.")
         build_arg = "--per_file_copt=mace/tools/mace_run.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
+    enable_apu = apu_enabled(configs)
     sh_commands.bazel_build(
         mace_run_target,
         abi=target_abi,
         toolchain=toolchain,
         enable_hexagon=hexagon_enabled(configs),
         enable_hta=hta_enabled(configs),
-        enable_apu=apu_enabled(configs),
+        enable_apu=enable_apu,
+        apu_ancient=device.get_apu_ancient(enable_apu),
         enable_opencl=opencl_enabled(configs),
         enable_quantize=quantize_enabled(configs),
         enable_bfloat16=bfloat16_enabled(configs),
@@ -985,7 +987,8 @@ def run_mace(flags):
                                toolchain,
                                flags.address_sanitizer,
                                flags.mace_lib_type,
-                               flags.debug_mode)
+                               flags.debug_mode,
+                               device)
                 # run
                 start_time = time.time()
                 with device.lock():

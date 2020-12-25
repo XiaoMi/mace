@@ -17,6 +17,7 @@
 #include <algorithm>
 
 #include "mace/core/quantize.h"
+#include "third_party/apu/ApuFrontend.h"
 
 namespace mace {
 
@@ -25,7 +26,7 @@ ApuWrapper::ApuWrapper(Device *device)
       quantize_util_int16_(&device->cpu_runtime()->thread_pool()) {
 }
 
-apu_data_type ApuWrapper::MapToApuDataType(DataType mace_type) {
+int ApuWrapper::MapToApuDataType(DataType mace_type) {
   switch (mace_type) {
     case DT_FLOAT:
       return APU_DATA_TYPE_FLOAT;
@@ -46,7 +47,7 @@ apu_data_type ApuWrapper::MapToApuDataType(DataType mace_type) {
   return APU_DATA_TYPE_UNDEFINED;
 }
 
-apu_pooling_mode ApuWrapper::MapToApuPoolingMode(int mace_mode) {
+int ApuWrapper::MapToApuPoolingMode(int mace_mode) {
   switch (mace_mode) {
     case 1:
       return APU_POOLING_AVG;
@@ -59,7 +60,7 @@ apu_pooling_mode ApuWrapper::MapToApuPoolingMode(int mace_mode) {
   return APU_POOLING_UNDEFINED;
 }
 
-apu_eltwise_mode ApuWrapper::MapToApuEltwiseMode(int mace_mode) {
+int ApuWrapper::MapToApuEltwiseMode(int mace_mode) {
   switch (mace_mode) {
     case 0:
       return APU_ELTWISE_ADD;
@@ -78,8 +79,9 @@ apu_eltwise_mode ApuWrapper::MapToApuEltwiseMode(int mace_mode) {
   return APU_ELTWISE_UNDEFINED;
 }
 
-bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
-                      const char *file_name, bool load, bool store) {
+#ifndef MACE_MTK_APU_ANCIENT  // for mt68xx socs or android R
+bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
+                        const char *file_name, bool load, bool store) {
   frontend = new ApuFrontend();
 
   MACE_CHECK(!(load & store),
@@ -101,7 +103,8 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
     apu_tensor tensor;
     tensor.tensor_id = input_info.node_id();
     tensor.tensor_type = APU_TENSOR_MODEL_INPUT;
-    tensor.data_type = MapToApuDataType(static_cast<DataType>(apu_data_type));
+    tensor.data_type = static_cast<apu_data_type>(
+        MapToApuDataType(static_cast<DataType>(apu_data_type)));
     tensor.scale = input_info.has_scale() ? input_info.scale() : -1.0f;
     tensor.zero_point = input_info.has_zero_point() ?
                             input_info.zero_point() : 0;
@@ -118,12 +121,12 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
       info.size *= input_info.dims(i);
       info.shape.push_back(input_info.dims(i));
     }
-    info.buf
-    = std::shared_ptr<uint8_t>(new uint8_t[info.size * byte_per_element],
-                               std::default_delete<uint8_t[]>());
+    info.buf = std::shared_ptr<uint8_t>(
+        new uint8_t[info.size * byte_per_element],
+        std::default_delete<uint8_t[]>());
     info.scale = tensor.scale;
     info.zero_point = tensor.zero_point;
-    input_infos.push_back(info);
+    input_infos_.push_back(info);
     tensor.data_buf = info.buf.get();
     input_tensors.push_back(tensor);
   }
@@ -133,7 +136,8 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
     apu_tensor tensor;
     tensor.tensor_id = output_info.node_id();
     tensor.tensor_type = APU_TENSOR_MODEL_OUTPUT;
-    tensor.data_type = MapToApuDataType(static_cast<DataType>(apu_data_type));
+    tensor.data_type = static_cast<apu_data_type>(
+        MapToApuDataType(static_cast<DataType>(apu_data_type)));
     tensor.dim_size = output_info.dims_size();
     ApuTensorInfo info;
     info.name = output_info.name();
@@ -160,7 +164,7 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
         }
       }
     }
-    output_infos.push_back(info);
+    output_infos_.push_back(info);
     tensor.data_buf = info.buf.get();
     output_tensors.push_back(tensor);
   }
@@ -177,7 +181,8 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
       tensor.tensor_type = (tensor.tensor_id < const_data_num) ?
                                APU_TENSOR_CONST_DATA :
                                APU_TENSOR_CONST_ARGUMENT;
-      tensor.data_type = MapToApuDataType(const_tensor.data_type());
+      tensor.data_type = static_cast<apu_data_type>(
+          MapToApuDataType(const_tensor.data_type()));
       tensor.scale = const_tensor.has_scale() ? const_tensor.scale() : 0.0f;
       tensor.zero_point = const_tensor.has_zero_point() ?
                               const_tensor.zero_point() : 0;
@@ -204,7 +209,8 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
       op.input_ids = cached_op_inputs.back().data();
       op.output.tensor_id = op_def.node_id();
       op.output.tensor_type = APU_TENSOR_OP_OUTPUT;
-      op.output.data_type = MapToApuDataType(op_def.output_type(0));
+      op.output.data_type = static_cast<apu_data_type>(
+          MapToApuDataType(op_def.output_type(0)));
       if (op.output.data_type == APU_DATA_TYPE_UINT8 ||
           op.output.data_type == APU_DATA_TYPE_INT16) {
         op.output.scale = op_def.quantize_info(0).scale();
@@ -263,40 +269,46 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
   cached_op_inputs.clear();
   return ret;
 }
+#endif  // MACE_MTK_APU_ANCIENT
+
+bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
+                      const char *file_name, bool load, bool store) {
+  return DoInit(net_def, model_data, file_name, load, store);
+}
 
 bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                      std::map<std::string, Tensor *> *output_tensors) {
-  MACE_ASSERT(input_tensors.size() == input_infos.size(), "Wrong inputs num");
-  MACE_ASSERT(output_tensors.size() == output_infos.size(),
+  MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
+  MACE_ASSERT(output_tensors.size() == output_infos_.size(),
               "Wrong outputs num");
   // prepare input
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
-    Tensor* tensor = input_tensors.at(input_infos[i].name);
+    Tensor* tensor = input_tensors.at(input_infos_[i].name);
 
     // check size
-    int element_size = input_infos[i].size;
-    int byte_per_element = GetByteNum(input_infos[i].data_type);
+    int element_size = input_infos_[i].size;
+    int byte_per_element = GetByteNum(input_infos_[i].data_type);
     MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
                 "Wrong input size");
     // quantize
-    if (input_infos[i].data_type == APU_DATA_TYPE_INT16) {
+    if (input_infos_[i].data_type == APU_DATA_TYPE_INT16) {
       quantize_util_int16_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
-          input_infos[i].scale,
-          input_infos[i].zero_point,
-          reinterpret_cast<int16_t*>(input_infos[i].buf.get()));
-    } else if (input_infos[i].data_type == APU_DATA_TYPE_FLOAT) {
-      std::memcpy(input_infos[i].buf.get(),
-                    (const float*)tensor->raw_data(),
-                    element_size * byte_per_element);
+          input_infos_[i].scale,
+          input_infos_[i].zero_point,
+          reinterpret_cast<int16_t*>(input_infos_[i].buf.get()));
+    } else if (input_infos_[i].data_type == APU_DATA_TYPE_FLOAT) {
+      std::memcpy(input_infos_[i].buf.get(),
+                  (const float*)tensor->raw_data(),
+                  element_size * byte_per_element);
     } else {
       quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
-          input_infos[i].scale,
-          input_infos[i].zero_point,
-          input_infos[i].buf.get());
+          input_infos_[i].scale,
+          input_infos_[i].zero_point,
+          input_infos_[i].buf.get());
     }
   }
 
@@ -306,33 +318,33 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 
   // process output
   for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
-    Tensor* tensor = output_tensors->at(output_infos[i].name);
+    Tensor* tensor = output_tensors->at(output_infos_[i].name);
 
     // prepare out buffer
     tensor->SetDtype(DT_FLOAT);
-    tensor->Resize(output_infos[i].shape);
-    int element_size = output_infos[i].size;
-    int byte_per_element = GetByteNum(output_infos[i].data_type);
+    tensor->Resize(output_infos_[i].shape);
+    int element_size = output_infos_[i].size;
+    int byte_per_element = GetByteNum(output_infos_[i].data_type);
     MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
                 "Wrong output size");
     // dequantize
-    if (output_infos[i].data_type == APU_DATA_TYPE_INT16) {
+    if (output_infos_[i].data_type == APU_DATA_TYPE_INT16) {
       quantize_util_int16_.Dequantize(
-          reinterpret_cast<int16_t*>(output_infos[i].buf.get()),
+          reinterpret_cast<int16_t*>(output_infos_[i].buf.get()),
           element_size,
-          output_infos[i].scale,
-          output_infos[i].zero_point,
+          output_infos_[i].scale,
+          output_infos_[i].zero_point,
           reinterpret_cast<float*>(tensor->raw_mutable_data()));
-    } else if (output_infos[i].data_type == APU_DATA_TYPE_FLOAT) {
+    } else if (output_infos_[i].data_type == APU_DATA_TYPE_FLOAT) {
         std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
-                    output_infos[i].buf.get(),
+                    output_infos_[i].buf.get(),
                     element_size * byte_per_element);
     } else {
       quantize_util_uint8_.Dequantize(
-          output_infos[i].buf.get(),
+          output_infos_[i].buf.get(),
           element_size,
-          output_infos[i].scale,
-          output_infos[i].zero_point,
+          output_infos_[i].scale,
+          output_infos_[i].zero_point,
           reinterpret_cast<float*>(tensor->raw_mutable_data()));
     }
   }
@@ -343,12 +355,12 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 bool ApuWrapper::Uninit() {
   bool ret = frontend->UninitGraph();
   frontend = nullptr;
-  input_infos.clear();
-  output_infos.clear();
+  input_infos_.clear();
+  output_infos_.clear();
   return ret;
 }
 
-int ApuWrapper::GetByteNum(apu_data_type data_type) {
+int ApuWrapper::GetByteNum(int data_type) {
   int byte_per_element;
   if (data_type == APU_DATA_TYPE_FLOAT || data_type == APU_DATA_TYPE_INT32) {
     byte_per_element = 4;

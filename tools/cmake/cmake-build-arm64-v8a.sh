@@ -11,6 +11,7 @@ MACE_ENABLE_OPENCL=OFF
 MACE_ENABLE_HEXAGON_DSP=OFF
 MACE_ENABLE_HEXAGON_HTA=OFF
 MACE_ENABLE_MTK_APU=OFF
+MACE_MTK_APU_ANCIENT=OFF
 if [[ "$RUNTIME" == "GPU" ]]; then
     MACE_ENABLE_OPENCL=ON
 elif [[ "$RUNTIME" == "HEXAGON" ]]; then
@@ -48,6 +49,7 @@ cmake -DANDROID_ABI="arm64-v8a" \
       -DMACE_ENABLE_HEXAGON_DSP=${MACE_ENABLE_HEXAGON_DSP}   \
       -DMACE_ENABLE_HEXAGON_HTA=${MACE_ENABLE_HEXAGON_HTA}   \
       -DMACE_ENABLE_MTK_APU=${MACE_ENABLE_MTK_APU}           \
+      -MACE_MTK_APU_ANCIENT=${MACE_MTK_APU_ANCIENT}          \
       -DMACE_ENABLE_BFLOAT16=${DMACE_ENABLE_BFLOAT16}        \
       -DMACE_ENABLE_OPT_SIZE=ON           \
       -DMACE_ENABLE_OBFUSCATE=ON          \
@@ -59,3 +61,5 @@ cmake -DANDROID_ABI="arm64-v8a" \
       ../../..
 make -j$(nproc) VERBOSE=1 && make install
 cd ../../..
+# Detect the plugin-device and copy the valid so to the output dir
+python tools/python/copy_apu_so.py --target_abi arm64-v8a --apu_path $BUILD_DIR"/install/lib/"
