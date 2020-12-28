@@ -663,7 +663,7 @@ def validate_model(abi,
                 sh.rm("-rf", "%s/%s" % (model_output_dir, formatted_name))
             device.pull_from_data_dir(formatted_name, model_output_dir)
 
-    if platform == "tensorflow" or platform == "onnx" or platform == "pytorch":
+    if platform in ["tensorflow", "onnx", "pytorch", 'keras']:
         validate(platform, model_file_path, "",
                  "%s/%s" % (model_output_dir, input_file_name),
                  "%s/%s" % (model_output_dir, output_file_name), device_type,

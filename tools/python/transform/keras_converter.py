@@ -122,6 +122,26 @@ def get_quant_wrapper_depthwise_kernel(quant_wrapper):
     return None
 
 
+def conv_output_length(input_length,
+                       filter_size,
+                       padding,
+                       stride,
+                       dilation=1):
+        if input_length is None:
+            return None
+
+        mace_check(padding in {'same', 'valid', 'full', 'causal'},
+                   "Not supported padding type: %s" % padding)
+        dilated_filter_size = filter_size + (filter_size - 1) * (dilation - 1)
+        if padding in ['same', 'causal']:
+            output_length = input_length
+        elif padding == 'valid':
+            output_length = input_length - dilated_filter_size + 1
+        elif padding == 'full':
+            output_length = input_length + dilated_filter_size - 1
+        return (output_length + stride - 1) // stride
+
+
 activation_types_dict = {
     "relu": ActivationType.RELU,
     # 'relu6': ActivationType.RELUX,
@@ -146,6 +166,8 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.DepthwiseConv2D: self.convert_depthwise_conv2d,
             keras.layers.Softmax: self.convert_softmax,
             keras.layers.BatchNormalization: self.convert_batch_normalization,
+            keras.layers.SeparableConv2D: self.convert_separable_conv2d,
+            keras.layers.UpSampling2D: self.convert_upsampling2d,
             keras.layers.Activation: self.convert_activation,
             keras.layers.ReLU: self.convert_relu,
             keras.layers.Concatenate: self.convert_concatenate,
@@ -154,6 +176,7 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.Add: self.convert_add,
             QuantizeLayer: self.convert_quantize_layer,
             QuantizeWrapper: self.convert_quantize_wrapper,
+            # keras.Sequential: self.convert_sequential,
         }
 
         self._option = option
@@ -164,6 +187,7 @@ class KerasConverter(base_converter.ConverterInterface):
         with tfmot.quantization.keras.quantize_scope():
             self._keras_model = keras.models.load_model(src_model_file,
                                                         compile=False)
+            self._keras_model.summary()
 
     def run(self):
         for op in self._keras_model.layers:
@@ -441,6 +465,7 @@ class KerasConverter(base_converter.ConverterInterface):
         axis = keras_op.axis
         axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
         axis_arg.i = axis
+        return op
 
     def convert_add(self, keras_op):
         op = self.convert_general_op_with_input_output(keras_op)
@@ -587,6 +612,14 @@ class KerasConverter(base_converter.ConverterInterface):
 
             return activation_op
 
+    # Not supportted yet
+    # def convert_sequential(self, engine):
+    #     for op in engine.layers:
+    #         mace_check(
+    #             type(op) in self._op_converters,
+    #             "Mace does not support keras op type %s yet" % type(op))
+    #         self._op_converters[type(op)](op)
+
     def add_quantize_info(self, op, minval, maxval):
         quantize_schema = self._option.quantize_schema
         if quantize_schema == MaceKeyword.mace_apu_16bit_per_tensor:
@@ -610,3 +643,92 @@ class KerasConverter(base_converter.ConverterInterface):
         quantize_info.zero_point = zero
 
         return quantize_info
+
+    def convert_upsampling2d(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+
+        if keras_op.interpolation == 'nearest':
+            op.type = MaceOp.ResizeNearestNeighbor.name
+        else:
+            op.type = MaceOp.ResizeBilinear.name
+
+        height_scale_arg = op.arg.add()
+        height_scale_arg.name = MaceKeyword.mace_height_scale_str
+        width_scale_arg = op.arg.add()
+        width_scale_arg.name = MaceKeyword.mace_width_scale_str
+        height_scale_arg.f = keras_op.size[0]
+        width_scale_arg.f = keras_op.size[1]
+
+    def convert_separable_conv2d(self, keras_op):
+        dw_conv2d_op = self.convert_general_op(keras_op)
+        dw_conv2d_op.type = MaceOp.DepthwiseConv2d.name
+        dw_conv2d_op.input.append(get_input(keras_op).name)
+        # Adds kernel tensor
+        dw_conv2d_op.input.append(keras_op.depthwise_kernel.name)
+        dw_kernel = self.add_keras_tensor(keras_op.depthwise_kernel)
+
+        padding_arg = dw_conv2d_op.arg.add()
+        padding_arg.name = MaceKeyword.mace_padding_str
+        padding_arg.i = padding_mode[keras_op.padding].value
+
+        strides_arg = dw_conv2d_op.arg.add()
+        strides_arg.name = MaceKeyword.mace_strides_str
+        strides_arg.ints.extend(keras_op.strides)
+
+        dilation_arg = dw_conv2d_op.arg.add()
+        dilation_arg.name = MaceKeyword.mace_dilations_str
+        dilations = keras_op.dilation_rate
+        dilation_arg.ints.extend(keras_op.dilation_rate)
+
+        dw_conv2d_output_name = keras_op.name + "_dw"
+        dw_conv2d_op.output.append(dw_conv2d_output_name)
+
+        input_shape = keras_shape2list(get_input(keras_op).shape)
+
+        height = conv_output_length(input_shape[1],
+                                    dw_kernel.dims[0],
+                                    keras_op.padding,
+                                    keras_op.strides[0],
+                                    dilations[0])
+        width = conv_output_length(input_shape[2],
+                                   dw_kernel.dims[1],
+                                   keras_op.padding,
+                                   keras_op.strides[1],
+                                   dilations[1])
+
+        output_shape = dw_conv2d_op.output_shape.add()
+        output_shape.dims.extend([input_shape[0],
+                                  height,
+                                  width,
+                                  dw_kernel.dims[2] * dw_kernel.dims[3]])
+
+        pw_conv2d_name = keras_op.name + "_pw"
+
+        pw_conv2d_op = self._mace_net_def.op.add()
+        pw_conv2d_op.name = pw_conv2d_name
+        pw_conv2d_op.type = MaceOp.Conv2D.name
+
+        pw_conv2d_op.input.append(dw_conv2d_output_name)
+
+        # Adds kernel tensor
+        pw_conv2d_op.input.append(keras_op.pointwise_kernel.name)
+        self.add_keras_tensor(keras_op.pointwise_kernel)
+
+        strides_arg = pw_conv2d_op.arg.add()
+        strides_arg.name = MaceKeyword.mace_strides_str
+        strides_arg.ints.extend([1, 1])
+
+        data_type_arg = pw_conv2d_op.arg.add()
+        data_type_arg.name = "T"
+        data_type_arg.i = dtype2mtype(keras_op.dtype)
+        framework_type_arg = pw_conv2d_op.arg.add()
+        framework_type_arg.name = MaceKeyword.mace_framework_type_str
+        framework_type_arg.i = FrameworkType.KERAS.value
+        ConverterUtil.add_data_format_arg(pw_conv2d_op, DataFormat.NHWC)
+
+        # Adds bias tensor
+        if keras_op.use_bias:
+            pw_conv2d_op.input.append(keras_op.bias.name)
+            self.add_keras_tensor(keras_op.bias)
+
+        self.split_activation_op(keras_op, pw_conv2d_op)
