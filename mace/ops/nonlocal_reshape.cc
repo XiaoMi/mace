@@ -101,7 +101,7 @@ void RegisterNonlocalReshape(OpRegistry *op_registry) {
                    NonlocalReshapeOp, DeviceType::CPU, int32_t);
   MACE_REGISTER_GPU_OP(op_registry, "NonlocalReshape", NonlocalReshapeOp);
   MACE_REGISTER_OP_CONDITION(
-      op_registry, OpConditionBuilder("Reshape").SetDevicePlacerFunc(
+      op_registry, OpConditionBuilder("NonlocalReshape").SetDevicePlacerFunc(
                        [](OpConditionContext *context) -> std::set<DeviceType> {
                          auto op = context->operator_def();
                          if (op->output_shape_size() != op->output_size()) {
