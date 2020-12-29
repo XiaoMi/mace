@@ -33,6 +33,7 @@ from transform.base_converter import ReduceType
 from transform.base_converter import RoundMode
 
 from utils.util import mace_check
+from quantize import quantize_util
 
 import numpy as np
 
@@ -81,6 +82,7 @@ OnnxSupportedOps = [
     # 'Cos',
     # 'Cosh',
     'DepthToSpace',
+    'DequantizeLinear',
     'DimRange',
     'Div',
     'Dropout',
@@ -139,6 +141,7 @@ OnnxSupportedOps = [
     'PadContext',
     'PNorm',
     'Pow',
+    'QuantizeLinear',
     # 'RNN',
     # 'RandomNormal',
     # 'RandonNormalLike',
@@ -346,6 +349,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.ConvTranspose.name: self.convert_deconv,
             OnnxOpType.Constant.name: self.convert_constant,
             OnnxOpType.DepthToSpace.name: self.convert_depth_space,
+            OnnxOpType.DequantizeLinear.name: self.convert_dequantize_linear,
             OnnxOpType.Dropout.name: self.convert_dropout,
             OnnxOpType.DimRange.name: self.convert_dim_range,
             OnnxOpType.Div.name: self.convert_eltwise,
@@ -380,6 +384,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.PNorm.name: self.convert_pnorm,
             OnnxOpType.Pow.name: self.convert_eltwise,
             OnnxOpType.PRelu.name: self.convert_activation,
+            OnnxOpType.QuantizeLinear.name: self.convert_quantize_linear,
             OnnxOpType.Relu.name: self.convert_activation,
             OnnxOpType.Reshape.name: self.convert_reshape,
             OnnxOpType.Reciprocal.name: self.convert_eltwise,
@@ -445,6 +450,12 @@ class OnnxConverter(base_converter.ConverterInterface):
         self._graph_shapes_dict = {}
         self._consts = {}
         self._replace_tensors = {}
+        self._source_framework = self._onnx_model.producer_name
+        self._consumers = {}
+        self._producer = {}
+        self.construct_producer_consumers()
+        self._scale_zeros = {}
+        self._skip_quant_dequants = set()
 
     @staticmethod
     def print_graph_info(graph):
@@ -454,6 +465,16 @@ class OnnxConverter(base_converter.ConverterInterface):
             print("inputs info:", value_info)
         for value_info in graph.output:
             print("outputs info:", value_info)
+
+    def construct_producer_consumers(self):
+        for node in self._onnx_model.graph.node:
+            for input_tensor in node.input:
+                if input_tensor not in self._consumers:
+                    self._consumers[input_tensor] = []
+                self._consumers[input_tensor].append(node)
+
+            for output_tensor in node.output:
+                self._producer[output_tensor] = node
 
     def extract_shape_info(self, graph):
         def extract_value_info(shape_dict, value_info):
@@ -571,12 +592,38 @@ class OnnxConverter(base_converter.ConverterInterface):
                        % node.op_type)
             self._op_converters[node.op_type](node)
 
+    def replace_input(self, node, orig, replace):
+        for idx in range(len(node.input)):
+            if node.input[idx] == orig:
+                node.input[idx] = replace
+
     def convert_tensors(self, graph_def):
         initializer = graph_def.initializer
         if initializer:
             for init in initializer:
                 tensor = self._mace_net_def.tensors.add()
                 tensor.name = init.name
+                pytorch = FrameworkType.PYTORCH.name.lower()
+                if self._source_framework == pytorch and \
+                        init.name in self._consumers:
+                    consumers = self._consumers[init.name]
+                    for quant_node in consumers:
+                        if quant_node.op_type == \
+                                OnnxOpType.QuantizeLinear.name:
+                            dequant_node = \
+                                self._consumers[quant_node.output[0]][0]
+                            mace_check(dequant_node.op_type ==
+                                       OnnxOpType.DequantizeLinear.name,
+                                       'consumer of QuantizeLinear must be DequantizeLinear')  # noqa
+                            tensor_real_consumers = \
+                                self._consumers[dequant_node.output[0]]
+                            for tensor_real_consumer in tensor_real_consumers:
+                                self.replace_input(
+                                    tensor_real_consumer,
+                                    dequant_node.output[0], init.name)
+                            self._skip_quant_dequants.add(quant_node.output[0])
+                            self._skip_quant_dequants.add(
+                                dequant_node.output[0])
 
                 onnx_tensor = numpy_helper.to_array(init)
                 tensor.dims.extend(list(init.dims))
@@ -642,6 +689,38 @@ class OnnxConverter(base_converter.ConverterInterface):
         alpha_arg = op.arg.add()
         alpha_arg.name = MaceKeyword.mace_activation_coefficient_str
         alpha_arg.f = alpha_value
+
+    def convert_quantize_linear(self, node):
+        mace_check(self._source_framework ==
+                   FrameworkType.PYTORCH.name.lower(),
+                   'Only support QuantizeLinear exported by PyTorch, '
+                   'this is exported by {}'.format(self._source_framework))
+        if len(node.outputs) == 1 and \
+                node.outputs[0] in self._skip_quant_dequants:
+            return
+        op = self.convert_general_op(node)
+        scale = self._scale_zeros[op.input[1]]
+        zero_point = self._scale_zeros[op.input[2]]
+        minval, maxval = quantize_util.scale_zero_to_min_max(scale, zero_point)
+        if op.input[0] in self._option.input_nodes:
+            self._option.input_nodes[op.input[0]].range = [minval, maxval]
+            op.type = MaceOp.Identity.name
+            del op.input[1:]
+        else:
+            op.type = 'FakeQuantWithMinMaxVars'
+            min_arg = op.arg.add()
+            min_arg.name = 'min'
+            max_arg = op.arg.add()
+            max_arg.name = 'max'
+            min_arg.f = minval
+            max_arg.f = maxval
+            num_bits_arg = op.arg.add()
+            num_bits_arg.name = 'num_bits'
+            num_bits_arg.i = 8
+            narrow_range_arg = op.arg.add()
+            narrow_range_arg.name = 'narrow_range'
+            narrow_range_arg.i = 0
+            del op.input[1:]
 
     def convert_affine(self, node):
         op = self.convert_general_op(node)
@@ -709,12 +788,30 @@ class OnnxConverter(base_converter.ConverterInterface):
 
     def convert_constant(self, node):
         output_name = node.outputs[0]
-        tensor = self._mace_net_def.tensors.add()
-        tensor.name = output_name
         onnx_tensor = node.attrs['value']
         tensor_value = numpy_helper.to_array(onnx_tensor)
-        tensor.dims.extend(list(onnx_tensor.dims))
         data_type = onnx_dtype(onnx_tensor.data_type)
+        consumers = self._consumers[output_name]
+        pytorch = FrameworkType.PYTORCH.name.lower()
+        quantize = OnnxOpType.QuantizeLinear.name
+        dequantize = OnnxOpType.DequantizeLinear.name
+        if self._source_framework == pytorch and \
+                len(consumers) == 1 and \
+                consumers[0].op_type in [quantize, dequantize]:
+            mace_check(tensor_value.size == 1,
+                       'scale/zero_point must have only 1 element, '
+                       '{} element is found'.format(tensor_value.size))
+            mace_check(data_type == np.float32 or data_type == np.uint8 or
+                       data_type == np.int8,
+                       'scale/zero_point should have type of float32, '
+                       'uint8 or int8')
+            if consumers[0].op_type == OnnxOpType.DequantizeLinear:
+                return
+            self._scale_zeros[output_name] = tensor_value
+            return
+        tensor = self._mace_net_def.tensors.add()
+        tensor.name = output_name
+        tensor.dims.extend(list(onnx_tensor.dims))
 
         if data_type == np.float32 or data_type == np.float64:
             tensor.data_type = mace_pb2.DT_FLOAT
@@ -777,13 +874,10 @@ class OnnxConverter(base_converter.ConverterInterface):
         else:
             group_val = 1
         if group_val > 1:
-            op.type = MaceOp.DepthwiseDeconv2d.name
             filter_shape = self._graph_shapes_dict[node.inputs[1]]
-            filter_tensor = self._consts[node.inputs[1]]
-            new_shape = [filter_shape[1], filter_shape[0],
-                         filter_shape[2], filter_shape[3]]
-            del filter_tensor.dims[:]
-            filter_tensor.dims.extend(new_shape)
+            mace_check(group_val == filter_shape[0] and filter_shape[1] == 1,
+                       'MACE does not support group deconv yet')
+            op.type = MaceOp.DepthwiseDeconv2d.name
         else:
             op.type = MaceOp.Deconv2D.name
         group_arg = op.arg.add()
@@ -831,6 +925,18 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         if 'mode' in node.attrs:
             mace_check(node.attrs['mode'] == 'DCR', "Only supports DCR mode.")
+
+    def convert_dequantize_linear(self, node):
+        mace_check(self._source_framework ==
+                   FrameworkType.PYTORCH.name.lower(),
+                   'Only support DequantizeLinear exported by PyTorch, '
+                   'this is exported by {}'.format(self._source_framework))
+        if len(node.outputs) == 1 and \
+                node.outputs[0] in self._skip_quant_dequants:
+            return
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Identity.name
+        del op.input[1:]
 
     def convert_dim_range(self, node):
         op = self.convert_general_op(node)

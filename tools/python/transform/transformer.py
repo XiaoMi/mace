@@ -36,6 +36,7 @@ from transform.base_converter import TransformerRule
 from utils.config_parser import Platform
 from quantize import quantize_util
 from utils.util import mace_check
+from validate import calculate_similarity
 
 
 class Transformer(base_converter.ConverterInterface):
@@ -51,6 +52,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.TRANSFORM_FAKE_QUANTIZE:
                 self.transform_fake_quantize,
             TransformerRule.REMOVE_USELESS_OP: self.remove_useless_op,
+            TransformerRule.FOLD_DIV_BN: self.fold_div_bn,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
             TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE:
@@ -2687,3 +2689,46 @@ class Transformer(base_converter.ConverterInterface):
                     changed = True
 
         return changed
+
+    def fold_div_bn(self):
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.BatchNorm.name:
+                scale = self._consts[op.input[1]]
+                producer_op = self._producer[op.input[0]]
+                if producer_op.type != MaceOp.Eltwise.name:
+                    continue
+                eltwise_type = ConverterUtil.get_arg(
+                    producer_op, MaceKeyword.mace_element_type_str)
+                if eltwise_type.i != EltwiseType.DIV.value:
+                    continue
+                if producer_op.input[1] not in self._consts:
+                    continue
+                divisor = self._consts[producer_op.input[1]]
+                if divisor.data_type != mace_pb2.DT_FLOAT or \
+                        scale.data_type != mace_pb2.DT_FLOAT:
+                    continue
+                scale_dims = scale.dims
+                divisor_dims = divisor.dims
+                df_op = ConverterUtil.data_format(op)
+                df_producer = ConverterUtil.data_format(producer_op)
+                df_nchw = DataFormat.NCHW
+                dim_match = df_op == df_nchw and \
+                    df_producer == df_nchw and len(scale_dims) == 1 and \
+                    len(divisor_dims) == 4 and \
+                    divisor_dims[1] == np.prod(np.array(divisor_dims)) and \
+                    divisor_dims[1] == scale_dims[0]
+                if not dim_match:
+                    continue
+                if not np.allclose(np.array(scale.float_data).reshape(-1),
+                                   np.array(divisor.float_data).reshape(-1)):
+                    continue
+                if producer_op.input[0] not in self._producer:
+                    continue
+                producer_producer = self._producer[producer_op.input[0]]
+                self.safe_remove_node(
+                    producer_op, producer_producer, remove_input_tensor=True)
+                del op.input[1]
+                self._model.tensors.remove(scale)
+                op.type = MaceOp.BiasAdd.name
+        return False
