@@ -91,6 +91,12 @@ def if_not_apu_enabled(a):
         "//conditions:default": a,
     })
 
+def if_apu_ancient(a, default_value = []):
+    return select({
+        "//mace:apu_ancient": a,
+        "//conditions:default": default_value,
+    })
+
 def if_opencl_enabled(a, default_value = []):
     return select({
         "//mace:opencl_enabled": a,

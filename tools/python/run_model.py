@@ -34,6 +34,7 @@ from utils.util import mace_check
 import run_target
 import validate
 
+
 """
 Tool for mace_run:
 
@@ -196,7 +197,8 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     if model_conf[ModelKeys.runtime] == DeviceType.HEXAGON:
         libs += ["third_party/nnlib/%s/libhexagon_controller.so" % target_abi]
     elif model_conf[ModelKeys.runtime] == DeviceType.APU:
-        libs += ["third_party/apu/libapu-frontend.so"]
+        apu_libs = dev.get_apu_so_paths()
+        libs += apu_libs
 
     target = Target(build_dir + "/install/bin/mace_run", libs,
                     opts=opts, envs=envs)

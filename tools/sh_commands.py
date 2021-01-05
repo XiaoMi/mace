@@ -258,6 +258,16 @@ def find_simpleperf_library(abi, simpleperf_path=''):
     return "%s/simpleperf" % simpleperf_path
 
 
+def get_apu_ancient(enable_apu):
+    if (not enable_apu):
+        return False
+    common.mace_check(abi == "arm64-v8a", "",
+                      "Only support arm64-v8a for apu runtime")
+    target_props = sh_commands.adb_getprop_by_serialno(self.address)
+    target_soc = target_props["ro.board.platform"]
+    android_ver = (int)(target_props["ro.build.version.release"])
+
+
 ################################
 # bazel commands
 ################################
@@ -267,6 +277,7 @@ def bazel_build(target,
                 enable_hexagon=False,
                 enable_hta=False,
                 enable_apu=False,
+                apu_ancient=False,
                 enable_neon=True,
                 enable_opencl=True,
                 enable_quantize=True,
@@ -314,7 +325,9 @@ def bazel_build(target,
             "--define",
             "hta=%s" % str(enable_hta).lower(),
             "--define",
-            "apu=%s" % str(enable_apu).lower())
+            "apu=%s" % str(enable_apu).lower(),
+            "--define",
+            "apu_ancient=%s" % str(apu_ancient).lower())
     if address_sanitizer:
         bazel_args += ("--config", "asan")
     if debug_mode:

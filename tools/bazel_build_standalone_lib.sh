@@ -167,7 +167,8 @@ case "${abi}" in
       "${LIB_DIR}"/"${abi}"/
     fi
     if [[ "${enable_apu}" == true ]];then
-      cp third_party/apu/*so "${LIB_DIR}"/"${abi}"/
+      # Detect the plugin-device and copy the valid so to the output dir
+      python tools/python/copy_apu_so.py --target_abi ${abi} --apu_path "${LIB_DIR}"/"${abi}"/
     fi
     if [[ "${enable_hta}" == true ]];then
       cp third_party/hta/"${abi}"/*so "${LIB_DIR}"/"${abi}"/
