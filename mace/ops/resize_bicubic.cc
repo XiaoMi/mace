@@ -19,6 +19,7 @@
 
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
+#include "mace/ops/common/coordinate_transformation_mode.h"
 #include "mace/ops/common/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bicubic.h"
@@ -28,7 +29,7 @@
 namespace mace {
 namespace ops {
 
-inline const std::shared_ptr<float> InitCoeffsTable() {
+inline const std::shared_ptr<float> InitCoeffsTable(const float A) {
   // Allocate and initialize coefficients table using Bicubic
   // convolution algorithm.
   // https://en.wikipedia.org/wiki/Bicubic_interpolation
@@ -36,7 +37,6 @@ inline const std::shared_ptr<float> InitCoeffsTable() {
       new float[(common::utils::kTableSize + 1) * 2],
       std::default_delete<float[]>());
   float *coeffs_tab_ptr = coeffs_tab.get();
-  static const float A = -0.75f;
   for (int i = 0; i <= common::utils::kTableSize; ++i) {
     float x = i * 1.0f / common::utils::kTableSize;
     coeffs_tab_ptr[i * 2] = ((A + 2) * x - (A + 3)) * x * x + 1;
@@ -46,33 +46,72 @@ inline const std::shared_ptr<float> InitCoeffsTable() {
   return coeffs_tab;
 }
 
-inline const float *GetCoeffsTable() {
+inline const float *GetCoeffsTable(bool is_tensorflow_half_pixel = false) {
   // Static so that we initialize it on first use
-  static const std::shared_ptr<float> coeffs_tab = InitCoeffsTable();
-  return coeffs_tab.get();
+  if (is_tensorflow_half_pixel) {
+    static const std::shared_ptr<float> coeffs_tab = InitCoeffsTable(-0.5f);
+    return coeffs_tab.get();
+  } else {
+    static const std::shared_ptr<float> coeffs_tab = InitCoeffsTable(-0.75f);
+    return coeffs_tab.get();
+  }
 }
 
-inline int64_t Bound(int64_t val, int64_t limit) {
-  return std::min<int64_t>(limit - 1ll, std::max<int64_t>(0ll, val));
+inline index_t Bound(index_t val, index_t limit) {
+  return std::min<index_t>(limit - 1ll, std::max<index_t>(0ll, val));
 }
 
-inline void GetWeightsAndIndices(float scale, bool half_pixel_centers,
-                                 int64_t out_loc, int64_t limit,
-                                 std::vector<float> *weights,
-                                 std::vector<int64_t> *indices) {
-  const float in = half_pixel_centers ?
-                   (static_cast<float>(out_loc) + 0.5f) * scale - 0.5f :
-                   out_loc * scale;
-  auto in_loc = static_cast<int64_t>(in);
+inline void GetWeightsAndIndices(
+    float scale,
+    CoordinateTransformationMode coordinate_transformation_mode,
+    index_t out_loc,
+    index_t out_size,
+    index_t limit,
+    std::vector<float> *weights,
+    std::vector<index_t> *indices) {
+  float in = out_loc * scale;
+  if (coordinate_transformation_mode == HALF_PIXEL) {
+    in = (static_cast<float>(out_loc) + 0.5f) * scale - 0.5f;
+  } else if (coordinate_transformation_mode == PYTORCH_HALF_PIXEL) {
+    in = out_size > 1 ? (static_cast<float>(out_loc) + 0.5f) * scale - 0.5f : 0;
+  }
+  const index_t in_loc = std::floor(in);
   const float delta = in - in_loc;
-  const int64_t offset = lrintf(delta * common::utils::kTableSize);
-  const float *coeffs_tab = GetCoeffsTable();
-  *weights = {coeffs_tab[offset * 2 + 1],
-              coeffs_tab[offset * 2],
-              coeffs_tab[(common::utils::kTableSize - offset) * 2],
-              coeffs_tab[(common::utils::kTableSize - offset) * 2 + 1]};
+  const index_t offset = lrintf(delta * common::utils::kTableSize);
+
   *indices = {Bound(in_loc - 1, limit), Bound(in_loc, limit),
               Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
+  if (coordinate_transformation_mode == HALF_PIXEL) {  // for TensorFlow >= 1.14
+    static const float *coeffs_tab = GetCoeffsTable(true);
+    weights->resize(4);
+    (*weights)[0] =
+        ((*indices)[0] == in_loc - 1 ? coeffs_tab[offset * 2 + 1] : 0.0f);
+    (*weights)[1] =
+        ((*indices)[1] == in_loc ? coeffs_tab[offset * 2] : 0.0f);
+    (*weights)[2] =
+        ((*indices)[2] == in_loc + 1
+             ? coeffs_tab[(common::utils::kTableSize - offset) * 2]
+             : 0.0f);
+    (*weights)[3] =
+        ((*indices)[3] == in_loc + 2
+             ? coeffs_tab[(common::utils::kTableSize - offset) * 2 + 1]
+             : 0.0f);
+    const float weight_sum =
+        (*weights)[0] + (*weights)[1] + (*weights)[2] + (*weights)[3];
+    if (std::abs(weight_sum) >= 1000.0f * std::numeric_limits<float>::min()) {
+      const float one_over_weight_sum = 1.0f / weight_sum;
+      (*weights)[0] *= one_over_weight_sum;
+      (*weights)[1] *= one_over_weight_sum;
+      (*weights)[2] *= one_over_weight_sum;
+      (*weights)[3] *= one_over_weight_sum;
+    }
+  } else {
+    static const float *coeffs_tab = GetCoeffsTable(false);
+    *weights = {coeffs_tab[offset * 2 + 1],
+                coeffs_tab[offset * 2],
+                coeffs_tab[(common::utils::kTableSize - offset) * 2],
+                coeffs_tab[(common::utils::kTableSize - offset) * 2 + 1]};
+  }
 }
 
 inline float Interpolate1D(const std::vector<float> &weights,
@@ -81,18 +120,19 @@ inline float Interpolate1D(const std::vector<float> &weights,
       values[2] * weights[2] + values[3] * weights[3];
 }
 
-inline void ResizeImage(const OpContext *context,
-                        const float *images,
-                        const index_t batch_size,
-                        const index_t in_height,
-                        const index_t in_width,
-                        const index_t out_height,
-                        const index_t out_width,
-                        const index_t channels,
-                        const float height_scale,
-                        const float width_scale,
-                        const bool half_pixel_centers,
-                        float *output) {
+inline void ResizeImage(
+    const OpContext *context,
+    const float *images,
+    const index_t batch_size,
+    const index_t in_height,
+    const index_t in_width,
+    const index_t out_height,
+    const index_t out_width,
+    const index_t channels,
+    const float height_scale,
+    const float width_scale,
+    const CoordinateTransformationMode coordinate_transformation_mode,
+    float *output) {
   utils::ThreadPool
       &thread_pool = context->device()->cpu_runtime()->thread_pool();
 
@@ -102,13 +142,13 @@ inline void ResizeImage(const OpContext *context,
       for (index_t y = start1; y < end1; y += step1) {
         std::vector<float> y_weights;
         std::vector<index_t> y_indices;
-        GetWeightsAndIndices(height_scale, half_pixel_centers, y, in_height,
-                             &y_weights, &y_indices);
+        GetWeightsAndIndices(height_scale, coordinate_transformation_mode, y,
+                             out_height, in_height, &y_weights, &y_indices);
         for (index_t x = 0; x < out_width; ++x) {
           std::vector<float> x_weights;
           std::vector<index_t> x_indices;
-          GetWeightsAndIndices(width_scale, half_pixel_centers, x, in_width,
-                               &x_weights, &x_indices);
+          GetWeightsAndIndices(width_scale, coordinate_transformation_mode, x,
+                               out_width, in_width, &x_weights, &x_indices);
 
           for (index_t c = 0; c < channels; ++c) {
             // Use a 4x4 patch to compute the interpolated output value at
@@ -144,8 +184,10 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
   explicit ResizeBicubicOp(OpConstructContext *context)
       : Operation(context),
         align_corners_(Operation::GetOptionalArg<bool>("align_corners", false)),
-        half_pixel_centers_(
-            Operation::GetOptionalArg<bool>("half_pixel_centers", false)),
+        coordinate_transformation_mode_(
+            static_cast<CoordinateTransformationMode>(
+                Operation::GetOptionalArg<int>("coordinate_transformation_mode",
+                                               0))),
         size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -198,7 +240,7 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
                 channels,
                 height_scale,
                 width_scale,
-                half_pixel_centers_,
+                coordinate_transformation_mode_,
                 output_data);
 
     return MaceStatus::MACE_SUCCESS;
@@ -206,7 +248,7 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
 
  private:
   bool align_corners_;
-  bool half_pixel_centers_;
+  CoordinateTransformationMode coordinate_transformation_mode_;
   std::vector<index_t> size_;
 };
 
@@ -218,14 +260,16 @@ class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
       : Operation(context) {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
-    bool half_pixel_centers = Operation::GetOptionalArg<bool>(
-        "half_pixel_centers", false);
+    CoordinateTransformationMode coordinate_transformation_mode =
+        static_cast<CoordinateTransformationMode>(
+            Operation::GetOptionalArg<int>("coordinate_transformation_mode",
+                                           0));
     std::vector<index_t> size = Operation::GetRepeatedArgs<index_t>(
         "size", {-1, -1});
     MACE_CHECK(size.size() == 2);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeBicubicKernel>(
-          align_corners, half_pixel_centers, size[0], size[1]);
+          align_corners, coordinate_transformation_mode, size[0], size[1]);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

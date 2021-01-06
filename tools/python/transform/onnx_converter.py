@@ -21,6 +21,7 @@ from py_proto import mace_pb2
 from transform import base_converter
 from transform.base_converter import ActivationType
 from transform.base_converter import ConverterUtil
+from transform.base_converter import CoordinateTransformationMode
 from transform.base_converter import DataFormat
 from transform.base_converter import EltwiseType
 from transform.base_converter import FrameworkType
@@ -32,8 +33,9 @@ from transform.base_converter import PadType
 from transform.base_converter import ReduceType
 from transform.base_converter import RoundMode
 
-from utils.util import mace_check
 from quantize import quantize_util
+from utils.util import mace_check
+from utils.util import MaceLogger
 
 import numpy as np
 
@@ -160,6 +162,7 @@ OnnxSupportedOps = [
     # 'ReduceSumSquare',
     'Relu',
     'ReplaceIndex',
+    'Resize',
     'Reshape',
     'Round',
     'Scale',
@@ -412,7 +415,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.TargetRMSNorm: self.convert_target_rms_norm,
             OnnxOpType.Transpose.name: self.convert_transpose,
             OnnxOpType.Unsqueeze.name: self.convert_unsqueeze,
-            OnnxOpType.Upsample.name: self.convert_upsample
+            OnnxOpType.Upsample.name: self.convert_upsample,
+            OnnxOpType.Resize.name: self.convert_resize
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -657,6 +661,9 @@ class OnnxConverter(base_converter.ConverterInterface):
                 if output in self._graph_shapes_dict:
                     shape_info = self._graph_shapes_dict[output]
                     output_shape.dims.extend(shape_info)
+                else:
+                    MaceLogger.warning(
+                        "%s does not have output shape." % op.name)
 
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
@@ -998,8 +1005,12 @@ class OnnxConverter(base_converter.ConverterInterface):
         #  convert clip to activation(ReLU or ReLUX)
         #  so it can be fused into convolution.
         is_relux = False
-        if 'min' in node.attrs:
-            min_value = node.attrs['min']
+        inputs_num = len(node.inputs)
+        if 'min' in node.attrs or inputs_num > 1:
+            if inputs_num > 1:
+                min_value = self._consts[node.inputs[1]].float_data[0]
+            else:
+                min_value = node.attrs['min']
             if min_value == 0:
                 is_relux = True
         if is_relux:
@@ -1008,8 +1019,11 @@ class OnnxConverter(base_converter.ConverterInterface):
 
             type_arg = op.arg.add()
             type_arg.name = MaceKeyword.mace_activation_type_str
-            if "max" in node.attrs:
-                max_value = node.attrs["max"]
+            if "max" in node.attrs or inputs_num > 2:
+                if inputs_num > 2:
+                    max_value = self._consts[node.inputs[2]].float_data[0]
+                else:
+                    max_value = node.attrs["max"]
                 type_arg.s = six.b(ActivationType.RELUX.name)
                 alpha_arg = op.arg.add()
                 alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
@@ -1018,6 +1032,8 @@ class OnnxConverter(base_converter.ConverterInterface):
                 type_arg.s = six.b(ActivationType.RELU.name)
         else:
             self.convert_eltwise(node)
+        if inputs_num > 1:
+            del op.input[1:]
 
     def convert_eltwise(self, node):
         op = self.convert_general_op(node)
@@ -1639,3 +1655,53 @@ class OnnxConverter(base_converter.ConverterInterface):
         align_corners_arg = op.arg.add()
         align_corners_arg.name = MaceKeyword.mace_align_corners_str
         align_corners_arg.i = node.attrs.get('align_corners', 0)
+
+    def convert_resize(self, node):
+        op = self.convert_general_op(node)
+
+        scale_tensor = self._consts[node.inputs[2]]
+        if scale_tensor.dims[0] == 0:
+            size_tensor = self._consts[node.inputs[3]]
+            size_arg = op.arg.add()
+            size_arg.name = MaceKeyword.mace_resize_size_str
+            size_value = np.array([size_tensor.int32_data[-2],
+                                   size_tensor.int32_data[-1]], dtype=np.int32)
+            size_arg.ints.extend(size_value)
+        else:
+            height_scale_arg = op.arg.add()
+            height_scale_arg.name = MaceKeyword.mace_height_scale_str
+            width_scale_arg = op.arg.add()
+            width_scale_arg.name = MaceKeyword.mace_width_scale_str
+            height_scale_arg.f = scale_tensor.float_data[-2]
+            width_scale_arg.f = scale_tensor.float_data[-1]
+
+        if node.attrs['mode'] == 'nearest':
+            op.type = MaceOp.ResizeNearestNeighbor.name
+        elif node.attrs['mode'] == 'linear':
+            op.type = MaceOp.ResizeBilinear.name
+        elif node.attrs['mode'] == 'cubic':
+            op.type = MaceOp.ResizeBicubic.name
+        else:
+            mace_check(False, "Unsupported mode %s" % node.attrs['mode'])
+
+        ct_mode = node.attrs['coordinate_transformation_mode']
+        # Only support pytorch resize, i.e. 'asymmetric' for 'nearest' and
+        # ['align_corners', 'pytorch_half_pixel'] for ['linear', 'cubic']
+        if op.type == MaceOp.ResizeNearestNeighbor.name:
+            mace_check(ct_mode == 'asymmetric',
+                       "Resize nearest doesn't support: %s" % ct_mode)
+        elif op.type in [MaceOp.ResizeBilinear.name,
+                         MaceOp.ResizeBicubic.name]:
+            mace_check(ct_mode == 'align_corners' or
+                       ct_mode == 'pytorch_half_pixel',
+                       "Resize linear/cubic doesn't support: %s" % ct_mode)
+        if ct_mode == 'align_corners':
+            align_corners_arg = op.arg.add()
+            align_corners_arg.name = MaceKeyword.mace_align_corners_str
+            align_corners_arg.i = 1
+        elif ct_mode == 'pytorch_half_pixel':
+            coordinate_transformation_mode_arg = op.arg.add()
+            coordinate_transformation_mode_arg.name = \
+                MaceKeyword.mace_coordinate_transformation_mode_str
+            coordinate_transformation_mode_arg.i = \
+                CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value

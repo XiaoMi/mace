@@ -1,5 +1,16 @@
 #include <common.h>
 
+#if CT_MODE == 1    // HALF_PIXEL, for TensorFlow >= 1.14
+inline float coeff_even(float i) {
+  float x = i / TABLE_SIZE;
+  return (1.5f * x - 2.5f) * x * x + 1.0f;
+}
+
+inline float coeff_odd(float i) {
+  float x = i / TABLE_SIZE + 1.0f;
+  return ((-0.5f * x + 2.5f) * x - 4.0f) * x + 2.0f;
+}
+#else               // NONE, PYTORCH_HALF_PIXEL
 inline float coeff_even(float i) {
   float x = i / TABLE_SIZE;
   return (1.25f * x - 2.25f) * x * x + 1.0f;
@@ -9,6 +20,46 @@ inline float coeff_odd(float i) {
   float x = i / TABLE_SIZE + 1.0f;
   return ((-0.75f * x + 3.75f) * x - 6.0f) * x + 3.0f;
 }
+#endif
+
+inline void get_weights_and_indices(float scale, int out_loc, int out_size,
+                                    int limit, float4 *weights, int4 *indices) {
+#if CT_MODE == 0    // NONE
+  const float in = out_loc * scale;
+#elif CT_MODE == 1  // HALF_PIXEL
+  const float in = ((float)out_loc + 0.5f) * scale - 0.5f;
+#elif CT_MODE == 2  // PYTORCH_HALF_PIXEL
+  const float in =
+      select(0.0f, ((float)out_loc + 0.5f) * scale - 0.5f, out_size > 1);
+#endif
+
+  const int in_loc = floor(in);
+  const float delta = in - in_loc;
+  const int offset = convert_int_rte(delta * TABLE_SIZE);
+  const float offset_l = offset;
+  const float offset_r = TABLE_SIZE - offset_l;
+
+  *indices = (int4) (in_loc - 1, in_loc, in_loc + 1, in_loc + 2);
+  *indices = min(max(*indices, 0), limit - 1);
+#if CT_MODE == 1    // HALF_PIXEL, for TensorFlow >= 1.14
+  (*weights).s0 =
+      select(0.0f, coeff_odd(offset_l), (*indices).s0 == in_loc - 1);
+  (*weights).s1 =
+      select(0.0f, coeff_even(offset_l), (*indices).s1 == in_loc);
+  (*weights).s2 =
+      select(0.0f, coeff_even(offset_r), (*indices).s2 == in_loc + 1);
+  (*weights).s3 =
+      select(0.0f, coeff_odd(offset_r), (*indices).s3 == in_loc + 2);
+  const float weight_sum =
+        (*weights).s0 + (*weights).s1 + (*weights).s2 + (*weights).s3;
+  if (fabs(weight_sum) >= 1000.0f * FLT_MIN) {
+    (*weights) /= weight_sum;
+  }
+#else               // NONE, PYTORCH_HALF_PIXEL
+  *weights = (float4) (coeff_odd(offset_l), coeff_even(offset_l),
+                       coeff_even(offset_r), coeff_odd(offset_r));
+#endif
+}
 
 __kernel void resize_bicubic_nocache(OUT_OF_RANGE_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM3
@@ -16,7 +67,6 @@ __kernel void resize_bicubic_nocache(OUT_OF_RANGE_PARAMS
                                      __write_only image2d_t output,
                                      __private const float height_scale,
                                      __private const float width_scale,
-                                     __private const int half_pixel_centers,
                                      __private const int in_height,
                                      __private const int in_width,
                                      __private const int out_height) {
@@ -38,36 +88,15 @@ __kernel void resize_bicubic_nocache(OUT_OF_RANGE_PARAMS
 
   const int b = hb / out_height;
   const int h = hb - mul24(b, out_height);
-
-  const float h_in = half_pixel_centers ?
-      ((float)h + 0.5f) * height_scale - 0.5f : h * height_scale;
-  const float w_in = half_pixel_centers ?
-      ((float)w + 0.5f) * width_scale - 0.5f : w * width_scale;
-
   const int in_w_offset = mul24(ch_blk, in_width);
   const int in_h_offset = mul24(b, in_height);
 
-  const int h_in_loc = (int)h_in;
-  const float h_delta = h_in - h_in_loc;
-  const int h_offset = h_delta * TABLE_SIZE + 0.5f;
-
-  const int w_in_loc = (int)w_in;
-  const float w_delta = w_in - w_in_loc;
-  const int w_offset = w_delta * TABLE_SIZE + 0.5f;
-
-  const float h_offset_l = h_offset;
-  const float h_offset_r = TABLE_SIZE - h_offset_l;
-  float4 y_weights = {coeff_odd(h_offset_l), coeff_even(h_offset_l),
-                      coeff_even(h_offset_r), coeff_odd(h_offset_r)};
-  int4 y_indices = {h_in_loc - 1, h_in_loc, h_in_loc + 1, h_in_loc + 2};
-  y_indices = min(max(y_indices, 0), in_height - 1);
-
-  const float w_offset_l = w_offset;
-  const float w_offset_r = TABLE_SIZE - w_offset_l;
-  float4 x_weights = {coeff_odd(w_offset_l), coeff_even(w_offset_l),
-                      coeff_even(w_offset_r), coeff_odd(w_offset_r)};
-  int4 x_indices = {w_in_loc - 1, w_in_loc, w_in_loc + 1, w_in_loc + 2};
-  x_indices = min(max(x_indices, 0), in_width - 1);
+  float4 y_weights, x_weights;
+  int4 y_indices, x_indices;
+  get_weights_and_indices(height_scale, h, out_height, in_height,
+                          &y_weights, &y_indices);
+  get_weights_and_indices(width_scale, w, out_width, in_width,
+                          &x_weights, &x_indices);
 
   float4 coeffs0 = 0, coeffs1 = 0, coeffs2 = 0, coeffs3 = 0;
   for (int i = 0; i < 4; ++i) {

@@ -93,7 +93,11 @@ void TestRandomResizeBilinear() {
     int width = 1 + rand_r(&seed) % 100;
     int in_height = 1 + rand_r(&seed) % 100;
     int in_width = 1 + rand_r(&seed) % 100;
-    int align_corners = rand_r(&seed) % 1;
+    int align_corners = rand_r(&seed) % 2;
+    int coordinate_transformation_mode = 0;
+    if (align_corners == 0) {
+      coordinate_transformation_mode = rand_r(&seed) % 3;
+    }
 
     // Construct graph
     OpsTestNet net;
@@ -107,6 +111,8 @@ void TestRandomResizeBilinear() {
         .Input("InputNCHW")
         .Output("OutputNCHW")
         .AddIntArg("align_corners", align_corners)
+        .AddIntArg("coordinate_transformation_mode",
+                   coordinate_transformation_mode)
         .AddIntsArg("size", {height, width})
         .Finalize(net.NewOperatorDef());
     // Run on CPU
@@ -122,6 +128,8 @@ void TestRandomResizeBilinear() {
           .Input("Input")
           .Output("Output")
           .AddIntArg("align_corners", align_corners)
+          .AddIntArg("coordinate_transformation_mode",
+                     coordinate_transformation_mode)
           .AddIntsArg("size", {height, width})
           .Finalize(net.NewOperatorDef());
       // Run
@@ -143,7 +151,11 @@ void TestQuantizedResizeBilinear() {
     int width = 1 + rand_r(&seed) % 100;
     int in_height = 1 + rand_r(&seed) % 100;
     int in_width = 1 + rand_r(&seed) % 100;
-    int align_corners = rand_r(&seed) % 1;
+    int align_corners = rand_r(&seed) % 2;
+    int coordinate_transformation_mode = 0;
+    if (align_corners == 0) {
+      coordinate_transformation_mode = rand_r(&seed) % 3;
+    }
 
     // Construct graph
     OpsTestNet net;
@@ -162,6 +174,8 @@ void TestQuantizedResizeBilinear() {
         .Input("InputNCHW")
         .Output("OutputNCHW")
         .AddIntArg("align_corners", align_corners)
+        .AddIntArg("coordinate_transformation_mode",
+                   coordinate_transformation_mode)
         .AddIntsArg("size", {height, width})
         .Finalize(net.NewOperatorDef());
     // Run on CPU
@@ -182,6 +196,8 @@ void TestQuantizedResizeBilinear() {
         .Input("QuantizedInput")
         .Output("QuantizedOutput")
         .AddIntArg("align_corners", align_corners)
+        .AddIntArg("coordinate_transformation_mode",
+                   coordinate_transformation_mode)
         .AddIntsArg("size", {height, width})
         .OutputType({DT_UINT8})
         .AddIntArg("T", DT_UINT8)

@@ -25,6 +25,7 @@
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/ops/common/coordinate_transformation_mode.h"
 
 namespace mace {
 namespace ops {
@@ -66,10 +67,11 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
  public:
-  explicit ResizeNearestNeighborKernel(bool align_corners,
-                                       bool half_pixel_centers)
+  explicit ResizeNearestNeighborKernel(
+      bool align_corners,
+      CoordinateTransformationMode coordinate_transformation_mode)
       : align_corners_(align_corners),
-        half_pixel_centers_(half_pixel_centers) {}
+        coordinate_transformation_mode_(coordinate_transformation_mode) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -80,7 +82,7 @@ class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
 
  private:
   bool align_corners_;
-  bool half_pixel_centers_;
+  CoordinateTransformationMode coordinate_transformation_mode_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

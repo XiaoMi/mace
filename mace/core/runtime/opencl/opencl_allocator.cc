@@ -90,7 +90,9 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) {
 MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                                      const DataType dt,
                                      void **result) {
-  MACE_CHECK(image_shape.size() == 2, "Image shape's size must equal 2");
+  MACE_CHECK(
+      image_shape.size() == 2 && image_shape[0] != 0 && image_shape[1] != 0,
+      "Image shape's size must equal 2 and dim must not be 0.");
   MACE_LATENCY_LOGGER(1, "Allocate OpenCL image: ",
                       image_shape[0], ", ", image_shape[1]);
 

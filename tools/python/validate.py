@@ -306,22 +306,14 @@ def validate_onnx_model(model_file,
                         output_names, output_shapes, output_data_formats,
                         validation_threshold, input_data_types,
                         backend, log_file):
-    import onnx
-    if backend == "tensorflow":
-        from onnx_tf.backend import prepare
-        print("valivate on onnx tensorflow backend.")
-    elif backend == "caffe2" or backend == "pytorch":
-        from caffe2.python.onnx.backend import prepare
-        print("valivate on onnx caffe2 backend.")
-    else:
-        util.MaceLogger.error(
-            VALIDATION_MODULE,
-            "onnx backend framwork '" + backend + "' is invalid.")
+    print("validate on onnxruntime.")
+    import onnxruntime as onnxrt
+
     if not os.path.isfile(model_file):
         util.MaceLogger.error(
             VALIDATION_MODULE,
             "Input graph file '" + model_file + "' does not exist!")
-    model = onnx.load(model_file)
+
     input_dict = {}
     for i in range(len(input_names)):
         input_value = load_data(util.formatted_file_name(input_file,
@@ -332,24 +324,12 @@ def validate_onnx_model(model_file,
                 len(input_shapes[i]) == 4:
             input_value = input_value.transpose((0, 3, 1, 2))
         input_dict[input_names[i]] = input_value
-    onnx_outputs = []
-    for i in range(len(output_names)):
-        out_shape = output_shapes[i][:]
-        if output_data_formats[i] == DataFormat.NHWC and \
-                len(out_shape) == 4:
-            out_shape[1], out_shape[2], out_shape[3] = \
-                out_shape[3], out_shape[1], out_shape[2]
-        onnx_outputs.append(
-            onnx.helper.make_tensor_value_info(output_names[i],
-                                               onnx.TensorProto.FLOAT,
-                                               out_shape))
-    model.graph.output.extend(onnx_outputs)
-    rep = prepare(model)
 
-    output_values = rep.run(input_dict)
+    sess = onnxrt.InferenceSession(model_file)
+    output_values = sess.run(output_names, input_dict)
+
     for i in range(len(output_names)):
-        out_name = output_names[i]
-        value = output_values[out_name].flatten()
+        value = output_values[i].flatten()
         output_file_name = util.formatted_file_name(mace_out_file,
                                                     output_names[i])
         mace_out_value = load_data(output_file_name)

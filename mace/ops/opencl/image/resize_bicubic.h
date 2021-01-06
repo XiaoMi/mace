@@ -25,6 +25,7 @@
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/ops/common/coordinate_transformation_mode.h"
 
 namespace mace {
 namespace ops {
@@ -63,12 +64,13 @@ inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
  public:
-  ResizeBicubicKernel(bool align_corners,
-                      bool half_pixel_centers,
-                      const index_t out_height,
-                      const index_t out_width)
+  ResizeBicubicKernel(
+      bool align_corners,
+      CoordinateTransformationMode coordinate_transformation_mode,
+      const index_t out_height,
+      const index_t out_width)
       : align_corners_(align_corners),
-        half_pixel_centers_(half_pixel_centers),
+        coordinate_transformation_mode_(coordinate_transformation_mode),
         out_height_(out_height),
         out_width_(out_width) {}
 
@@ -79,7 +81,7 @@ class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
 
  private:
   bool align_corners_;
-  bool half_pixel_centers_;
+  CoordinateTransformationMode coordinate_transformation_mode_;
   index_t out_height_;
   index_t out_width_;
   cl::Kernel kernel_;

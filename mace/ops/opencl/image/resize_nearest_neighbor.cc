@@ -49,6 +49,8 @@ MaceStatus ResizeNearestNeighborKernel::Compute(
     built_options.emplace("-Dresize_nearest_neighbor_nocache=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
+    built_options.emplace(
+        MakeString("-DCT_MODE=", coordinate_transformation_mode_));
     MACE_RETURN_IF_ERROR(
         runtime->BuildKernel("resize_nearest_neighbor",
                              kernel_name,
@@ -82,7 +84,6 @@ MaceStatus ResizeNearestNeighborKernel::Compute(
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, height_scale);
     kernel_.setArg(idx++, width_scale);
-    kernel_.setArg(idx++, static_cast<int32_t>(half_pixel_centers_));
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
