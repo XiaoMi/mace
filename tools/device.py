@@ -27,7 +27,7 @@ import layers_validate
 import sh_commands
 
 sys.path.insert(0, "tools/python")  # noqa
-from utils.device import AndroidDevice
+from copy_apu_so import get_apu_so_paths_by_props
 
 
 class DeviceWrapper:
@@ -146,7 +146,7 @@ class DeviceWrapper:
         target_props = sh_commands.adb_getprop_by_serialno(self.address)
         target_soc = target_props["ro.board.platform"]
         android_ver = (int)(target_props["ro.build.version.release"])
-        return AndroidDevice.get_apu_so_paths_by_props(android_ver, target_soc)
+        return get_apu_so_paths_by_props(android_ver, target_soc)
 
     def pull(self, src_path, file_name, dst_path='.'):
         if not os.path.exists(dst_path):

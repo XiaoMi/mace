@@ -604,7 +604,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
                         value_arg = op.arg.add()
                         value_arg.name = MaceKeyword.mace_scalar_input_str
                         value_arg.f = scalar
-                        self._skip_tensor.add(tf_op.inputs[1].name)
                         value_index_arg = op.arg.add()
                         value_index_arg.name = \
                             MaceKeyword.mace_scalar_input_index_str
@@ -938,6 +937,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = axis_value
+        self._skip_tensor.add(tf_op.inputs[1].name)
         del op.input[1]
 
     def convert_squeeze(self, tf_op):
@@ -1180,6 +1180,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = axis
+        self._skip_tensor.add(tf_op.inputs[1].name)
         del op.input[1]
 
         exclusive = tf_op.get_attr('exclusive')

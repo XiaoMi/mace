@@ -51,6 +51,7 @@ def generate_input_data(input_file, input_node, input_shape, input_ranges,
         input_ranges = [r for r in input_ranges.split(':')]
     else:
         input_ranges = ["-1,1"] * len(input_names)
+    print("The scope of generated data: ", input_ranges)
     if input_data_type:
         input_data_types = [data_type
                             for data_type in input_data_type.split(',')]

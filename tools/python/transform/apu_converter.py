@@ -294,6 +294,13 @@ class ApuConverter(base_converter.ConverterInterface):
             op.type = self._apu_ops.map_nn_op(op.type)
         self.change_activation_to_prelu()
 
+    def get_input_type(self, op, type_map):
+        mace_check(len(op.input) > 0, "op %s has no input" % op.name)
+        for input in op.input:
+            if input in type_map:
+                return type_map[input]
+        mace_check(False, "op %s have no inputs in type_map" % op.name)
+
     def add_op_output_type(self):
         type_map = {}
         for input_info in self._model.input_info:
@@ -310,9 +317,8 @@ class ApuConverter(base_converter.ConverterInterface):
                 print([op.name, len(op.output), len(op.output_type)])
                 type_map[op.output[0]] = op.output_type[0]
                 continue
-            mace_check(op.input[0] in type_map,
-                       op.input[0] + ' not in type_map')
-            op.output_type.extend([type_map[op.input[0]]])
+            input_type = self.get_input_type(op, type_map)
+            op.output_type.extend([input_type])
             type_map[op.output[0]] = op.output_type[0]
 
         for op in self._model.op:

@@ -89,12 +89,12 @@ bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
 
   // parse model argument
   int const_data_num = 0;
-  int apu_data_type = -1;
+  int apu_dt = -1;
   for (auto arg : net_def.arg()) {
     if (arg.name().compare("const_data_num") == 0) {
       const_data_num = arg.i();
     } else if (arg.name().compare("apu_data_type") == 0) {
-      apu_data_type = arg.i();
+      apu_dt = arg.i();
     }
   }
   // input tensors
@@ -104,7 +104,7 @@ bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
     tensor.tensor_id = input_info.node_id();
     tensor.tensor_type = APU_TENSOR_MODEL_INPUT;
     tensor.data_type = static_cast<apu_data_type>(
-        MapToApuDataType(static_cast<DataType>(apu_data_type)));
+        MapToApuDataType(static_cast<DataType>(apu_dt)));
     tensor.scale = input_info.has_scale() ? input_info.scale() : -1.0f;
     tensor.zero_point = input_info.has_zero_point() ?
                             input_info.zero_point() : 0;
@@ -137,7 +137,7 @@ bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
     tensor.tensor_id = output_info.node_id();
     tensor.tensor_type = APU_TENSOR_MODEL_OUTPUT;
     tensor.data_type = static_cast<apu_data_type>(
-        MapToApuDataType(static_cast<DataType>(apu_data_type)));
+        MapToApuDataType(static_cast<DataType>(apu_dt)));
     tensor.dim_size = output_info.dims_size();
     ApuTensorInfo info;
     info.name = output_info.name();

@@ -22,6 +22,7 @@ import tempfile
 import shutil
 import numpy as np
 
+from copy_apu_so import get_apu_so_paths
 from py_proto import mace_pb2
 from utils import util
 from utils import device
@@ -100,6 +101,8 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
             runtime = DeviceType.GPU
     else:
         runtime = config_parser.parse_device_type(runtime)
+    mace_check(runtime != DeviceType.APU or target_abi == "arm64-v8a",
+               "APU runtime does only support arm64-v8a")
 
     # install models to devices
     workdir = flags.output + "/" + model_name
@@ -197,7 +200,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     if model_conf[ModelKeys.runtime] == DeviceType.HEXAGON:
         libs += ["third_party/nnlib/%s/libhexagon_controller.so" % target_abi]
     elif model_conf[ModelKeys.runtime] == DeviceType.APU:
-        apu_libs = dev.get_apu_so_paths()
+        apu_libs = get_apu_so_paths(dev)
         libs += apu_libs
 
     target = Target(build_dir + "/install/bin/mace_run", libs,
@@ -259,6 +262,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
 def generate_input_data(input_file, input_node, input_shape, input_ranges,
                         input_data_type):
     np.random.seed()
+    print("The scope of generated data: ", input_ranges)
     for i in range(len(input_node)):
         data = np.random.random(input_shape[i]) * (
             input_ranges[i][1] - input_ranges[i][0]) + input_ranges[i][0]
@@ -289,7 +293,7 @@ def parse_args():
     parser.add_argument(
         "--target_abi",
         type=str,
-        default="armeabi-v7a",
+        default="arm64-v8a",
         help="Target ABI: host, armeabi-v7a, arm64-v8a,"
              " arm-linux-gnueabihf, aarch64-linux-gnu"
     )
