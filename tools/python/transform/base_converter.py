@@ -354,6 +354,7 @@ class TransformerRule(Enum):
     TRANSFORM_EXPAND_DIMS_TO_RESHAPE = 47
     QUANTIZE_FOLD_RELU = 48
     TRANSFORM_KERAS_QUANTIZE_INFO = 49
+    FOLD_DIV_BN = 51
 
 
 class ConverterInterface(object):
@@ -585,6 +586,7 @@ class ConverterOption(object):
             self._transformer_option = [
                 # Model structure related transformation
                 TransformerRule.REMOVE_USELESS_OP,
+                TransformerRule.FOLD_DIV_BN,
                 TransformerRule.TRANSFORM_FAKE_QUANTIZE,
                 TransformerRule.REMOVE_USELESS_OP,
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,

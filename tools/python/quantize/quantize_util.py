@@ -241,3 +241,11 @@ def quantize_bias_for_hexagon(data):
 
 def dequantize(quantized_data):
     return quantized_data.scale * (quantized_data.data - quantized_data.zero)
+
+
+def scale_zero_to_min_max(scale, zero_point):
+    scale = float(scale)
+    zero_point = float(zero_point)
+    minval = -zero_point * scale
+    maxval = (255. - zero_point) * scale
+    return minval, maxval
