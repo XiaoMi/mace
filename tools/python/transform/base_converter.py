@@ -95,6 +95,12 @@ class FrameworkType(Enum):
     PYTORCH = 5
 
 
+class CoordinateTransformationMode(Enum):
+    NONE = 0
+    HALF_PIXEL = 1
+    PYTORCH_HALF_PIXEL = 2
+
+
 MaceSupportedOps = [
     'Activation',
     'AddN',
@@ -238,6 +244,7 @@ class MaceKeyword(object):
     mace_height_scale_str = 'height_scale'
     mace_width_scale_str = 'width_scale'
     mace_half_pixel_centers_str = 'half_pixel_centers'
+    mace_coordinate_transformation_mode_str = 'coordinate_transformation_mode'
     mace_space_batch_block_shape_str = 'block_shape'
     mace_space_depth_block_size_str = 'block_size'
     mace_constant_value_str = 'constant_value'

@@ -20,6 +20,7 @@
 #include "mace/core/registry/ops_registry.h"
 #include "mace/utils/memory.h"
 #include "mace/core/quantize.h"
+#include "mace/ops/common/coordinate_transformation_mode.h"
 #include "mace/ops/common/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/resize_bilinear.h"
@@ -40,16 +41,23 @@ inline void ComputeInterpolationWeights(
     const index_t out_size,
     const index_t in_size,
     const float scale,
-    bool half_pixel_centers,
+    const CoordinateTransformationMode coordinate_transformation_mode,
     CachedInterpolation *interpolation) {
   interpolation[out_size].lower = 0;
   interpolation[out_size].upper = 0;
   for (index_t i = out_size - 1; i >= 0; --i) {
-    const float in = half_pixel_centers ?
-                     (static_cast<float>(i) + 0.5f) * scale - 0.5f : i * scale;
-    interpolation[i].lower = static_cast<index_t>(in);
-    interpolation[i].upper = std::min(interpolation[i].lower + 1, in_size - 1);
-    interpolation[i].lerp = in - interpolation[i].lower;
+    float in = i * scale;
+    if (coordinate_transformation_mode == HALF_PIXEL) {
+      in = (static_cast<float>(i) + 0.5f) * scale - 0.5f;
+    } else if (coordinate_transformation_mode == PYTORCH_HALF_PIXEL) {
+      in = out_size > 1 ? (static_cast<float>(i) + 0.5f) * scale - 0.5f : 0;
+    }
+    const float in_f = std::floor(in);
+    interpolation[i].lower =
+        std::max(static_cast<index_t>(in_f), static_cast<index_t>(0));
+    interpolation[i].upper =
+        std::min(static_cast<index_t>(std::ceil(in)), in_size - 1);
+    interpolation[i].lerp = in - in_f;
   }
 }
 
@@ -186,8 +194,10 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
         size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)),
-        half_pixel_centers_(
-            Operation::GetOptionalArg<bool>("half_pixel_centers", false)) {}
+        coordinate_transformation_mode_(
+            static_cast<CoordinateTransformationMode>(
+                Operation::GetOptionalArg<int>("coordinate_transformation_mode",
+                                               0))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -242,9 +252,9 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
 
     // Compute the cached interpolation weights on the x and y dimensions.
     ComputeInterpolationWeights(out_height, in_height, height_scale,
-                                half_pixel_centers_, ys.data());
+                                coordinate_transformation_mode_, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale,
-                                half_pixel_centers_, xs.data());
+                                coordinate_transformation_mode_, xs.data());
 
     ResizeImageNCHW(context,
                     input_data,
@@ -266,7 +276,7 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
-  bool half_pixel_centers_;
+  CoordinateTransformationMode coordinate_transformation_mode_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -279,8 +289,10 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
         size_(Operation::GetRepeatedArgs<index_t>("size", {-1, -1})),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)),
-        half_pixel_centers_(
-            Operation::GetOptionalArg<bool>("half_pixel_centers", false)) {}
+        coordinate_transformation_mode_(
+            static_cast<CoordinateTransformationMode>(
+                Operation::GetOptionalArg<int>("coordinate_transformation_mode",
+                                               0))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -335,9 +347,9 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
 
     // Compute the cached interpolation weights on the x and y dimensions.
     ComputeInterpolationWeights(out_height, in_height, height_scale,
-                                half_pixel_centers_, ys.data());
+                                coordinate_transformation_mode_, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale,
-                                half_pixel_centers_, xs.data());
+                                coordinate_transformation_mode_, xs.data());
 
     ResizeImageNHWC(context,
                     input_data,
@@ -359,7 +371,7 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
   std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
-  bool half_pixel_centers_;
+  CoordinateTransformationMode coordinate_transformation_mode_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -374,11 +386,13 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0))  {
     bool align_corners = Operation::GetOptionalArg<bool>(
         "align_corners", false);
-    bool half_pixel_centers = Operation::GetOptionalArg<bool>(
-        "half_pixel_centers", false);
+    CoordinateTransformationMode coordinate_transformation_mode =
+        static_cast<CoordinateTransformationMode>(
+            Operation::GetOptionalArg<int>("coordinate_transformation_mode",
+                                           0));
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeBilinearKernel>(
-          align_corners, half_pixel_centers);
+          align_corners, coordinate_transformation_mode);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

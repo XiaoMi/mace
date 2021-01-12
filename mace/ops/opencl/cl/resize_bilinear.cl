@@ -6,7 +6,6 @@ __kernel void resize_bilinear_nocache(OUT_OF_RANGE_PARAMS
                                       __write_only image2d_t output,
                                       __private const float height_scale,
                                       __private const float width_scale,
-                                      __private const int half_pixel_centers,
                                       __private const int in_height,
                                       __private const int in_width,
                                       __private const int out_height) {
@@ -27,17 +26,26 @@ __kernel void resize_bilinear_nocache(OUT_OF_RANGE_PARAMS
   const int b = hb / out_height;
   const int h = hb - mul24(b, out_height);
 
-  const float h_in = half_pixel_centers ?
-      ((float)h + 0.5f) * height_scale - 0.5f : h * height_scale;
-  const float w_in = half_pixel_centers ?
-      ((float)w + 0.5f) * width_scale - 0.5f : w * width_scale;
-  const int h_lower = max(0, (int) floor(h_in));
-  const int h_upper = min(in_height - 1, h_lower + 1);
-  const int w_lower = max(0, (int) floor(w_in));
-  const int w_upper = min(in_width - 1, w_lower + 1);
+#if CT_MODE == 0    // NONE
+  const float h_in = h * height_scale;
+  const float w_in = w * width_scale;
+#elif CT_MODE == 1  // HALF_PIXEL
+  const float h_in = ((float)h + 0.5f) * height_scale - 0.5f;
+  const float w_in = ((float)w + 0.5f) * width_scale - 0.5f;
+#elif CT_MODE == 2  // PYTORCH_HALF_PIXEL
+  const float h_in = out_height > 1 ?
+      ((float)h + 0.5f) * height_scale - 0.5f : 0;
+  const float w_in = out_width > 1 ? ((float)w + 0.5f) * width_scale - 0.5f : 0;
+#endif
+  const float h_in_f = floor(h_in);
+  const int h_lower = max(0, (int) h_in_f);
+  const int h_upper = min(in_height - 1, (int) ceil(h_in));
+  const float w_in_f = floor(w_in);
+  const int w_lower = max(0, (int) w_in_f);
+  const int w_upper = min(in_width - 1, (int) ceil(w_in));
 
-  const float h_lerp = h_in - h_lower;
-  const float w_lerp = w_in - w_lower;
+  const float h_lerp = h_in - h_in_f;
+  const float w_lerp = w_in - w_in_f;
 
   const int in_w_offset = mul24(ch_blk, in_width);
   const int in_h_offset = mul24(b, in_height);

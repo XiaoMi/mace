@@ -771,10 +771,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         align_corners_arg.i = tf_op.get_attr(tf_align_corners)
         try:
             half_pixel_centers = tf_op.get_attr('half_pixel_centers')
-            half_pixel_centers_arg = op.arg.add()
-            half_pixel_centers_arg.name = \
-                MaceKeyword.mace_half_pixel_centers_str
-            half_pixel_centers_arg.i = half_pixel_centers
+            if half_pixel_centers:
+                coordinate_transformation_mode_arg = op.arg.add()
+                coordinate_transformation_mode_arg.name = \
+                    MaceKeyword.mace_coordinate_transformation_mode_str
+                coordinate_transformation_mode_arg.i = \
+                    CoordinateTransformationMode.HALF_PIXEL.value
         except ValueError:
             pass
 

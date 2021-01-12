@@ -18,7 +18,7 @@ RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors
     recommonmark
 
 RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
-    torch==1.4.0 onnx onnx_tf
+    torch==1.4.0 onnx onnxruntime
 
 # Customize vim
 RUN git clone --recursive https://github.com/llhe/vimrc.git && \
