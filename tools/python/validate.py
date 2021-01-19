@@ -307,12 +307,23 @@ def validate_onnx_model(model_file,
                         validation_threshold, input_data_types,
                         backend, log_file):
     print("validate on onnxruntime.")
+    import onnx
     import onnxruntime as onnxrt
 
     if not os.path.isfile(model_file):
         util.MaceLogger.error(
             VALIDATION_MODULE,
             "Input graph file '" + model_file + "' does not exist!")
+
+    model = onnx.load(model_file)
+    model_outputs = set()
+    for output in model.graph.output:
+        model_outputs.add(output.name)
+    for output_name in output_names:
+        if output_name not in model_outputs:
+            layer_value_info = onnx.helper.ValueInfoProto()
+            layer_value_info.name = output_name
+            model.graph.output.append(layer_value_info)
 
     input_dict = {}
     for i in range(len(input_names)):
@@ -325,7 +336,7 @@ def validate_onnx_model(model_file,
             input_value = input_value.transpose((0, 3, 1, 2))
         input_dict[input_names[i]] = input_value
 
-    sess = onnxrt.InferenceSession(model_file)
+    sess = onnxrt.InferenceSession(model.SerializeToString())
     output_values = sess.run(output_names, input_dict)
 
     for i in range(len(output_names)):

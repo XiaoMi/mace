@@ -1178,22 +1178,40 @@ class Transformer(base_converter.ConverterInterface):
         elif self._option.quantize and \
                 (self._option.device == DeviceType.HEXAGON.value or
                  self._option.device == DeviceType.HTA.value):
+            print("Transpose filters to HWIO/HWIM")
             for op in net.op:
-                # from HWOI to OHWI, deconv is unique
+                if filter_format == DataFormat.OIHW and \
+                        (op.type == MaceOp.Conv2D.name or
+                         op.type == MaceOp.DepthwiseConv2d.name or
+                         (op.type == MaceOp.FullyConnected.name and
+                          len(self._consts[op.input[1]].dims) == 4)) and \
+                        op.input[1] in self._consts and \
+                        op.input[1] not in transposed_filter:
+                    filter = self._consts[op.input[1]]
+                    filter_data = np.array(filter.float_data).reshape(
+                        filter.dims)
+                    filter_data = filter_data.transpose(2, 3, 1, 0)
+                    filter.float_data[:] = filter_data.flat
+                    filter.dims[:] = filter_data.shape
+                    transposed_filter.add(op.input[1])
+
                 if op.type == MaceOp.Deconv2D.name \
                         and op.input[1] in self._consts \
                         and op.input[1] not in transposed_deconv_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
                         filter.dims)
-                    filter_data = filter_data.transpose(2, 0, 1, 3)
+                    if filter_format == DataFormat.HWIO:
+                        # from HWOI to OHWI
+                        filter_data = filter_data.transpose(2, 0, 1, 3)
+                    elif filter_format == DataFormat.OIHW:
+                        # from IOHW to OHWI
+                        filter_data = filter_data.transpose(1, 2, 3, 0)
+                    else:
+                        mace_check(False, "Unsupported filter format.")
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
                     transposed_deconv_filter.add(op.input[1])
-
-            print("Transpose filters to HWIO/HWIM")
-            mace_check(filter_format == DataFormat.HWIO,
-                       "HEXAGON only support HWIO/HWIM filter format.")
         else:
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
             if filter_format == DataFormat.HWIO:
@@ -1824,25 +1842,20 @@ class Transformer(base_converter.ConverterInterface):
                         if len(ops[0].input) >= 4:
                             check_deconv = ops[0].input[3] == tensor.name
             if check_conv or check_deconv:
-                if self._option.device == DeviceType.CPU.value \
-                       or self._option.device == DeviceType.APU.value:
-                    conv_op = ops[0]
-                    scale_input = self._quantize_activation_info[
-                        conv_op.input[0]].scale
-                    if conv_op.input[1] not in self._quantized_tensor:
-                        self.quantize_tensor(self._consts[conv_op.input[1]])
-                    scale_filter = self._consts[conv_op.input[1]].scale
-                    scale = scale_input * scale_filter
-                    quantized_tensor = \
-                        quantize_util.quantize_with_scale_and_zero(
-                            tensor.float_data, scale, 0)
-                elif self._option.device == DeviceType.HEXAGON.value or \
+                conv_op = ops[0]
+                scale_input = self._quantize_activation_info[
+                    conv_op.input[0]].scale
+                if conv_op.input[1] not in self._quantized_tensor:
+                    self.quantize_tensor(self._consts[conv_op.input[1]])
+                scale_filter = self._consts[conv_op.input[1]].scale
+                scale = scale_input * scale_filter
+                quantized_tensor = \
+                    quantize_util.quantize_with_scale_and_zero(
+                        tensor.float_data, scale, 0)
+                if self._option.device == DeviceType.HEXAGON.value or \
                         self._option.device == DeviceType.HTA.value:
-                    quantized_tensor = \
-                        quantize_util.quantize_bias_for_hexagon(
-                            tensor.float_data)
-                else:
-                    mace_check(False, "wrong device.")
+                    quantized_tensor.minval = scale * (-2**31)
+                    quantized_tensor.maxval = scale * (2**31 - 1)
                 tensor.data_type = mace_pb2.DT_INT32
             elif self._option.quantize_schema == \
                     MaceKeyword.mace_apu_16bit_per_tensor:
@@ -1884,7 +1897,8 @@ class Transformer(base_converter.ConverterInterface):
             ops = self._consumers.get(tensor.name, None)
             if ops is not None and len(ops) == 1:
                 if ops[0].type in [MaceOp.Conv2D.name,
-                                   MaceOp.FullyConnected.name]:
+                                   MaceOp.FullyConnected.name,
+                                   MaceOp.MatMul.name]:
                     quantized_tensor = \
                         quantize_util.quantize(tensor.float_data,
                                                self._option.device,

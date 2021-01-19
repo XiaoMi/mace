@@ -1,8 +1,8 @@
 Basic usage for Micro Controllers
 ==================================
 
-MACE Micro is a lightweight neural network inference engine for MCUs and low-power DSPs.
-At now we support Cortex-M MCUs and Qualcomm Hexagon DSPs. You can get our projects from GitHub.
+MACE Micro is a lightweight neural network inference engine for MCUs.
+At now we support Cortex-M MCUs. You can get our projects from GitHub.
 
 Get MACE Micro Projects
 -----------------------

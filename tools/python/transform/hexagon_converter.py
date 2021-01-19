@@ -29,12 +29,14 @@ from transform.base_converter import ActivationType
 from transform.base_converter import ConverterUtil
 from transform.base_converter import DeviceType
 from transform.base_converter import EltwiseType
+from transform.base_converter import FrameworkType
 from transform.base_converter import MaceKeyword
 from transform.base_converter import MaceOp
 from transform.base_converter import PaddingMode
 from transform.base_converter import PadType
 from transform.base_converter import PoolingType
 from transform.base_converter import ReduceType
+from quantize import quantize_util
 from utils.util import mace_check
 
 
@@ -47,25 +49,31 @@ HexagonSupportedOps = [
     'OUTPUT',
     'QuantizedAdd_8p8to8',
     'QuantizedAvgPool_8',
+    'QuantizedBatchNorm_8x8p8to8',
     'QuantizedConcat_8',
+    'QuantizedDiv_8',
     'QuantizedMaxPool_8',
     'QuantizedMaximum_8',
     'QuantizedMinimum_8',
     'QuantizedMul_8x8to8',
     'QuantizedPad_8',
+    'QuantizedRecip_8',
     'QuantizedRelu_8',
     'QuantizedReluX_8',
     'QuantizedReshape',
     'QuantizedResizeBilinear_8',
     'QuantizedSigmoid_8',
     'QuantizedSoftmax_8',
+    'QuantizedSplit_8',
     'QuantizedStridedSlice_8',
     'QuantizedSub_8p8to8',
     'QuantizedTanh_8',
     'QuantizedTransposeConv2d_8x8p32to8',
     'QuantizeINPUT_f_to_8',
+    'ResizeNearestNeighbor_8',
     'SpaceToBatchND_8',
     'SpaceToDepth_8',
+    'SuperFC_8x8p32to8',
     'Supernode_8x8p32to8',
     'Nop',
 ]
@@ -73,10 +81,20 @@ HexagonSupportedOps = [
 HexagonOp = Enum('HexagonOp', [(op, op) for op in HexagonSupportedOps],
                  type=str)
 
+
+class HexagonPadding(Enum):
+    NN_PAD_NA = 0
+    NN_PAD_SAME = 1
+    NN_PAD_VALID = 2
+    NN_PAD_MIRROR_REFLECT = 3
+    NN_PAD_MIRROR_SYMMETRIC = 4
+    NN_PAD_SAME_CAFFE = 5
+
+
 padding_mode = {
-    PaddingMode.NA: 0,
-    PaddingMode.SAME: 1,
-    PaddingMode.VALID: 2
+    PaddingMode.NA: HexagonPadding.NN_PAD_NA.value,
+    PaddingMode.SAME: HexagonPadding.NN_PAD_SAME.value,
+    PaddingMode.VALID: HexagonPadding.NN_PAD_VALID.value
 }
 
 
@@ -94,19 +112,16 @@ def get_op_and_port_from_tensor(tensor_name):
     return op, port
 
 
-def get_input_shape(tensor_name, model):
-    producer_op_name, _ = get_op_and_port_from_tensor(tensor_name)
-    input_shape = None
-    for producer_op in model.op:
-        if producer_op.name == producer_op_name:
-            input_shape = producer_op.output_shape[0].dims
-            break
-    mace_check(input_shape is not None, "Missing input shape.")
-    return input_shape
-
-
 def normalize_name(name):
     return name.replace(':', '_')
+
+
+def add_port_for_tensor(name):
+    return name + ':0' if ':' not in name else name
+
+
+def remove_port_for_tensor(name):
+    return name[:-2] if ':0' in name else name
 
 
 class HexagonConverter(base_converter.ConverterInterface):
@@ -123,15 +138,19 @@ class HexagonConverter(base_converter.ConverterInterface):
         EltwiseType.PROD.value: HexagonOp.QuantizedMul_8x8to8.name,
         EltwiseType.MIN.value: HexagonOp.QuantizedMinimum_8.name,
         EltwiseType.MAX.value: HexagonOp.QuantizedMaximum_8.name,
+        EltwiseType.DIV.value: HexagonOp.QuantizedDiv_8.name,
     }
 
     def __init__(self, option, model, quantize_activation_info):
         self._option = option
         self._model = model
+        self._new_ops = []
         self._consts = {}
+        self._producers = {}
         self._quantize_activation_info = quantize_activation_info
         self._op_converters = {
             MaceOp.Activation.name: self.convert_activation,
+            MaceOp.BatchNorm.name: self.convert_batchnorm,
             MaceOp.BatchToSpaceND.name: self.convert_batchspace,
             MaceOp.Concat.name: self.convert_concat,
             MaceOp.Conv2D.name: self.convert_conv2d,
@@ -141,20 +160,25 @@ class HexagonConverter(base_converter.ConverterInterface):
             MaceOp.Dequantize.name: self.convert_dequantize,
             MaceOp.Eltwise.name: self.convert_elementwise,
             MaceOp.ExpandDims.name: self.convert_expanddims,
+            MaceOp.FullyConnected.name: self.convert_fullyconnected,
             MaceOp.Pad.name: self.convert_pad,
             MaceOp.Pooling.name: self.convert_pooling,
             MaceOp.Quantize.name: self.convert_quantize,
             MaceOp.Reduce.name: self.convert_reduce,
             MaceOp.ResizeBilinear.name: self.convert_resizebilinear,
+            MaceOp.ResizeNearestNeighbor.name:
+                self.convert_resizenearestneighbor,
             MaceOp.Softmax.name: self.convert_softmax,
+            MaceOp.Split.name: self.convert_split,
             MaceOp.StridedSlice.name: self.convert_stridedslice,
             MaceOp.SpaceToBatchND.name: self.convert_batchspace,
             MaceOp.SpaceToDepth.name: self.convert_depthspace,
         }
+        self._framework_type = ConverterUtil.get_arg(
+            self._model, MaceKeyword.mace_framework_type_str).i
 
     def run(self):
-        for tensor in self._model.tensors:
-            self._consts[tensor.name] = tensor
+        self.add_port_and_construct_producers()
 
         # convert op node
         self.convert_ops()
@@ -163,7 +187,33 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         self.add_node_id(model_inputs)
 
+        self.remove_port()
+
         return self._model
+
+    def add_port_and_construct_producers(self):
+        for tensor in self._model.tensors:
+            tensor.name = add_port_for_tensor(tensor.name)
+            self._consts[tensor.name] = tensor
+        for key in tuple(self._quantize_activation_info):
+            name = add_port_for_tensor(key)
+            self._quantize_activation_info[name] = \
+                self._quantize_activation_info[key]
+        for op in self._model.op:
+            for i in range(len(op.output)):
+                op.output[i] = add_port_for_tensor(op.output[i])
+                if op.output[i] not in self._producers:
+                    self._producers[op.output[i]] = op
+
+    def get_input_shape(self, tensor_name):
+        mace_check(tensor_name in self._producers, "Missing producer.")
+        op = self._producers[tensor_name]
+        input_shape = None
+        for i, output in enumerate(op.output):
+            if output == tensor_name:
+                input_shape = op.output_shape[i].dims
+        mace_check(input_shape is not None, "Missing input shape.")
+        return input_shape
 
     def add_port_for_tensors(self,  tensors):
         for i in range(len(tensors)):
@@ -173,6 +223,33 @@ class HexagonConverter(base_converter.ConverterInterface):
                 if node_name in self._quantize_activation_info:
                     self._quantize_activation_info[tensors[i]] = \
                         self._quantize_activation_info[node_name]
+
+    def remove_port(self):
+        if self._framework_type == FrameworkType.TENSORFLOW.value:
+            return
+        for op in self._model.op:
+            for i in range(len(op.input)):
+                op.input[i] = remove_port_for_tensor(op.input[i])
+            for i in range(len(op.output)):
+                op.output[i] = remove_port_for_tensor(op.output[i])
+        for tensor in self._model.tensors:
+            tensor.name = remove_port_for_tensor(tensor.name)
+
+    def add_quantized_scalar_const_node(self, name, val, op=None):
+        if op is not None:
+            name = op.name + name
+            op.input.append(name)
+        if name not in self._consts:
+            quantized_tensor = quantize_util.quantize(
+                [val], DeviceType.HEXAGON.value, False)
+            tensor = self._model.tensors.add()
+            self._consts[name] = tensor
+            tensor.name = name
+            tensor.data_type = mace_pb2.DT_UINT8
+            tensor.dims.extend([1])
+            tensor.int32_data.extend(quantized_tensor.data)
+            tensor.minval = quantized_tensor.minval
+            tensor.maxval = quantized_tensor.maxval
 
     def add_scalar_const_node(self, name, val, op=None):
         if op is not None:
@@ -198,9 +275,18 @@ class HexagonConverter(base_converter.ConverterInterface):
         else:
             op.input.insert(insert_index, arg_tensor.name)
 
+    def add_min_max_const_node_for_split(self, this_op, tensor_name):
+        op, port = get_op_and_port_from_tensor(tensor_name)
+        this_op.input.extend([op + ':2'])
+        this_op.input.extend([op + ':3'])
+
     def add_min_max_const_node(
             self, this_op, tensor_name, add_min=True, add_max=True,
             diff_port=True):
+        if tensor_name in self._producers and \
+                self._producers[tensor_name].type == \
+                HexagonOp.QuantizedSplit_8.name:
+            return self.add_min_max_const_node_for_split(this_op, tensor_name)
         op, port = get_op_and_port_from_tensor(tensor_name)
         mace_check(port == 0, 'port should be 0 to add min max tensor then.')
         if tensor_name in self._quantize_activation_info:
@@ -357,6 +443,43 @@ class HexagonConverter(base_converter.ConverterInterface):
                             port += i * 3
                 node_input.output_port = port
 
+    def add_bias(self, op):
+        print('Hexagon conv/deconv/fc requires biasadd, we add it.')
+        channels = op.output_shape[0].dims[3]
+        bias_data = np.zeros(channels, dtype=int)
+        bias_tensor = self._model.tensors.add()
+        bias_tensor.data_type = mace_pb2.DT_INT32
+        bias_tensor.dims.extend([channels])
+        bias_tensor.int32_data.extend(bias_data)
+        bias_tensor.minval = 0
+        bias_tensor.maxval = 0
+        bias_tensor.name = op.name + "/bias:0"
+        bias = bias_tensor.name
+        self._consts[bias] = bias_tensor
+        return bias
+
+    def add_padding_type_for_conv_pooling(self, op, kernels, strides):
+        arg = ConverterUtil.get_arg(op, MaceKeyword.mace_padding_str)
+        if arg is not None:  # TensorFlow
+            op.padding = padding_mode[PaddingMode(arg.i)]
+        else:                # PyTorch, Caffe
+            input_shape = self.get_input_shape(op.input[0])
+            output_shape = op.output_shape[0].dims
+            in_h, in_w = input_shape[1], input_shape[2]
+            k_h, k_w = kernels[0], kernels[1]
+            out_h, out_w = output_shape[1], output_shape[2]
+
+            if (out_h == (in_h - k_h) // strides[0] + 1) and \
+                    (out_w == (in_w - k_w) // strides[1] + 1):
+                op.padding = HexagonPadding.NN_PAD_VALID.value
+            elif (out_h == (in_h - 1) // strides[0] + 1) and \
+                    (out_w == (in_w - 1) // strides[1] + 1):
+                op.padding = HexagonPadding.NN_PAD_SAME_CAFFE.value
+            else:
+                mace_check(False,
+                           "Hexagon does not support padding type for: %s"
+                           % op)
+
     def convert_ops(self):
         print("Convert mace graph to hexagon.")
         for op in self._model.op:
@@ -364,8 +487,12 @@ class HexagonConverter(base_converter.ConverterInterface):
                        "Mace Hexagon does not support op type %s yet"
                        % op.type)
             self.pre_convert(op)
-            self._op_converters[op.type](op)
-            self.post_convert(op)
+            post_convert_omitted = self._op_converters[op.type](op)
+            if post_convert_omitted is None or not post_convert_omitted:
+                self.post_convert(op)
+
+        del self._model.op[:]
+        self._model.op.extend(self._new_ops)
 
     def pre_convert(self, op):
         self.add_port_for_tensors(op.input)
@@ -385,10 +512,13 @@ class HexagonConverter(base_converter.ConverterInterface):
                 out_max_byte_size *= 4
             op.out_max_byte_size.extend([out_max_byte_size])
 
-        op.padding = padding_mode[PaddingMode.NA]
-        arg = ConverterUtil.get_arg(op, MaceKeyword.mace_padding_str)
-        if arg is not None:
-            op.padding = padding_mode[PaddingMode(arg.i)]
+        if not op.HasField("padding"):
+            op.padding = padding_mode[PaddingMode.NA]
+            arg = ConverterUtil.get_arg(op, MaceKeyword.mace_padding_str)
+            if arg is not None:
+                op.padding = padding_mode[PaddingMode(arg.i)]
+
+        self._new_ops.append(op)
 
     def convert_activation(self, op):
         self.add_min_max_const_node(op, op.input[0])
@@ -404,6 +534,17 @@ class HexagonConverter(base_converter.ConverterInterface):
         except KeyError:
             mace_check(False,
                        "Hexagon does not support activation %s" % act_type)
+
+    def convert_batchnorm(self, op):
+        bias = op.input.pop()
+        self.add_min_max_const_node(op, op.input[0])
+        self.add_min_max_const_node(op, op.input[1])
+        op.input.append(bias)
+        self.add_min_max_const_node(op, bias)
+        self.add_min_max_const_node(
+            op, op.output[0], True, True, False)
+
+        op.type = HexagonOp.QuantizedBatchNorm_8x8p8to8.name
 
     def convert_batchspace(self, op):
         strides_arg = ConverterUtil.get_arg(
@@ -442,19 +583,8 @@ class HexagonConverter(base_converter.ConverterInterface):
         op.type = HexagonOp.QuantizedConcat_8.name
 
     def convert_conv2d(self, op):
-        channels = op.output_shape[0].dims[3]
         if len(op.input) < 3:
-            print('Supernode requires biasadd, we add it.')
-            bias_data = np.zeros(channels, dtype=int)
-            bias_tensor = self._model.tensors.add()
-            bias_tensor.data_type = mace_pb2.DT_INT32
-            bias_tensor.dims.extend([channels])
-            bias_tensor.int32_data.extend(bias_data)
-            bias_tensor.minval = 0
-            bias_tensor.maxval = 0
-            bias_tensor.name = op.name + "/bias:0"
-            bias = bias_tensor.name
-            self._consts[bias] = bias_tensor
+            bias = self.add_bias(op)
         else:
             bias = op.input.pop()
 
@@ -472,6 +602,14 @@ class HexagonConverter(base_converter.ConverterInterface):
         self.add_min_max_const_node(
             op, op.output[0], True, True, False)
 
+        self.add_padding_type_for_conv_pooling(
+            op, self._consts[op.input[1]].dims, strides_arg.ints)
+
+        dilations_arg = ConverterUtil.get_arg(op, 'dilations')
+        mace_check(dilations_arg is None or
+                   (dilations_arg.ints[0] == 1 and dilations_arg.ints[1] == 1),
+                   "Hexagon only support dilations[1,1].")
+
         if op.type == MaceOp.DepthwiseConv2d.name:
             op.type = HexagonOp.DepthwiseSupernode_8x8p32to8.name
         else:
@@ -480,57 +618,68 @@ class HexagonConverter(base_converter.ConverterInterface):
     def add_deconv_pad_node(self, op):
         padding_type_arg = \
             ConverterUtil.get_arg(op, MaceKeyword.mace_padding_type_str)
-        mace_check(padding_type_arg is not None, "Missing padding of Deconv.")
-        padding_type = PaddingMode(padding_type_arg.i)
-        strides_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_strides_str)
-        mace_check(strides_arg is not None, "Missing strides of Deconv.")
-        stride_h = strides_arg.ints[0]
-        stride_w = strides_arg.ints[1]
+        padding_values_arg = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_padding_values_str)
+        mace_check(padding_type_arg is not None or
+                   padding_values_arg is not None,
+                   "Missing padding of Deconv.")
+        if padding_type_arg is not None:
+            padding_type = PaddingMode(padding_type_arg.i)
+            strides_arg = ConverterUtil.get_arg(op,
+                                                MaceKeyword.mace_strides_str)
+            mace_check(strides_arg is not None, "Missing strides of Deconv.")
+            stride_h = strides_arg.ints[0]
+            stride_w = strides_arg.ints[1]
 
-        input_shape = get_input_shape(op.input[0], self._model)
-        input_h = input_shape[1]
-        input_w = input_shape[2]
-        filter_tensor = self._consts[op.input[1]]
-        filter_h = filter_tensor.dims[1]
-        filter_w = filter_tensor.dims[2]
-        output_h = op.output_shape[0].dims[1]
-        output_w = op.output_shape[0].dims[2]
+            input_shape = self.get_input_shape(op.input[0])
+            input_h = input_shape[1]
+            input_w = input_shape[2]
+            filter_tensor = self._consts[op.input[1]]
+            filter_h = filter_tensor.dims[1]
+            filter_w = filter_tensor.dims[2]
+            output_h = op.output_shape[0].dims[1]
+            output_w = op.output_shape[0].dims[2]
 
-        if padding_type == PaddingMode.VALID:
-            expected_input_h = (output_h - filter_h + stride_h) // stride_h
-            expected_input_w = (output_w - filter_w + stride_w) // stride_w
-        elif padding_type == PaddingMode.SAME:
-            expected_input_h = (output_h + stride_h - 1) // stride_h
-            expected_input_w = (output_w + stride_w - 1) // stride_w
+            if padding_type == PaddingMode.VALID:
+                expected_input_h = (output_h - filter_h + stride_h) // stride_h
+                expected_input_w = (output_w - filter_w + stride_w) // stride_w
+            elif padding_type == PaddingMode.SAME:
+                expected_input_h = (output_h + stride_h - 1) // stride_h
+                expected_input_w = (output_w + stride_w - 1) // stride_w
+            else:
+                raise Exception(
+                    'Hexagon deconv does not support padding type: ',
+                    padding_type)
+            mace_check(expected_input_h == input_h,
+                       "Wrong input/output height")
+            mace_check(expected_input_w == input_w, "Wrong input/output width")
+
+            pad_h = (input_h - 1) * stride_h + filter_h - output_h
+            pad_w = (input_w - 1) * stride_w + filter_w - output_w
         else:
-            raise Exception('Hexagon deconv does not support padding type: ',
-                            padding_type)
-        mace_check(expected_input_h == input_h, "Wrong input/output height")
-        mace_check(expected_input_w == input_w, "Wrong input/output width")
+            pad_h = padding_values_arg.ints[0]
+            pad_w = padding_values_arg.ints[1]
 
-        pad_h = (input_h - 1) * stride_h + filter_h - output_h
-        pad_w = (input_w - 1) * stride_w + filter_w - output_w
         pad_h, pad_w = max(pad_h, 0), max(pad_w, 0)
-        paddings = [pad_h, pad_h, pad_w, pad_w]
+        pad_top = pad_h // 2
+        pad_bottom = pad_h - pad_top
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        paddings = [pad_top, pad_bottom, pad_left, pad_right]
         self.add_arg_const_node(op, "/paddings:0", [1, 1, 2, 2], paddings)
 
     def convert_deconv2d(self, op):
-        channels = op.output_shape[0].dims[3]
-        if len(op.input) < 4:
-            print('Hexagon deconv requires biasadd, we add it.')
-            bias_data = np.zeros(channels, dtype=int)
-            bias_tensor = self._model.tensors.add()
-            bias_tensor.data_type = mace_pb2.DT_INT32
-            bias_tensor.dims.extend([channels])
-            bias_tensor.int32_data.extend(bias_data)
-            bias_tensor.minval = 0
-            bias_tensor.maxval = 0
-            bias_tensor.name = op.name + "/bias:0"
-            bias = bias_tensor.name
-            self._consts[bias] = bias_tensor
+        if self._framework_type == FrameworkType.TENSORFLOW.value:
+            if len(op.input) < 4:
+                bias = self.add_bias(op)
+            else:
+                bias = op.input.pop()
+            op.input.pop()  # output shape
         else:
-            bias = op.input.pop()
-        op.input.pop()  # output shape
+            if len(op.input) < 3:
+                bias = self.add_bias(op)
+            else:
+                bias = op.input.pop()
 
         self.add_min_max_const_node(op, op.input[0])
         self.add_min_max_const_node(op, op.input[1])
@@ -567,19 +716,34 @@ class HexagonConverter(base_converter.ConverterInterface):
         op.type = HexagonOp.DequantizeOUTPUT_8tof.name
 
     def convert_elementwise(self, op):
+        element_type = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_element_type_str).i
+
+        if element_type == EltwiseType.DIV.value and \
+                op.input[0] in self._consts:
+            tensor = self._consts[op.input[0]]
+            if len(tensor.int32_data) == 1:
+                f = tensor.scale * (tensor.int32_data[0] - tensor.zero_point)
+                if abs(f - 1) < 1e-6:  # recip
+                    op_input = op.input[1]
+                    del op.input[:]
+                    op.input.append(op_input)
+                    self.add_min_max_const_node(op, op.input[0])
+                    op.type = HexagonOp.QuantizedRecip_8.name
+                    return
+
         if len(op.input) == 1:
-            scalar_input_arg = ConverterUtil.get_arg(
-                op, MaceKeyword.mace_scalar_input_str)
-            self.add_scalar_const_node("/b:0", scalar_input_arg.f, op)
+            scalar_input = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_scalar_input_str).f
+            self.add_quantized_scalar_const_node("/b:0", scalar_input, op)
         self.add_min_max_const_node(op, op.input[0])
         self.add_min_max_const_node(op, op.input[1])
 
-        element_type = ConverterUtil.get_arg(
-            op, MaceKeyword.mace_element_type_str).i
         if element_type in [EltwiseType.SUM.value,
                             EltwiseType.SUB.value,
                             EltwiseType.MIN.value,
-                            EltwiseType.MAX.value]:
+                            EltwiseType.MAX.value,
+                            EltwiseType.DIV.value]:
             self.add_min_max_const_node(
                 op, op.output[0], True, True, False)
         try:
@@ -597,6 +761,20 @@ class HexagonConverter(base_converter.ConverterInterface):
         # Convert to reshape as hexagon does not support quantized expanddims
         op.type = HexagonOp.QuantizedReshape.name
 
+    def convert_fullyconnected(self, op):
+        if len(op.input) < 3:
+            bias = self.add_bias(op)
+        else:
+            bias = op.input.pop()
+        self.add_min_max_const_node(op, op.input[0])
+        self.add_min_max_const_node(op, op.input[1])
+        op.input.append(bias)
+        self.add_min_max_const_node(op, bias)
+        self.add_min_max_const_node(
+            op, op.output[0], True, True, False)
+
+        op.type = HexagonOp.SuperFC_8x8p32to8.name
+
     def convert_pad(self, op):
         self.add_min_max_const_node(op, op.input[0])
 
@@ -605,8 +783,9 @@ class HexagonConverter(base_converter.ConverterInterface):
         self.add_arg_const_node(
             op, '/paddings:0', [1, 1, len(paddings) // 2, 2], paddings)
 
-        pad_type = ConverterUtil.get_arg(op, MaceKeyword.mace_pad_type_str).i
-        mace_check(pad_type == PadType.CONSTANT.value,
+        pad_type_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_pad_type_str)
+        mace_check(pad_type_arg is None or
+                   pad_type_arg.i == PadType.CONSTANT.value,
                    "Hexagon only supports constant pad")
         constant_value = ConverterUtil.get_arg(
             op, MaceKeyword.mace_constant_value_str).f
@@ -625,6 +804,9 @@ class HexagonConverter(base_converter.ConverterInterface):
             op, MaceKeyword.mace_strides_str)
         self.add_arg_const_node(
             op, '/strides:0', [1, strides_arg.ints[0], strides_arg.ints[1], 1])
+
+        self.add_padding_type_for_conv_pooling(
+            op, window_arg.ints, strides_arg.ints)
 
         pooling_type_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_pooling_type_str)
@@ -652,7 +834,7 @@ class HexagonConverter(base_converter.ConverterInterface):
         for i in axis_arg.ints:
             mace_check(1 <= i <= 2,
                        "Hexagon Reduce Mean only supports spatial now")
-        input_shape = get_input_shape(op.input[0], self._model)
+        input_shape = self.get_input_shape(op.input[0])
         if len(axis_arg.ints) == 1:
             dim1, dim2 = (input_shape[1], 1) \
                 if axis_arg.ints[0] == 1 else (1, input_shape[2])
@@ -664,10 +846,30 @@ class HexagonConverter(base_converter.ConverterInterface):
         op.type = HexagonOp.QuantizedAvgPool_8.name
 
     def convert_resizebilinear(self, op):
-        newdim_arg = ConverterUtil.get_arg(
+        resize_size_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_resize_size_str)
-        self.add_arg_const_node(
-            op, '/newdim:0', [len(newdim_arg.ints)], newdim_arg.ints)
+        if resize_size_arg is not None:
+            newdim = resize_size_arg.ints
+        else:
+            height_scale_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_height_scale_str)
+            width_scale_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_width_scale_str)
+            mace_check(height_scale_arg is not None and
+                       width_scale_arg is not None,
+                       "Wrong ResizeBilinear arguments.")
+            if len(op.input) == 2:
+                op.input.pop()
+            height_scale = height_scale_arg.f
+            width_scale = width_scale_arg.f
+            producer_op = self._producers[op.input[0]]
+            for i in range(len(producer_op.output)):
+                if producer_op.output[i] == op.input[0]:
+                    input_shape = producer_op.output_shape[i]
+                    break
+            newdim = [int(height_scale * input_shape.dims[1]),
+                      int(width_scale * input_shape.dims[2])]
+        self.add_arg_const_node(op, '/newdim:0', [2], newdim)
 
         self.add_min_max_const_node(op, op.input[0])
 
@@ -678,10 +880,53 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         op.type = HexagonOp.QuantizedResizeBilinear_8.name
 
+    def convert_resizenearestneighbor(self, op):
+        height_scale_arg = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_height_scale_str)
+        width_scale_arg = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_width_scale_str)
+        if height_scale_arg is not None:
+            mace_check(width_scale_arg is not None,
+                       "height scale and width scale should be present at the same time.")  # noqa
+            if len(op.input) == 2:
+                op.input.pop()
+            height_scale = height_scale_arg.f
+            width_scale = width_scale_arg.f
+            producer_op = self._producers[op.input[0]]
+            for i in range(len(producer_op.output)):
+                if producer_op.output[i] == op.input[0]:
+                    input_shape = producer_op.output_shape[i]
+                    break
+            newdim = [int(height_scale * input_shape.dims[1]),
+                      int(width_scale * input_shape.dims[2])]
+            self.add_arg_const_node(op, '/newdim:0', [2], newdim)
+
+        self.add_min_max_const_node(op, op.input[0])
+
+        align_corners_arg = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_align_corners_str)
+        self.add_arg_const_node(
+            op, '/align_corners:0', [1], [align_corners_arg.i])
+
+        op.type = HexagonOp.ResizeNearestNeighbor_8.name
+
     def convert_softmax(self, op):
         self.add_min_max_const_node(op, op.input[0])
 
         op.type = HexagonOp.QuantizedSoftmax_8.name
+
+    def convert_split(self, op):
+        op_input = op.input[0]
+        del op.input[:]
+        axis_value = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
+        self.add_arg_const_node(op, '/axis:0', [1], [axis_value])
+        op.input.append(op_input)
+        self.add_min_max_const_node(op, op_input)
+
+        for i in range(len(op.output) - 1):
+            op.output_type.append(mace_pb2.DT_UINT8)
+
+        op.type = HexagonOp.QuantizedSplit_8.name
 
     def convert_stridedslice(self, op):
         begin_mask = ConverterUtil.get_arg(

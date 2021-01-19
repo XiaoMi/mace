@@ -41,8 +41,3 @@ You can use the Mace Micro install package("build/micro/gcc-arm-none-eabi/instal
     mbed sterm
 
 Press the reset(black) button to run the example again.
-
-For Hexagon DSP
----------------
-
-In the micro/cmake/toolchain folder, there are two hexagon CMake toolchain files for reference, For more details, please goto <https://developer.qualcomm.com/software/hexagon-dsp-sdk/dsp-processor/>

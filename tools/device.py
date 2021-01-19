@@ -571,7 +571,7 @@ class DeviceWrapper:
             output_shapes=output_config[YAMLKeyword.output_shapes],
             input_data_formats=subgraphs[0][
                 YAMLKeyword.input_data_formats],
-            output_data_formats=subgraphs[0][
+            output_data_formats=output_config[
                 YAMLKeyword.output_data_formats],
             mace_model_dir=mace_model_dir,
             model_tag=model_name,
@@ -708,7 +708,9 @@ class DeviceWrapper:
             model_path = "%s/%s.pb" % (mace_model_dir, model_name)
             output_config = {YAMLKeyword.model_file_path: model_path,
                              YAMLKeyword.output_tensors: output_nodes,
-                             YAMLKeyword.output_shapes: output_shapes}
+                             YAMLKeyword.output_shapes: output_shapes,
+                             YAMLKeyword.output_data_formats:
+                                 subgraphs[0][YAMLKeyword.output_data_formats]}
             output_configs.append(output_config)
 
             runtime_list = []
@@ -819,7 +821,7 @@ class DeviceWrapper:
                                     YAMLKeyword.output_shapes],
                                 input_data_formats=subgraphs[0][
                                     YAMLKeyword.input_data_formats],
-                                output_data_formats=subgraphs[0][
+                                output_data_formats=output_config[
                                     YAMLKeyword.output_data_formats],
                                 model_output_dir=model_output_dir,
                                 input_data_types=subgraphs[0][

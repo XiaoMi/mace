@@ -23,6 +23,7 @@ from transform.base_converter import ConverterUtil
 from transform.base_converter import MaceKeyword
 from transform.base_converter import MaceOp
 from transform.hexagon_converter import HexagonOp
+from utils.config_parser import DataFormat
 from utils.util import mace_check
 
 
@@ -125,11 +126,14 @@ def convert(model_file, output_dir, layers):
         output_tensors = []
         output_shapes = []
         op_name = op.name
+        if str(op.name).startswith(MaceKeyword.mace_output_node_name):
+            continue
         if is_quantize:
             op.name = MaceKeyword.mace_output_node_name + '_' + op.name
         if is_hexagon:
-            mace_check(len(op.output) == 1,
-                       "Only supports number of outputs of Hexagon op be 1.")
+            if len(op.output) != 1:
+                print("Skip %s(%s)" % (op.name, op.type))
+                continue
         for i in range(len(op.output)):
             output_tensors.append(str(op.output[i]))
             output_shapes.append(
@@ -183,7 +187,8 @@ def convert(model_file, output_dir, layers):
                                          output_dir)
         output_config = {"model_file_path": str(model_path),
                          "output_tensors": output_tensors,
-                         "output_shapes": output_shapes}
+                         "output_shapes": output_shapes,
+                         "output_data_formats": [DataFormat.NHWC.name]}
         output_configs["subgraphs"].append(output_config)
 
     output_configs_path = output_dir + "outputs.yml"
