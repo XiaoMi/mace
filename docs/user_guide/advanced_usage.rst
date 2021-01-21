@@ -85,7 +85,7 @@ in one deployment file.
     * - runtime
       - The running device, one of [cpu, gpu, dsp, cpu+gpu]. cpu+gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
     * - data_type
-      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU; [fp16_fp32, bf16_fp32, fp32_fp32, fp16_fp16] for CPU, default is fp16_fp32.
+      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU and APU; [fp16_fp32, bf16_fp32, fp32_fp32, fp16_fp16] for CPU, default is fp16_fp32.
     * - input_data_types
       - [optional] The input data type for specific op(eg. gather), which can be [int32, float32], default to float32.
     * - input_data_formats

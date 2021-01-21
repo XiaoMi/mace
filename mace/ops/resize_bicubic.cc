@@ -192,7 +192,6 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    MACE_CHECK(size_.size() == 2);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
@@ -203,9 +202,16 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
     const index_t in_height = input->dim(2);
     const index_t in_width = input->dim(3);
 
-    index_t out_height = size_[0];
-    index_t out_width = size_[1];
-    MACE_CHECK(out_height > 0 && out_width > 0);
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (size_.size() == 2 && size_[0] > 0 && size_[1] > 0) {
+      out_height = size_[0];
+      out_width = size_[1];
+    } else {
+      // For tensorflow's dynamic size tensor
+      MACE_CHECK(InputSize() >= 2);
+      common::utils::GetSizeParamFromTensor(Input(1), &out_height, &out_width);
+    }
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 
@@ -264,12 +270,10 @@ class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
         static_cast<CoordinateTransformationMode>(
             Operation::GetOptionalArg<int>("coordinate_transformation_mode",
                                            0));
-    std::vector<index_t> size = Operation::GetRepeatedArgs<index_t>(
-        "size", {-1, -1});
-    MACE_CHECK(size.size() == 2);
+    size_ = Operation::GetRepeatedArgs<index_t>("size", {-1, -1});
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeBicubicKernel>(
-          align_corners, coordinate_transformation_mode, size[0], size[1]);
+          align_corners, coordinate_transformation_mode);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
@@ -280,11 +284,23 @@ class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional.",
                input->dim_size());
 
-    return kernel_->Compute(context, input, output);
+    index_t out_height = 0;
+    index_t out_width = 0;
+    if (size_.size() == 2 && size_[0] > 0 && size_[1] > 0) {
+      out_height = size_[0];
+      out_width = size_[1];
+    } else {
+      // For tensorflow's dynamic size tensor
+      MACE_CHECK(InputSize() >= 2);
+      common::utils::GetSizeParamFromTensor(Input(1), &out_height, &out_width);
+    }
+
+    return kernel_->Compute(context, input, out_height, out_width, output);
   }
 
  private:
   std::unique_ptr<OpenCLResizeBicubicKernel> kernel_;
+  std::vector<index_t> size_;
 };
 #endif  // MACE_ENABLE_OPENCL
 
@@ -293,6 +309,15 @@ void RegisterResizeBicubic(OpRegistry *op_registry) {
                    DeviceType::CPU, float);
 
   MACE_REGISTER_GPU_OP(op_registry, "ResizeBicubic", ResizeBicubicOp);
+
+#ifdef MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("ResizeBicubic").SetInputMemoryTypeSetter(
+          [](OpConditionContext *context) -> void {
+            OpenCLUtil::SetOpenclInputToCpuBuffer(context, 1, DT_INT32);
+          }));
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

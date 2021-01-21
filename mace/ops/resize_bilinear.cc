@@ -201,7 +201,6 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    MACE_CHECK(size_.size() == 2);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
@@ -214,12 +213,15 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
 
     index_t out_height = 0;
     index_t out_width = 0;
-    if (height_scale_ > 0) {  // for ONNX
+    if (height_scale_ > 0) {  // For ONNX
       out_height = static_cast<index_t>(height_scale_ * in_height);
       out_width = static_cast<index_t>(width_scale_ * in_width);
-    } else {  // for tensor (Tf and Caffe)
+    } else if (size_.size() == 2 && size_[0] > 0) {  // For Tf and Caffe
       out_height = size_[0];
       out_width = size_[1];
+    } else {  // For tensorflow's dynamic size tensor
+      MACE_CHECK(InputSize() >= 2);
+      common::utils::GetSizeParamFromTensor(Input(1), &out_height, &out_width);
     }
     MACE_CHECK(out_height > 0 && out_width > 0, out_height, out_width);
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
@@ -408,11 +410,16 @@ class ResizeBilinearOp<DeviceType::GPU, float> : public Operation {
     if (height_scale_ > 0) {  // for ONNX
       out_height = static_cast<index_t>(height_scale_ * input->dim(1));
       out_width = static_cast<index_t>(width_scale_ * input->dim(2));
-    } else {  // for tensor (Tf and Caffe)
+    } else if (size_.size() == 2 && size_[0] > 0) {
+      // For tensor (Tf and Caffe)
       out_height = size_[0];
       out_width = size_[1];
+    } else {
+      MACE_CHECK(InputSize() >= 2);
+      common::utils::GetSizeParamFromTensor(Input(1), &out_height, &out_width);
     }
-    MACE_CHECK(out_height > 0 && out_width > 0);
+    MACE_CHECK(out_height > 0 && out_width > 0, "Invalid height and width: ",
+               out_height, ", ", out_width);
 
     return kernel_->Compute(context, input, out_height, out_width, output);
   }
@@ -437,6 +444,15 @@ void RegisterResizeBilinear(OpRegistry *op_registry) {
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "ResizeBilinear", ResizeBilinearOp);
+
+#ifdef MACE_ENABLE_OPENCL
+  MACE_REGISTER_OP_CONDITION(
+      op_registry,
+      OpConditionBuilder("ResizeBilinear").SetInputMemoryTypeSetter(
+          [](OpConditionContext *context) -> void {
+            OpenCLUtil::SetOpenclInputToCpuBuffer(context, 1, DT_INT32);
+          }));
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

@@ -24,6 +24,8 @@ namespace image {
 MaceStatus ResizeBicubicKernel::Compute(
     OpContext *context,
     const Tensor *input,
+    const index_t out_height,
+    const index_t out_width,
     Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
@@ -31,8 +33,6 @@ MaceStatus ResizeBicubicKernel::Compute(
   const index_t channels = input->dim(3);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t out_height = out_height_;
-  const index_t out_width = out_width_;
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(out_width),

@@ -16,6 +16,8 @@
 
 #include <utility>
 
+#include "mace/core/device.h"
+#include "mace/core/ops/op_condition_context.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/math.h"
 
@@ -181,4 +183,22 @@ void OpenCLUtil::BuildTransformOpDef(
     }
   }
 }
+
+void OpenCLUtil::SetOpenclInputToCpuBuffer(OpConditionContext *context,
+                                           size_t idx, DataType data_type) {
+  if (context->device()->device_type() == DeviceType::GPU) {
+    if (context->device()->gpu_runtime()->UseImageMemory()) {
+        context->set_output_mem_type(MemoryType::GPU_IMAGE);
+      } else {
+        context->set_output_mem_type(MemoryType::GPU_BUFFER);
+      }
+  } else {
+    context->set_output_mem_type(MemoryType::CPU_BUFFER);
+  }
+
+  if (context->operator_def()->input_size() > static_cast<int>(idx)) {
+    context->SetInputInfo(idx, MemoryType::CPU_BUFFER, data_type);
+  }
+}
+
 }  // namespace mace

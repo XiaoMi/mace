@@ -780,29 +780,26 @@ class TensorflowConverter(base_converter.ConverterInterface):
         except ValueError:
             pass
 
-    def convert_resize_bicubic(self, tf_op):
+    # For resize ops such as convert_resize_bicubic and convert_resize_bilinear
+    def convert_ops_like_resize(self, tf_op, op_type):
         op = self.convert_general_op(tf_op)
-        op.type = MaceOp.ResizeBicubic.name
-        del op.input[1:]
+        op.type = op_type
+        try:
+            size_arg = op.arg.add()
+            size_arg.name = MaceKeyword.mace_resize_size_str
+            size_value = tf_op.inputs[1].eval().astype(np.int32)
+            size_arg.ints.extend(size_value)
+            self._skip_tensor.add(tf_op.inputs[1].name)
+            del op.input[1:]
+            self.add_resize_args(op, tf_op)
+        except tf.errors.InvalidArgumentError as e:
+            pass  # Dynamic size in tensor
 
-        size_arg = op.arg.add()
-        size_arg.name = MaceKeyword.mace_resize_size_str
-        size_value = tf_op.inputs[1].eval().astype(np.int32)
-        size_arg.ints.extend(size_value)
-        self._skip_tensor.add(tf_op.inputs[1].name)
-        self.add_resize_args(op, tf_op)
+    def convert_resize_bicubic(self, tf_op):
+        self.convert_ops_like_resize(tf_op, MaceOp.ResizeBicubic.name)
 
     def convert_resize_bilinear(self, tf_op):
-        op = self.convert_general_op(tf_op)
-        op.type = MaceOp.ResizeBilinear.name
-        del op.input[1:]
-
-        size_arg = op.arg.add()
-        size_arg.name = MaceKeyword.mace_resize_size_str
-        size_value = tf_op.inputs[1].eval().astype(np.int32)
-        size_arg.ints.extend(size_value)
-        self._skip_tensor.add(tf_op.inputs[1].name)
-        self.add_resize_args(op, tf_op)
+        self.convert_ops_like_resize(tf_op, MaceOp.ResizeBilinear.name)
 
     def convert_resize_nearest_neighbor(self, tf_op):
         op = self.convert_general_op(tf_op)

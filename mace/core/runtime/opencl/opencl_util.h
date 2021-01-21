@@ -35,7 +35,7 @@ enum OpenCLBufferType {
   WEIGHT_WIDTH = 8,
 };
 
-
+class OpConditionContext;
 class OpenCLUtil {
  public:
   static void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
@@ -52,6 +52,9 @@ class OpenCLUtil {
       const MemoryType mem_type,
       DataFormat data_format,
       OperatorDef *op_def);
+
+  static void SetOpenclInputToCpuBuffer(OpConditionContext *context,
+                                        size_t idx, DataType data_type);
 };
 
 }  // namespace mace
