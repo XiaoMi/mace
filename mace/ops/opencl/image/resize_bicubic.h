@@ -66,24 +66,20 @@ class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
  public:
   ResizeBicubicKernel(
       bool align_corners,
-      CoordinateTransformationMode coordinate_transformation_mode,
-      const index_t out_height,
-      const index_t out_width)
+      CoordinateTransformationMode coordinate_transformation_mode)
       : align_corners_(align_corners),
-        coordinate_transformation_mode_(coordinate_transformation_mode),
-        out_height_(out_height),
-        out_width_(out_width) {}
+        coordinate_transformation_mode_(coordinate_transformation_mode) {}
 
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
+      const index_t out_height,
+      const index_t out_width,
       Tensor *output) override;
 
  private:
   bool align_corners_;
   CoordinateTransformationMode coordinate_transformation_mode_;
-  index_t out_height_;
-  index_t out_width_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2020 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_COMMON_UTILS_H_
-#define MACE_OPS_COMMON_UTILS_H_
+#include "mace/ops/common/utils.h"
 
-#include "mace/core/types.h"
+#include "mace/core/tensor.h"
 
 namespace mace {
-
-class Tensor;
-
 namespace ops {
 namespace common {
 namespace utils {
 
-constexpr int64_t kTableSize = (1u << 10);
-
-inline float CalculateResizeScale(index_t in_size,
-                                  index_t out_size,
-                                  bool align_corners) {
-  return (align_corners && out_size > 1)
-         ? (in_size - 1) / static_cast<float>(out_size - 1)
-         : in_size / static_cast<float>(out_size);
-}
-
 void GetSizeParamFromTensor(const Tensor *size_tensor, index_t *out_height,
-                            index_t *out_width);
+                            index_t *out_width) {
+  Tensor::MappingGuard size_guard(size_tensor);
+  const int *size = size_tensor->data<int>();
+  *out_height = size[0];
+  *out_width = size[1];
+}
 
 }  // namespace utils
 }  // namespace common
 }  // namespace ops
 }  // namespace mace
-
-#endif  // MACE_OPS_COMMON_UTILS_H_

@@ -103,6 +103,8 @@ DSPDataType = Enum('DSPDataType', [(ele, ele) for ele in DSPDataTypeStrs],
                    type=str)
 
 APUDataTypeStrs = [
+    "fp16_fp32",
+    "fp32_fp32",
     "uint8",
 ]
 
@@ -498,8 +500,8 @@ def format_model_config(flags):
             if len(data_type) > 0:
                 mace_check(data_type in APUDataTypeStrs,
                            ModuleName.YAML_CONFIG,
-                           "'data_type' must be in " + str(APUDataTypeStrs)
-                           + " for apu runtime")
+                           "'data_type %s' must be in %s for apu runtime" %
+                           (data_type, str(APUDataTypeStrs)))
             else:
                 model_config[YAMLKeyword.data_type] = \
                     APUDataType.uint8.value
