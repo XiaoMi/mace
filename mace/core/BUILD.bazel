@@ -121,7 +121,7 @@ cc_library(
     ]) + if_hta_enabled([
         "//third_party/hta",
     ]) + if_apu_enabled([
-        "//third_party/apu:libapu-frontend",
+        "//third_party/apu:libapu-neuron_adapter",
     ]) + if_rpcmem_enabled([
         "//third_party/rpcmem",
     ]),

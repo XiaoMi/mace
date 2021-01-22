@@ -1,4 +1,4 @@
-// Copyright 2018 The MACE Authors. All Rights Reserved.
+// Copyright 2021 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,32 +15,26 @@
 #ifndef MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
 #define MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
 
-#include <string>
-#include <vector>
-#include <map>
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <map>
+#include <vector>
 
+#include "mace/core/runtime/apu/neuron_delegate_kernel.h"
+
+#include "mace/proto/mace.pb.h"
 #include "mace/core/device.h"
 #include "mace/core/quantize.h"
 #include "mace/core/tensor.h"
-#include "mace/proto/mace.pb.h"
 
-class ApuFrontend;
+
 namespace mace {
 
 class ApuWrapper {
-  struct ApuTensorInfo {
-    std::string name;
-    std::shared_ptr<uint8_t> buf;
-    std::vector<index_t> shape;
-    int size;
-    float scale;
-    int zero_point;
-    int data_type;
-  };
-
  public:
-  explicit ApuWrapper(Device *device);
+  explicit ApuWrapper(Device *device)
+      :device_(device) {}
   bool Init(const NetDef &net_def, unsigned const char *model_data = nullptr,
             const char *file_name = nullptr,
             bool load = false, bool store = false);
@@ -48,25 +42,17 @@ class ApuWrapper {
            std::map<std::string, Tensor *> *output_tensors);
   bool Uninit();
 
- protected:
-  bool DoInit(const NetDef &net_def, unsigned const char *model_data = nullptr,
-              const char *file_name = nullptr,
-              bool load = false, bool store = false);
+ private:
+  neuron::NeuronDelegateKernel *frontend;
+  bool AddOpsAndTensors(NetDef* net_def);
+  Device *device_;
 
  private:
-  int MapToApuDataType(DataType mace_type);
-  int MapToApuPoolingMode(int mace_mode);
-  int MapToApuEltwiseMode(int mace_mode);
-  int GetByteNum(int data_type);
-
- private:
-  ApuFrontend *frontend;
-  std::vector<ApuTensorInfo> input_infos_;
-  std::vector<ApuTensorInfo> output_infos_;
-  QuantizeUtil<float, uint8_t> quantize_util_uint8_;
-  QuantizeUtil<float, int16_t> quantize_util_int16_;
+  // Access to NNApi.
+  const NeuronApi* neuron_ = NeuronApiImplementation();
 };
 
 }  // namespace mace
+
 
 #endif  // MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
