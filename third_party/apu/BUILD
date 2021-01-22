@@ -27,3 +27,13 @@ cc_library(
     linkopts = ["-Wl,-unresolved-symbols=ignore-in-shared-libs"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "libapu-neuron_adapter",
+    hdrs = glob(
+        ["neuron_types.h"],
+    ),
+    copts = ["-DNN_TARGET_NDK"],
+    linkopts = ["-Wl,-unresolved-symbols=ignore-in-shared-libs"],
+    visibility = ["//visibility:public"],
+)
