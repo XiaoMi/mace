@@ -103,6 +103,9 @@ for opt in "${@}";do
     bfloat16|-bfloat16|--bfloat16)
       enable_bfloat16=true
       ;;
+    rpcmem|-rpcmem|--rpcmem)
+      enable_rpcmem=true
+      ;;
     help|-help|--help)
       helper
       ;;
