@@ -42,7 +42,7 @@ enable_dsp=false
 enable_apu=false
 enable_quantize=false
 enable_bfloat16=false
-enable_rpcmem=true
+enable_rpcmem=false
 static_lib=false
 symbol_hidden=
 runtime_label="cpu"
@@ -114,10 +114,6 @@ $(echo "$1" | cut -d '=' -f -1)"
       ;;
   esac
 done
-
-if [[ "${enable_apu}" == true || ("${abi}" != armeabi-v7a && "${abi}" != arm64-v8a) ]];then
-  enable_rpcmem=false
-fi
 
 if [[ "${static_lib}" == true ]];then
   lib_type=static

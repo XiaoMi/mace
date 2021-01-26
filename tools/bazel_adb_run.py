@@ -108,7 +108,7 @@ def parse_args():
     parser.add_argument(
         "--enable_rpcmem",
         type=str2bool,
-        default=True,
+        default=False,
         help="Whether to use rpcmem")
     parser.add_argument(
         "--enable_hta",
