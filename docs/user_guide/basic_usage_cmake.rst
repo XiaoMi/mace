@@ -20,12 +20,14 @@ Please make sure you have CMake installed.
 
     .. code-block:: sh
 
-        RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
+        RUNTIME=GPU QUANTIZE=OFF RPCMEM=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
 
 which generate libraries in ``build/cmake-build/armeabi-v7a``, you can use either static libraries or the ``libmace.so`` shared library.
 
 You can also build for other target abis: ``arm64-v8a``, ``arm-linux-gnueabihf``, ``aarch64-linux-gnu``, ``host``;
 and runtime: ``GPU``, ``HEXAGON``, ``HTA``, ``APU``.
+
+For Qualcomm devices, it is possible to set ``RPCMEM=ON`` to enable the use of specific memory optimizations.
 
 
 Model Conversion

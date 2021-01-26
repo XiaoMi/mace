@@ -598,3 +598,16 @@ These weights can be quantized to 8bit to reduce the size to a quarter, whereas 
 For example, the top-1 accuracy of MobileNetV1 after quantization of weights is 68.2% on the ImageNet validation set.
 ``quantize_large_weights`` can be specified as 1 in the deployment file to save these weights in 8bit and actual inference in float.
 It can be used for both CPU and GPU.
+
+Build with rpcmem
+-------------------
+For Qualcomm-based devices, it's possible to build the models and the ``mace_run`` executable with ```rpcmem`` support:
+
+.. code-block:: sh
+
+    python tools/converter.py convert --config=/path/to/model_deployment_file.yml --enable_rpcmem
+    python tools/converter.py run --config=/path/to/model_deployment_file.yml --enable_rpcmem
+
+For deployment, make sure the use of ``rpcmem`` is consisten between ``libmace.a`` and built models. Both have to be built
+with or without ``rpcmem`` support. For details about how to built ``libmace.a`` with ``rpcmem`` support see 
+`here <https://mace.readthedocs.io/en/latest/user_guide/basic_usage.html#build-mace-into-a-library>`.

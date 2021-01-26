@@ -45,7 +45,7 @@ Here we use the mobilenet-v2 model as an example.
         cd path/to/mace
         # Build library
         # output lib path: build/lib
-        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-quantize][-static]
+        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-quantize][-static][-rpcmem]
 
     .. note::
 
@@ -53,6 +53,7 @@ Here we use the mobilenet-v2 model as an example.
         - Use the `-abi` parameter to specify the ABI. Supported ABIs are armeabi-v7a, arm64-v8a, arm_linux_gnueabihf, aarch64_linux_gnu and host (for host machine, linux-x86-64). The default ABI is arm64-v8a.
         - For each ABI, several runtimes can be chosen by specifying the `-runtimes` parameter. Supported runtimes are CPU, GPU, DSP and APU. By default, the library is built to run on CPU.
         - Omit the `-static` option if a shared library is desired instead of a static one. By default, a shared library is built.
+        - Omit the `-rpcmem` option if your target device chipset is not manufactured by Qualcomm.
         - See 'bash tools/bazel_build_standalone_lib.sh -help' for detailed information.
         - DO respect the hyphens ('-') and the underscores ('_') in the ABI.
 
@@ -189,7 +190,7 @@ Or use bazel to build MACE source code into a library.
         cd path/to/mace
         # Build library
         # output lib path: build/lib
-        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-static]
+        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-static][-rpcmem]
 
 The above command will generate static library ``build/lib/libmace.a`` dynamic library ``build/lib/libmace.so``.
 
