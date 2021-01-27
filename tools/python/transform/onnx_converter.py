@@ -1543,6 +1543,16 @@ class OnnxConverter(base_converter.ConverterInterface):
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = value
 
+        opset_version = self._onnx_model.opset_import[0].version
+        if opset_version < 13 and 'split' in node.attrs:
+            size_splits = np.array(
+                node.attrs['split'], dtype=np.int32).reshape(-1)
+            tensor_name = op.input[0] + "_mace_node_size_split_input_"
+            tensor_shape = [size_splits.size]
+            data_type = mace_pb2.DT_INT32
+            op.input.append(tensor_name)
+            self.add_tensor(tensor_name, tensor_shape, data_type, size_splits)
+
     def convert_squeeze(self, node):
         axis_value = node.attrs['axes']
         if node.inputs[0] in self._consts:
