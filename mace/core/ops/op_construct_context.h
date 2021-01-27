@@ -62,6 +62,11 @@ class OpConstructContext {
   }
 #endif  // MACE_ENABLE_OPENCL
 
+  inline bool IsFallback() const {
+    return ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+        *operator_def_, IsFallbackTagName(), 0) != 0;
+  }
+
  private:
   std::shared_ptr<OperatorDef> operator_def_;
   Workspace *ws_;

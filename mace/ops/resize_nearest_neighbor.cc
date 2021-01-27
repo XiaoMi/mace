@@ -92,6 +92,7 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
             static_cast<CoordinateTransformationMode>(
                 Operation::GetOptionalArg<int>("coordinate_transformation_mode",
                                                0))),
+        size_(Operation::GetRepeatedArgs<index_t>("size")),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
 
@@ -110,10 +111,13 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
 
     index_t out_height = 0;
     index_t out_width = 0;
-    if (height_scale_ > 0) {  // for Caffe and ONNX
+    if (height_scale_ > 0) {         // for Caffe and ONNX
       out_height = static_cast<index_t>(height_scale_ * in_height);
       out_width = static_cast<index_t>(width_scale_ * in_width);
-    } else {  // for tensor (Tf)
+    } else if (size_.size() == 2) {  // for ONNX size
+      out_height = size_[0];
+      out_width = size_[1];
+    } else {                         // for tensor (Tf)
       const Tensor *size = this->Input(1);
       Tensor::MappingGuard size_mapper(size);
       MACE_CHECK(size->dim_size() == 1,
@@ -165,6 +169,7 @@ class ResizeNearestNeighborOp<DeviceType::CPU, T> : public Operation {
  private:
   const bool align_corners_;
   const CoordinateTransformationMode coordinate_transformation_mode_;
+  std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
 };
@@ -174,7 +179,7 @@ template<>
 class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
  public:
   explicit ResizeNearestNeighborOp(OpConstructContext *context)
-      : Operation(context), dim_(Operation::GetRepeatedArgs<index_t>("dim")),
+      : Operation(context), size_(Operation::GetRepeatedArgs<index_t>("size")),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
         width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {
     bool align_corners = Operation::GetOptionalArg<bool>(
@@ -201,7 +206,7 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
     if (height_scale_ > 0) {  // for Caffe and ONNX
       out_height = static_cast<index_t>(height_scale_ * input->dim(1));
       out_width = static_cast<index_t>(width_scale_ * input->dim(2));
-    } else if (dim_.size() < 2) {  // for variable tensor (Tf)
+    } else if (size_.size() < 2) {  // for variable tensor (Tf)
       const Tensor *size = this->Input(1);
       Tensor::MappingGuard size_mapper(size);
       MACE_CHECK(size->dim_size() == 1,
@@ -209,15 +214,15 @@ class ResizeNearestNeighborOp<DeviceType::GPU, float> : public Operation {
       out_height = size->data<int32_t>()[0];
       out_width = size->data<int32_t>()[1];
     } else {  // for const tensor (Tf)
-      out_height = dim_[0];
-      out_width = dim_[1];
+      out_height = size_[0];
+      out_width = size_[1];
     }
 
     return kernel_->Compute(context, input, out_height, out_width, output);
   }
 
  private:
-  std::vector<index_t> dim_;
+  std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
   std::unique_ptr<OpenCLResizeNearestNeighborKernel> kernel_;

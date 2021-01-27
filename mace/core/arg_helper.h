@@ -77,6 +77,7 @@ void SetProtoArg(NetDef *op_def,
                  const T&value);
 
 const std::string OutputMemoryTypeTagName();
+const std::string IsFallbackTagName();
 
 bool IsQuantizedModel(const NetDef &def);
 

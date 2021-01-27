@@ -663,7 +663,7 @@ class OnnxConverter(base_converter.ConverterInterface):
                     output_shape.dims.extend(shape_info)
                 else:
                     MaceLogger.warning(
-                        "%s does not have output shape." % op.name)
+                        "%s does not have output shape." % output)
 
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
@@ -1471,21 +1471,21 @@ class OnnxConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(node)
         op.type = MaceOp.Slice.name
 
-        mace_check('starts' in node.attrs, "Attribute starts required!")
-        mace_check('ends' in node.attrs, "Attribute ends required!")
-        starts = node.attrs['starts']
-        starts_arg = op.arg.add()
-        starts_arg.name = 'starts'
-        starts_arg.ints.extend(starts)
-        ends = node.attrs['ends']
-        ends_arg = op.arg.add()
-        ends_arg.name = 'ends'
-        ends_arg.ints.extend(ends)
-        if 'axes' in node.attrs:
-            axes = node.attrs['axes']
-            axes_arg = op.arg.add()
-            axes_arg.name = 'axes'
-            axes_arg.ints.extend(axes)
+        if 'starts' in node.attrs:
+            mace_check('ends' in node.attrs, "Attribute ends required!")
+            starts = node.attrs['starts']
+            starts_arg = op.arg.add()
+            starts_arg.name = 'starts'
+            starts_arg.ints.extend(starts)
+            ends = node.attrs['ends']
+            ends_arg = op.arg.add()
+            ends_arg.name = 'ends'
+            ends_arg.ints.extend(ends)
+            if 'axes' in node.attrs:
+                axes = node.attrs['axes']
+                axes_arg = op.arg.add()
+                axes_arg.name = 'axes'
+                axes_arg.ints.extend(axes)
 
     def convert_softmax(self, node):
         op = self.convert_general_op(node)
@@ -1531,6 +1531,14 @@ class OnnxConverter(base_converter.ConverterInterface):
         self.copy_node_attr(op, node, 'forward_indexes',
                             AttributeType.INTS)
 
+    @staticmethod
+    def is_equal_split(size_splits):
+        equal_split = True
+        for size in size_splits:
+            if size != size_splits[0]:
+                equal_split = False
+        return equal_split
+
     def convert_split(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Split.name
@@ -1543,15 +1551,19 @@ class OnnxConverter(base_converter.ConverterInterface):
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = value
 
-        opset_version = self._onnx_model.opset_import[0].version
-        if opset_version < 13 and 'split' in node.attrs:
+        if 'split' in node.attrs:
             size_splits = np.array(
                 node.attrs['split'], dtype=np.int32).reshape(-1)
-            tensor_name = op.input[0] + "_mace_node_size_split_input_"
-            tensor_shape = [size_splits.size]
-            data_type = mace_pb2.DT_INT32
-            op.input.append(tensor_name)
-            self.add_tensor(tensor_name, tensor_shape, data_type, size_splits)
+            if not self.is_equal_split(size_splits):
+                tensor_name = op.input[0] + "_mace_node_size_split_input_"
+                tensor_shape = [size_splits.size]
+                data_type = mace_pb2.DT_INT32
+                op.input.append(tensor_name)
+                self.add_tensor(tensor_name, tensor_shape, data_type,
+                                size_splits)
+        elif len(node.inputs) > 1 and node.inputs[1] in self._consts and \
+                self.is_equal_split(self._consts[node.inputs[1]].int32_data):
+            del op.input[1:]
 
     def convert_squeeze(self, node):
         axis_value = node.attrs['axes']

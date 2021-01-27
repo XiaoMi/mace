@@ -962,7 +962,9 @@ class EltwiseOp : public Operation {
         scalar_input_index_(Operation::GetOptionalArg<int32_t>(
             "scalar_input_index", 1)),
         has_data_format_(Operation::GetOptionalArg<int>(
-            "has_data_format", 0)) {}
+            "has_data_format", 0)) {
+    is_fallback_ = context->IsFallback();
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -1024,22 +1026,35 @@ class EltwiseOp : public Operation {
     // check if we can broadcast tensor
     uint32_t rank_diff =
         static_cast<uint32_t>(input0->dim_size() - input1->dim_size());
-    if (has_data_format_) {
-      MACE_CHECK(
-          (input0->dim_size() == 4) &&
-              ((input1->dim_size() == 0) ||
-                  (input1->dim_size() == 4 &&
-                      input1->dim(1) == input0->dim(1) &&
-                      (input1->dim(0) == input0->dim(0) ||
-                          input1->dim(0) == 1)) ||
-                  (input1->dim_size() == 1 &&
-                      input1->dim(0) == input0->dim(1))),
-          "only support broadcast channel dimension");
+    if (has_data_format_ && is_fallback_) {
+      MACE_CHECK(input0->dim_size() == 4,
+                 "If the op is fallback to CPU and has data format, "
+                 "input0's rank should be 4.");
+    }
+    if (has_data_format_ && input0->dim_size() == 4) {
+      if (input1->dim_size() == 4) {
+        for (index_t i = 0; i < input0->dim_size(); ++i) {
+          MACE_CHECK(input0->dim(i) == input1->dim(i) || input0->dim(i) == 1 ||
+                         input1->dim(i) == 1,
+                     "Only support broadcast dim 1",
+                     ", input0 shape: ", MakeString(input0->shape()),
+                     ", input1 shape: ", MakeString(input1->shape()));
+        }
+      } else {
+        MACE_CHECK(
+            input1->dim_size() == 0 ||
+                (input1->dim_size() == 1 && input1->dim(0) == input0->dim(1)),
+            "Only support broadcast channel dimension",
+            ", input0 shape: ", MakeString(input0->shape()),
+            ", input1 shape: ", MakeString(input1->shape()));
+      }
     } else {
       for (uint32_t i = 0; i < input1->dim_size(); ++i) {
         MACE_CHECK(input0->dim(rank_diff + i) == 1 || input1->dim(i) == 1 ||
-            input0->dim(rank_diff + i) == input1->dim(i),
-                   "Element-Wise op only support tail dimensions broadcast");
+                       input0->dim(rank_diff + i) == input1->dim(i),
+                   "Element-Wise op only support tail dimensions broadcast",
+                   ", input0 shape: ", MakeString(input0->shape()),
+                   ", input1 shape: ", MakeString(input1->shape()));
       }
     }
 
@@ -1048,12 +1063,11 @@ class EltwiseOp : public Operation {
 
     const T *input0_ptr = input0->data<T>();
     const T *input1_ptr = input1->data<T>();
-
-    if (has_data_format_ && input1->dim_size() > 0) {
+    if (has_data_format_ && input0->dim_size() == 4 && input1->dim_size() > 0) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
       Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
-      if (input1->size() < input0->size()) {
+      if (input1->dim_size() < input0->dim_size()) {
         TensorEltwisePerChannel(context,
                                 type_,
                                 input0_ptr,
@@ -1065,6 +1079,11 @@ class EltwiseOp : public Operation {
                                 input0->dim(2) * input0->dim(3),
                                 swapped,
                                 output_ptr);
+      } else if (input1->size() < input0->size()) {
+        TensorGeneralBroadcastEltwise(context,
+                                      type_, input0_ptr, input1_ptr, coeff_,
+                                      swapped, input0->shape(), input1->shape(),
+                                      output->shape(), output_ptr);
       } else {
         TensorEltwise(context,
                       type_, input0_ptr, input1_ptr, coeff_, input0->size(),
@@ -1125,6 +1144,7 @@ class EltwiseOp : public Operation {
   int32_t scalar_input_index_;
   int has_data_format_;
   Tensor scalar_tensor_;
+  bool is_fallback_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE

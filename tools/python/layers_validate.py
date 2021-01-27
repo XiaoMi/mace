@@ -188,7 +188,8 @@ def convert(model_file, output_dir, layers):
         output_config = {"model_file_path": str(model_path),
                          "output_tensors": output_tensors,
                          "output_shapes": output_shapes,
-                         "output_data_formats": [DataFormat.NHWC.name]}
+                         "output_data_formats":
+                             [DataFormat.NHWC.name] * len(output_shapes)}
         output_configs["subgraphs"].append(output_config)
 
     output_configs_path = output_dir + "outputs.yml"
