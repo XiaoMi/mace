@@ -47,7 +47,7 @@ class OpMap {
     if (op_map_.find(op_type) != end(op_map_)) {
       return op_map_[op_type];
     } else {
-      LOG(ERROR) << "DSP unsupported op type: " << op_type;
+      LOG(FATAL) << "Unsupported DSP op type: " << op_type;
       return MACE_OP_INVALID;
     }
   }

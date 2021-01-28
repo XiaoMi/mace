@@ -27,6 +27,7 @@ from py_proto import mace_pb2
 from transform import base_converter
 from transform.base_converter import ActivationType
 from transform.base_converter import ConverterUtil
+from transform.base_converter import CoordinateTransformationMode
 from transform.base_converter import DeviceType
 from transform.base_converter import EltwiseType
 from transform.base_converter import FrameworkType
@@ -845,6 +846,23 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         op.type = HexagonOp.QuantizedAvgPool_8.name
 
+    def add_resize_args(self, op):
+        align_corners_arg = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_align_corners_str)
+        self.add_arg_const_node(
+            op, '/align_corners:0', [1], [align_corners_arg.i])
+
+        coordinate_transformation_mode_arg = ConverterUtil.get_arg(
+            op, MaceKeyword.mace_coordinate_transformation_mode_str)
+        if coordinate_transformation_mode_arg is not None:
+            name = CoordinateTransformationMode(
+                coordinate_transformation_mode_arg.i)
+            value = coordinate_transformation_mode_arg.i
+            mace_check(value == CoordinateTransformationMode.HALF_PIXEL.value,
+                       "Hexagon does not support resize %s" % name)
+            self.add_arg_const_node(
+                op, '/half_pixel_centers:0', [1], [1])
+
     def convert_resizebilinear(self, op):
         resize_size_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_resize_size_str)
@@ -873,10 +891,7 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         self.add_min_max_const_node(op, op.input[0])
 
-        align_corners_arg = ConverterUtil.get_arg(
-            op, MaceKeyword.mace_align_corners_str)
-        self.add_arg_const_node(
-            op, '/align_corners:0', [1], [align_corners_arg.i])
+        self.add_resize_args(op)
 
         op.type = HexagonOp.QuantizedResizeBilinear_8.name
 
@@ -903,10 +918,7 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         self.add_min_max_const_node(op, op.input[0])
 
-        align_corners_arg = ConverterUtil.get_arg(
-            op, MaceKeyword.mace_align_corners_str)
-        self.add_arg_const_node(
-            op, '/align_corners:0', [1], [align_corners_arg.i])
+        self.add_resize_args(op)
 
         op.type = HexagonOp.ResizeNearestNeighbor_8.name
 

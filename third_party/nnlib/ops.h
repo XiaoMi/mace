@@ -513,8 +513,30 @@ DEF_OP(SsdDetectionOut)
 DEF_OP(QuantizedTransposeConv2d_8x8p8to8)
 DEF_OP(QuantizedPack_8)
 DEF_OP(QuantizedUnpack_8)
+
+DEF_OP_WREF(QuantizedHardSwish_8)
+DEF_OP(QuantizedHardSwish_8_d32)
+
+DEF_OP(Close_q_quint16)
+
+DEF_OP_WREF(QuantizedLayerNorm_i16)
+DEF_OP(EqLSTM_qASR)
+DEF_OP(QuantizedClip_i16_ref)
+DEF_OP(QuantizedClip_i16)
+DEF_OP_WREF(Quantized_CastUInt8ToInt8)
+DEF_OP_WREF(Quantized_CastInt8ToUInt8)
+DEF_OP(QuantizeINPUT_fto16)
+DEF_OP(DequantizeOUTPUT_16tof)
+DEF_OP(Convert_from_aix_16b)
+DEF_OP(Convert_from_aix_16b_d32)
+DEF_OP(Convert_to_aix_d32_16b)
+DEF_OP(Convert_to_aix_d32_16b_d32)
+
+DEF_OP(QuantizedBatchMatMul_8x8to32)
+
 // Add new operations above this line
 #ifdef __SELF_DEF_OP_WREF
 #undef __SELF_DEF_OP_WREF
 #undef DEF_OP_WREF
 #endif
+

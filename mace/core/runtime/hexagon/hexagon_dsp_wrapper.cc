@@ -565,10 +565,6 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
                output_shape.size(), " vs ", output_info_[i].shape.size(),
                 " wrong output shape inferred");
     auto output_tensor = output_tensors->at(output_info_[i].name);
-    MACE_CHECK(static_cast<index_t>(outputs[index].data_valid_len)
-                    == output_tensor->raw_size(),
-               outputs[index].data_valid_len, " vs ", output_tensor->raw_size(),
-               " wrong output bytes inferred.");
     output_tensor->Reshape(output_shape);
   }
 

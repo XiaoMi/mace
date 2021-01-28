@@ -21,6 +21,7 @@ from enum import Enum
 
 from py_proto import mace_pb2
 from transform import base_converter
+from transform.base_converter import CoordinateTransformationMode
 from transform.base_converter import PoolingType
 from transform.base_converter import PaddingMode
 from transform.base_converter import ActivationType
