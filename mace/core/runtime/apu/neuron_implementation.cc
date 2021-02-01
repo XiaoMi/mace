@@ -116,6 +116,8 @@ const NeuronApi LoadNeuronApi() {
                 neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronModel_restoreFromCompiledNetwork,
                 neuron_api);
+  LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_setSWDilatedConv,
+                neuron_api);
 
   // ASharedMemory_create has different implementations in Android depending on
   // the partition. Generally it can be loaded from libandroid.so but in vendor

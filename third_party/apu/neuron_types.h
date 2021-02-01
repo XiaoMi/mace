@@ -393,4 +393,7 @@ typedef int (*NeuronModel_restoreFromCompiledNetwork_fn)(
     NeuronModel** model, NeuronCompilation** compilation,
     const void* buffer, const size_t size);
 
+// Support dilated convolution.
+typedef int (*NeuronCompilation_setSWDilatedConv_fn)(
+    NeuronCompilation* compilation, bool allow);
 #endif  // THIRD_PARTY_APU_NEURON_TYPES_H_

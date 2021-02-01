@@ -168,6 +168,10 @@ struct NeuronApi {
   int (*NeuronModel_restoreFromCompiledNetwork)(
       NeuronModel** model, NeuronCompilation** compilation,
       const void* buffer, const size_t size);
+
+  // Support dilated convolution.
+  int (*NeuronCompilation_setSWDilatedConv)(NeuronCompilation* compilation,
+                                            bool allow);
 };
 
 /**

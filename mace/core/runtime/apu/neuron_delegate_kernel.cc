@@ -106,6 +106,7 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
   }
   NeuronCompilation* compilation = nullptr;
   neuronapi_->NeuronCompilation_create(nn_model_.get(), &compilation);
+  neuronapi_->NeuronCompilation_setSWDilatedConv(compilation, true);
   const int compilation_result =
       neuronapi_->NeuronCompilation_finish(compilation);
   if (compilation_result != NEURON_NO_ERROR) {
