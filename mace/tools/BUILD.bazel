@@ -3,9 +3,9 @@
 load(
     "//mace:mace.bzl",
     "if_android",
+    "if_apu_enabled",
     "if_hexagon_enabled",
     "if_opencl_enabled",
-    "if_apu_enabled",
 )
 
 licenses(["notice"])  # Apache 2.0
@@ -24,7 +24,7 @@ cc_binary(
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_apu_enabled([
-        "-DMACE_ENABLE_APU",
+        "-DMACE_ENABLE_MTK_APU",
     ]),
     linkstatic = 1,
     deps = [
@@ -50,7 +50,7 @@ cc_binary(
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_apu_enabled([
-        "-DMACE_ENABLE_APU",
+        "-DMACE_ENABLE_MTK_APU",
     ]),
     linkopts = [
         "-lm",

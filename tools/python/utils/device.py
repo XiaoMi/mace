@@ -27,7 +27,8 @@ from utils import util
 
 
 def execute(cmd, verbose=True):
-    print("CMD> %s" % cmd)
+    if verbose:
+        print("CMD> %s" % cmd)
     p = subprocess.Popen([cmd],
                          shell=True,
                          stdout=subprocess.PIPE,
@@ -134,7 +135,7 @@ class AndroidDevice(Device):
 
     @staticmethod
     def list_devices():
-        out = execute("adb devices")
+        out = execute("adb devices", False)
         serialno_list = out.strip().split('\n')[1:]
         serialno_list = [tuple(pair.split('\t')) for pair in serialno_list]
         devices = []

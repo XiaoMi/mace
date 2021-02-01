@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/runtime/apu/apu_wrapper.h"
+#include "mace/core/runtime/apu/v1v2v3/apu_wrapper.h"
 
 #include <algorithm>
 
 #include "mace/core/quantize.h"
-#include "third_party/apu/ApuFrontend.h"
+#include "third_party/apu/android_R/ApuFrontend.h"
 
 namespace mace {
 
@@ -79,7 +79,6 @@ int ApuWrapper::MapToApuEltwiseMode(int mace_mode) {
   return APU_ELTWISE_UNDEFINED;
 }
 
-#ifndef MACE_MTK_APU_ANCIENT  // for mt68xx socs or android R
 bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
                         const char *file_name, bool load, bool store) {
   frontend = new ApuFrontend();
@@ -269,7 +268,6 @@ bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
   cached_op_inputs.clear();
   return ret;
 }
-#endif  // MACE_MTK_APU_ANCIENT
 
 bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
                       const char *file_name, bool load, bool store) {

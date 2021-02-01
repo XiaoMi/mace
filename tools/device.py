@@ -27,7 +27,7 @@ import layers_validate
 import sh_commands
 
 sys.path.insert(0, "tools/python")  # noqa
-from copy_apu_so import get_apu_so_paths_by_props
+import apu_utils
 
 
 class DeviceWrapper:
@@ -129,24 +129,21 @@ class DeviceWrapper:
                 six.print_('Push Failed !', e, file=sys.stderr)
                 raise e
 
-    def get_apu_ancient(self, enable_apu):
+    def get_apu_version(self, enable_apu):
         if enable_apu:
             target_props = sh_commands.adb_getprop_by_serialno(self.address)
-            mace_check(len(target_props) > 0, "",
-                       "When compile apu lib you need connect phone")
-            android_ver = (int)(target_props["ro.build.version.release"])
-            if android_ver > 10:
-                return False
             target_soc = target_props["ro.board.platform"]
-            if target_soc.startswith("mt67"):
-                return True
-        return False
+            android_ver = (int)(target_props["ro.build.version.release"])
+            return apu_utils.get_apu_version(enable_apu, android_ver,
+                                             target_soc)
+        else:
+            return -1
 
     def get_apu_so_paths(self):
         target_props = sh_commands.adb_getprop_by_serialno(self.address)
         target_soc = target_props["ro.board.platform"]
         android_ver = (int)(target_props["ro.build.version.release"])
-        return get_apu_so_paths_by_props(android_ver, target_soc)
+        return apu_utils.get_apu_so_paths_by_props(android_ver, target_soc)
 
     def pull(self, src_path, file_name, dst_path='.'):
         if not os.path.exists(dst_path):

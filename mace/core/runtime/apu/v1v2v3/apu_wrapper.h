@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
-#define MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
+#ifndef MACE_CORE_RUNTIME_APU_V1V2V3_APU_WRAPPER_H_
+#define MACE_CORE_RUNTIME_APU_V1V2V3_APU_WRAPPER_H_
 
 #include <string>
 #include <vector>
@@ -69,4 +69,4 @@ class ApuWrapper {
 
 }  // namespace mace
 
-#endif  // MACE_CORE_RUNTIME_APU_APU_WRAPPER_H_
+#endif  // MACE_CORE_RUNTIME_APU_V1V2V3_APU_WRAPPER_H_

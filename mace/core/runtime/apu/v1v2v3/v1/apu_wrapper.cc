@@ -12,15 +12,71 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef MACE_MTK_APU_ANCIENT
-
 #include <algorithm>
 
 #include "mace/core/quantize.h"
-#include "mace/core/runtime/apu/apu_wrapper.h"
+#include "mace/core/runtime/apu/v1v2v3/apu_wrapper.h"
 #include "third_party/apu/android_Q/mt67xx/ApuFrontend.h"
 
 namespace mace {
+
+ApuWrapper::ApuWrapper(Device *device)
+    : quantize_util_uint8_(&device->cpu_runtime()->thread_pool()),
+      quantize_util_int16_(&device->cpu_runtime()->thread_pool()) {
+}
+
+int ApuWrapper::MapToApuDataType(DataType mace_type) {
+  switch (mace_type) {
+    case DT_FLOAT:
+      return APU_DATA_TYPE_FLOAT;
+    case DT_INT32:
+      return APU_DATA_TYPE_INT32;
+    case DT_HALF:
+      return APU_DATA_TYPE_HALF;
+    case DT_FLOAT16:
+      return APU_DATA_TYPE_HALF;
+    case DT_UINT8:
+      return APU_DATA_TYPE_UINT8;
+    case DT_INT16:
+      return APU_DATA_TYPE_INT16;
+    default:
+      MACE_CHECK(false, "unsupport mace data type");
+      break;
+  }
+  return APU_DATA_TYPE_UNDEFINED;
+}
+
+int ApuWrapper::MapToApuPoolingMode(int mace_mode) {
+  switch (mace_mode) {
+    case 1:
+      return APU_POOLING_AVG;
+    case 2:
+      return APU_POOLING_MAX;
+    default:
+      MACE_CHECK(false, "unsupport mace pooling mode");
+      break;
+  }
+  return APU_POOLING_UNDEFINED;
+}
+
+int ApuWrapper::MapToApuEltwiseMode(int mace_mode) {
+  switch (mace_mode) {
+    case 0:
+      return APU_ELTWISE_ADD;
+    case 1:
+      return APU_ELTWISE_SUB;
+    case 2:
+      return APU_ELTWISE_MUL;
+    case 4:
+      return APU_ELTWISE_MIN;
+    case 5:
+      return APU_ELTWISE_MAX;
+    default:
+      MACE_CHECK(false, "unsupport mace eltwise mode");
+      break;
+  }
+  return APU_ELTWISE_UNDEFINED;
+}
 
 //  for mt67xx socs on android Q
 bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
@@ -192,7 +248,111 @@ bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
   return ret;
 }
 
+
+bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
+                      const char *file_name, bool load, bool store) {
+  return DoInit(net_def, model_data, file_name, load, store);
+}
+
+bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
+                     std::map<std::string, Tensor *> *output_tensors) {
+  MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
+  MACE_ASSERT(output_tensors.size() == output_infos_.size(),
+              "Wrong outputs num");
+  // prepare input
+  for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
+    Tensor* tensor = input_tensors.at(input_infos_[i].name);
+
+    // check size
+    int element_size = input_infos_[i].size;
+    int byte_per_element = GetByteNum(input_infos_[i].data_type);
+    MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
+                "Wrong input size");
+    // quantize
+    if (input_infos_[i].data_type == APU_DATA_TYPE_INT16) {
+      quantize_util_int16_.QuantizeWithScaleAndZeropoint(
+          (const float*)tensor->raw_data(),
+          element_size,
+          input_infos_[i].scale,
+          input_infos_[i].zero_point,
+          reinterpret_cast<int16_t*>(input_infos_[i].buf.get()));
+    } else if (input_infos_[i].data_type == APU_DATA_TYPE_FLOAT) {
+      std::memcpy(input_infos_[i].buf.get(),
+                  (const float*)tensor->raw_data(),
+                  element_size * byte_per_element);
+    } else {
+      quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
+          (const float*)tensor->raw_data(),
+          element_size,
+          input_infos_[i].scale,
+          input_infos_[i].zero_point,
+          input_infos_[i].buf.get());
+    }
+  }
+
+  // run model
+  bool ret = frontend->RunGraph();
+  MACE_CHECK(ret == true, "neuron run model failed");
+
+  // process output
+  for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
+    Tensor* tensor = output_tensors->at(output_infos_[i].name);
+
+    // prepare out buffer
+    tensor->SetDtype(DT_FLOAT);
+    tensor->Resize(output_infos_[i].shape);
+    int element_size = output_infos_[i].size;
+    int byte_per_element = GetByteNum(output_infos_[i].data_type);
+    MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
+                "Wrong output size");
+    // dequantize
+    if (output_infos_[i].data_type == APU_DATA_TYPE_INT16) {
+      quantize_util_int16_.Dequantize(
+          reinterpret_cast<int16_t*>(output_infos_[i].buf.get()),
+          element_size,
+          output_infos_[i].scale,
+          output_infos_[i].zero_point,
+          reinterpret_cast<float*>(tensor->raw_mutable_data()));
+    } else if (output_infos_[i].data_type == APU_DATA_TYPE_FLOAT) {
+      std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
+                  output_infos_[i].buf.get(),
+                  element_size * byte_per_element);
+    } else {
+      quantize_util_uint8_.Dequantize(
+          output_infos_[i].buf.get(),
+          element_size,
+          output_infos_[i].scale,
+          output_infos_[i].zero_point,
+          reinterpret_cast<float*>(tensor->raw_mutable_data()));
+    }
+  }
+
+  return true;
+}
+
+bool ApuWrapper::Uninit() {
+  bool ret = frontend->UninitGraph();
+  frontend = nullptr;
+  input_infos_.clear();
+  output_infos_.clear();
+  return ret;
+}
+
+int ApuWrapper::GetByteNum(int data_type) {
+  int byte_per_element;
+  if (data_type == APU_DATA_TYPE_FLOAT || data_type == APU_DATA_TYPE_INT32) {
+    byte_per_element = 4;
+  } else if (data_type == APU_DATA_TYPE_HALF ||
+      data_type == APU_DATA_TYPE_INT16) {
+    byte_per_element = 2;
+  } else if (data_type == APU_DATA_TYPE_UINT8) {
+    byte_per_element = 1;
+  } else {
+    byte_per_element = 1;
+    MACE_CHECK(false, "unsupport data type");
+  }
+  return byte_per_element;
+}
+
 }  // namespace mace
 
-
-#endif  // MACE_MTK_APU_ANCIENT

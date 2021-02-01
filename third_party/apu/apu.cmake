@@ -3,13 +3,19 @@ set(APU_INCLUDE_DIR  "${APU_INSTALL_DIR}")
 
 include_directories(SYSTEM "${APU_INCLUDE_DIR}")
 
-if(MACE_MTK_APU_ANCIENT)
+if(MACE_MTK_APU_VERSION EQUAL 1)
   set(APU-FRONTEND "${APU_INSTALL_DIR}/android_Q/mt67xx/libapu-frontend.so")
-else(MACE_MTK_APU_ANCIENT)  # for mt68xx on android Q it is only a place holder
+elseif(MACE_MTK_APU_VERSION EQUAL 2)
+  set(APU-FRONTEND "${APU_INSTALL_DIR}/android_Q/mt68xx/libapu-frontend.so")
+elseif(MACE_MTK_APU_VERSION EQUAL 3)
   set(APU-FRONTEND "${APU_INSTALL_DIR}/android_R/libapu-frontend.so")
-endif(MACE_MTK_APU_ANCIENT)
+elseif(MACE_MTK_APU_VERSION EQUAL 4)
+else()
+  message(FATAL_ERROR "Invalid MTK APU version: " ${MACE_MTK_APU_VERSION})
+endif()
 
-add_library(apu-frontend SHARED IMPORTED GLOBAL)
-set_target_properties(apu-frontend PROPERTIES IMPORTED_LOCATION ${APU-FRONTEND})
-
-install(FILES ${APU-FRONTEND} DESTINATION lib)
+if(APU-FRONTEND)
+  add_library(apu-frontend SHARED IMPORTED GLOBAL)
+  set_target_properties(apu-frontend PROPERTIES IMPORTED_LOCATION ${APU-FRONTEND})
+  install(FILES ${APU-FRONTEND} DESTINATION lib)
+endif(APU-FRONTEND)

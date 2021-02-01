@@ -155,20 +155,25 @@ case "${abi}" in
     cp "${bazel_dir}"/mace/libmace/libmace"${lib_suffix}" "${LIB_DIR}"/"${abi}"/
     ;;
   *)
+    apu_version="-1"
+    if [[ "${enable_apu}" == true ]];then
+        apu_version=`python tools/python/apu_utils.py get-version --target_abi=${abi}`
+        apu_version=`echo $?`
+    fi
     bazel build --config android --config optimization \
     mace/libmace:libmace_"${lib_type}" ${symbol_hidden} \
     --define neon="${enable_neon}" --define hta="${enable_hta}" \
     --define opencl="${enable_gpu}" --define apu="${enable_apu}" \
     --define hexagon="${enable_dsp}" --define quantize="${enable_quantize}" \
     --define rpcmem="${enable_rpcmem}" --define bfloat16="${enable_bfloat16}" \
-    --cpu="${abi}"
+    --cpu="${abi}" --define apu_version="${apu_version}"
     if [[ "${enable_dsp}" == true ]];then
       cp third_party/nnlib/"${abi}"/libhexagon_controller.so \
       "${LIB_DIR}"/"${abi}"/
     fi
     if [[ "${enable_apu}" == true ]];then
       # Detect the plugin-device and copy the valid so to the output dir
-      python tools/python/copy_apu_so.py --target_abi ${abi} --apu_path "${LIB_DIR}"/"${abi}"/
+      python tools/python/apu_utils.py copy-so-files --target_abi ${abi} --apu_path "${LIB_DIR}"/"${abi}"/
     fi
     if [[ "${enable_hta}" == true ]];then
       cp third_party/hta/"${abi}"/*so "${LIB_DIR}"/"${abi}"/

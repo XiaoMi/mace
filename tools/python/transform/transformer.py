@@ -1339,6 +1339,28 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         filter_format = self.filter_format()
         for op in net.op:
+            # transform `matmul` to `fc(2D)` for APU
+            if self._option.device == DeviceType.APU.value:
+                if op.type == MaceOp.MatMul.name:
+                    transpose_a_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_a_str)  # noqa
+                    transpose_b_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
+                    transpose_a = transpose_a_arg is not None and transpose_a_arg.i == 1  # noqa
+                    transpose_b = transpose_b_arg is not None and transpose_b_arg.i == 1  # noqa
+                    if transpose_a is False and transpose_b is False and \
+                            op.input[1] in self._consts and \
+                            len(self.get_tensor_shape(op.input[0])) == 2 and \
+                            len(self.get_tensor_shape(op.input[1])) == 2:
+                        op.type = MaceOp.FullyConnected.name
+                        filter = self._consts[op.input[1]]
+                        filter_data = \
+                            np.array(filter.float_data).reshape(filter.dims)
+                        filter_data = filter_data.transpose(1, 0)
+                        filter.float_data[:] = filter_data.flat
+                        filter.dims[:] = filter_data.shape
+                        six.print_('Transpose matmul weight to shape:',
+                                   filter.dims)
+                        return True
+                continue
             # transform `input(4D) -> reshape(2D) -> matmul` to `fc(2D)`
             # fc output is 2D in transformer, using as 4D in op kernel
             # work for TensorFlow/PyTorch/ONNX
@@ -1419,37 +1441,6 @@ class Transformer(base_converter.ConverterInterface):
                     if is_torch or is_onnx:
                         weight.dims.extend([1, 1])
                     return True
-
-            if self._option.device == DeviceType.APU.value:
-                if op.type == MaceOp.MatMul.name:
-                    transpose_a_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_a_str)  # noqa
-                    transpose_b_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
-                    transpose_a = transpose_a_arg is not None and transpose_a_arg.i == 1  # noqa
-                    transpose_b = transpose_b_arg is not None and transpose_b_arg.i == 1  # noqa
-                    if transpose_a is False and transpose_b is False and \
-                            op.input[1] in self._consts and \
-                            len(self.get_tensor_shape(op.input[0])) == 2 and \
-                            len(self.get_tensor_shape(op.input[1])) == 2:
-                        op.type = MaceOp.FullyConnected.name
-                        del op.arg[:]
-                        rhs = op.input[1]
-                        if rhs in self._consts and \
-                                len(self._consts[rhs].dims) == 2:
-                            arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
-                            if arg is None:
-                                arg = op.arg.add()
-                                arg.name = MaceKeyword.mace_transpose_b_str
-                                arg.i = 0
-                            if arg.i == 0:
-                                arg.i = 1
-                                filter = self._consts[rhs]
-                                filter_data = np.array(filter.float_data) \
-                                    .reshape(filter.dims)
-                                filter_data = filter_data.transpose(1, 0)
-                                filter.float_data[:] = filter_data.flat
-                                filter.dims[:] = filter_data.shape
-                                six.print_('Transpose matmul weight to shape:',
-                                           filter.dims)
         return False
 
     def update_float_op_data_type(self):
@@ -2383,6 +2374,8 @@ class Transformer(base_converter.ConverterInterface):
                 dim_arg.ints.extend(shape_tensor.int32_data)
 
     def fold_fc_reshape(self):
+        if self._option.device == DeviceType.APU.value:
+            return False
         net = self._model
         for op in net.op:
             # whether to reshape fc output(default 4D)
