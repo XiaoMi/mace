@@ -45,10 +45,15 @@
 #include "mace/core/runtime/hexagon/hexagon_device.h"
 #endif
 
-#ifdef MACE_ENABLE_APU
-#include "mace/core/runtime/apu/apu_wrapper.h"
+#ifdef MACE_ENABLE_MTK_APU
+#if MACE_MTK_APU_VERSION == 1 || MACE_MTK_APU_VERSION == 2 || \
+    MACE_MTK_APU_VERSION == 3
+#include "mace/core/runtime/apu/v1v2v3/apu_wrapper.h"
+#else
+#include "mace/core/runtime/apu/v4/apu_wrapper.h"
+#endif
 #include "mace/core/runtime/apu/apu_device.h"
-#endif  // MACE_ENABLE_APU
+#endif  // MACE_ENABLE_MTK_APU
 
 namespace mace {
 
@@ -335,7 +340,7 @@ MaceStatus MaceEngineConfig::Impl::SetAPUCache(
   apu_cache_policy_ = policy;
   apu_binary_file_ = binary_file;
   apu_storage_file_ = storage_file;
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   ret = true;
 #endif
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
@@ -520,7 +525,7 @@ class MaceEngine::Impl {
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   std::unique_ptr<ApuWrapper> apu_controller_;
   APUCachePolicy apu_cache_policy_;
   std::string apu_binary_file_;
@@ -549,7 +554,7 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
       , hexagon_controller_(nullptr)
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
       , apu_controller_(nullptr)
       , apu_cache_policy_(config.impl_->apu_cache_policy())
       , apu_binary_file_(config.impl_->apu_binary_file())
@@ -599,7 +604,7 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 #endif  // MACE_ENABLE_OPENCL
   }
 #endif  // defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   if (device_type_ == DeviceType::APU) {
     device_.reset(new ApuDevice(thread_pool_.get()));
   }
@@ -676,7 +681,7 @@ MaceStatus MaceEngine::Impl::Init(
       output_tensor->set_data_format(DataFormat::NHWC);
     }
 #endif
-#if defined(MACE_ENABLE_APU)
+#if defined(MACE_ENABLE_MTK_APU)
     if (device_type_ == DeviceType::APU) {
       Tensor *output_tensor =
           ws_->CreateTensor(output_name, device_->allocator(), DT_FLOAT);
@@ -708,7 +713,7 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   if (device_type_ == APU) {
     apu_controller_.reset(new ApuWrapper(device_.get()));
     bool cache_load = apu_cache_policy_ == APUCachePolicy::APU_CACHE_LOAD;
@@ -756,7 +761,7 @@ MaceStatus MaceEngine::Impl::Init(
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   }
 #endif
 
@@ -801,7 +806,7 @@ MaceEngine::Impl::~Impl() {
     MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");
   }
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   if (device_type_ == APU) {
     MACE_CHECK(apu_controller_->Uninit(), "apu uninit error");
   }
@@ -1066,7 +1071,7 @@ MaceStatus MaceEngine::Impl::Run(
     hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   if (device_type_ == APU) {
     MACE_CHECK(apu_controller_->Run(input_tensors, &output_tensors),
                "apu run error");
@@ -1076,7 +1081,7 @@ MaceStatus MaceEngine::Impl::Run(
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   }
 #endif
 

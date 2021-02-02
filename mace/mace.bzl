@@ -91,10 +91,13 @@ def if_not_apu_enabled(a):
         "//conditions:default": a,
     })
 
-def if_apu_ancient(a, default_value = []):
+def apu_version_select(v1, v2, v3, v4):
     return select({
-        "//mace:apu_ancient": a,
-        "//conditions:default": default_value,
+        "//mace:apu_v1": v1,
+        "//mace:apu_v2": v2,
+        "//mace:apu_v3": v3,
+        "//mace:apu_v4": v4,
+        "//conditions:default": [],
     })
 
 def if_opencl_enabled(a, default_value = []):

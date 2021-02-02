@@ -22,7 +22,7 @@ import tempfile
 import shutil
 import numpy as np
 
-from copy_apu_so import get_apu_so_paths
+from apu_utils import get_apu_so_paths
 from py_proto import mace_pb2
 from utils import util
 from utils import device

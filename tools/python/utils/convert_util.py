@@ -59,6 +59,10 @@ def merge_params(net_def, data_type):
         elif tensor.data_type == mace_pb2.DT_BFLOAT16:
             data = Float2BFloat16Bytes(tensor.float_data)
             tensor.data_size = len(tensor.float_data)
+        elif tensor.data_type == mace_pb2.DT_INT16:
+            data = bytearray(
+                np.array(tensor.int32_data).astype(np.int16).tobytes())
+            tensor.data_size = len(tensor.int32_data)
         else:
             raise Exception('Tensor data type %s not supported' %
                             tensor.data_type)
@@ -87,6 +91,8 @@ def merge_params(net_def, data_type):
             del tensor.float_data[:]
         elif tensor.data_type == mace_pb2.DT_INT32:
             del tensor.int32_data[:]
+        elif tensor.data_type == mace_pb2.DT_INT16:
+            del tensor.int32_data[:]
         elif tensor.data_type == mace_pb2.DT_UINT8:
             del tensor.int32_data[:]
         elif tensor.data_type == mace_pb2.DT_INT8:
@@ -108,5 +114,7 @@ def data_type_to_np_dt(data_type, default_np_dt):
         return np.uint16
     elif data_type == mace_pb2.DT_INT8:
         return np.int8
+    elif data_type == mace_pb2.DT_INT16:
+        return np.int16
     else:
         return np.float32

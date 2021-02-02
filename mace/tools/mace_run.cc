@@ -214,7 +214,7 @@ bool RunModel(const std::string &model_name,
   // config.SetHexagonToUnsignedPD();
   config.SetHexagonPower(HEXAGON_NN_CORNER_TURBO, true, 100);
 #endif
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   config.SetAPUCache(static_cast<APUCachePolicy>(FLAGS_apu_cache_policy),
                      FLAGS_apu_binary_file,
                      FLAGS_apu_storage_file);

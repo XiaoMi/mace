@@ -6,12 +6,14 @@ set -e
 if [[ -z "$BUILD_DIR" ]]; then
     BUILD_DIR=build/cmake-build/arm64-v8a
 fi
+LIB_DIR=$BUILD_DIR"/install/lib/"
+rm -rf $LIB_DIR
 
 MACE_ENABLE_OPENCL=OFF
 MACE_ENABLE_HEXAGON_DSP=OFF
 MACE_ENABLE_HEXAGON_HTA=OFF
 MACE_ENABLE_MTK_APU=OFF
-MACE_MTK_APU_ANCIENT=OFF
+MACE_MTK_APU_VERSION=-1
 if [[ "$RUNTIME" == "GPU" ]]; then
     MACE_ENABLE_OPENCL=ON
 elif [[ "$RUNTIME" == "HEXAGON" ]]; then
@@ -20,6 +22,8 @@ elif [[ "$RUNTIME" == "HTA" ]]; then
     MACE_ENABLE_HEXAGON_HTA=ON
 elif [[ "$RUNTIME" == "APU" ]]; then
     MACE_ENABLE_MTK_APU=ON
+    MACE_MTK_APU_VERSION=`python tools/python/apu_utils.py get-version --target_abi=arm64-v8a`
+    MACE_MTK_APU_VERSION=`echo $?`
 fi
 
 MACE_ENABLE_CODE_MODE=OFF
@@ -49,8 +53,8 @@ cmake -DANDROID_ABI="arm64-v8a" \
       -DMACE_ENABLE_HEXAGON_DSP=${MACE_ENABLE_HEXAGON_DSP}   \
       -DMACE_ENABLE_HEXAGON_HTA=${MACE_ENABLE_HEXAGON_HTA}   \
       -DMACE_ENABLE_MTK_APU=${MACE_ENABLE_MTK_APU}           \
-      -MACE_MTK_APU_ANCIENT=${MACE_MTK_APU_ANCIENT}          \
-      -DMACE_ENABLE_BFLOAT16=${DMACE_ENABLE_BFLOAT16}        \
+      -DMACE_MTK_APU_VERSION=${MACE_MTK_APU_VERSION}         \
+      -DMACE_ENABLE_BFLOAT16=${MACE_ENABLE_BFLOAT16}         \
       -DMACE_ENABLE_OPT_SIZE=ON           \
       -DMACE_ENABLE_OBFUSCATE=ON          \
       -DMACE_ENABLE_TESTS=ON              \
@@ -62,4 +66,4 @@ cmake -DANDROID_ABI="arm64-v8a" \
 make -j$(nproc) VERBOSE=1 && make install
 cd ../../..
 # Detect the plugin-device and copy the valid so to the output dir
-python tools/python/copy_apu_so.py --target_abi arm64-v8a --apu_path $BUILD_DIR"/install/lib/"
+python tools/python/apu_utils.py copy-so-files --target_abi arm64-v8a --apu_path $LIB_DIR
