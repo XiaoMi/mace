@@ -44,12 +44,12 @@ MaceStatus BatchNormOp::OnInit() {
 
   MACE_RETURN_IF_ERROR(activation_.Init(this));
 
-  MACE_RETURN_IF_ERROR(ResizeOutputShape(OUTPUT, input_dim_size_, input_dims_));
-
   return MACE_SUCCESS;
 }
 
 MaceStatus BatchNormOp::Run() {
+  MACE_RETURN_IF_ERROR(ResizeOutputShape(OUTPUT, input_dim_size_, input_dims_));
+
   const mifloat *scale = scale_;
   const mifloat *offset = offset_;
   const uint32_t input_dim_end_idx = input_dim_size_ - 1;

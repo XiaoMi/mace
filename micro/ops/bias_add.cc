@@ -39,10 +39,12 @@ MaceStatus BiasAddOp::OnInit() {
   MACE_ASSERT1(bias_dims_[0] == input_dims_[input_dim_size_ - 1],
                "The bias's channel dim should be equal to the input's");
 
-  return ResizeOutputShape(OUTPUT, input_dim_size_, input_dims_);
+  return MACE_SUCCESS;
 }
 
 MaceStatus BiasAddOp::Run() {
+  MACE_RETURN_IF_ERROR(ResizeOutputShape(OUTPUT, input_dim_size_, input_dims_));
+
   return crumb::ComputeBias(input_, input_dims_, input_dim_size_,
                             bias_, bias_dims_[0], output_);
 }
