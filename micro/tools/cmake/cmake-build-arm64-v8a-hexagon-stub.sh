@@ -20,7 +20,7 @@ cmake ../../../micro \
   -DHEXAGON_SDK_ROOT=${HEXAGON_SDK_ROOT} \
   -DANDROID_NATIVE_API_LEVEL=21       \
   -DCMAKE_BUILD_TYPE=Release          \
-  -DANDROID_STL=c++_shared            \
+  -DANDROID_STL=c++_static            \
   -DMACE_ENABLE_RPCMEM=ON             \
   -DCMAKE_INSTALL_PREFIX=install      \
   -DMACE_MICRO_ENABLE_EXAMPLES=OFF \

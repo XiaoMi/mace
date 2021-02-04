@@ -37,7 +37,6 @@ if(MACE_ENABLE_TESTS)
                      -DCMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER}
                      -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}
                      -DBUILD_GMOCK=ON
-                     -Dgtest_disable_pthreads=ON
                      -Dgtest_force_shared_crt=ON
                      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                      -DCMAKE_GENERATOR=${CMAKE_GENERATOR}

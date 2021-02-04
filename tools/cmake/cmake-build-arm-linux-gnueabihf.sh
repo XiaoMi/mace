@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#! /bin/bash
 
 set -e
 
@@ -42,5 +42,5 @@ cmake -DCROSSTOOL_ROOT=${LINARO_ARM_LINUX_GNUEABIHF} \
       -DMACE_ENABLE_CODE_MODE=${MACE_ENABLE_CODE_MODE}       \
       -DCMAKE_INSTALL_PREFIX=install      \
       ../../..
-make -j$(nproc) VERBOSE=1 && make install
+make -j$(nproc) && make install
 cd ../../..

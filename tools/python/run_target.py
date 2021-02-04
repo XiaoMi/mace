@@ -34,7 +34,16 @@ from utils import config_parser
 from utils import util
 
 
-def run_target(target_abi, install_dir, target_obj, device_ids="all"):
+def run_target(target_abi, install_dir, target_obj, dev):
+    # reinstall target
+    print("Install target from %s to %s" % (target_obj.path, install_dir))
+    device_target = dev.install(target_obj, install_dir)
+    print(device_target)
+
+    dev.run(device_target)
+
+
+def run_target_origin(target_abi, install_dir, target_obj, device_ids="all"):
     if not install_dir:
         install_dir = default_install_dir(target_abi)
 
@@ -141,4 +150,4 @@ if __name__ == "__main__":
     # run
     target = target.Target(build_dir + "/install/bin/" + target_name,
                            opts=args, envs=envs)
-    run_target(target_abi, None, target, device_ids=flags.target_socs)
+    run_target_origin(target_abi, None, target, device_ids=flags.target_socs)

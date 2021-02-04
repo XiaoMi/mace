@@ -24,9 +24,11 @@ set(CORE_SRCS
   runtime/cpu/cpu_runtime.cc
 )
 
+add_library(extra_link_libs_target INTERFACE)
+
 if(MACE_ENABLE_RPCMEM)
   set(CORE_SRCS ${CORE_SRCS} rpcmem.cc)
-  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} rpcmem)
+  target_link_libraries(extra_link_libs_target INTERFACE rpcmem)
 endif(MACE_ENABLE_RPCMEM)
 
 if(MACE_ENABLE_OPENCL)
@@ -40,7 +42,7 @@ if(MACE_ENABLE_OPENCL)
     runtime/opencl/opencl_wrapper.cc
     runtime/opencl/scratch_image.cc
   )
-  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} generated_opencl_kernel dl)
+  target_link_libraries(extra_link_libs_target INTERFACE generated_opencl_kernel dl)
 endif(MACE_ENABLE_OPENCL)
 
 if(MACE_ENABLE_HEXAGON_DSP OR MACE_ENABLE_HEXAGON_HTA)
@@ -52,25 +54,25 @@ endif(MACE_ENABLE_HEXAGON_DSP OR MACE_ENABLE_HEXAGON_HTA)
 
 if(MACE_ENABLE_HEXAGON_DSP)
   set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_dsp_wrapper.cc)
-  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} hexagon_controller)
+  target_link_libraries(extra_link_libs_target INTERFACE hexagon_controller)
 endif(MACE_ENABLE_HEXAGON_DSP)
 
 if(MACE_ENABLE_HEXAGON_HTA)
   set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_hta_transformer.cc)
   set(CORE_SRCS ${CORE_SRCS} runtime/hexagon/hexagon_hta_wrapper.cc)
-  set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} hta_hexagon_runtime)
+  target_link_libraries(extra_link_libs_target INTERFACE hta_hexagon_runtime)
 endif(MACE_ENABLE_HEXAGON_HTA)
 
 if(MACE_ENABLE_MTK_APU)
   if(MACE_MTK_APU_VERSION EQUAL 1)
     set(CORE_SRCS ${CORE_SRCS} runtime/apu/v1v2v3/v1/apu_wrapper.cc)
-    set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} apu-frontend)
+    target_link_libraries(extra_link_libs_target INTERFACE apu-frontend)
   elseif(MACE_MTK_APU_VERSION EQUAL 2)
     set(CORE_SRCS ${CORE_SRCS} runtime/apu/v1v2v3/v2v3/apu_wrapper.cc)
-    set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} apu-frontend)
+    target_link_libraries(extra_link_libs_target INTERFACE apu-frontend)
   elseif(MACE_MTK_APU_VERSION EQUAL 3)
     set(CORE_SRCS ${CORE_SRCS} runtime/apu/v1v2v3/v2v3/apu_wrapper.cc)
-    set(EXTRA_LINK_LIBS ${EXTRA_LINK_LIBS} apu-frontend)
+    target_link_libraries(extra_link_libs_target INTERFACE apu-frontend)
   elseif(MACE_MTK_APU_VERSION EQUAL 4)
     set(CORE_SRCS ${CORE_SRCS}
       runtime/apu/v4/apu_wrapper.cc
@@ -88,7 +90,7 @@ target_link_libraries(core PRIVATE
   utils
   port
   generated_version
-  ${EXTRA_LINK_LIBS}
+  extra_link_libs_target
 )
 
 add_dependencies(core half)

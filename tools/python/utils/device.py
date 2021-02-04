@@ -140,8 +140,12 @@ class AndroidDevice(Device):
         serialno_list = [tuple(pair.split('\t')) for pair in serialno_list]
         devices = []
         for serialno in serialno_list:
-            if not serialno[1].startswith("no permissions"):
-                devices.append(serialno[0])
+            if (len(serialno) < 2 or
+                serialno[1].startswith("no permissions") or
+                    serialno[1].startswith("unauthorized")):
+                continue
+
+            devices.append(serialno[0])
 
         return devices
 

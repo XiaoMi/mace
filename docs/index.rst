@@ -52,6 +52,8 @@ The main documentation is organized into the following sections:
    :name: sec-micro
 
    micro-controllers/basic_usage.rst
+   micro-controllers/deploy.rst
+   micro-controllers/op_lists.rst
 
 .. toctree::
    :maxdepth: 1
