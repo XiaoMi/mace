@@ -220,10 +220,15 @@ def generate_input_data(input_file, input_node, input_shape, input_ranges,
             input_ranges[i][1] - input_ranges[i][0]) + input_ranges[i][0]
         input_file_name = util.formatted_file_name(input_file, input_node[i])
         MaceLogger.info('Generate input file: %s' % input_file_name)
-        if input_data_type[i] == mace_pb2.DT_FLOAT:
+        if input_data_type[i] == mace_pb2.DT_FLOAT or \
+                input_data_type[i] == mace_pb2.DT_FLOAT16 or \
+                input_data_type[i] == mace_pb2.DT_BFLOAT16:
             np_data_type = np.float32
         elif input_data_type[i] == mace_pb2.DT_INT32:
             np_data_type = np.int32
+        else:
+            mace_check(False, "Invalid input_data_type[%s]: %s" %
+                       (i, input_data_type[i]))
 
         data.astype(np_data_type).tofile(input_file_name)
 

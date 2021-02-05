@@ -34,6 +34,7 @@
 #include <numeric>
 
 #include "gflags/gflags.h"
+#include "mace/ops/common/utils.h"
 #include "mace/public/mace.h"
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
@@ -87,6 +88,18 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
+IDataType ParseDataType(const std::string &data_type_str) {
+  if (data_type_str == "float32") {
+    return IDataType::IDT_FLOAT;
+  } else if (data_type_str == "float16") {
+    return IDataType::IDT_FLOAT16;
+  } else if (data_type_str == "bfloat16") {
+    return IDataType::IDT_BFLOAT16;
+  } else {
+    return IDataType::IDT_FLOAT;
+  }
+}
+
 DataFormat ParseDataFormat(const std::string &data_format_str) {
   if (data_format_str == "NHWC") {
     return DataFormat::NHWC;
@@ -114,6 +127,12 @@ DEFINE_string(output_node,
 DEFINE_string(output_shape,
               "",
               "output shapes, separated by colon and comma");
+DEFINE_string(input_data_type,
+              "float32",
+              "input data type, NONE|float32|float16|bfloat16");
+DEFINE_string(output_data_type,
+              "float32",
+              "output data type, NONE|float32|float16|bfloat16");
 DEFINE_string(input_data_format,
               "NHWC",
               "input data formats, NONE|NHWC|NCHW");
@@ -162,12 +181,74 @@ DEFINE_int32(cpu_affinity_policy, 1,
 DEFINE_int32(apu_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
 DEFINE_bool(benchmark, false, "enable benchmark op");
 
+namespace {
+std::shared_ptr<char> ReadInputDataFromFile(
+    const std::string &file_path, const IDataType file_data_type,
+    const int tensor_size, const IDataType input_data_type,
+    std::shared_ptr<char> input_data = nullptr) {
+  auto file_data_size =
+      tensor_size * GetEnumTypeSize(static_cast<DataType>(file_data_type));
+  auto buffer_in = std::shared_ptr<char>(new char[file_data_size],
+                                         std::default_delete<char[]>());
+  std::ifstream in_file(file_path, std::ios::in | std::ios::binary);
+  if (in_file.is_open()) {
+    in_file.read(buffer_in.get(), file_data_size);
+    in_file.close();
+  } else {
+    LOG(FATAL) << "Open input file failed";
+    return nullptr;
+  }
+
+  auto input_size =
+      tensor_size * GetEnumTypeSize(static_cast<DataType>(input_data_type));
+  if (input_data == nullptr) {
+    input_data = std::shared_ptr<char>(new char[input_size],
+                                       std::default_delete<char[]>());
+  }
+  // CopyDataBetweenType is not an exported function, app should not use it,
+  // the follow line is only used to transform data from file during testing.
+  ops::common::utils::CopyDataBetweenType(
+      nullptr, buffer_in.get(), static_cast<DataType>(file_data_type),
+      input_data.get(), static_cast<DataType>(input_data_type), tensor_size);
+
+  return input_data;
+}
+
+int64_t WriteOutputDataToFile(const std::string &file_path,
+                              const IDataType file_data_type,
+                              const std::shared_ptr<void> output_data,
+                              const IDataType output_data_type,
+                              const std::vector<int64_t> &output_shape) {
+  int64_t output_size = std::accumulate(output_shape.begin(),
+                                        output_shape.end(), 1,
+                                        std::multiplies<int64_t>());
+  std::vector<float> tmp_output(output_size);
+  // CopyDataBetweenType is not an exported function, app should not use it,
+  // the follow line is only used to transform data to file during testing.
+  ops::common::utils::CopyDataBetweenType(
+      nullptr, output_data.get(), static_cast<DataType>(output_data_type),
+      tmp_output.data(), static_cast<DataType>(file_data_type), output_size);
+
+  std::ofstream out_file(file_path, std::ios::binary);
+  MACE_CHECK(out_file.is_open(), "Open output file failed: ", strerror(errno));
+  out_file.write(reinterpret_cast<char *>(tmp_output.data()),
+                 output_size * sizeof(float));
+  out_file.flush();
+  out_file.close();
+
+  return output_size;
+}
+}  // namespace
+
+
 bool RunModel(const std::string &model_name,
               const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
+              const std::vector<IDataType> &input_data_types,
               const std::vector<DataFormat> &input_data_formats,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes,
+              const std::vector<IDataType> &output_data_types,
               const std::vector<DataFormat> &output_data_formats,
               float cpu_capability) {
   DeviceType device_type = ParseDeviceType(FLAGS_device);
@@ -307,24 +388,15 @@ bool RunModel(const std::string &model_name,
     // Allocate input and output
     // only support float and int32, use char for generalization
     // sizeof(int) == 4, sizeof(float) == 4
-    int64_t input_size =
-        std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 4,
-                        std::multiplies<int64_t>());
-    inputs_size[input_names[i]] = input_size;
-    auto buffer_in = std::shared_ptr<char>(new char[input_size],
-                                           std::default_delete<char[]>());
-    // load input
-    std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
-                          std::ios::in | std::ios::binary);
-    if (in_file.is_open()) {
-      in_file.read(buffer_in.get(), input_size);
-      in_file.close();
-    } else {
-      LOG(INFO) << "Open input file failed";
-      return -1;
-    }
-    inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in,
-        input_data_formats[i]);
+    auto input_tensor_size = std::accumulate(
+        input_shapes[i].begin(), input_shapes[i].end(), 1,
+        std::multiplies<int64_t>());
+    auto file_path = FLAGS_input_file + "_" + FormatName(input_names[i]);
+    auto input_data = ReadInputDataFromFile(
+        file_path, IDT_FLOAT, input_tensor_size, input_data_types[i]);
+
+    inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], input_data,
+        input_data_formats[i], input_data_types[i]);
   }
 
   for (size_t i = 0; i < output_count; ++i) {
@@ -335,7 +407,7 @@ bool RunModel(const std::string &model_name,
     auto buffer_out = std::shared_ptr<char>(new char[output_size],
                                             std::default_delete<char[]>());
     outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out,
-        output_data_formats[i]);
+        output_data_formats[i], static_cast<IDataType>(output_data_types[i]));
   }
 
   if (!FLAGS_input_dir.empty()) {
@@ -353,16 +425,11 @@ bool RunModel(const std::string &model_name,
         std::string suffix = file_name.substr(prefix.size());
 
         for (size_t i = 0; i < input_count; ++i) {
-          file_name = FLAGS_input_dir + "/" + FormatName(input_names[i])
-              + suffix;
-          std::ifstream in_file(file_name, std::ios::in | std::ios::binary);
-          LOG(INFO) << "Read " << file_name;
-          MACE_CHECK(in_file.is_open(), "Open input file failed: ",
-                     strerror(errno));
-          in_file.read(reinterpret_cast<char *>(
-                           inputs[input_names[i]].data().get()),
-                       inputs_size[input_names[i]] * sizeof(float));
-          in_file.close();
+          file_name =
+              FLAGS_input_dir + "/" + FormatName(input_names[i]) + suffix;
+          ReadInputDataFromFile(
+              file_name, IDT_FLOAT, inputs_size[input_names[i]],
+              input_data_types[i], inputs[input_names[i]].data<char>());
         }
         engine->Run(inputs, &outputs);
 
@@ -370,20 +437,12 @@ bool RunModel(const std::string &model_name,
           for (size_t i = 0; i < output_count; ++i) {
             std::string output_name =
                 FLAGS_output_dir + "/" + FormatName(output_names[i]) + suffix;
-            std::ofstream out_file(output_name, std::ios::binary);
-            MACE_CHECK(out_file.is_open(), "Open output file failed: ",
-                       strerror(errno));
-            int64_t output_size =
-                std::accumulate(output_shapes[i].begin(),
-                                output_shapes[i].end(),
-                                1,
-                                std::multiplies<int64_t>());
-            out_file.write(
-                reinterpret_cast<char *>(
-                    outputs[output_names[i]].data().get()),
-                output_size * sizeof(float));
-            out_file.flush();
-            out_file.close();
+            auto output_data_type = outputs[output_names[i]].data_type();
+            auto file_data_type =
+                (output_data_type == IDT_INT32) ? IDT_INT32 : IDT_FLOAT;
+            WriteOutputDataToFile(output_name, file_data_type,
+                                  outputs[output_names[i]].data<void>(),
+                                  output_data_type, output_shapes[i]);
           }
         }
       }
@@ -507,15 +566,13 @@ bool RunModel(const std::string &model_name,
     for (size_t i = 0; i < output_count; ++i) {
       std::string output_name =
           FLAGS_output_file + "_" + FormatName(output_names[i]);
-      std::ofstream out_file(output_name, std::ios::binary);
-      // only support float and int32
-      int64_t output_size =
-          std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 4,
-                          std::multiplies<int64_t>());
-      out_file.write(
-          outputs[output_names[i]].data<char>().get(), output_size);
-      out_file.flush();
-      out_file.close();
+      auto output_data_type = outputs[output_names[i]].data_type();
+      auto file_data_type =
+          output_data_type == IDT_INT32 ? IDT_INT32 : IDT_FLOAT;
+
+      auto output_size = WriteOutputDataToFile(
+          output_name, file_data_type, outputs[output_names[i]].data<void>(),
+          output_data_type, output_shapes[i]);
       LOG(INFO) << "Write output file " << output_name << " with size "
                 << output_size << " done.";
     }
@@ -557,6 +614,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "mace version: " << MaceVersion();
   LOG(INFO) << "input node: " << FLAGS_input_node;
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
+  LOG(INFO) << "input data_type: " << FLAGS_input_data_type;
   LOG(INFO) << "input data_format: " << FLAGS_input_data_format;
   LOG(INFO) << "output node: " << FLAGS_output_node;
   LOG(INFO) << "output shape: " << FLAGS_output_shape;
@@ -607,6 +665,19 @@ int Main(int argc, char **argv) {
                  "or outputs' names do not match outputs' shapes";
     return 0;
   }
+
+  auto raw_input_data_types = Split(FLAGS_input_data_type, ',');
+  std::vector<IDataType> input_data_types(input_count);
+  for (size_t i = 0; i < input_count; ++i) {
+    input_data_types[i] = ParseDataType(raw_input_data_types[i]);
+  }
+
+  auto raw_output_data_types = Split(FLAGS_output_data_type, ',');
+  std::vector<IDataType> output_data_types(output_count);
+  for (size_t i = 0; i < output_count; ++i) {
+    output_data_types[i] = ParseDataType(raw_output_data_types[i]);
+  }
+
   std::vector<std::string> raw_input_data_formats =
     Split(FLAGS_input_data_format, ',');
   std::vector<std::string> raw_output_data_formats =
@@ -628,10 +699,10 @@ int Main(int argc, char **argv) {
   bool ret = false;
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
-    ret = RunModel(FLAGS_model_name,
-        input_names, input_shape_vec, input_data_formats,
-        output_names, output_shape_vec, output_data_formats,
-        cpu_float32_performance);
+    ret = RunModel(FLAGS_model_name, input_names, input_shape_vec,
+                   input_data_types, input_data_formats, output_names,
+                   output_shape_vec, output_data_types, output_data_formats,
+                   cpu_float32_performance);
   }
   if (ret) {
     return 0;

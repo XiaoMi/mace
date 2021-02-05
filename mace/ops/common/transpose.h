@@ -26,6 +26,28 @@
 namespace mace {
 namespace ops {
 
+#if defined(MACE_ENABLE_OPENCL) || defined(MACE_ENABLE_FP16)
+#define MACE_TYPE_ENUM_SWITCH_CASE_HALF(STATEMENTS)     \
+  MACE_CASE(half, MACE_SINGLE_ARG(STATEMENTS))
+#else
+#define MACE_TYPE_ENUM_SWITCH_CASE_HALF(STATEMENTS)
+#endif
+
+#define MACE_TRANSPOSE_ENUM_SWITCH(                                \
+    TYPE_ENUM, STATEMENTS, INVALID_STATEMENTS, DEFAULT_STATEMENTS) \
+  switch (TYPE_ENUM) {                                             \
+    MACE_CASE(float, MACE_SINGLE_ARG(STATEMENTS))                  \
+    MACE_TYPE_ENUM_SWITCH_CASE_BFLOAT16(STATEMENTS)                \
+    MACE_TYPE_ENUM_SWITCH_CASE_HALF(STATEMENTS)                    \
+    default:                                                       \
+      DEFAULT_STATEMENTS;                                          \
+      break;                                                       \
+  }
+
+#define MACE_RUN_WITH_TRANPOSE_ENUM(TYPE_ENUM, STATEMENTS)               \
+  MACE_TRANSPOSE_ENUM_SWITCH(TYPE_ENUM, STATEMENTS, LOG(FATAL)           \
+      << "Invalid type"; , LOG(FATAL) << "Unknown type: " << TYPE_ENUM;)
+
 template<typename SrcT, typename DstT>
 void TransposeNHWCToNCHWC3(utils::ThreadPool *thread_pool,
                            const SrcT *input,
@@ -363,6 +385,20 @@ MaceStatus Transpose(utils::ThreadPool *thread_pool,
   }
 
   return MaceStatus::MACE_SUCCESS;
+}
+
+template<typename DstT>
+MaceStatus Transpose(utils::ThreadPool *thread_pool,
+                     const void *input, DataType input_data_type,
+                     const std::vector<int64_t> &input_shape,
+                     const std::vector<int> &dst_dims,
+                     DstT *output) {
+  MaceStatus status = MaceStatus::MACE_RUNTIME_ERROR;
+  MACE_RUN_WITH_TRANPOSE_ENUM(
+      input_data_type,
+      status = Transpose(thread_pool, static_cast<const T *>(input),
+                         input_shape, dst_dims, output));
+  return status;
 }
 
 }  // namespace ops

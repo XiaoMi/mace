@@ -41,7 +41,8 @@ VALIDATION_MODULE = 'VALIDATION'
 
 def load_data(file, data_type='float32'):
     if os.path.isfile(file):
-        if data_type == 'float32':
+        if data_type == 'float32' or data_type == 'float16' or \
+                data_type == 'bfloat16':
             return np.fromfile(file=file, dtype=np.float32)
         elif data_type == 'int32':
             return np.fromfile(file=file, dtype=np.int32)

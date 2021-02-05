@@ -35,7 +35,8 @@ def generate_data(name, shape, input_file, tensor_range, input_data_type):
         + tensor_range[0]
     input_file_name = common.formatted_file_name(input_file, name)
     six.print_('Generate input file: ', input_file_name)
-    if input_data_type == 'float32':
+    if input_data_type == 'float32' or input_data_type == 'float16' or \
+            input_data_type == 'bfloat16':
         np_data_type = np.float32
     elif input_data_type == 'int32':
         np_data_type = np.int32

@@ -171,6 +171,8 @@ DATA_TYPE_MAP = {
 def parse_data_type(str):
     if str == "float32":
         return mace_pb2.DT_FLOAT
+    if str == "float16":
+        return mace_pb2.DT_FLOAT16
     elif str == "int32":
         return mace_pb2.DT_INT32
     else:
@@ -205,6 +207,42 @@ def parse_float_array(xs):
     return [float(x) for x in xs.split(",")]
 
 
+def normalize_input_data_types(conf, input_count):
+    default_input_dt = conf[ModelKeys.data_type]
+    if default_input_dt == mace_pb2.DT_HALF:
+        default_input_dt = mace_pb2.DT_FLOAT  # Compatible with old version
+    conf_input_dts = to_list(conf.get(ModelKeys.input_data_types, []))
+    if len(conf_input_dts) == 0:
+        input_data_types = [default_input_dt]
+    else:
+        input_data_types = [parse_data_type(dt) for dt in conf_input_dts]
+
+    if len(input_data_types) == 1 and input_count > 1:
+        input_data_types = [input_data_types[0]] * input_count
+    mace_check(len(input_data_types) == input_count,
+               "the number of input_data_types should be "
+               "the same as input tensors")
+    conf[ModelKeys.input_data_types] = input_data_types
+
+
+def normalize_output_data_types(conf, output_count):
+    default_output_dt = conf[ModelKeys.data_type]
+    if default_output_dt == mace_pb2.DT_HALF:
+        default_output_dt = mace_pb2.DT_FLOAT  # Compatible with old version
+    conf_output_dts = to_list(conf.get(ModelKeys.output_data_types, []))
+    if len(conf_output_dts) == 0:
+        output_data_types = [default_output_dt]
+    else:
+        output_data_types = [parse_data_type(dt) for dt in conf_output_dts]
+
+    if len(output_data_types) == 1 and output_count > 1:
+        output_data_types = [output_data_types[0]] * output_count
+    mace_check(len(output_data_types) == output_count,
+               "the number of output_data_types should be "
+               "the same as output tensors")
+    conf[ModelKeys.output_data_types] = output_data_types
+
+
 def normalize_model_config(conf):
     conf = copy.deepcopy(conf)
     if ModelKeys.subgraphs in conf:
@@ -235,16 +273,7 @@ def normalize_model_config(conf):
         len(conf[ModelKeys.input_shapes]) == input_count,
         "input node count and shape count do not match")
 
-    input_data_types = [parse_data_type(dt) for dt in
-                        to_list(conf.get(ModelKeys.input_data_types,
-                                         ["float32"]))]
-
-    if len(input_data_types) == 1 and input_count > 1:
-        input_data_types = [input_data_types[0]] * input_count
-    mace_check(len(input_data_types) == input_count,
-               "the number of input_data_types should be "
-               "the same as input tensors")
-    conf[ModelKeys.input_data_types] = input_data_types
+    normalize_input_data_types(conf, input_count)
 
     input_data_formats = [parse_data_format(df) for df in
                           to_list(conf.get(ModelKeys.input_data_formats,
@@ -276,15 +305,7 @@ def normalize_model_config(conf):
     mace_check(len(conf[ModelKeys.output_tensors]) == output_count,
                "output node count and shape count do not match")
 
-    output_data_types = [parse_data_type(dt) for dt in
-                         to_list(conf.get(ModelKeys.output_data_types,
-                                          ["float32"]))]
-    if len(output_data_types) == 1 and output_count > 1:
-        output_data_types = [output_data_types[0]] * output_count
-    mace_check(len(output_data_types) == output_count,
-               "the number of output_data_types should be "
-               "the same as output tensors")
-    conf[ModelKeys.output_data_types] = output_data_types
+    normalize_output_data_types(conf, output_count)
 
     output_data_formats = [parse_data_format(df) for df in
                            to_list(conf.get(ModelKeys.output_data_formats,

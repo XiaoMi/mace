@@ -79,6 +79,8 @@ RuntimeTypeStrs = [
 InOutDataTypeStrs = [
     "int32",
     "float32",
+    "float16",
+    "bfloat16",
 ]
 
 InOutDataType = Enum('InputDataType',
@@ -178,22 +180,40 @@ def parse_device_type(runtime):
     return device_type
 
 
-def bfloat16_enabled(configs):
+def get_data_type_and_io_types(configs):
+    data_types = []
+    input_types = []
+    output_types = []
     for model_name in configs[YAMLKeyword.models]:
         model_config = configs[YAMLKeyword.models][model_name]
         dtype = model_config.get(YAMLKeyword.data_type, FPDataType.fp16_fp32)
-        if dtype == FPDataType.bf16_fp32:
-            return True
+        data_types.append(dtype)
+        input_type = model_config.get(YAMLKeyword.input_data_types,
+                                      InOutDataType.float32)
+        input_types.append(input_type)
+        output_type = model_config.get(YAMLKeyword.output_data_types,
+                                       InOutDataType.float32)
+        output_types.append(output_type)
+    return (data_types, input_types, output_types)
+
+
+def data_type_enabled(configs, data_type, io_type):
+    (data_types, input_types, output_types) = \
+        get_data_type_and_io_types(configs)
+    if (data_type in data_types or io_type in input_types or
+            io_type in output_types):
+        return True
     return False
+
+
+def bfloat16_enabled(configs):
+    return data_type_enabled(configs, FPDataType.bf16_fp32,
+                             InOutDataType.bfloat16)
 
 
 def fp16_enabled(configs):
-    for model_name in configs[YAMLKeyword.models]:
-        model_config = configs[YAMLKeyword.models][model_name]
-        dtype = model_config.get(YAMLKeyword.data_type, FPDataType.fp16_fp32)
-        if dtype == FPDataType.fp16_fp16:
-            return True
-    return False
+    return data_type_enabled(configs, FPDataType.fp16_fp16,
+                             InOutDataType.float16)
 
 
 def hexagon_enabled(configs):
@@ -406,10 +426,10 @@ def format_model_config(flags):
                        "you at least plug in one phone")
         else:
             for soc in target_socs:
-                mace_check(soc in available_socs,
-                           ModuleName.YAML_CONFIG,
-                           "Build specified SOC library, "
-                           "you must plug in a phone using the SOC")
+                mace_check(soc in available_socs, ModuleName.YAML_CONFIG,
+                           "Build specified SOC library, you must plug in a "
+                           "phone using the SOC(%s), the current socs: %s" %
+                           (soc, available_socs))
 
     if flags.model_graph_format:
         model_graph_format = flags.model_graph_format
