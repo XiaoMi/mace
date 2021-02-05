@@ -494,6 +494,8 @@ class MaceEngine::Impl {
                  std::map<std::string, MaceTensor> *outputs,
                  RunMetadata *run_metadata);
 
+  MaceStatus ReleaseIntermediateBuffer();
+
  private:
   MaceStatus TransposeInput(
       const std::pair<const std::string, MaceTensor> &input,
@@ -1077,6 +1079,9 @@ MaceStatus MaceEngine::Impl::Run(
                "apu run error");
   } else {
 #endif
+  if (ws_->buffer_released()) {
+    MACE_RETURN_IF_ERROR(ws_->AllocateIntermediateBuffer(true));
+  }
   MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
 #if defined(MACE_ENABLE_HEXAGON) || defined(MACE_ENABLE_HTA)
   }
@@ -1097,6 +1102,10 @@ MaceStatus MaceEngine::Impl::Run(
     MACE_RETURN_IF_ERROR(TransposeOutput(output_tensor, &output));
   }
   return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus MaceEngine::Impl::ReleaseIntermediateBuffer() {
+  return ws_->ReleaseIntermediateBuffer();
 }
 
 MaceEngine::MaceEngine(const MaceEngineConfig &config) :
@@ -1138,6 +1147,9 @@ MaceStatus MaceEngine::Init(const NetDef *net_def,
   return impl_->Init(net_def, input_nodes, output_nodes, model_data, -1);
 }
 
+MaceStatus MaceEngine::ReleaseIntermediateBuffer() {
+  return impl_->ReleaseIntermediateBuffer();
+}
 MaceStatus CreateMaceEngineFromProto(
     const unsigned char *model_graph_proto,
     const size_t model_graph_proto_size,

@@ -51,6 +51,7 @@ class BufferBase {
 
   virtual MaceStatus Allocate(const std::vector<size_t> &shape,
                               DataType data_type) = 0;
+  virtual void Delete() = 0;
 
   virtual void *Map(index_t offset,
                     index_t length,
@@ -111,12 +112,7 @@ class Buffer : public BufferBase {
         is_data_owner_(false) {}
 
   virtual ~Buffer() {
-    if (mapped_buf_ != nullptr) {
-      UnMap();
-    }
-    if (is_data_owner_ && buf_ != nullptr) {
-      allocator_->Delete(buf_);
-    }
+    Delete();
   }
 
   core::BufferType buffer_type() const {
@@ -171,6 +167,16 @@ class Buffer : public BufferBase {
                                      1, std::multiplies<size_t>())
         * GetEnumTypeSize(data_type);
     return this->Allocate(nbytes);
+  }
+
+  void Delete() {
+    if (mapped_buf_ != nullptr) {
+      UnMap();
+    }
+    if (is_data_owner_ && buf_ != nullptr) {
+      allocator_->Delete(buf_);
+    }
+    buf_ = nullptr;
   }
 
   void *Map(index_t offset,
@@ -250,12 +256,7 @@ class Image : public BufferBase {
         mapped_buf_(nullptr) {}
 
   virtual ~Image() {
-    if (mapped_buf_ != nullptr) {
-      UnMap();
-    }
-    if (buf_ != nullptr) {
-      allocator_->DeleteImage(buf_);
-    }
+    Delete();
   }
 
   inline DataType dtype() const {
@@ -303,6 +304,16 @@ class Image : public BufferBase {
     shape_ = shape;
     data_type_ = data_type;
     return allocator_->NewImage(shape, data_type, &buf_);
+  }
+
+  void Delete() {
+    if (mapped_buf_ != nullptr) {
+      UnMap();
+    }
+    if (buf_ != nullptr) {
+      allocator_->DeleteImage(buf_);
+      buf_ = nullptr;
+    }
   }
 
   void *Map(index_t offset,
@@ -395,9 +406,7 @@ class BufferSlice : public BufferBase {
       : BufferSlice(other.buffer_, other.offset_, other.size_) {}
 
   virtual ~BufferSlice() {
-    if (buffer_ != nullptr && mapped_buf_ != nullptr) {
-      UnMap();
-    }
+    Delete();
   }
 
   core::BufferType buffer_type() const {
@@ -441,6 +450,12 @@ class BufferSlice : public BufferBase {
     MACE_UNUSED(data_type);
     LOG(FATAL) << "BufferSlice should not call allocate function";
     return MaceStatus::MACE_SUCCESS;
+  }
+
+  void Delete() {
+    if (buffer_ != nullptr && mapped_buf_ != nullptr) {
+      UnMap();
+    }
   }
 
   void *Map(index_t offset,

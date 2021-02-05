@@ -64,7 +64,7 @@ MaceStatus ResizeBicubicKernel::Compute(
   }
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
-  if (!IsVecEqual(input_shape_, input->shape())) {
+  if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> output_shape{batch, out_height, out_width, channels};
 

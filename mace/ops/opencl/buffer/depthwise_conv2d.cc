@@ -193,7 +193,7 @@ MaceStatus DepthwiseConv2dKernel::Compute(
              input_channels);
 
   // Mark whether input changed or not
-  bool input_changed = !IsVecEqual(input_shape_, input->shape());
+  bool input_changed = IsResetArgsNeeded(context, input_shape_, input->shape());
   input_shape_ = input->shape();
 
   std::vector<index_t> padded_output_shape = output_shape;

@@ -59,7 +59,7 @@ MaceStatus LSTMCellKernel::Compute(
                            static_cast<uint32_t>(height)};
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
-  if (!IsVecEqual(input_shape_, input->shape())) {
+  if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
     std::vector<index_t> output_shape_padded = {height, 1, 1, hidden_units};
     std::vector<size_t> output_image_shape;
     OpenCLUtil::CalImage2DShape(output_shape_padded,

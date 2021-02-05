@@ -142,7 +142,7 @@ MaceStatus Conv2dK3x3(OpContext *context,
   MACE_OUT_OF_RANGE_INIT(*kernel);
 
   // Support different input size
-  if (!IsVecEqual(*prev_input_shape, input->shape())) {
+  if (IsResetArgsNeeded(context, *prev_input_shape, input->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_3D_GWS_ARGS(*kernel, gws);

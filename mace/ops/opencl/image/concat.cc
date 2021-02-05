@@ -92,7 +92,7 @@ MaceStatus Concat2(OpContext *context,
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
   MACE_OUT_OF_RANGE_INIT(*kernel);
-  if (!IsVecEqual(*prev_input_shape, input0->shape())) {
+  if (IsResetArgsNeeded(context, *prev_input_shape, input0->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_3D_GWS_ARGS(*kernel, gws);

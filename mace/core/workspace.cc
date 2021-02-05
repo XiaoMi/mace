@@ -257,35 +257,26 @@ MaceStatus Workspace::PreallocateOutputTensor(
     const mace::NetDef &net_def,
     const mace::MemoryOptimizer *mem_optimizer,
     Device *device) {
-  auto &mem_blocks = mem_optimizer->mem_blocks();
-  for (auto &mem_block : mem_blocks) {
-    VLOG(3) << "Preallocate memory block. id: " << mem_block.mem_id()
-            << ", memory type: " << mem_block.mem_type()
-            << ", size: " << mem_block.x() << "x" << mem_block.y();
+  mem_blocks_ = mem_optimizer->mem_blocks();
+  for (auto &mem_block : mem_blocks_) {
     if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
       std::unique_ptr<BufferBase> tensor_buf(
           new Buffer(GetCPUAllocator()));
-      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-          mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
       preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                         std::move(tensor_buf));
     } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
       std::unique_ptr<BufferBase> image_buf(
           new Image(device->allocator()));
-      MACE_RETURN_IF_ERROR(image_buf->Allocate(
-          {static_cast<size_t>(mem_block.x()),
-           static_cast<size_t>(mem_block.y())}, mem_block.data_type()));
       preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                         std::move(image_buf));
     } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
       std::unique_ptr<BufferBase> tensor_buf(
           new Buffer(device->allocator()));
-      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-          mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
       preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                         std::move(tensor_buf));
     }
   }
+  MACE_RETURN_IF_ERROR(AllocateIntermediateBuffer(false));
   VLOG(1) << "Preallocate buffer to tensors";
   for (auto &tensor_mem : mem_optimizer->tensor_mem_map()) {
     std::unique_ptr<Tensor> tensor
@@ -294,7 +285,7 @@ MaceStatus Workspace::PreallocateOutputTensor(
                     false, tensor_mem.first));
     tensor->set_data_format(tensor_mem.second.data_format);
     if (tensor_mem.second.data_format != DataFormat::NONE) {
-      if (mem_blocks[tensor_mem.second.mem_id].mem_type()
+      if (mem_blocks_[tensor_mem.second.mem_id].mem_type()
           == MemoryType::GPU_IMAGE) {
         VLOG(1) << "Tensor: " << tensor_mem.first
                 << " Mem: " << tensor_mem.second.mem_id
@@ -331,6 +322,42 @@ MaceStatus Workspace::PreallocateOutputTensor(
     }
   }
 
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus Workspace::AllocateIntermediateBuffer(bool reallocate) {
+  buffer_reallocated_ = reallocate;
+  buffer_released_ = false;
+  for (auto &mem_block : mem_blocks_) {
+    VLOG(3) << "Allocate memory block. id: " << mem_block.mem_id()
+            << ", memory type: " << mem_block.mem_type()
+            << ", size: " << mem_block.x() << "x" << mem_block.y();
+    BufferBase *buffer = preallocated_allocator_.GetBuffer(mem_block.mem_id());
+    if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
+      MACE_RETURN_IF_ERROR(
+          buffer->Allocate(mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
+    } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
+      MACE_RETURN_IF_ERROR(
+          buffer->Allocate({static_cast<size_t>(mem_block.x()),
+                            static_cast<size_t>(mem_block.y())},
+                           mem_block.data_type()));
+    } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
+      MACE_RETURN_IF_ERROR(
+          buffer->Allocate(mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
+    }
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus Workspace::ReleaseIntermediateBuffer() {
+  buffer_released_ = true;
+  for (auto &mem_block : mem_blocks_) {
+    VLOG(3) << "Release memory block. id: " << mem_block.mem_id()
+            << ", memory type: " << mem_block.mem_type()
+            << ", size: " << mem_block.x() << "x" << mem_block.y();
+    BufferBase *buffer = preallocated_allocator_.GetBuffer(mem_block.mem_id());
+    buffer->Delete();
+  }
   return MaceStatus::MACE_SUCCESS;
 }
 

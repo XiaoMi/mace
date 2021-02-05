@@ -87,7 +87,7 @@ MaceStatus Conv2dKernel::Compute(
   std::function<MaceStatus(const Tensor *input, Tensor *output)> conv_func;
 
   // Mark whether input changed or not
-  bool input_changed = !IsVecEqual(input_shape_, input->shape());
+  bool input_changed = IsResetArgsNeeded(context, input_shape_, input->shape());
   input_shape_ = input->shape();
 
   bool use_1x1 = filter_h == 1 && filter_w == 1;

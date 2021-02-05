@@ -22,6 +22,7 @@
 
 #include "mace/core/future.h"
 #include "mace/utils/macros.h"
+#include "mace/core/ops/op_context.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/runtime/opencl/opencl_util.h"
@@ -132,6 +133,14 @@ template <typename T>
 bool IsVecEqual(const std::vector<T> &input0, const std::vector<T> &input1) {
   return ((input0.size() == input1.size()) &&
           (std::equal(input0.begin(), input0.end(), input1.begin())));
+}
+
+template <typename T>
+bool IsResetArgsNeeded(OpContext *context,
+                       const std::vector<T> &input0,
+                       const std::vector<T> &input1) {
+  return context->workspace()->buffer_reallocated() ||
+         !IsVecEqual(input0, input1);
 }
 
 template <typename T>
