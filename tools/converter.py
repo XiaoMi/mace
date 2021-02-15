@@ -902,7 +902,10 @@ def convert_func(flags):
             StringFormatter.block("Model %s converted" % model_name))
 
     if model_graph_format == ModelFormat.code:
-        build_model_lib(configs, flags.address_sanitizer, flags.use_rpc_mem, flags.debug_mode)
+        build_model_lib(configs,
+                        flags.address_sanitizer,
+                        flags.use_rpc_mem,
+                        flags.debug_mode)
 
     print_library_summary(configs)
 
