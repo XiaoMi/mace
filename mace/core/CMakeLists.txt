@@ -83,9 +83,8 @@ if(MACE_ENABLE_MTK_APU)
 endif(MACE_ENABLE_MTK_APU)
 
 add_library(core STATIC ${CORE_SRCS})
-target_link_libraries(core PRIVATE
+target_link_libraries(core PUBLIC
   proto
-  utils
   port
   generated_version
   ${EXTRA_LINK_LIBS}

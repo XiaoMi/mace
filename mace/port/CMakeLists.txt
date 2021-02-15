@@ -4,7 +4,7 @@ add_library(port_base STATIC
   file_system.cc
 )
 
-target_link_libraries(port_base utils)
+target_link_libraries(port_base PUBLIC utils)
 
 if(ANDROID)
   add_subdirectory(posix)

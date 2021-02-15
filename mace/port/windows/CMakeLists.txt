@@ -3,6 +3,6 @@ add_library(port_windows STATIC
   file_system.cc
 )
 
-target_link_libraries(port_windows port_base)
+target_link_libraries(port_windows PUBLIC port_base)
 
 install(TARGETS port_windows ARCHIVE DESTINATION lib)
