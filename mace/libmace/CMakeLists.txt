@@ -8,7 +8,7 @@ if(NOT APPLE)
 endif(NOT APPLE)
 
 add_library(mace_static STATIC ${LIBMACE_SRCS})
-target_link_libraries(mace_static ops)
+target_link_libraries(mace_static PUBLIC ops)
 
 install(TARGETS mace LIBRARY DESTINATION lib)
 install(TARGETS mace_static ARCHIVE DESTINATION lib)
