@@ -56,8 +56,6 @@ add_library(libprotobuf_lite STATIC IMPORTED GLOBAL)
 set_property(TARGET libprotobuf_lite PROPERTY IMPORTED_LOCATION ${PROTOBUF_LITE_LIBRARIES})
 add_dependencies(libprotobuf_lite protobuf)
 
-install(FILES ${PROTOBUF_LITE_LIBRARIES} DESTINATION lib)
-
 set(BUILD_PROTOC TRUE)
 if(COMMAND protoc)
   execute_process(COMMAND protoc OUTPUT_VARIABLE PROTOC_VER)

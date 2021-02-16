@@ -29,9 +29,6 @@ add_custom_target(opencl_kernel_src DEPENDS ${MACE_OPENCL_KERNELS_SRC}
 add_library(generated_opencl_kernel ${MACE_OPENCL_KERNELS_SRC})
 add_dependencies(generated_opencl_kernel opencl_kernel_src)
 
-install(TARGETS generated_version ARCHIVE DESTINATION lib)
-install(TARGETS generated_opencl_kernel ARCHIVE DESTINATION lib)
-
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cc "")
 file(GLOB CODEGEN_MODELS ${CMAKE_CURRENT_BINARY_DIR}/null.cc models/**/code/*.cc)
 

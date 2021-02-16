@@ -83,8 +83,9 @@ if(MACE_ENABLE_MTK_APU)
 endif(MACE_ENABLE_MTK_APU)
 
 add_library(core STATIC ${CORE_SRCS})
-target_link_libraries(core PUBLIC
+target_link_libraries(core PRIVATE
   proto
+  utils
   port
   generated_version
   ${EXTRA_LINK_LIBS}
@@ -99,5 +100,3 @@ endif(MACE_ENABLE_OPENCL)
 if(MACE_ENABLE_QUANTIZE)
   add_dependencies(core gemmlowp)
 endif(MACE_ENABLE_QUANTIZE)
-
-install(TARGETS core ARCHIVE DESTINATION lib)

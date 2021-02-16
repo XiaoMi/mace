@@ -4,7 +4,7 @@ add_library(port_base STATIC
   file_system.cc
 )
 
-target_link_libraries(port_base PUBLIC utils)
+target_link_libraries(port_base utils)
 
 if(ANDROID)
   add_subdirectory(posix)
@@ -24,5 +24,3 @@ else(WIN32)
   add_subdirectory(linux)
   add_library(port ALIAS port_linux)
 endif(ANDROID)
-
-install(TARGETS port_base ARCHIVE DESTINATION lib)

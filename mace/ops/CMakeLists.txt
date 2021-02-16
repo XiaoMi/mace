@@ -58,10 +58,8 @@ if(MACE_ENABLE_OPENCL)
 endif(MACE_ENABLE_OPENCL)
 
 add_library(ops STATIC ${OPS_SRCS})
-target_link_libraries(ops PUBLIC core)
+target_link_libraries(ops PRIVATE core proto utils port)
 
 if(MACE_ENABLE_QUANTIZE)
   add_dependencies(ops tflite)
 endif(MACE_ENABLE_QUANTIZE)
-
-install(TARGETS ops ARCHIVE DESTINATION lib)
