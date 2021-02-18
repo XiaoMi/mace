@@ -100,5 +100,3 @@ endif(MACE_ENABLE_OPENCL)
 if(MACE_ENABLE_QUANTIZE)
   add_dependencies(core gemmlowp)
 endif(MACE_ENABLE_QUANTIZE)
-
-install(TARGETS core ARCHIVE DESTINATION lib)

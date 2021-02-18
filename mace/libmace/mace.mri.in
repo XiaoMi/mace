@@ -1,0 +1,13 @@
+create @BASE_PATH@/mace/libmace/libmace_static.a
+addlib @BASE_PATH@/mace/libmace/libmace_API.a
+addlib @BASE_PATH@/mace/ops/libops.a
+addlib @BASE_PATH@/mace/core/libcore.a
+addlib @BASE_PATH@/mace/utils/libutils.a
+addlib @BASE_PATH@/mace/proto/libproto.a
+addlib @BASE_PATH@/mace/port/libport_base.a
+@PORT_LIBS_MRI@
+addlib @BASE_PATH@/mace/codegen/libgenerated_version.a
+addlib @BASE_PATH@/mace/codegen/libgenerated_opencl_kernel.a
+addlib @BASE_PATH@/third_party/protobuf/src/protobuf-build/libprotobuf-lite.a
+save
+end

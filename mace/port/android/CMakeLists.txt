@@ -5,5 +5,3 @@ add_library(port_android STATIC
 )
 
 target_link_libraries(port_android port_linux_base log)
-
-install(TARGETS port_android ARCHIVE DESTINATION lib)

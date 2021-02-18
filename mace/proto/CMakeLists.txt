@@ -37,5 +37,3 @@ set_source_files_properties(
     PROPERTIES GENERATED TRUE
 )
 target_link_libraries(proto libprotobuf_lite)
-
-install(TARGETS proto ARCHIVE DESTINATION lib)

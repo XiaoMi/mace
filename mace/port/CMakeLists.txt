@@ -24,5 +24,3 @@ else(WIN32)
   add_subdirectory(linux)
   add_library(port ALIAS port_linux)
 endif(ANDROID)
-
-install(TARGETS port_base ARCHIVE DESTINATION lib)
