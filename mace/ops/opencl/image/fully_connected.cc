@@ -103,7 +103,7 @@ MaceStatus FullyConnectedKernel::Compute(
     }
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
-  if (!IsVecEqual(input_shape_, input->shape())) {
+  if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
     const index_t batch = output->dim(0);
     const index_t output_blocks = RoundUpDiv4(output->dim(3));
     gws_[2] = static_cast<uint32_t>(batch * output_blocks);

@@ -463,6 +463,15 @@ class MACE_API MaceEngine {
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data);
 
+  /// \brief Release intermediate buffer for layers' activations
+  ///
+  /// Caution: This function may hurt performance.
+  /// This function can be used to reduce peak memory footprint when multiple
+  /// models are used in a pipeline. Intermediate buffers will be reallocated
+  /// automatically the next time Run() is called.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
+  MaceStatus ReleaseIntermediateBuffer();
+
  private:
   class Impl;
   std::unique_ptr<Impl> impl_;

@@ -72,7 +72,7 @@ MaceStatus AddNKernel::Compute(
                            static_cast<uint32_t>(batch_height_pixels)};
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
-  if (!IsVecEqual(input_shape_, input_tensors[0]->shape())) {
+  if (IsResetArgsNeeded(context, input_shape_, input_tensors[0]->shape())) {
     std::vector<size_t> output_image_shape;
     OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
                                 &output_image_shape);

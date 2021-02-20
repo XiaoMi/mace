@@ -21,6 +21,7 @@
 #include <memory>
 
 #include "mace/core/device.h"
+#include "mace/core/memory_optimizer.h"
 #include "mace/core/preallocated_pooled_allocator.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
@@ -50,6 +51,14 @@ class Workspace {
     return diffused_buffer_;
   }
 
+  inline bool buffer_reallocated() const {
+    return buffer_reallocated_;
+  }
+
+  inline bool buffer_released() const {
+    return buffer_released_;
+  }
+
   const Tensor *GetTensor(const std::string &name) const;
 
   Tensor *GetTensor(const std::string &name);
@@ -63,6 +72,10 @@ class Workspace {
   MaceStatus PreallocateOutputTensor(const NetDef &net_def,
                                      const MemoryOptimizer *mem_optimizer,
                                      Device *device);
+
+  MaceStatus AllocateIntermediateBuffer(bool reallocate = true);
+
+  MaceStatus ReleaseIntermediateBuffer();
 
   void RemoveUnusedBuffer();
 
@@ -78,6 +91,9 @@ class Workspace {
   TensorMap tensor_map_;
   std::unique_ptr<BufferBase> tensor_buffer_;
   PreallocatedPooledAllocator preallocated_allocator_;
+  std::vector<MemoryBlock> mem_blocks_;
+  bool buffer_reallocated_;
+  bool buffer_released_;
   bool diffused_buffer_;
 
   const OpDelegatorRegistry *op_delegator_registry_;

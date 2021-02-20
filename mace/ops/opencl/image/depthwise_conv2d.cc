@@ -144,7 +144,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
   MACE_OUT_OF_RANGE_INIT(*kernel);
-  if (!IsVecEqual(*prev_input_shape, input->shape())) {
+  if (IsResetArgsNeeded(context, *prev_input_shape, input->shape())) {
     const index_t input_height = input->dim(1);
     const index_t input_width = input->dim(2);
 

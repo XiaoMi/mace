@@ -246,7 +246,8 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   ScratchImageManager *scratch_manager =
       context->device()->gpu_runtime()->scratch_image_manager();
   StatsFuture t_input_future, mm_future, t_output_future;
-  bool input_changed = !IsVecEqual(*prev_input_shape, input->shape());
+  bool input_changed =
+      IsResetArgsNeeded(context, *prev_input_shape, input->shape());
   *prev_input_shape = input->shape();
 
   auto &output_shape = output->shape();

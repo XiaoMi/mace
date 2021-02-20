@@ -57,7 +57,7 @@ MaceStatus PoolingKernel::Compute(
   MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   // Mark whether input changed or not
-  bool input_changed = !IsVecEqual(input_shape_, input->shape());
+  bool input_changed = IsResetArgsNeeded(context, input_shape_, input->shape());
   input_shape_ = input->shape();
 
   auto runtime = context->device()->gpu_runtime()->opencl_runtime();
