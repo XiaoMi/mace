@@ -20,7 +20,7 @@ before_install:
   - export ANDROID_NDK_HOME=${ANDROID_NDK}
   - export PATH=${PATH}:${ANDROID_NDK_HOME}
   - popd
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew cask install android-platform-tools; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew install --cask android-platform-tools; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; sudo apt-get install -y --no-install-recommends android-tools-adb; fi
   - sudo $PIP install setuptools
   - sudo $PIP install -I "tensorflow==1.8.0" "numpy==1.15.4" "sh==1.12.14" "pycodestyle==2.4.0" "pyyaml==3.13" "jinja2==2.10" "filelock==3.0.10" "scipy==1.2.0" "PTable==0.9.2"
@@ -31,7 +31,7 @@ jobs:
       script:
         - echo 'Check Code Style'
         - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py && python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc") && rm -f cpplint.py || exit 1;
-        - pycodestyle $(find . -name "*.py") || exit 1;
+        - pycodestyle . --filename=*.py --exclude=examples,third_party,build,tools/python/py_proto || exit 1;
       env: TYPE=Check-Code-Stype
       os: linux
       dist: xenial
@@ -40,7 +40,7 @@ jobs:
       script:
         - echo 'Check Code Style'
         - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py && python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc") && rm -f cpplint.py || exit 1;
-        - pycodestyle $(find . -name "*.py") || exit 1;
+        - pycodestyle . --filename=*.py --exclude=examples,third_party,build,tools/python/py_proto || exit 1;
       env: TYPE=Check-Code-Stype
       os: osx
       osx_image: xcode7.2
