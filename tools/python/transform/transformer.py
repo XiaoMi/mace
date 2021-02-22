@@ -496,6 +496,9 @@ class Transformer(base_converter.ConverterInterface):
                 concat_op = self._producer[op.input[0]]
                 consumer_op = self._consumers[op.output[0]][0]
 
+                if concat_op.input[0] not in self._consts or \
+                        concat_op.input[1] not in self._consts:
+                    continue
                 dims = [self._consts[concat_op.input[0]].int32_data[0],
                         self._consts[concat_op.input[1]].int32_data[0]]
                 tensor_def = net.tensors.add()
@@ -1608,6 +1611,8 @@ class Transformer(base_converter.ConverterInterface):
                                 and len(op.output_shape[0].dims) == 4):
                             print("Transpose concat/split args: %s(%s)"
                                   % (op.name, op.type))
+                            if arg.i < 0:
+                                arg.i += 4
                             if arg.i == 1:
                                 arg.i = 3
                             elif arg.i == 2:
@@ -2355,22 +2360,23 @@ class Transformer(base_converter.ConverterInterface):
                 op.input.append(shape_tensor.name)
 
     def transform_shape_tensor_to_param(self):
-        kOpTypeInputIdxMap = {
-            MaceOp.ResizeNearestNeighbor.name: 1,
-            MaceOp.Deconv2D.name: 2,
-            MaceOp.Reshape.name: 1,
+        kOpTypeMap = {
+            MaceOp.ResizeNearestNeighbor.name:
+                (1, MaceKeyword.mace_resize_size_str),
+            MaceOp.Deconv2D.name: (2, MaceKeyword.mace_dim_str),
+            MaceOp.Reshape.name: (1, MaceKeyword.mace_dim_str),
         }
         net = self._model
         for op in net.op:
-            if op.type not in kOpTypeInputIdxMap:
+            if op.type not in kOpTypeMap:
                 continue
-            shape_idx = kOpTypeInputIdxMap[op.type]
-            dim_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str)
-            if len(op.input) > shape_idx and dim_arg is None and \
-                    op.input[shape_idx] in self._consts:
-                shape_tensor = self._consts[op.input[shape_idx]]
+            info = kOpTypeMap[op.type]
+            dim_arg = ConverterUtil.get_arg(op, info[1])
+            if len(op.input) > info[0] and dim_arg is None and \
+                    op.input[info[0]] in self._consts:
+                shape_tensor = self._consts[op.input[info[0]]]
                 dim_arg = op.arg.add()
-                dim_arg.name = MaceKeyword.mace_dim_str
+                dim_arg.name = info[1]
                 dim_arg.ints.extend(shape_tensor.int32_data)
 
     def fold_fc_reshape(self):

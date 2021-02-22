@@ -146,6 +146,11 @@ const std::string OutputMemoryTypeTagName() {
   return kOutputMemTypeArgName;
 }
 
+const std::string IsFallbackTagName() {
+  static const char *kIsFallbackArgName = "is_fallback";
+  return kIsFallbackArgName;
+}
+
 bool IsQuantizedModel(const NetDef &net_def) {
   return
       ProtoArgHelper::GetOptionalArg<NetDef, int>(net_def, "quantize_flag", 0)

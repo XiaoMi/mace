@@ -382,6 +382,7 @@ MaceStatus NetDefAdapter::AdaptDevice(OpConditionContext *context,
                                                   producer_devices);
     if (device_type != target_device_type) {
       context->set_device(cpu_device);
+      SetProtoArg<int>(op_def, IsFallbackTagName(), 1);
       LOG(INFO) << "Op " << op_def->name() << "(" << op_def->type() << ")"
                 << " fall back to CPU";
     }

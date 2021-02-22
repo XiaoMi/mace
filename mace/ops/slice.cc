@@ -39,40 +39,74 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
     Tensor *output = this->Output(0);
 
     const index_t rank = input->dim_size();
-    MACE_CHECK(rank >= 1)
-      << "The input dim size should >= 1";
-    const index_t input_dim = input->dim(rank - 1);
-    MACE_CHECK(starts_.size() == 1 && ends_.size() == 1 && axes_.size() == 1,
-               "only support slicing at one axis.");
-    MACE_CHECK(axes_[0] == -1 || axes_[0] == rank - 1,
-               "only support slicing at the last axis.");
-    MACE_CHECK(starts_[0] < input_dim && starts_[0] >= 0
-                   && ends_[0] >= 0
-                   && ends_[0] <= input_dim)
-      << "The starts and ends caused over range error.";
-    const index_t offset = starts_[0];
-    const index_t output_dim = ends_[0] - starts_[0];
-    MACE_CHECK(output_dim >= 0, "output_dim should >= 0");
+    MACE_CHECK(rank >= 1, "The input dim size should >= 1.");
 
-    const index_t  frames =
-        std::accumulate(input->shape().begin(), input->shape().end() - 1, 1,
-                        std::multiplies<index_t>());
-
+    index_t start = 0;
+    index_t end = 0;
+    index_t axis = 0;
+    if (this->InputSize() > 1) {
+      MACE_CHECK(this->InputSize() >= 4, "The starts/ends/axes are required.");
+      const Tensor *starts = this->Input(1);
+      const Tensor *ends = this->Input(2);
+      const Tensor *axes = this->Input(3);
+      Tensor::MappingGuard starts_guard(starts);
+      Tensor::MappingGuard ends_guard(ends);
+      Tensor::MappingGuard axes_guard(axes);
+      const int32_t *starts_data = starts->data<int32_t>();
+      const int32_t *ends_data = ends->data<int32_t>();
+      const int32_t *axes_data = axes->data<int32_t>();
+      MACE_CHECK(starts->size() == 1 && ends->size() == 1 && axes->size() == 1,
+                 "Only support slicing at one axis.");
+      start = starts_data[0];
+      end = ends_data[0];
+      axis = axes_data[0];
+      if (this->InputSize() == 5) {
+        const Tensor *steps = this->Input(4);
+        Tensor::MappingGuard steps_guard(steps);
+        MACE_CHECK(steps->size() == 1 && steps->data<int32_t>()[0] == 1,
+                   "Only support slicing with steps 1.");
+      }
+    } else {
+      MACE_CHECK(starts_.size() == 1 && ends_.size() == 1 && axes_.size() == 1,
+                 "only support slicing at one axis.");
+      start = starts_[0];
+      end = ends_[0];
+      axis = axes_[0];
+    }
+    if (axis < 0) axis += input->dim_size();
+    MACE_CHECK(axis >= 0 && axis < input->dim_size(),
+               "The axes are out of bounds.");
+    index_t input_dim = input->dim(axis);
+    if (start < 0) start += input_dim;
+    if (end < 0) end += input_dim;
+    MACE_CHECK(
+        start < input_dim && start >= 0 && end > start && end <= input_dim,
+        "The starts and ends are out of bounds.");
+    index_t output_dim = end - start;
+    MACE_CHECK(output_dim > 0, "output_dim should > 0");
     std::vector<index_t> output_shape = input->shape();
-    output_shape[rank - 1] = output_dim;
+    output_shape[axis] = output_dim;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
-
-    for (index_t i = 0; i < frames; ++i) {
-      const T *input_base =
-          input_data + i * input_dim + offset;
-      T *output_base =
-          output_data + i * output_dim;
-      memcpy(output_base, input_base, output_dim * sizeof(T));
+    index_t inner_size = 1;
+    for (index_t i = axis + 1; i < input->dim_size(); ++i) {
+      inner_size *= input->dim(i);
+    }
+    index_t offset = start * inner_size;
+    index_t input_stride = input_dim * inner_size;
+    index_t output_stride = output_dim * inner_size;
+    index_t outer_size = 1;
+    for (index_t i = 0; i < axis; ++i) {
+      outer_size *= input->dim(i);
+    }
+    for (index_t i = 0; i < outer_size; ++i) {
+      const T *input_base = input_data + i * input_stride + offset;
+      T *output_base = output_data + i * output_stride;
+      memcpy(output_base, input_base, output_stride * sizeof(T));
     }
 
     return MaceStatus::MACE_SUCCESS;
@@ -85,10 +119,8 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
 };
 
 void RegisterSlice(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Slice", SliceOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Slice", SliceOp,
-                        DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Slice", SliceOp, DeviceType::CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Slice", SliceOp, DeviceType::CPU);
 }
 
 }  // namespace ops

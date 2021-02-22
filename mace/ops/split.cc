@@ -37,6 +37,9 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
         checked_(false) {}
 
   void Validate() {
+    if (axis_ < 0) {
+      axis_ += this->Input(0)->dim_size();
+    }
     auto has_df = Operation::GetOptionalArg<int>(
         "has_data_format", 0);
     if (has_df && this->Input(0)->dim_size() == 4) {

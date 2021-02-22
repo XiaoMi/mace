@@ -47,6 +47,36 @@ void TestSlice(const std::vector<index_t> &input_shape,
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
                       *net.GetOutput("Output"));
 }
+
+template <DeviceType D, typename T>
+void TestSliceWithInputs(const std::vector<index_t> &input_shape,
+                         const std::vector<T> &input,
+                         const int offset,
+                         const int output_dim,
+                         const int axis,
+                         const std::vector<index_t> &output_shape,
+                         const std::vector<T> &output) {
+  OpsTestNet net;
+  net.AddInputFromArray<CPU, T>(MakeString("Input"), input_shape, input);
+  net.AddInputFromArray<CPU, int32_t>(MakeString("starts"), {1}, {offset});
+  net.AddInputFromArray<CPU, int32_t>(MakeString("ends"), {1},
+                                      {offset + output_dim});
+  net.AddInputFromArray<CPU, int32_t>(MakeString("axes"), {1}, {axis});
+
+  OpDefBuilder("Slice", "SliceTest")
+      .Input("Input")
+      .Input("starts")
+      .Input("ends")
+      .Input("axes")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp();
+
+  net.AddInputFromArray<CPU, T>("ExpectedOutput", output_shape, output);
+  ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
+                      *net.GetOutput("Output"));
+}
 }  // namespace
 
 TEST_F(SliceOpTest, Simple2Dim) {
@@ -64,6 +94,20 @@ TEST_F(SliceOpTest, Simple3Dim) {
      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
     1, 2, {2, 3, 2},
     {2, 3, 7, 8, 12, 13, 2, 3, 7, 8, 12, 13});
+}
+
+TEST_F(SliceOpTest, Simple) {
+  TestSliceWithInputs<DeviceType::CPU, float>(
+    {3, 5},
+    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+    1, 2, 0, {2, 5},
+    {6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+  TestSliceWithInputs<DeviceType::CPU, float>(
+    {2, 3, 5},
+    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+    1, 2, 1, {2, 2, 5},
+    {6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 }
 
 }  // namespace test
