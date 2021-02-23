@@ -21,6 +21,9 @@ option(MACE_ENABLE_CODE_MODE   "whether to use code mode"                   OFF)
 
 message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
+string(TOLOWER ${CMAKE_SYSTEM_NAME} MACE_OS)
+string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} MACE_TARGET)
+
 if(MACE_ENABLE_CCACHE)
   find_program(CCACHE_FOUND ccache)
   if(CCACHE_FOUND)
@@ -104,11 +107,16 @@ if(MACE_ENABLE_HEXAGON_DSP)
   add_definitions(-DMACE_ENABLE_HEXAGON)
 endif(MACE_ENABLE_HEXAGON_DSP)
 
+if(MACE_ENABLE_RPCMEM)
+  add_definitions(-DMACE_ENABLE_RPCMEM)
+endif(MACE_ENABLE_RPCMEM)
+
 if(MACE_ENABLE_HEXAGON_HTA)
   if(NOT ANDROID)
     message(FATAL_ERROR "Hexagon HTA is only supported on Android")
   endif(NOT ANDROID)
   add_definitions(-DMACE_ENABLE_HEXAGON_HTA)
+  add_definitions(-DMACE_ENABLE_HTA)
 endif(MACE_ENABLE_HEXAGON_HTA)
 
 if(MACE_ENABLE_MTK_APU)

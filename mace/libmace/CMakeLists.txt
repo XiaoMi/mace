@@ -1,7 +1,7 @@
 set(LIBMACE_SRCS capability.cc mace.cc)
 
 add_library(mace SHARED ${LIBMACE_SRCS})
-target_link_libraries(mace ops)
+target_link_libraries(mace ops generated_version)
 if(NOT APPLE)
   set_target_properties(mace PROPERTIES LINK_FLAGS
     "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/mace_version_script.lds")
@@ -21,7 +21,6 @@ if(ANDROID)
     set(PORT_LIBS ${PORT_LIBS}
                   "\naddlib ${PROJECT_SOURCE_DIR}/third_party/rpcmem/${ANDROID_ABI}/rpcmem.a")
   endif()
-  
 elseif(WIN32)
   set(STATIC_LIB ${CMAKE_BINARY_DIR}/mace/libmace/libmace_static.lib)
 else(WIN32)
@@ -69,7 +68,7 @@ elseif(ANDROID)
     COMMAND ${_CMAKE_TOOLCHAIN_PREFIX}ar -M < ${CMAKE_BINARY_DIR}/mace/libmace/mace.mri
     DEPENDS mace_API ops core utils proto generated_version generated_opencl_kernel libprotobuf_lite port_base port_posix port_linux_base port_android
     )
-else(ANDROID)
+else() #linux
   add_custom_target(combined ALL
     COMMAND ar -M < ${CMAKE_BINARY_DIR}/mace/libmace/mace.mri
     DEPENDS mace_API ops core utils proto generated_version generated_opencl_kernel libprotobuf_lite port_base port_posix port_linux_base port_linux
@@ -82,6 +81,14 @@ endif()
 
 add_library(mace_static STATIC IMPORTED GLOBAL)
 add_dependencies(mace_static combined)
+set_target_properties(mace_static PROPERTIES
+  IMPORTED_LOCATION ${STATIC_LIB}
+)
+if(ANDROID)
+  set_target_properties(mace_static PROPERTIES
+    INTERFACE_LINK_LIBRARIES log
+  )
+endif()
 
 set_target_properties(mace_static
         PROPERTIES
@@ -90,3 +97,13 @@ set_target_properties(mace_static
 
 install(TARGETS mace LIBRARY DESTINATION lib)
 install(FILES ${STATIC_LIB} DESTINATION lib)
+
+if(ANDROID_STL)
+  if (${ANDROID_STL} STREQUAL "c++_shared") #
+    install(FILES "${ANDROID_NDK}/sources/cxx-stl/llvm-libc++/libs/${ANDROID_ABI}/libc++_shared.so" DESTINATION lib)
+  elseif(${ANDROID_STL} STREQUAL "stlport_shared") #
+    install(FILES "${ANDROID_NDK}/sources/cxx-stl/stlport/libs/${ANDROID_ABI}/libstlport_shared.so" DESTINATION lib)
+  elseif(${ANDROID_STL} STREQUAL "gnustl_shared") #
+    install(FILES "${ANDROID_NDK}/sources/cxx-stl/gnu-libstdc++/4.9/libs/${ANDROID_ABI}/libgnustl_shared.so" DESTINATION lib)
+  endif()
+endif()

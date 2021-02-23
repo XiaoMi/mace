@@ -192,21 +192,24 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                  "MACE_RUN_PARAMETER_PATH=%s/interior/tune_params"
                  % install_dir]
         opts += ["--round=0"]
-    if flags.vlog_level > 0:
-        envs += ["MACE_CPP_MIN_VLOG_LEVEL=%s" % flags.vlog_level]
+
+    mace_check(flags.vlog_level >= 0,
+               "vlog_level should be greater than zeror")
+    envs += ["MACE_CPP_MIN_VLOG_LEVEL=%s" % flags.vlog_level]
 
     build_dir = flags.build_dir + "/" + target_abi
     libs = []
-    if model_conf[ModelKeys.runtime] == DeviceType.HEXAGON:
+    if runtime == DeviceType.HEXAGON:
         libs += ["third_party/nnlib/%s/libhexagon_controller.so" % target_abi]
-    elif model_conf[ModelKeys.runtime] == DeviceType.APU:
+    if runtime == DeviceType.HTA:
+        libs += ["third_party/hta/%s/libhta_hexagon_runtime.so" % target_abi]
+    elif runtime == DeviceType.APU:
         apu_libs = get_apu_so_paths(dev)
         libs += apu_libs
 
     target = Target(build_dir + "/install/bin/mace_run", libs,
                     opts=opts, envs=envs)
-    run_target.run_target(target_abi, install_dir, target,
-                          device_ids=flags.target_socs)
+    run_target.run_target(target_abi, install_dir, target, dev)
 
     if runtime == DeviceType.GPU:
         opencl_dir = workdir + "/opencl"

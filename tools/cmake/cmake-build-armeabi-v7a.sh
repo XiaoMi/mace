@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /bin/bash
 
 set -e
 
@@ -43,7 +43,7 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake \
       -DANDROID_NATIVE_API_LEVEL=21                          \
       -DCMAKE_BUILD_TYPE=Release                             \
-      -DANDROID_STL=c++_shared                               \
+      -DANDROID_STL=c++_static                               \
       -DMACE_ENABLE_NEON=ON                                  \
       -DMACE_ENABLE_QUANTIZE=${MACE_ENABLE_QUANTIZE}         \
       -DMACE_ENABLE_OPENCL=${MACE_ENABLE_OPENCL}             \
@@ -59,5 +59,5 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DMACE_ENABLE_RPCMEM=ON                                \
       -DCMAKE_INSTALL_PREFIX=install                         \
       ../../..
-make -j$(nproc) VERBOSE=1 && make install
+make -j$(nproc)1 && make install
 cd ../../..

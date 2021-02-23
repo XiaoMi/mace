@@ -1,0 +1,284 @@
+stages:
+  - .pre
+  - linting
+  - build
+  - test
+  - benchmark
+  - model_validate
+  - .post
+
+variables:
+  MI_9_SE: 22927ca0
+  REDMI_K30_PRO:  1a6be0d8
+  MI_NOTE_3: f13dacf7
+  SIRIUS: aa52c843
+  ANDROID_NDK_HOME: /opt/android-ndk-r17b
+  IMAGE_TAG_VERSION: tmp
+
+clean-device-workspace:
+  stage: .pre
+  tags:
+     - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  only:
+    - schedule
+  script:
+    - adb -s $REDMI_K30_PRO shell "rm -rf /data/local/tmp/*"
+
+check-env:
+  stage: .pre
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  script:
+    - adb devices
+    - ls -lh ~/.ssh
+    - ssh pi@10.221.225.200 echo "Hi, This is raspberrypi"
+
+cpplint:
+  stage: linting
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  script:
+    - sh tools/cpplint.sh
+
+pylint:
+  stage: linting
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  script:
+    - pycodestyle . --filename=*.py --exclude=examples,third_party
+
+build_docs:
+  stage: build
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  when: manual
+  script:
+    - cd docs && make html
+  artifacts:
+    paths:
+      - docs/_build
+
+linux-x64:build:
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  stage: build
+  artifacts:
+    paths:
+      - build/cmake-build/host/install
+  script:
+    - RUNTIME=CPU QUANTIZE=ON tools/cmake/cmake-build-host.sh
+
+linux-x64:test:
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  stage: test
+  needs:
+    - "linux-x64:build"
+  dependencies:
+    - "linux-x64:build"
+  script:
+    - ls build -lh
+    - ./build/cmake-build/host/install/bin/mace_cc_test host/install/bin/mace_cc_test  --gtest_filter=*:-*GPU*:*OPENCL*:*Quant*:*OpenCL*:*DepthwiseDeconv2dOpTest*:*EltwiseOpTest*:*FullyConnectedOpTest*:*Gather*:*CPUFall*:*PadTest*:*QUANT*:*SpaceToBatchTest*:*BiasAddSimple2DCPU*:*Conv2dOpTest*
+
+linux-x64:model_validate:
+  stage: model_validate
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+    - "linux-x64:build"
+  dependencies:
+    - "linux-x64:build"
+  before_script:
+    - echo "git clone mace-models"
+    - rm -rf mace-models
+    - git clone https://github.com/XiaoMi/mace-models.git
+  script:
+    - TARGET_SOCS=random
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - python tools/python/convert.py --config=${CONF_FILE}
+    - python tools/python/run_model.py --config=${CONF_FILE} --target_socs=$TARGET_SOCS --target_abi=host --validate --benchmark --runtime=cpu
+
+linux-arm-quant:build:
+  stage: build
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  script:
+    - LINARO_ARM_LINUX_GNUEABIHF=/usr RUNTIME=CPU QUANTIZE=ON ./tools/cmake/cmake-build-arm-linux-gnueabihf.sh
+
+android-aarch64-gpu&quant:build:
+  stage: build
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  artifacts:
+    paths:
+      - build/cmake-build/arm64-v8a/install
+  script:
+    - RUNTIME=GPU QUANTIZE=ON tools/cmake/cmake-build-arm64-v8a.sh
+
+android-aarch64-gpu&quant:test:
+  stage: test
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+    - android-aarch64-gpu&quant:build
+  dependencies:
+    - android-aarch64-gpu&quant:build
+  tags:
+    - mace-host
+  script:
+    - adb -s $REDMI_K30_PRO shell rm -rf /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install
+    - adb -s $REDMI_K30_PRO push build/cmake-build/arm64-v8a/install /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install
+    - adb -s $REDMI_K30_PRO shell /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install/bin/mace_cc_test
+    - adb -s $REDMI_K30_PRO shell rm -rf /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install
+
+android-aarch64-gpu&quant:benchmark:
+  stage: benchmark
+  when: manual
+  needs:
+    - android-aarch64-gpu&quant:build
+  dependencies:
+    - android-aarch64-gpu&quant:build
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  script:
+    - adb -s $REDMI_K30_PRO shell rm -rf /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install
+    - adb -s $REDMI_K30_PRO push build/cmake-build/arm64-v8a/install /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install
+    - adb -s $REDMI_K30_PRO shell /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install/bin/mace_cc_benchmark
+    - adb -s $REDMI_K30_PRO shell rm -rf /data/local/$IMAGE_TAG_VERSION/${CI_JOB_ID}_install
+
+android-aarch64-gpu:model_validate:
+  stage: model_validate
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+    - "android-aarch64-gpu&quant:build"
+  dependencies:
+    - "android-aarch64-gpu&quant:build"
+  before_script:
+    - echo "git clone mace-models"
+    - rm -rf mace-models
+    - git clone https://github.com/XiaoMi/mace-models.git
+  script:
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - python tools/python/convert.py --config=${CONF_FILE}
+    - python tools/python/run_model.py --config=${CONF_FILE} --target_socs=random --target_abi=arm64-v8a --validate --benchmark --runtime=gpu
+
+android-aarch64-hexagon_dsp:build:
+  stage: build
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  artifacts:
+    paths:
+      - build/cmake-build/arm64-v8a/install
+  script:
+    - RUNTIME=HEXAGON QUANTIZE=ON tools/cmake/cmake-build-arm64-v8a.sh
+
+android-aarch64-hexagon_dsp:model_validate:
+  stage: model_validate
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+    - "android-aarch64-hexagon_dsp:build"
+  dependencies:
+    - "android-aarch64-hexagon_dsp:build"
+  before_script:
+    - echo "git clone mace-models"
+    - rm -rf mace-models
+    - git clone https://github.com/XiaoMi/mace-models.git
+  script:
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-dsp.yml
+    - python tools/python/convert.py --config=${CONF_FILE}
+    - python tools/python/run_model.py --config=${CONF_FILE} --target_socs=sdm660 --target_abi=arm64-v8a --validate --benchmark --runtime=dsp
+
+android-aarch64-hexagon_hta:build:
+  stage: build
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  artifacts:
+    paths:
+      - build/cmake-build/arm64-v8a/install
+  script:
+    - git reset origin/hta third_party/hta && git checkout third_party/hta
+    - RUNTIME=HTA QUANTIZE=ON tools/cmake/cmake-build-arm64-v8a.sh
+
+android-aarch64-hexagon_hta:model_validate:
+  stage: model_validate
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+    - "android-aarch64-hexagon_hta:build"
+  dependencies:
+    - "android-aarch64-hexagon_hta:build"
+  before_script:
+    - echo "git clone mace-models"
+    - rm -rf mace-models
+    - git clone https://github.com/XiaoMi/mace-models.git
+  script:
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-hta.yml
+    - python tools/python/convert.py --config=${CONF_FILE}
+    - python tools/python/run_model.py --config=${CONF_FILE} --target_socs=REDMI_K30_PRO --target_abi=arm64-v8a --validate --benchmark --runtime=hta
+
+android-aarch64-cpu/uint8:model_validate:
+  stage: model_validate
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+    - "android-aarch64-gpu&quant:build"
+  dependencies:
+    - "android-aarch64-gpu&quant:build"
+  before_script:
+    - echo "git clone mace-models"
+    - rm -rf mace-models
+    - git clone https://github.com/XiaoMi/mace-models.git
+  script:
+    - TARGET_SOCS=random
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1-quantize-friendly.yml
+    - python tools/python/convert.py --config=${CONF_FILE}
+    - python tools/python/run_model.py --config=${CONF_FILE} --target_socs=random --target_abi=arm64-v8a --validate --benchmark --runtime=cpu
+
+host-micro-cmsis:build:
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  stage: build
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  artifacts:
+    paths:
+      - build/micro
+  script:
+    - ./micro/tools/cmake/cmake-build-host.sh -DMACE_MICRO_ENABLE_TESTS=ON -DMACE_MICRO_ENABLE_CMSIS=ON
+
+host-micro-cmsis:test:
+  stage: test
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+   - "host-micro-cmsis:build"
+  dependencies:
+   - "host-micro-cmsis:build"
+  script:
+    - build/micro/host/test/ccunit/micro_ops_test
+
+host-micro-cmsis:benchmark:
+  stage: benchmark
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  needs:
+   - "host-micro-cmsis:build"
+  dependencies:
+   - "host-micro-cmsis:build"
+  script:
+    - build/micro/host/test/ccbenchmark/micro_cc_benchmark
+
+none-micro-m4:build:
+  stage: build
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  stage: build
+  tags:
+    - mace-host
+  image: cr.d.xiaomi.net/zhangzhimin1/mace-dev2:$IMAGE_TAG_VERSION
+  artifacts:
+    paths:
+      - build/micro/
+  script:
+    - ./micro/tools/cmake/cmake-build-gcc-arm-none-eabi.sh -DARM_CPU=cortex-m7 -DMACE_MICRO_ENABLE_CMSIS=ON -DMACE_MICRO_ENABLE_TESTS=OFF

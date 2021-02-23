@@ -7,6 +7,7 @@ mace {
     *ModelChecksum*;
     *ModelBuildTime*;
     *ModelBuildOptions*;
+    *MaceVersion*;
 
   local:
     *;
