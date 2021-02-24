@@ -108,6 +108,8 @@ android-aarch64-gpu&quant:build:
       - build/cmake-build/arm64-v8a/install
   script:
     - RUNTIME=GPU QUANTIZE=ON tools/cmake/cmake-build-arm64-v8a.sh
+    - LIBMACE64_FULL_SIZE=`stat -c%s build/cmake-build/arm64-v8a/install/lib/libmace.so`
+    - if (( LIBMACE64_FULL_SIZE > 2500000 )) ; then echo "The libmace.so size too large"; exit 1; fi
 
 android-aarch64-gpu&quant:test:
   stage: test

@@ -176,8 +176,7 @@ def run_model_with_conf(flags, args, model_name, model_conf):
     target = Target("build/micro/host/tools/micro_run_static", [],
                     opts=opts,
                     envs=envs)
-    run_target.run_target(target_abi, install_dir, target,
-                          device_ids="host")
+    run_target.run_target(target_abi, install_dir, target, dev)
 
     if flags.validate:
         validate_model_file = util.download_or_get_model(

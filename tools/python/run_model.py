@@ -207,6 +207,11 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
         apu_libs = get_apu_so_paths(dev)
         libs += apu_libs
 
+    cpp_shared_lib_path = os.path.join(
+        build_dir, "install/lib/libc++_shared.so")
+    if os.path.exists(cpp_shared_lib_path):
+        libs.append(cpp_shared_lib_path)
+
     target = Target(build_dir + "/install/bin/mace_run", libs,
                     opts=opts, envs=envs)
     run_target.run_target(target_abi, install_dir, target, dev)
