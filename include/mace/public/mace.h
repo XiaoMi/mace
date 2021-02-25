@@ -46,6 +46,21 @@ class NetDef;
 
 enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, HTA = 4, APU = 5 };
 
+// Must be the same as DataType
+enum IDataType {
+  IDT_INVALID = 0,
+  IDT_FLOAT = 1,
+  IDT_UINT8 = 2,
+  IDT_HALF = 3,
+  IDT_INT32 = 4,
+  IDT_FLOAT16 = 5,
+  IDT_BFLOAT16 = 6,
+  IDT_INT16 = 7,
+  IDT_INT8 = 8,
+
+  IDT_END,
+};
+
 enum class DataFormat {
   NONE = 0, NHWC = 1, NCHW = 2,
   HWOI = 100, OIHW = 101, HWIO = 102, OHWI = 103,
@@ -403,7 +418,8 @@ class MACE_API MaceTensor {
   //        For example, std::shared_ptr<float>(raw_buffer, [](float *){});
   MaceTensor(const std::vector<int64_t> &shape,
              std::shared_ptr<void> data,
-             const DataFormat format = DataFormat::NHWC);
+             const DataFormat format = DataFormat::NHWC,
+             const IDataType data_type = IDataType::IDT_FLOAT);
   MaceTensor();
   MaceTensor(const MaceTensor &other);
   MaceTensor(const MaceTensor &&other);
@@ -424,6 +440,7 @@ class MACE_API MaceTensor {
     return std::static_pointer_cast<T>(raw_mutable_data());
   }
   DataFormat data_format() const;
+  IDataType data_type() const;
 
  private:
   std::shared_ptr<void> raw_data() const;

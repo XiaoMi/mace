@@ -517,7 +517,9 @@ def gen_input(model_output_dir,
                               common.ModuleName.RUN,
                               "The preprocessor API in PrecisionValidator"
                               " script should return all inputs of model")
-            if input_data_types[i] == 'float32':
+            if input_data_types[i] == 'float32' or \
+                    input_data_types[i] == 'float16' or \
+                    input_data_types[i] == 'bfloat16':
                 input_data = np.array(input_data_map[input_name],
                                       dtype=np.float32)
             elif input_data_types[i] == 'int32':

@@ -28,7 +28,9 @@ VALIDATION_MODULE = 'VALIDATION'
 
 def load_data(file, data_type=mace_pb2.DT_FLOAT):
     if os.path.isfile(file):
-        if data_type == mace_pb2.DT_FLOAT:
+        if data_type == mace_pb2.DT_FLOAT or \
+                data_type == mace_pb2.DT_FLOAT16 or \
+                data_type == mace_pb2.DT_BFLOAT16:
             return np.fromfile(file=file, dtype=np.float32)
         elif data_type == mace_pb2.DT_INT32:
             return np.fromfile(file=file, dtype=np.int32)

@@ -292,6 +292,10 @@ MaceStatus NetDefAdapter::AdaptNetDef(
     // Add buffer transform for GPU if necessary
     MemoryType target_mem_type = MemoryType::GPU_BUFFER;
     for (auto &output_info : net_def->output_info()) {
+      auto output_data_type = output_info.data_type();
+      if (output_data_type == DT_FLOAT16) {
+        output_data_type = DT_HALF;
+      }
       auto &internal_output_info = output_map.at(output_info.name());
       if ((internal_output_info.mem_type != target_mem_type &&
           internal_output_info.mem_type != MemoryType::CPU_BUFFER) ||
@@ -327,7 +331,7 @@ MaceStatus NetDefAdapter::AdaptNetDef(
             t_output_name,
             internal_output_info.shape,
             output_info.name(),
-            output_info.data_type(),
+            output_data_type,
             OpenCLBufferType::IN_OUT_CHANNEL,
             target_mem_type,
             internal_output_info.data_format,

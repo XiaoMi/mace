@@ -144,7 +144,6 @@ class AndroidDevice(Device):
                 serialno[1].startswith("no permissions") or
                     serialno[1].startswith("unauthorized")):
                 continue
-
             devices.append(serialno[0])
 
         return devices
