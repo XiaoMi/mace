@@ -115,6 +115,9 @@ HexagonDSPWrapper::HexagonDSPWrapper() {
     log_execute_time_ = static_cast<bool>(
         std::atoi(env_log_execute_time_str.c_str()));
   }
+  if (VLOG_IS_ON(1)) {
+    PrintMemStats();
+  }
 }
 
 HexagonDSPWrapper::~HexagonDSPWrapper() {}
@@ -334,6 +337,9 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
 }
 
 bool HexagonDSPWrapper::TeardownGraph() {
+  if (VLOG_IS_ON(1)) {
+    PrintMemStats();
+  }
   LOG(INFO) << "Hexagon teardown graph";
   return hexagon_nn_teardown(nn_id_) == 0;
 }
@@ -359,6 +365,13 @@ void HexagonDSPWrapper::PrintGraph() {
              "print graph error");
   LOG(INFO) << std::string(buf);
   delete[] buf;
+}
+
+void HexagonDSPWrapper::PrintMemStats() {
+  HAP_mem_stats mem_stats;
+  MACE_CHECK(hexagon_nn_get_mem_stats(&mem_stats) == 0);
+  LOG(INFO) << "Hexagon memory: " << mem_stats.bytes_free << " bytes free, "
+            << mem_stats.bytes_used << " bytes used.";
 }
 
 void HexagonDSPWrapper::SetDebugLevel(int level) {

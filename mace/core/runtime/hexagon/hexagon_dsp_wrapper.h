@@ -46,6 +46,7 @@ class HexagonDSPWrapper : public HexagonControlWrapper {
   void PrintGraph() override;
   void GetPerfInfo() override;
   void ResetPerfInfo() override;
+  void PrintMemStats() override;
   void SetDebugLevel(int level) override;
 
   static bool SetPower(HexagonNNCornerType corner,

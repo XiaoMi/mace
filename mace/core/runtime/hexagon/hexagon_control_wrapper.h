@@ -58,6 +58,7 @@ class HexagonControlWrapper {
   virtual void PrintGraph() = 0;
   virtual void GetPerfInfo() = 0;
   virtual void ResetPerfInfo() = 0;
+  virtual void PrintMemStats() {}
   virtual void SetDebugLevel(int level) = 0;
 
  protected:
