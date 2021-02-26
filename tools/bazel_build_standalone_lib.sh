@@ -157,8 +157,11 @@ case "${abi}" in
   *)
     apu_version="-1"
     if [[ "${enable_apu}" == true ]];then
-        apu_version=`python tools/python/apu_utils.py get-version --target_abi=${abi}`
+        set +e
+        python tools/python/apu_utils.py get-version --target_abi=${abi}
         apu_version=`echo $?`
+        echo "The apu version is ${apu_version}"
+        set -e
     fi
     bazel build --config android --config optimization \
     mace/libmace:libmace_"${lib_type}" ${symbol_hidden} \
