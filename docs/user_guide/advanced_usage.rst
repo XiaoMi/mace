@@ -584,7 +584,7 @@ Therefore, the default storage type for a regular model in MACE is half. However
 if the model is very sensitive to accuracy, storage type can be changed to float.
 
 In the deployment file, ``data_type`` is ``fp16_fp32`` by default and can be changed to ``fp32_fp32``,
-for CPU it can also be changed to ``bf16_fp32`` and ``fp16_fp16``(``fp16_fp16`` can only be used on armv8.2 or higher version). 
+for CPU it can also be changed to ``bf16_fp32`` and ``fp16_fp16`` ( ``fp16_fp16`` can only be used on armv8.2 or higher version). 
 
 For CPU, ``fp16_fp32`` means that the weights are saved in half and actual inference is in float; while ``bf16_fp32`` means that the weights are saved in bfloat16 and actual inference is in float,85G
 and ``fp16_fp16`` means that the weights are saved in half and actual inference is in half.
