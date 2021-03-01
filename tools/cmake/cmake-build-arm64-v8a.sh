@@ -23,8 +23,11 @@ elif [[ "$RUNTIME" == "HTA" ]]; then
     MACE_ENABLE_OPENCL=ON
 elif [[ "$RUNTIME" == "APU" ]]; then
     MACE_ENABLE_MTK_APU=ON
-    MACE_MTK_APU_VERSION=`python tools/python/apu_utils.py get-version --target_abi=arm64-v8a`
+    set +e
+    python tools/python/apu_utils.py get-version --target_abi=arm64-v8a
     MACE_MTK_APU_VERSION=`echo $?`
+    echo "The apu version is ${MACE_MTK_APU_VERSION}"
+    set -e
 fi
 
 MACE_ENABLE_CODE_MODE=OFF
