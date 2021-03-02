@@ -28,24 +28,33 @@
 #include "mace/utils/macros.h"
 
 namespace mace {
+
+typedef std::unordered_map<uint32_t, std::shared_ptr<Runtime>> RuntimesMap;
+
 class BaseEngine {
  public:
   explicit BaseEngine(const MaceEngineConfig &config);
 
   virtual ~BaseEngine();
 
+  virtual MaceStatus BeforeInit();
+  virtual MaceStatus AfterInit();
+
   virtual MaceStatus Init(const MultiNetDef *multi_net_def,
                           const std::vector<std::string> &input_nodes,
                           const std::vector<std::string> &output_nodes,
                           const unsigned char *model_data,
                           const int64_t model_data_size,
-                          bool *model_data_unused = nullptr);
+                          bool *model_data_unused = nullptr,
+                          BaseEngine *tutor = nullptr);
 
   virtual MaceStatus Init(const MultiNetDef *multi_net_def,
                           const std::vector<std::string> &input_nodes,
                           const std::vector<std::string> &output_nodes,
-                          const std::string &model_data_file);
+                          const std::string &model_data_file,
+                          BaseEngine *tutor = nullptr);
 
+  // @Deprecated, will be removed in future version
   virtual MaceStatus Init(const NetDef *net_def,
                           const std::vector<std::string> &input_nodes,
                           const std::vector<std::string> &output_nodes,
@@ -53,6 +62,7 @@ class BaseEngine {
                           const int64_t model_data_size,
                           bool *model_data_unused);
 
+  // @Deprecated, will be removed in future version
   virtual MaceStatus Init(const NetDef *net_def,
                           const std::vector<std::string> &input_nodes,
                           const std::vector<std::string> &output_nodes,
@@ -72,13 +82,16 @@ class BaseEngine {
                          RunMetadata *run_metadata) = 0;
   virtual MaceStatus AfterRun();
 
+  RuntimesMap &GetRuntimesOfTutor(BaseEngine *tutor);
+
  protected:
   std::unique_ptr<utils::ThreadPool> thread_pool_;
   std::unique_ptr<RuntimeContext> runtime_context_;
   std::unique_ptr<port::ReadOnlyMemoryRegion> model_data_;
   std::unique_ptr<OpRegistry> op_registry_;
   std::unique_ptr<OpDelegatorRegistry> op_delegator_registry_;
-  MaceEngineCfgImpl *config_impl_;
+  std::shared_ptr<MaceEngineCfgImpl> config_impl_;
+  RuntimesMap runtimes_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(BaseEngine);
 };

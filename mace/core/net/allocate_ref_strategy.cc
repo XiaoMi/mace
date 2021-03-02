@@ -24,6 +24,7 @@ struct MemBlock {
   int refs;
 
   explicit MemBlock(Tensor *tensor_ptr) : refs(1), tensor(tensor_ptr) {}
+
   void AllocateBuffer() {
     if (tensor->memory<void>() == nullptr) {
       auto *runtime = tensor->GetCurRuntime();

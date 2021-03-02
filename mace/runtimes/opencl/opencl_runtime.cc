@@ -47,16 +47,34 @@ MaceStatus OpenclRuntime::Init(const MaceEngineCfgImpl *engine_config,
   return MaceStatus::MACE_SUCCESS;
 }
 
+MaceStatus OpenclRuntime::BeforeRun(MaceEngineCfgImpl *config) {
+  opencl_executor_->SetOpenclContext(config->opencl_context());
+  return Runtime::BeforeRun(config);
+}
+
+bool OpenclRuntime::CanReuseBuffer(
+    const Buffer *buffer, const std::vector<index_t> &shape,
+    const BufferContentType content_type, const unsigned int content_param) {
+  if (buffer->mem_type == GPU_BUFFER) {
+    return Runtime::CanReuseBuffer(buffer, shape, content_type, content_param);
+  }
+  MACE_CHECK(buffer->mem_type == GPU_IMAGE);
+  auto buf_shape = ComputeBufDimFromTensorDim(shape, buffer->mem_type,
+                                              content_type, content_param);
+  MemoryManager *memory_manager = GetMemoryManager(buffer->mem_type);
+  auto real_size =
+      memory_manager->GetMemoryRealSize(buffer->memory<void>());
+
+  return (buf_shape[0] <= real_size[0] && buf_shape[1] <= real_size[1]);
+}
+
 MaceStatus OpenclRuntime::CreateOpenclExecutorAndInit(
     const MaceEngineCfgImpl *engine_config) {
   if (opencl_executor_ == nullptr) {
-    opencl_executor_ = make_unique<OpenclExecutor>(
-        engine_config->opencl_context()->opencl_cache_storage(),
-        engine_config->opencl_context()->opencl_binary_storage(),
-        engine_config->opencl_context()->opencl_tuner(),
-        engine_config->opencl_context()->opencl_cache_reuse_policy());
+    opencl_executor_ = make_unique<OpenclExecutor>();
     MACE_RETURN_IF_ERROR(opencl_executor_->Init(
-        engine_config->gpu_priority_hint(), engine_config->gpu_perf_hint()));
+        engine_config->opencl_context(), engine_config->gpu_priority_hint(),
+        engine_config->gpu_perf_hint()));
   }
   return MaceStatus::MACE_SUCCESS;
 }

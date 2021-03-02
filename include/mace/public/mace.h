@@ -367,7 +367,7 @@ class MACE_API MaceEngineConfig {
   /// \param runtime_type runtime type
   /// \param sub_graph_name sub graph name
   void SetRuntimeType(const RuntimeType runtime_type,
-                      const char *sub_graph_name = "default");
+                      const char *sub_graph_name = "default_graph");
 
   /// \brief Set OpenclContext
   ///
@@ -451,7 +451,7 @@ class MACE_API MaceEngineConfig {
                          const std::string &storage_file);
 
  private:
-  std::unique_ptr<MaceEngineCfgImpl> impl_;
+  std::shared_ptr<MaceEngineCfgImpl> impl_;
 };
 
 // MACE input/output tensor
@@ -516,12 +516,14 @@ class MACE_API MaceEngine {
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data,
                   const int64_t model_data_size,
-                  bool *model_data_unused = nullptr);
+                  bool *model_data_unused = nullptr,
+                  MaceEngine *tutor = nullptr);
 
   MaceStatus Init(const MultiNetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
-                  const std::string &model_data_file);
+                  const std::string &model_data_file,
+                  MaceEngine *tutor = nullptr);
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs);
@@ -576,13 +578,18 @@ class MACE_API MaceEngine {
 /// \param model_graph_proto_size[in]: the size of model graph proto
 /// \param model_weights_data[in]: the content of model weights data, the
 ///                                returned engine will refer to this buffer
-///                                if CPU runtime is used. In this case, the
-///                                buffer should keep alive.
+///                                if model_data_unused return false.
 /// \param model_weights_data_size[in]: the size of model weights data
 /// \param input_nodes[in]: the array of input nodes' name
 /// \param output_nodes[in]: the array of output nodes' name
 /// \param config[in]: configurations for MaceEngine.
 /// \param engine[out]: output MaceEngine object
+/// \param model_data_unused[out]: Indicates whether model_weights_data unused
+/// \param tutor[in]: If tutor is not null, the current engine will use the
+///                   tutor's runtimes, so that they will share the intermediate
+///                   memory. You can use this mechanism to reduce the memory
+///                   usage of multiple models in the same process, provided
+///                   that the multiple models are running serially.
 /// \return MaceStatus::MACE_SUCCESS for success,
 ///         MaceStatus::MACE_INVALID_ARGS for wrong arguments,
 ///         MaceStatus::MACE_OUT_OF_RESOURCES for resources is out of range.
@@ -594,7 +601,9 @@ MACE_API MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine);
+    std::shared_ptr<MaceEngine> *engine,
+    bool *model_data_unused = nullptr,
+    MaceEngine *tutor = nullptr);
 
 /// \brief Create MaceEngine from files (model file + data file)
 /// Deprecated, will be removed in future version
@@ -607,6 +616,11 @@ MACE_API MaceStatus CreateMaceEngineFromProto(
 /// \param output_nodes[in]: the array of output nodes' name
 /// \param config[in]: configurations for MaceEngine.
 /// \param engine[out]: output MaceEngine object
+/// \param tutor: If tutor is not null, The current engine will use the tutor's
+///               runtimes, so that they will share the intermediate memory.
+///               You can use this mechanism to reduce the memory usage of
+///               multiple models in the same process, provided that the
+///               multiple models are running serially.
 /// \return MaceStatus::MACE_SUCCESS for success,
 ///         MaceStatus::MACE_INVALID_ARGS for wrong arguments,
 ///         MaceStatus::MACE_OUT_OF_RESOURCES for resources is out of range.
@@ -616,7 +630,8 @@ MACE_API MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine) MACE_DEPRECATED;
+    std::shared_ptr<MaceEngine> *engine,
+    MaceEngine *tutor = nullptr) MACE_DEPRECATED;
 
 }  // namespace mace
 

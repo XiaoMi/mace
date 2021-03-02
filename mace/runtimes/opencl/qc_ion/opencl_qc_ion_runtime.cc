@@ -50,13 +50,10 @@ MaceStatus OpenclQcIonRuntime::Init(const MaceEngineCfgImpl *engine_config,
 MaceStatus OpenclQcIonRuntime::CreateOpenclExecutorAndInit(
     const MaceEngineCfgImpl *engine_config) {
   if (opencl_executor_ == nullptr) {
-    opencl_executor_ = make_unique<OpenclQcIonExecutor>(
-        engine_config->opencl_context()->opencl_cache_storage(),
-        engine_config->opencl_context()->opencl_binary_storage(),
-        engine_config->opencl_context()->opencl_tuner(),
-        engine_config->opencl_context()->opencl_cache_reuse_policy());
+    opencl_executor_ = make_unique<OpenclQcIonExecutor>();
     MACE_RETURN_IF_ERROR(opencl_executor_->Init(
-        engine_config->gpu_priority_hint(), engine_config->gpu_perf_hint()));
+        engine_config->opencl_context(), engine_config->gpu_priority_hint(),
+        engine_config->gpu_perf_hint()));
   }
   return MaceStatus::MACE_SUCCESS;
 }

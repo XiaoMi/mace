@@ -256,7 +256,8 @@ void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
         std::unique_ptr<Tensor> tensor(
             new Tensor(runtime, DataType::DT_FLOAT, dims,
                        true, const_tensor.name()));
-        MACE_CHECK_SUCCESS(tensor->Resize(dims));
+        MACE_CHECK_SUCCESS(
+            runtime->AllocateBufferForTensor(tensor.get(), RENT_PRIVATE));
         MACE_CHECK(tensor->size() == const_tensor.data_size(),
                    "Tensor's data_size not equal with the shape");
         Tensor::MappingGuard guard(tensor.get());

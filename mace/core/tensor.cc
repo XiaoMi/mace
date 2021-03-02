@@ -162,28 +162,19 @@ MaceStatus Tensor::Resize(const std::vector<index_t> &shape) {
   MaceStatus ret = MaceStatus::MACE_SUCCESS;
   bool need_new =
       (buffer_->memory<void>() == nullptr || buffer_->dims.size() == 0);
-  std::vector<index_t> buf_shape;
   if (!need_new) {
-    buf_shape = runtime_->ComputeBufDimFromTensorDim(
-        shape, buffer_->mem_type, content_type_, content_param_);
-    // TODO(luxuhui): abstract it to runtimes
-    if (buffer_->mem_type == MemoryType::GPU_IMAGE) {
-      need_new =
-          (buf_shape[0] > buffer_->dims[0] || buf_shape[1] > buffer_->dims[1]);
-    } else {
-      auto size_bytes = std::accumulate(shape.begin(), shape.end(),
-                                        1, std::multiplies<index_t>());
-      need_new = (size_bytes > raw_size());
-    }
+    need_new = !runtime_->CanReuseBuffer(buffer_.get(), shape, content_type_,
+                                         content_param_);
   }
 
   shape_ = shape;
-
   if (need_new) {
-    VLOG(1) << "Tensor::Resize, allocate private mem, name: " << name()
-            << ", new shape: " << MakeString(shape);
+    LOG(WARNING) << "Tensor::Resize, allocate private mem, name: " << name()
+                 << ", new shape: " << MakeString(shape);
     ret = runtime_->AllocateBufferForTensor(this, RENT_PRIVATE);
   } else {
+    auto buf_shape = runtime_->ComputeBufDimFromTensorDim(
+        shape, buffer_->mem_type, content_type_, content_param_);
     ret = buffer_->Resize(buf_shape);
   }
 

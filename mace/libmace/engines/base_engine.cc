@@ -38,10 +38,9 @@ namespace mace {
 BaseEngine::BaseEngine(const MaceEngineConfig &config)
     : thread_pool_(new utils::ThreadPool(config.impl_->num_threads(),
                                          config.impl_->cpu_affinity_policy())),
-      model_data_(nullptr),
-      op_registry_(new OpRegistry),
+      model_data_(nullptr), op_registry_(new OpRegistry),
       op_delegator_registry_(new OpDelegatorRegistry),
-      config_impl_(config.impl_.get()) {
+      config_impl_(config.impl_) {
 #ifdef MACE_ENABLE_RPCMEM
   auto rpcmem =
       Rpcmem::IsRpcmemSupported() ? std::make_shared<Rpcmem>() : nullptr;
@@ -56,9 +55,10 @@ MaceStatus BaseEngine::Init(
     const MultiNetDef *multi_net_def,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const unsigned char *model_data,
-    const int64_t model_data_size, bool *model_data_unused) {
+    const unsigned char *model_data, const int64_t model_data_size,
+    bool *model_data_unused, BaseEngine *tutor) {
   thread_pool_->Init();
+
   // register ops and delegators
   ops::RegisterAllOps(op_registry_.get());
   ops::RegisterAllOpDelegators(op_delegator_registry_.get());
@@ -69,6 +69,7 @@ MaceStatus BaseEngine::Init(
   MACE_UNUSED(model_data);
   MACE_UNUSED(model_data_size);
   MACE_UNUSED(model_data_unused);
+  MACE_UNUSED(tutor);
 
   return MaceStatus::MACE_SUCCESS;
 }
@@ -77,7 +78,7 @@ MaceStatus BaseEngine::Init(
     const MultiNetDef *multi_net_def,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const std::string &model_data_file) {
+    const std::string &model_data_file, BaseEngine *tutor) {
   VLOG(3) << "Loading Model Data";
 
   auto fs = GetFileSystem();
@@ -88,7 +89,7 @@ MaceStatus BaseEngine::Init(
   MACE_RETURN_IF_ERROR(Init(
       multi_net_def, input_nodes, output_nodes,
       reinterpret_cast<const unsigned char *>(model_data_->data()),
-      model_data_->length(), &model_data_unused));
+      model_data_->length(), &model_data_unused, tutor));
 
   if (model_data_unused) {
     model_data_.reset();
@@ -97,11 +98,12 @@ MaceStatus BaseEngine::Init(
   return MaceStatus::MACE_SUCCESS;
 }
 
+// @Deprecated, will be removed in future version
 MaceStatus BaseEngine::Init(
     const NetDef *net_def, const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const unsigned char *model_data,
-    const int64_t model_data_size, bool *model_data_unused) {
+    const unsigned char *model_data, const int64_t model_data_size,
+    bool *model_data_unused) {
   thread_pool_->Init();
   // register ops and delegators
   ops::RegisterAllOps(op_registry_.get());
@@ -117,6 +119,7 @@ MaceStatus BaseEngine::Init(
   return MaceStatus::MACE_SUCCESS;
 }
 
+// @Deprecated, will be removed in future version
 MaceStatus BaseEngine::Init(
     const NetDef *net_def,
     const std::vector<std::string> &input_nodes,
@@ -141,6 +144,19 @@ MaceStatus BaseEngine::Init(
   return MaceStatus::MACE_SUCCESS;
 }
 
+
+MaceStatus BaseEngine::BeforeInit() {
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus BaseEngine::AfterInit() {
+  for (auto i = runtimes_.begin(); i != runtimes_.end(); ++i) {
+    // Release the intermediate buffer for the other engines' reuse
+    i->second->ReleaseAllBuffer(RENT_SHARE, false);
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
+
 MaceStatus BaseEngine::ReleaseIntermediateBuffer() {
   MACE_NOT_IMPLEMENTED;
   return MaceStatus::MACE_UNSUPPORTED;
@@ -151,19 +167,32 @@ MaceStatus BaseEngine::AllocateIntermediateBuffer() {
   return MaceStatus::MACE_UNSUPPORTED;
 }
 
+RuntimesMap &BaseEngine::GetRuntimesOfTutor(BaseEngine *tutor) {
+  MACE_CHECK(!tutor->runtimes_.empty(),
+             "Before using the tutor engine, you must init it.");
+
+  return tutor->runtimes_;
+}
+
 MaceStatus BaseEngine::Forward(const std::map<std::string, MaceTensor> &inputs,
-                           std::map<std::string, MaceTensor> *outputs,
-                           RunMetadata *run_metadata) {
+                               std::map<std::string, MaceTensor> *outputs,
+                               RunMetadata *run_metadata) {
   MACE_RETURN_IF_ERROR(BeforeRun());
   MACE_RETURN_IF_ERROR(Run(inputs, outputs, run_metadata));
   return AfterRun();
 }
 
 MaceStatus BaseEngine::BeforeRun() {
+  for (auto i = runtimes_.begin(); i != runtimes_.end(); ++i) {
+    MACE_RETURN_IF_ERROR(i->second->BeforeRun(config_impl_.get()));
+  }
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus BaseEngine::AfterRun() {
+  for (auto i = runtimes_.begin(); i != runtimes_.end(); ++i) {
+    MACE_RETURN_IF_ERROR(i->second->AfterRun());
+  }
   return MaceStatus::MACE_SUCCESS;
 }
 

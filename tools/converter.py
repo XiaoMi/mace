@@ -555,6 +555,12 @@ def format_model_config(flags):
 
         if isinstance(subgraphs, list):
             graphs_dict = {}
+            model_config[YAMLKeyword.input_tensors] = \
+                subgraphs[0][YAMLKeyword.input_tensors]
+            model_config[YAMLKeyword.output_tensors] = \
+                subgraphs[0][YAMLKeyword.output_tensors]
+            model_config[YAMLKeyword.validation_inputs_data] = \
+                subgraphs[0].get(YAMLKeyword.validation_inputs_data, [])
             graphs_dict[YAMLKeyword.default_graph] = subgraphs[0]
             subgraphs = graphs_dict
             model_config[YAMLKeyword.subgraphs] = subgraphs

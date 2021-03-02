@@ -125,11 +125,12 @@ void MaceRun(const int in_out_size,
   }
   std::string filter_tensor_name = "filter";
 
-  std::shared_ptr<NetDef> net_def(new NetDef());
+  std::shared_ptr<MultiNetDef> multi_net_def(new MultiNetDef());
+  NetDef *net_def = multi_net_def->add_net_def();
 
   std::vector<T> data;
   ops::test::GenerateRandomRealTypeData<T>(filter_shape, &data);
-  AddTensor<T>(filter_tensor_name, filter_shape, 0, data.size(), net_def.get());
+  AddTensor<T>(filter_tensor_name, filter_shape, 0, data.size(), net_def);
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     InputOutputInfo *info = net_def->add_input_info();
@@ -138,28 +139,38 @@ void MaceRun(const int in_out_size,
     for (auto d : max_shape) {
       info->add_dims(static_cast<int>(d));
     }
+    multi_net_def->add_input_tensor(input_names[i]);
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
     InputOutputInfo *info = net_def->add_output_info();
     info->set_name(output_names[i]);
+    multi_net_def->add_output_tensor(output_names[i]);
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
     Conv3x3<T>(input_names[i], filter_tensor_name,
-               output_names[i], max_shape,
-               net_def.get());
+               output_names[i], max_shape, net_def);
   }
 
   MaceEngineConfig config;
 #ifdef MACE_ENABLE_OPENCL
   config.SetGPUContext(mace::ops::test::OpTestContext::Get()->gpu_context());
 #endif  // MACE_ENABLE_OPENCL
-  SetProtoArg(net_def.get(), "runtime_type", static_cast<int>(D));
+  SetProtoArg(net_def, "runtime_type", static_cast<int>(D));
   auto mem_type = (D == RT_OPENCL ? GPU_IMAGE : CPU_BUFFER);
-  SetProtoArg(net_def.get(), "opencl_mem_type", static_cast<int>(mem_type));
+  SetProtoArg(net_def, "opencl_mem_type", static_cast<int>(mem_type));
 
-  MaceEngine engine(config);
-  MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
+  auto engine = std::make_shared<MaceEngine>(config);
+  MaceStatus status = engine->Init(
+      multi_net_def.get(), input_names, output_names,
       reinterpret_cast<unsigned char *>(data.data()), data.size() * sizeof(T));
+  EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);
+
+  auto engine_freeloader = std::make_shared<MaceEngine>(config);
+  bool model_data_unused = false;
+  status = engine_freeloader->Init(
+      multi_net_def.get(), input_names, output_names,
+      reinterpret_cast<unsigned char *>(data.data()), data.size() * sizeof(T),
+      &model_data_unused, engine.get());
   EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);
 
   std::map<std::string, mace::MaceTensor> inputs;
@@ -172,7 +183,11 @@ void MaceRun(const int in_out_size,
       outputs.clear();
       GenerateInputs(input_names, input_shapes[j], &inputs, in_out_mt);
       GenerateOutputs(output_names, output_shapes[j], &outputs, in_out_mt);
-      engine.Run(inputs, &outputs);
+      if (i % 2 == 0) {
+        engine->Run(inputs, &outputs);
+      } else {
+        engine_freeloader->Run(inputs, &outputs);
+      }
     }
   }
 

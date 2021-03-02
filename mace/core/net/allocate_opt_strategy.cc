@@ -45,13 +45,11 @@ int CompareShape(const std::vector<index_t> &shape1,
   int sum_plus = 0;
   for (size_t i = 0; i < shape_size; ++i) {
     index_t interval = shape1[i] - shape2[i];
-#ifdef MACE_DISABLE_BIG_BLOCK
     // This code ensures the allocated buffers no bigger than the max shape
-    if ((interval >= 0 && sum_plus < 0) || (interval <= 0 && sum_plus > 0)) {
+    if ((interval > 0 && sum_plus < 0) || (interval < 0 && sum_plus > 0)) {
       *monotonous = false;
       break;
     }
-#endif
     sum_plus += interval;
     area1 *= shape1[i];
     area2 *= shape2[i];
@@ -80,7 +78,7 @@ BufferList::iterator FindBestFreeBuffer(
     }
 
     if (compare < 0) {
-      if (!find_free || compare > best_lack_area) {
+      if (!find_free && compare > best_lack_area) {
         best_lack_area = compare;
         *need_expand = true;
         best_idx = i;

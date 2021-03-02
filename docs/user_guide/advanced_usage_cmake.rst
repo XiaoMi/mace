@@ -455,3 +455,63 @@ These weights can be quantized to 8bit to reduce the size to a quarter, whereas 
 For example, the top-1 accuracy of MobileNetV1 after quantization of weights is 68.2% on the ImageNet validation set.
 ``quantize_large_weights`` can be specified as 1 in the deployment file to save these weights in 8bit and actual inference in float.
 It can be used for both CPU and GPU.
+
+Reduce Memory Occupation
+-------------------
+MACE creates intermediate memory for inference, which maybe large size,
+so MACE provides several ways to reduce the intermediate memory size.
+
+**1. Release intermediate memory between two inferences**
+
+If the interval of app inferences is long, the intermediate memory of MACE can be released temporarily to reduce the memory occupation.
+Before the next inference, MACE will rebuild the intermediate memory, which will take some time, so essentially this is a strategy of trading time for space.
+The API for temporarily releasing intermediate memory of MACE is:
+
+.. code-block:: cpp
+
+    MaceEngine::ReleaseIntermediateBuffer();
+
+**2. Share intermediate memory among multiple MACE engines**
+
+If app has multiple MACE engines in a process, and these engines will not be called at the same time, such as not concurrent in two threads, then we can let these engines share their intermediate memory.
+By doing so, multiple engines will use only one copy of the intermediate memory, thus greatly saving memory.
+When an engine ``A`` is initialized, if an engine ``B`` wants to share the memory of engine ``A``, it only needs to use engine ``A`` as the tutor of engine ``B``.
+You can set engine ``A`` as the engine ``B``'s tutor by ``CreateMaceEngineFromProto`` or ``CreateMaceEngineFromCode``, the code is as follows:
+
+.. code-block:: cpp
+
+    std::shared_ptr<mace::MaceEngine> A;
+    MaceStatus create_engine_status;
+
+    // Create Engine from model file
+    create_engine_status =
+        CreateMaceEngineFromProto(model_graph_proto,
+                                  model_graph_proto_size,
+                                  model_weights_data,
+                                  model_weights_data_size,
+                                  input_names,
+                                  output_names,
+                                  device_type,
+                                  &A);
+    MACE_CHECK(create_engine_status == MaceStatus::MACE_SUCCESS);
+
+    std::shared_ptr<mace::MaceEngine> B;
+    create_engine_status =
+        CreateMaceEngineFromProto(model_graph_proto,
+                                  model_graph_proto_size,
+                                  model_weights_data,
+                                  model_weights_data_size,
+                                  input_names,
+                                  output_names,
+                                  device_type,
+                                  &B,
+                                  nullptr,
+                                  A.get());
+    MACE_CHECK(create_engine_status == MaceStatus::MACE_SUCCESS);
+
+.. warning::
+
+    Before passing engine ``A`` as a tutor of engine ``B``, ``A`` must be initialized first.
+    Both ``CreateMaceEngineFromProto`` and ``CreateMaceEngineFromCode`` initialize the MACE engine after it is created.
+
+You can use any engine as a tutor of other engines. Two engines with the same runtime can share more intermediate memory.
