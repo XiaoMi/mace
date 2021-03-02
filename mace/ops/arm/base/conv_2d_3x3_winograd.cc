@@ -15,6 +15,7 @@
 #include "mace/ops/arm/base/conv_2d_3x3_winograd.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "mace/ops/arm/base/common_neon.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
@@ -56,10 +57,6 @@ MaceStatus Conv2dK3x3Winograd<T>::Compute(const OpContext *context,
                            &out_pad_size);
   MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard input_guard(input);
-  Tensor::MappingGuard output_guard(output);
-
   const index_t out_height = output_shape[2];
   const index_t out_width = output_shape[3];
   const index_t padded_in_height = in_height + in_pad_size[0] + in_pad_size[1];
@@ -82,61 +79,52 @@ MaceStatus Conv2dK3x3Winograd<T>::Compute(const OpContext *context,
   const index_t tile_count = tile_height_count * tile_width_count;
   const index_t in_tile_area = (out_tile_size + 2) * (out_tile_size + 2);
 
+  Runtime *runtime = context->runtime();
+  auto mem_type = MemoryType::CPU_BUFFER;
+
   // pad input and transform input
-  auto scratch_buffer = context->device()->scratch_buffer();
-  const index_t padded_in_size = is_in_padded ? PadAlignSize(
-      sizeof(T) * batch * in_channels * padded_in_height
-          * padded_in_width) : 0;
-  const index_t padded_out_size = is_out_padded ? PadAlignSize(
-      sizeof(T) * batch * out_channels * padded_out_height
-          * padded_out_width) : 0;
-  const index_t transformed_in_size = PadAlignSize(
-      sizeof(T) * batch * in_tile_area * in_channels * tile_count);
-  const index_t transformed_out_size = PadAlignSize(
-      sizeof(T) * batch * in_tile_area * out_channels * tile_count);
-  const index_t transformed_filter_size =
-      PadAlignSize(sizeof(T) * in_tile_area * out_channels * in_channels);
-  const index_t gemm_pack_size =
-      transformed_in_size + transformed_filter_size + transformed_filter_size;
-
-  scratch_buffer->Rewind();
-  scratch_buffer->GrowSize(
-      padded_in_size + padded_out_size + transformed_in_size
-          + transformed_out_size + gemm_pack_size);
-
   const Tensor *padded_in = input;
-  Tensor tmp_padded_in(scratch_buffer->Scratch(padded_in_size),
-                       DataTypeToEnum<T>::value);
+  std::unique_ptr<Tensor> tmp_padded_in;
   if (is_in_padded) {
-    tmp_padded_in.Resize({batch, in_channels, padded_in_height,
-                          padded_in_width});
-    Tensor::MappingGuard guard(&tmp_padded_in);
-    PadInput(*input, pad_top, pad_left, &tmp_padded_in);
-    padded_in = &tmp_padded_in;
+    auto tensor_shape = {batch, in_channels, padded_in_height, padded_in_width};
+    tmp_padded_in = make_unique<Tensor>(runtime, DataTypeToEnum<T>::v(),
+                                        mem_type, tensor_shape);
+    runtime->AllocateBufferForTensor(tmp_padded_in.get(), RENT_SCRATCH);
+    PadInput(*input, pad_top, pad_left, tmp_padded_in.get());
+    padded_in = tmp_padded_in.get();
   }
 
   Tensor *padded_out = output;
-  Tensor tmp_padded_out(scratch_buffer->Scratch(padded_out_size),
-                        DataTypeToEnum<T>::value);
+  std::unique_ptr<Tensor> tmp_padded_out;
   if (is_out_padded) {
-    padded_out = &tmp_padded_out;
-    padded_out->Resize({batch, out_channels, padded_out_height,
-                        padded_out_width});
+    auto tensor_shape =
+        {batch, out_channels, padded_out_height, padded_out_width};
+    tmp_padded_out = make_unique<Tensor>(runtime, DataTypeToEnum<T>::v(),
+                                         mem_type, tensor_shape);
+    runtime->AllocateBufferForTensor(tmp_padded_out.get(), RENT_SCRATCH);
+    padded_out = tmp_padded_out.get();
   }
 
-  auto transformed_in = scratch_buffer->Scratch(transformed_in_size);
-  auto transformed_out = scratch_buffer->Scratch(transformed_out_size);
-  auto padded_in_data = padded_in->data<T>();
-  auto padded_out_data = padded_out->mutable_data<T>();
-  auto transformed_in_data = transformed_in.mutable_data<T>();
-  auto transformed_out_data = transformed_out.mutable_data<T>();
-  auto filter_data = filter->data<T>();
+  MemInfo mem_info(mem_type, DataType::DT_FLOAT, {0});
+  mem_info.dims = {batch, in_tile_area, in_channels, tile_count};
+  auto transformed_in = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  mem_info.dims = {batch, in_tile_area, out_channels, tile_count};
+  auto transformed_out = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+
+  auto *padded_in_data = padded_in->data<T>();
+  auto *padded_out_data = padded_out->mutable_data<T>();
+  auto *transformed_in_data = transformed_in->mutable_data<T>();
+  auto *transformed_out_data = transformed_out->mutable_data<T>();
+  auto *filter_data = filter->data<T>();
 
   if (!filter->is_weight() || out_tile_size != out_tile_size_) {
     out_tile_size_ = out_tile_size;
-    transformed_filter_.reset(new Tensor);
-    transformed_filter_->Resize({in_tile_area, out_channels, in_channels});
+    auto filter_shape = {in_tile_area, out_channels, in_channels};
+    transformed_filter_.reset(new Tensor(runtime, DataTypeToEnum<T>::v(),
+                                         mem_type, filter_shape));
+    runtime->AllocateBufferForTensor(transformed_filter_.get(), RENT_PRIVATE);
     auto transformed_filter_data = transformed_filter_->mutable_data<T>();
+
     switch (out_tile_size) {
       case 2:
         TransformFilter4x4(context,
@@ -180,27 +168,25 @@ MaceStatus Conv2dK3x3Winograd<T>::Compute(const OpContext *context,
     default:MACE_NOT_IMPLEMENTED;
   }
 
-  const index_t scratch_buffer_offset = scratch_buffer->offset();
-  const index_t transformed_in_size_per_batch =
+  const index_t transformed_in_bytes_per_batch =
       in_tile_area * in_channels * tile_count * sizeof(T);
-  const index_t transformed_out_size_per_batch =
+  const index_t transformed_out_bytes_per_batch =
       in_tile_area * out_channels * tile_count * sizeof(T);
+  std::vector<index_t> in_shape = {in_tile_area, in_channels, tile_count};
+  std::vector<index_t> out_shape = {in_tile_area, out_channels, tile_count};
   for (index_t b = 0; b < batch; ++b) {
-    scratch_buffer->Rewind(scratch_buffer_offset);
+    Tensor transformed_in_this_batch(runtime, transformed_in->data_type,
+                                     mem_type, in_shape);
+    runtime->AllocateBufferForTensor(
+        &transformed_in_this_batch, RENT_SLICE,
+        transformed_in.get(), b * transformed_in_bytes_per_batch);
 
-    BufferSlice transformed_in_slice(&transformed_in,
-                                     b * transformed_in_size_per_batch,
-                                     transformed_in_size_per_batch);
-    BufferSlice transformed_out_slice(&transformed_out,
-                                      b * transformed_out_size_per_batch,
-                                      transformed_out_size_per_batch);
-
-    Tensor transformed_in_this_batch(transformed_in_slice,
-                                     DataTypeToEnum<T>::value);
-    transformed_in_this_batch.Resize({in_tile_area, in_channels, tile_count});
-    Tensor transformed_out_this_batch(transformed_out_slice,
-                                      DataTypeToEnum<T>::value);
-    transformed_out_this_batch.Resize({in_tile_area, out_channels, tile_count});
+    Tensor transformed_out_this_batch(runtime, transformed_out->data_type,
+                                      mem_type, out_shape);
+    runtime->AllocateBufferForTensor(
+        &transformed_out_this_batch, RENT_SLICE,
+        transformed_out.get(), b * transformed_out_bytes_per_batch);
+    transformed_out_this_batch.Clear();
 
     gemm_.Compute(context,
                   transformed_filter_.get(),
@@ -241,7 +227,6 @@ MaceStatus Conv2dK3x3Winograd<T>::Compute(const OpContext *context,
       break;
     default:MACE_NOT_IMPLEMENTED;
   }
-
   UnPadOutput(*padded_out, output);
 
   return MaceStatus::MACE_SUCCESS;
@@ -256,8 +241,7 @@ void Conv2dK3x3Winograd<T>::TransformFilter4x4(const OpContext *context,
                                                T *output) {
   const index_t stride = out_channels * in_channels;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -359,8 +343,7 @@ void Conv2dK3x3Winograd<T>::TransformFilter8x8(const OpContext *context,
                          {1.0f / 45, -1.0f / 90, 1.0f / 180},
                          {0.0f, 0.0f, 1.0f}};
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -414,8 +397,7 @@ void Conv2dK3x3Winograd<T>::TransformInput4x4(const OpContext *context,
   const index_t input_batch_size = in_height_width * in_channels;
   const index_t output_batch_size = 16 * in_channels * tile_count;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -534,8 +516,7 @@ void Conv2dK3x3Winograd<T>::TransformInput8x8(const OpContext *context,
   const index_t input_batch_size = in_height_width * in_channels;
   const index_t output_batch_size = 64 * in_channels * tile_count;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
     for (index_t n = start0; n < end0; n += step0) {
@@ -634,8 +615,7 @@ void Conv2dK3x3Winograd<T>::TransformOutput4x4(const OpContext *context,
   const index_t out_image_size = out_height * out_width;
   const index_t output_batch_size = out_channels * out_image_size;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
     for (index_t n = start0; n < end0; n += step0) {
@@ -729,8 +709,7 @@ void Conv2dK3x3Winograd<T>::TransformOutput8x8(const OpContext *context,
   const index_t out_image_size = out_height * out_width;
   const index_t output_batch_size = out_channels * out_image_size;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
     for (index_t n = start0; n < end0; n += step0) {
@@ -810,12 +789,12 @@ void Conv2dK3x3Winograd<T>::TransformOutput8x8(const OpContext *context,
 void RegisterConv2dK3x3WinogradDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK3x3Winograd<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3Winograd));
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Conv2dK3x3Winograd<BFloat16>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             BFloat16, ImplType::NEON, K3x3Winograd));
 }
 

@@ -20,15 +20,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "mace/core/ops/ops_utils.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/core/types.h"
-
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_util.h"
-#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 class Workspace;
-class Device;
 
 // OpConditionContext has all information used for choosing proper Op
 class OpConditionContext {
@@ -47,12 +44,12 @@ class OpConditionContext {
     return ws_;
   }
 
-  void set_device(Device *device) {
-    device_ = device;
+  void set_runtime(Runtime *runtime) {
+    runtime_ = runtime;
   }
 
-  Device *device() const {
-    return device_;
+  Runtime *runtime() const {
+    return runtime_;
   }
 
   TensorShapeMap *tensor_shape_info() const {
@@ -71,23 +68,19 @@ class OpConditionContext {
 
   DataType GetInputDataType(size_t idx) const;
 
-#ifdef MACE_ENABLE_OPENCL
-  void SetInputOpenCLBufferType(size_t idx, OpenCLBufferType buffer_type);
-  OpenCLBufferType GetInputOpenCLBufferType(size_t idx) const;
-#endif  // MACE_ENABLE_OPENCL
+  void SetInputBufferContentType(size_t idx, BufferContentType buffer_type);
+  BufferContentType GetInputBufferContentType(size_t idx) const;
 
  private:
   const OperatorDef *operator_def_;
   const Workspace *ws_;
-  Device *device_;
+  Runtime *runtime_;
   TensorShapeMap *tensor_shape_info_;
   // used for memory transform
   std::vector<MemoryType> input_mem_types_;
   std::vector<DataType> input_data_types_;
   MemoryType output_mem_type_;  // there is only one output memory type now.
-#ifdef MACE_ENABLE_OPENCL
-  std::vector<OpenCLBufferType> input_opencl_buffer_types_;
-#endif  // MACE_ENABLE_OPENCL
+  std::vector<BufferContentType> input_buffer_types_;
 };
 }  // namespace mace
 

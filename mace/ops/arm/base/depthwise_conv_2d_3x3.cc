@@ -447,22 +447,22 @@ MaceStatus DepthwiseConv2dK3x3S2<T>::DoCompute(
 void RegisterDepthwiseConv2dK3x3Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, DepthwiseConv2dK3x3S1<float>, delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3S1));
   MACE_REGISTER_DELEGATOR(
       registry, DepthwiseConv2dK3x3S2<float>, delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K3x3S2));
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, DepthwiseConv2dK3x3S1<BFloat16>,
       delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, RuntimeType::RT_CPU,
                             BFloat16, ImplType::NEON, K3x3S1));
   MACE_REGISTER_BF16_DELEGATOR(
       registry, DepthwiseConv2dK3x3S2<BFloat16>,
       delegator::DepthwiseConv2dParam,
-      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(DepthwiseConv2d, RuntimeType::RT_CPU,
                             BFloat16, ImplType::NEON, K3x3S2));
 }
 

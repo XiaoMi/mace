@@ -27,7 +27,7 @@ void TestInferConv2dShapeOp(const std::vector<index_t> &input_shape,
                             const int stride,
                             const std::vector<index_t> &output_shape) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", input_shape);
   const int in_ch = static_cast<int>(input_shape[3]);
   const int out_ch = static_cast<int>(output_shape[3]);
   OpDefBuilder("InferConv2dShape", "InferConv2dShapeOpTest")
@@ -44,7 +44,7 @@ void TestInferConv2dShapeOp(const std::vector<index_t> &input_shape,
 
   std::vector<int32_t> expected_output_shape(output_shape.begin(),
                                              output_shape.end());
-  net.AddInputFromArray<CPU, int32_t>("ExpectedOutput",
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("ExpectedOutput",
                                       {static_cast<int32_t>(
                                            output_shape.size())},
                                       expected_output_shape);

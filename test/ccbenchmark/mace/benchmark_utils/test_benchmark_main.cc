@@ -15,7 +15,6 @@
 #include <iostream>
 
 #include "gflags/gflags.h"
-#include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/benchmark_utils/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 

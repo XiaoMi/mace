@@ -22,7 +22,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename SrcType>
+template <RuntimeType D, typename SrcType>
 class CastOp : public Operation {
  public:
   explicit CastOp(OpConstructContext *context)
@@ -34,8 +34,6 @@ class CastOp : public Operation {
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input))
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     auto dst_dtype = output->dtype();
 
 #define MACE_CAST_COPY \
@@ -56,11 +54,11 @@ class CastOp : public Operation {
 };
 
 void RegisterCast(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Cast", CastOp, DeviceType::CPU, float);
-  MACE_REGISTER_OP(op_registry, "Cast", CastOp, DeviceType::CPU, int32_t);
+  MACE_REGISTER_OP(op_registry, "Cast", CastOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_OP(op_registry, "Cast", CastOp, RuntimeType::RT_CPU, int32_t);
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "Cast", CastOp,
-                   DeviceType::CPU, float16_t);
+                   RuntimeType::RT_CPU, float16_t);
 #endif
 }
 

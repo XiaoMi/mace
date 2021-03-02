@@ -11,7 +11,7 @@ file(GLOB MACE_BENCHMARK_TEST_SRCS
 add_executable(mace_cc_benchmark ${MACE_BENCHMARK_TEST_SRCS})
 target_link_libraries(mace_cc_benchmark PUBLIC
   mace_cc_test_utils
-  ops
+  mace_static
   gflags
 )
 add_dependencies(mace_cc_benchmark eigen3)

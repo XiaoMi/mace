@@ -24,9 +24,15 @@ namespace ops {
 namespace test {
 
 class Deconv2dOpTest : public OpsTestBase {};
-
+/*
+ *   RunTestSimple<D>({1, 2, 2, 1}, {1, 1, 1, 1}, {0}, 1, Padding::SAME, {},
+                   {1, 2, 2, 1}, {3, 3, 1, 1},
+                   {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+                   {1, 2, 2, 1}, {4.f, 4.f, 4.f, 4.f},
+                   FrameworkType::TENSORFLOW);
+ * */
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void RunTestSimple(const std::vector<index_t> &input_shape,
                    const std::vector<float> &input_data,
                    const std::vector<float> &bias_data,
@@ -44,12 +50,13 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
   const index_t out_channels = filter_shape[2];
 
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
-  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data, true);
+  net.AddInputFromArray<D, float>("Filter", filter_shape,
+                                       filter_data, true);
   net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data, true);
   // TODO(liutuo): remove the unused transform
   net.TransformFilterDataFormat<D, float>(
       "Filter", DataFormat::HWOI, "FilterOIHW", DataFormat::OIHW);
-  if (D == DeviceType::GPU) {
+  if (D == RuntimeType::RT_OPENCL) {
     if (model_type == FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("Input")
@@ -62,7 +69,8 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
           .AddIntArg("framework_type", model_type)
           .Finalize(net.NewOperatorDef());
     } else {
-      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape, true);
+      net.AddInputFromArray<RT_CPU, int32_t>("OutputShape", {4},
+                                             output_shape, true);
 
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("Input")
@@ -70,6 +78,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
           .Input("OutputShape")
           .Input("Bias")
           .Output("Output")
+          .OutputShape(expected_shape)
           .AddIntsArg("strides", {stride, stride})
           .AddIntArg("padding", padding)
           .AddIntsArg("padding_values", padding_size)
@@ -78,7 +87,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
     }
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     if (model_type == FrameworkType::CAFFE) {
@@ -110,15 +119,18 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
 
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
+  Tensor *output_tensor = net.GetOutput("Output");
+  LOG(INFO) << "output tensor size: " << output_tensor->size()
+            << ", raw size: " << output_tensor->raw_size();
   auto expected = net.CreateTensor<float>(expected_shape, expected_data);
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.0001);
+  ExpectTensorNear<float>(*expected, *output_tensor, 0.0001);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3SAME_S1() {
   RunTestSimple<D>({1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, {0.5, 0.6, 0.7},
                    1, Padding::SAME, {},
@@ -161,7 +173,7 @@ void TestNHWCSimple3x3SAME_S1() {
                    FrameworkType::CAFFE);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3SAME_S2() {
   RunTestSimple<D>({1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, {0, 0, 0},
                    2, Padding::SAME, {},
@@ -223,7 +235,7 @@ void TestNHWCSimple3x3SAME_S2() {
                    FrameworkType::CAFFE);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3SAME_S2_1() {
   RunTestSimple<D>({1, 3, 3, 1}, {12, 18, 12, 18, 27, 18, 12, 18, 12},
                    {0, 0, 0},
@@ -240,7 +252,7 @@ void TestNHWCSimple3x3SAME_S2_1() {
                    FrameworkType::TENSORFLOW);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3VALID_S2() {
   RunTestSimple<D>({1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, {0, 0, 0},
                    2, Padding::VALID, {},
@@ -265,7 +277,7 @@ void TestNHWCSimple3x3VALID_S2() {
                    FrameworkType::TENSORFLOW);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3VALID_S1() {
   RunTestSimple<D>({1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, {0, 0, 0},
                    1, Padding::VALID, {},
@@ -282,7 +294,7 @@ void TestNHWCSimple3x3VALID_S1() {
                    FrameworkType::TENSORFLOW);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple2x2SAME() {
   RunTestSimple<D>({1, 2, 2, 1}, {1, 1, 1, 1}, {0}, 1, Padding::SAME, {},
                    {1, 2, 2, 1}, {3, 3, 1, 1},
@@ -291,7 +303,7 @@ void TestNHWCSimple2x2SAME() {
                    FrameworkType::TENSORFLOW);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple2x2VALID() {
   RunTestSimple<D>(
       {1, 2, 2, 1}, {1, 1, 1, 1}, {0}, 2, Padding::VALID, {}, {1, 5, 5, 1},
@@ -304,63 +316,63 @@ void TestNHWCSimple2x2VALID() {
 }  // namespace
 
 TEST_F(Deconv2dOpTest, CPUSimple3X3PaddingSame_S1) {
-  TestNHWCSimple3x3SAME_S1<DeviceType::CPU>();
+  TestNHWCSimple3x3SAME_S1<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, CPUSimple3X3PaddingSame_S2) {
-  TestNHWCSimple3x3SAME_S2<DeviceType::CPU>();
+  TestNHWCSimple3x3SAME_S2<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, CPUSimple3X3PaddingSame_S2_1) {
-  TestNHWCSimple3x3SAME_S2_1<DeviceType::CPU>();
+  TestNHWCSimple3x3SAME_S2_1<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, CPUSimple2X2PaddingSame) {
-  TestNHWCSimple2x2SAME<DeviceType::CPU>();
+  TestNHWCSimple2x2SAME<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, CPUSimple2X2PaddingValid) {
-  TestNHWCSimple2x2VALID<DeviceType::CPU>();
+  TestNHWCSimple2x2VALID<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, CPUSimple3X3PaddingValid_S1) {
-  TestNHWCSimple3x3VALID_S1<DeviceType::CPU>();
+  TestNHWCSimple3x3VALID_S1<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, CPUSimple3X3PaddingValid_S2) {
-  TestNHWCSimple3x3VALID_S2<DeviceType::CPU>();
+  TestNHWCSimple3x3VALID_S2<RuntimeType::RT_CPU>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple2X2PaddingSame) {
-  TestNHWCSimple2x2SAME<DeviceType::GPU>();
+  TestNHWCSimple2x2SAME<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingSame_S1) {
-  TestNHWCSimple3x3SAME_S1<DeviceType::GPU>();
+  TestNHWCSimple3x3SAME_S1<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingSame_S2) {
-  TestNHWCSimple3x3SAME_S2<DeviceType::GPU>();
+  TestNHWCSimple3x3SAME_S2<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingSame_S2_1) {
-  TestNHWCSimple3x3SAME_S2_1<DeviceType::GPU>();
+  TestNHWCSimple3x3SAME_S2_1<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple2X2PaddingValid) {
-  TestNHWCSimple2x2VALID<DeviceType::GPU>();
+  TestNHWCSimple2x2VALID<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingValid_S1) {
-  TestNHWCSimple3x3VALID_S1<DeviceType::GPU>();
+  TestNHWCSimple3x3VALID_S1<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingValid_S2) {
-  TestNHWCSimple3x3VALID_S2<DeviceType::GPU>();
+  TestNHWCSimple3x3VALID_S2<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestComplexDeconvNxN(const int batch,
                           const std::vector<int> &shape,
                           const int stride) {
@@ -381,7 +393,7 @@ void TestComplexDeconvNxN(const int batch,
         "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true,
         false);
     net.AddRandomInput<D, T>("Bias", {output_channels}, true, false);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     int out_h = 0;
     int out_w = 0;
@@ -405,7 +417,8 @@ void TestComplexDeconvNxN(const int batch,
       output_shape.push_back(out_h);
       output_shape.push_back(out_w);
       output_shape.push_back(output_channels);
-      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape, true);
+      net.AddInputFromArray<RT_CPU, int32_t>("OutputShape", {4},
+                                             output_shape, true);
     } else {
       paddings.push_back(padding);
       paddings.push_back(padding);
@@ -441,7 +454,7 @@ void TestComplexDeconvNxN(const int batch,
     // run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
@@ -494,30 +507,29 @@ void TestComplexDeconvNxN(const int batch,
 }
 }  // namespace
 
-
 TEST_F(Deconv2dOpTest, OPENCLAlignedDeconvNxNS12) {
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 1);
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 2);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {32, 16, 16, 32}, 1);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {32, 16, 16, 32}, 2);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLAlignedDeconvNxNS34) {
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 3);
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 4);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {32, 16, 16, 32}, 3);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {32, 16, 16, 32}, 4);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS12) {
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 1);
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 2);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {17, 113, 5, 7}, 1);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {17, 113, 5, 7}, 2);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS34) {
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 3);
-  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 4);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {17, 113, 5, 7}, 3);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(1, {17, 113, 5, 7}, 4);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNMultiBatch) {
-  TestComplexDeconvNxN<DeviceType::GPU, float>(3, {17, 113, 5, 7}, 1);
-  TestComplexDeconvNxN<DeviceType::GPU, float>(5, {17, 113, 5, 7}, 2);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(3, {17, 113, 5, 7}, 1);
+  TestComplexDeconvNxN<RuntimeType::RT_OPENCL, float>(5, {17, 113, 5, 7}, 2);
 }
 
 }  // namespace test

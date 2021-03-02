@@ -19,7 +19,7 @@ cpplint:
 pylint:
   stage: linting
   script:
-    - pycodestyle . --filename=*.py --exclude=examples,third_party
+    - pycodestyle . --filename=*.py --exclude=examples,third_party,tools/python/py_proto
 
 build_docs:
   stage: build

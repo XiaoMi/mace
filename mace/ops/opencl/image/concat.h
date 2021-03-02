@@ -21,7 +21,7 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 
 namespace mace {
 namespace ops {

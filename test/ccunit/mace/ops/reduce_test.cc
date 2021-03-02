@@ -24,7 +24,7 @@ namespace test {
 class ReduceOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input,
             const std::vector<int> &axis,
@@ -37,7 +37,7 @@ void Simple(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.TransformDataFormat<D, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Reduce", "ReduceTest")
@@ -60,6 +60,7 @@ void Simple(const std::vector<index_t> &input_shape,
         .AddIntArg("reduce_type", type)
         .AddIntArg("has_data_format", 1)
         .Output("Output")
+        .OutputShape(output_shape)
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -68,7 +69,7 @@ void Simple(const std::vector<index_t> &input_shape,
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void Simple3D(const std::vector<index_t> &input_shape,
               const std::vector<float> &input,
               const std::vector<int> &axis,
@@ -80,6 +81,7 @@ void Simple3D(const std::vector<index_t> &input_shape,
   OpsTestNet net;
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input);
+  auto expected = net.CreateTensor<float>(output_shape, output);
 
   OpDefBuilder("Reduce", "ReduceTest")
       .Input("Input")
@@ -88,14 +90,15 @@ void Simple3D(const std::vector<index_t> &input_shape,
       .AddIntArg("reduce_type", type)
       .AddIntArg("has_data_format", 1)
       .Output("Output")
+      .OutputShape(expected->shape())
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(D);
-  auto expected = net.CreateTensor<float>(output_shape, output);
+
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMean12Test() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -108,7 +111,7 @@ void SimpleMean12Test() {
              10, 11, 12, 13}, ReduceType::MEAN);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMin12Test() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -121,7 +124,7 @@ void SimpleMin12Test() {
              0, 1, 2, 3}, ReduceType::MIN);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMax12Test() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -134,7 +137,7 @@ void SimpleMax12Test() {
              20, 21, 22, 23}, ReduceType::MAX);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMean1Axis() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -147,7 +150,7 @@ void SimpleMean1Axis() {
              6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, ReduceType::MEAN);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMin1Axis() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3,
@@ -168,7 +171,7 @@ void SimpleMin1Axis() {
              0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}, ReduceType::MIN);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleMax1Axis() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3,
@@ -193,7 +196,7 @@ void SimpleMax1Axis() {
              20, 21, 22, 23}, ReduceType::MAX);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void Simple2Axis() {
   Simple<D>({1, 2, 3, 4},
             {0, 1, 2, 3,
@@ -227,7 +230,7 @@ void Simple2Axis() {
             {4, 5, 6, 7, 16, 17, 18, 19}, ReduceType::MEAN);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void Simple3Axis() {
   Simple<D>({1, 2, 3, 4},
             {0, 1, 2, 3,
@@ -244,43 +247,41 @@ void Simple3Axis() {
 }  // namespace
 
 TEST_F(ReduceOpTest, CPUSimple12) {
-  SimpleMean12Test<DeviceType::CPU>();
-  SimpleMin12Test<DeviceType::CPU>();
-  SimpleMax12Test<DeviceType::CPU>();
+  SimpleMean12Test<RuntimeType::RT_CPU>();
+  SimpleMin12Test<RuntimeType::RT_CPU>();
+  SimpleMax12Test<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ReduceOpTest, GPUSimple12) {
-  SimpleMean12Test<DeviceType::GPU>();
-  SimpleMin12Test<DeviceType::GPU>();
-  SimpleMax12Test<DeviceType::GPU>();
+  SimpleMean12Test<RuntimeType::RT_OPENCL>();
+  SimpleMin12Test<RuntimeType::RT_OPENCL>();
+  SimpleMax12Test<RuntimeType::RT_OPENCL>();
 }
 
 TEST_F(ReduceOpTest, CPUSimple1Axis) {
-  SimpleMean1Axis<DeviceType::CPU>();
-  SimpleMin1Axis<DeviceType::CPU>();
-  SimpleMax1Axis<DeviceType::CPU>();
+  SimpleMean1Axis<RuntimeType::RT_CPU>();
+  SimpleMin1Axis<RuntimeType::RT_CPU>();
+  SimpleMax1Axis<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ReduceOpTest, CPUSimple2Axis) {
-  Simple2Axis<DeviceType::CPU>();
+  Simple2Axis<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ReduceOpTest, CPUSimple3Axis) {
-  Simple3Axis<DeviceType::CPU>();
+  Simple3Axis<RuntimeType::RT_CPU>();
 }
 
 TEST_F(ReduceOpTest, CPUSimpleReduceDims) {
-  Simple3D<CPU>({2, 3, 4},
-              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
-              {0, 1},
-              {4},
-              {10, 11, 12, 13}, ReduceType::MEAN,
-              false);
+  Simple3D<RuntimeType::RT_CPU>(
+      {2, 3, 4},
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+       12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+       {0, 1}, {4}, {10, 11, 12, 13}, ReduceType::MEAN, false);
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void RandomTest(const std::vector<index_t> &input_shape,
                 const std::vector<int> &axis) {
   testing::internal::LogToStderr();
@@ -291,7 +292,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
     // Add input data
     net.AddRandomInput<D, float>("Input", input_shape);
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("InputNCHW")
@@ -303,7 +304,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp();
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("Input")
@@ -312,6 +313,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
         .AddIntArg("reduce_type", type)
         .AddIntArg("has_data_format", 1)
         .Output("OPENCLOutput")
+        .OutputShape(net.GetTensor("Output")->shape())
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -331,19 +333,19 @@ void RandomTest(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(ReduceOpTest, GPURandomFloat) {
-  RandomTest<DeviceType::GPU, float>({4, 64, 64, 3}, {1, 2});
-  RandomTest<DeviceType::GPU, float>({8, 128, 128, 64}, {1, 2});
-  RandomTest<DeviceType::GPU, float>({1, 480, 640, 32}, {1, 2});
-  RandomTest<DeviceType::GPU, float>({8, 117, 87, 33}, {1, 2});
-  RandomTest<DeviceType::GPU, float>({1, 511, 561, 11}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, float>({4, 64, 64, 3}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, float>({8, 128, 128, 64}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, float>({1, 480, 640, 32}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, float>({8, 117, 87, 33}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, float>({1, 511, 561, 11}, {1, 2});
 }
 
 TEST_F(ReduceOpTest, GPURandomHalf) {
-  RandomTest<DeviceType::GPU, half>({4, 64, 64, 3}, {1, 2});
-  RandomTest<DeviceType::GPU, half>({8, 128, 128, 64}, {1, 2});
-  RandomTest<DeviceType::GPU, half>({1, 480, 640, 32}, {1, 2});
-  RandomTest<DeviceType::GPU, half>({8, 117, 87, 33}, {1, 2});
-  RandomTest<DeviceType::GPU, half>({1, 511, 561, 11}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, half>({4, 64, 64, 3}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, half>({8, 128, 128, 64}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, half>({1, 480, 640, 32}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, half>({8, 117, 87, 33}, {1, 2});
+  RandomTest<RuntimeType::RT_OPENCL, half>({1, 511, 561, 11}, {1, 2});
 }
 
 namespace {
@@ -352,11 +354,11 @@ void TestQuant(const std::vector<index_t> &input_shape,
                const std::vector<int> &axis) {
   auto func = [&](ReduceType type) {
     OpsTestNet net;
-    net.AddRandomInput<CPU, float>(
+    net.AddRandomInput<RuntimeType::RT_CPU, float>(
         "Input", input_shape, false, false);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-    net.AddRandomInput<DeviceType::CPU, float>(
+    net.AddRandomInput<RuntimeType::RT_CPU, float>(
         "OutputNCHW", input_shape, false, true, true);
 
     OpDefBuilder("Reduce", "ReduceTest")
@@ -368,8 +370,8 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .Output("OutputNCHW")
         .AddIntArg("T", DT_FLOAT)
         .Finalize(net.NewOperatorDef());
-    net.RunOp(CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.RunOp(RuntimeType::RT_CPU);
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     OpDefBuilder("Quantize", "DoQuantizeOutput")
@@ -390,7 +392,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     net.RunOp();
 
-    net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput",
+    net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>("QuantizedOutput",
                                                  input_shape);
     OpDefBuilder("Reduce", "ReduceTest")
         .Input("QuantizedInput")
@@ -401,7 +403,7 @@ void TestQuant(const std::vector<index_t> &input_shape,
         .AddIntArg("has_data_format", 1)
         .AddIntArg("T", DT_UINT8)
         .Finalize(net.NewOperatorDef());
-    net.Setup(DeviceType::CPU);
+    net.Setup(RuntimeType::RT_CPU);
     Tensor *expect_quantize_output = net.GetTensor("ExpectedQuantizedOutput");
     Tensor *quantize_output = net.GetTensor("QuantizedOutput");
     quantize_output->SetScale(expect_quantize_output->scale());

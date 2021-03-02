@@ -133,9 +133,7 @@ inline void ResizeImage(
     const float width_scale,
     const CoordinateTransformationMode coordinate_transformation_mode,
     float *output) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
     for (index_t b = start0; b < end0; b += step0) {
@@ -175,11 +173,11 @@ inline void ResizeImage(
   }, 0, batch_size, 1, 0, out_height, 1);
 }
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class ResizeBicubicOp;
 
 template<>
-class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
+class ResizeBicubicOp<RuntimeType::RT_CPU, float> : public Operation {
  public:
   explicit ResizeBicubicOp(OpConstructContext *context)
       : Operation(context),
@@ -215,8 +213,6 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard output_mapper(output);
     const float *input_data = input->data<float>();
     float *output_data = output->mutable_data<float>();
 
@@ -260,7 +256,7 @@ class ResizeBicubicOp<DeviceType::CPU, float> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
+class ResizeBicubicOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit ResizeBicubicOp(OpConstructContext *context)
       : Operation(context) {
@@ -306,7 +302,7 @@ class ResizeBicubicOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterResizeBicubic(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBicubic", ResizeBicubicOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
 
   MACE_REGISTER_GPU_OP(op_registry, "ResizeBicubic", ResizeBicubicOp);
 

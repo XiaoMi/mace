@@ -17,8 +17,8 @@
 #include <cstring>
 
 #include "gtest/gtest.h"
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 
 namespace mace {
 namespace ops {
@@ -33,17 +33,17 @@ class BufferTransformTest : public OpsTestBase {
 
 namespace {
 template <typename OrgType, typename DstType>
-void TestBidirectionTransform(const OpenCLBufferType type,
+void TestBidirectionTransform(const BufferContentType type,
                               const std::vector<index_t> &input_shape) {
   OpsTestNet net;
   OpContext context(net.ws(),
-                    OpTestContext::Get()->GetDevice(DeviceType::GPU));
+                    OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL));
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, OrgType>("Input", input_shape);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, OrgType>("Input", input_shape);
   Tensor *bt_output = net.ws()->CreateTensor(
-      "BtOutput", context.device()->allocator(),
-      DataTypeToEnum<DstType>::value);
+      "BtOutput", context.runtime(), DataTypeToEnum<DstType>::value,
+      false, MemoryType::GPU_BUFFER);
 
   OpenCLBufferTransformer(MemoryType::GPU_BUFFER,
                           MemoryType::GPU_BUFFER)
@@ -52,14 +52,14 @@ void TestBidirectionTransform(const OpenCLBufferType type,
 
   // Inverse Transform
   Tensor *output = net.ws()->CreateTensor(
-      "Output", context.device()->allocator(),
-      DataTypeToEnum<OrgType>::value);
+      "Output", context.runtime(), DataTypeToEnum<OrgType>::value,
+      false, MemoryType::GPU_BUFFER);
   OpenCLBufferTransformer(MemoryType::GPU_BUFFER,
                           MemoryType::GPU_BUFFER)
       .Transform(&context, bt_output,
                  type, MemoryType::GPU_BUFFER, 0, output);
 
-  net.Setup(DeviceType::GPU);
+  net.Setup(RuntimeType::RT_OPENCL);
   net.Sync();
 
   if (DataTypeToEnum<OrgType>::value == DataTypeToEnum<DstType>::value) {
@@ -75,7 +75,7 @@ void TestBidirectionTransform(const OpenCLBufferType type,
 }  // namespace
 
 TEST_F(BufferTransformTest, FloatToHalf) {
-  TestBidirectionTransform<float, half>(OpenCLBufferType::IN_OUT_CHANNEL,
+  TestBidirectionTransform<float, half>(BufferContentType::IN_OUT_CHANNEL,
                                         {1, 2, 3, 4});
 }
 
@@ -84,22 +84,22 @@ template <typename T>
 void TestArgumentTransform(const index_t input_size) {
   OpsTestNet net;
   OpContext context(net.ws(),
-                    OpTestContext::Get()->GetDevice(DeviceType::GPU));
+                    OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL));
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, T>("Input", {input_size});
+  net.AddRandomInput<RuntimeType::RT_OPENCL, T>("Input", {input_size});
 
   // Run
   Tensor *output = net.ws()->CreateTensor(
-      "Output", context.device()->allocator(),
-      DataTypeToEnum<T>::value);
+      "Output", context.runtime(), DataTypeToEnum<T>::value,
+      false, MemoryType::GPU_BUFFER);
   OpenCLBufferTransformer(MemoryType::GPU_BUFFER,
                           MemoryType::GPU_BUFFER)
       .Transform(&context, net.ws()->GetTensor("Input"),
-                 OpenCLBufferType::ARGUMENT, MemoryType::GPU_BUFFER,
+                 BufferContentType::ARGUMENT, MemoryType::GPU_BUFFER,
                  0, output);
 
-  net.Setup(DeviceType::GPU);
+  net.Setup(RuntimeType::RT_OPENCL);
   net.Sync();
 
   index_t expected_size = RoundUp<index_t>(input_size, 4);

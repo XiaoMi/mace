@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void BMSliceHelper(int iters,
                    const std::vector<index_t> &input_shape,
                    const int offset,
@@ -38,16 +38,17 @@ void BMSliceHelper(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 
@@ -63,7 +64,7 @@ void BMSliceHelper(int iters,
           MACE_BM_SLICE_##N##_##H##_##W##_##S##_##D##_##TYPE##_##DEVICE)
 
 #define MACE_BM_SLICE(N, H, W, S, D)                 \
-  MACE_BM_SLICE_MACRO(N, H, W, S, D, float, CPU);
+  MACE_BM_SLICE_MACRO(N, H, W, S, D, float, RT_CPU);
 
 MACE_BM_SLICE(1, 32, 32, 5, 5);
 MACE_BM_SLICE(1, 32, 32, 7, 5);

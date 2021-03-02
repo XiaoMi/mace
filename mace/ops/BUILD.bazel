@@ -55,16 +55,15 @@ cc_library(
     ]),
     deps = [
         "//mace/core",
+        "//mace/runtimes",
     ],
 )
 
 cc_library(
     name = "ref_kernels",
-    srcs = glob(
-        [
-            "ref/*.cc",
-        ],
-    ) + if_quantize_enabled(glob([
+    srcs = glob([
+        "ref/*.cc",
+    ]) + if_quantize_enabled(glob([
         "ref/q8/*.cc",
     ])),
     hdrs = glob(
@@ -204,6 +203,7 @@ cc_library(
     deps = [
         ":common",
         "//mace/core",
+        "//mace/runtimes",
     ],
 )
 
@@ -253,6 +253,7 @@ cc_library(
     deps = [
         ":ref_kernels",
         "//mace/core",
+        "//mace/runtimes",
     ] + if_quantize_enabled([
         "@tflite",
         "@gemmlowp",

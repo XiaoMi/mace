@@ -21,7 +21,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template <RuntimeType D, class T>
 class UnsqueezeOp : public Operation {
  public:
   explicit UnsqueezeOp(OpConstructContext *context)
@@ -40,8 +40,6 @@ class UnsqueezeOp : public Operation {
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
@@ -62,11 +60,11 @@ class UnsqueezeOp : public Operation {
 
 void RegisterUnsqueeze(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Unsqueeze", UnsqueezeOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Unsqueeze", UnsqueezeOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_OP(op_registry, "Unsqueeze", UnsqueezeOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 }
 
 }  // namespace ops

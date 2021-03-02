@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void Quantize(int iters, int count) {
   mace::testing::StopTiming();
 
@@ -38,19 +38,20 @@ void Quantize(int iters, int count) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 2; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void Dequantize(int iters, int count) {
   mace::testing::StopTiming();
 
@@ -66,14 +67,15 @@ void Dequantize(int iters, int count) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 2; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -91,7 +93,7 @@ void Dequantize(int iters, int count) {
     MACE_BM_QUANTIZE_##N##_##TYPE##_##DEVICE)
 
 #define MACE_BM_QUANTIZE(N)                                \
-  MACE_BM_QUANTIZE_MACRO(N, uint8_t, CPU);
+  MACE_BM_QUANTIZE_MACRO(N, uint8_t, RT_CPU);
 
 #define MACE_BM_DEQUANTIZE_MACRO(N, TYPE, DEVICE)          \
   static void                                              \
@@ -105,7 +107,7 @@ void Dequantize(int iters, int count) {
     MACE_BM_DEQUANTIZE_##N##_##TYPE##_##DEVICE)
 
 #define MACE_BM_DEQUANTIZE(N)                              \
-  MACE_BM_DEQUANTIZE_MACRO(N, uint8_t, CPU);
+  MACE_BM_DEQUANTIZE_MACRO(N, uint8_t, RT_CPU);
 
 MACE_BM_QUANTIZE(256);
 MACE_BM_QUANTIZE(1470000);

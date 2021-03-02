@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void BMTileHelper(int iters, const std::vector<index_t> &input_shape) {
   mace::testing::StopTiming();
   // Construct graph
@@ -41,16 +41,17 @@ void BMTileHelper(int iters, const std::vector<index_t> &input_shape) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 
@@ -63,7 +64,7 @@ void BMTileHelper(int iters, const std::vector<index_t> &input_shape) {
   }                                                                   \
   MACE_BENCHMARK(MACE_BM_TILE_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define MACE_BM_TILE(N, H, W, C) MACE_BM_TILE_MACRO(N, H, W, C, float, CPU);
+#define MACE_BM_TILE(N, H, W, C) MACE_BM_TILE_MACRO(N, H, W, C, float, RT_CPU);
 
 MACE_BM_TILE(1, 32, 32, 5);
 MACE_BM_TILE(1, 32, 32, 7);

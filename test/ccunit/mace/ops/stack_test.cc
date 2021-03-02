@@ -29,8 +29,8 @@ void TestStack(const std::vector<index_t> &input_shape,
                const std::vector<float> &output) {
   OpsTestNet net;
   for (size_t i = 0; i < inputs.size(); ++i) {
-    net.AddInputFromArray<CPU, float>(MakeString("Input", i), input_shape,
-                                      inputs[i]);
+    net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+        MakeString("Input", i), input_shape, inputs[i]);
   }
 
   auto op_builder = OpDefBuilder("Stack", "StackOpTest")
@@ -44,7 +44,8 @@ void TestStack(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }

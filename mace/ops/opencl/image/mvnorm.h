@@ -18,9 +18,10 @@
 #include <vector>
 
 #include "mace/core/ops/op_context.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/ops/opencl/mvnorm.h"
 
 namespace mace {
@@ -50,7 +51,7 @@ class MVNormKernel : public OpenCLMVNormKernel {
                        const index_t channels, const index_t group_blocks);
 
   MaceStatus ExecuteMeanValueKernel(OpContext *context,
-                                    OpenCLRuntime *runtime,
+                                    OpenclExecutor *executor,
                                     const index_t batch,
                                     const index_t height,
                                     const index_t width,
@@ -60,7 +61,7 @@ class MVNormKernel : public OpenCLMVNormKernel {
                                     cl::Image *output_image);
 
   MaceStatus ExecuteMeanNormKernel(OpContext *context,
-                                   OpenCLRuntime *runtime,
+                                   OpenclExecutor *executor,
                                    const uint32_t (&gws)[3],
                                    const index_t height,
                                    const index_t group_blocks,
@@ -70,7 +71,7 @@ class MVNormKernel : public OpenCLMVNormKernel {
 
   // compute the (X - EX)^2
   MaceStatus ExecuteVarianceNormStep1Kernel(OpContext *context,
-                                            OpenCLRuntime *runtime,
+                                            OpenclExecutor *executor,
                                             const uint32_t (&gws)[3],
                                             const index_t height,
                                             const index_t group_blocks,
@@ -80,7 +81,7 @@ class MVNormKernel : public OpenCLMVNormKernel {
 
   // compute (X - EX) / (E((X - EX)^2)^0.5 + eps_)
   MaceStatus ExecuteVarianceNormStep2Kernel(OpContext *context,
-                                            OpenCLRuntime *runtime,
+                                            OpenclExecutor *executor,
                                             const uint32_t (&gws)[3],
                                             const index_t height,
                                             const index_t group_blocks,

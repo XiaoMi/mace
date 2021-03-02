@@ -20,7 +20,8 @@
 #include "mace/utils/logging.h"
 
 namespace mace {
-namespace {{tag}} {
+namespace {{model_tag}} {
+namespace {{graph_tag}} {
 
 void CreateTensor{{tensor_id}}(mace::ConstTensor *const_tensor) {
   MACE_LATENCY_LOGGER(2, "Create tensor ",
@@ -38,6 +39,7 @@ void CreateTensor{{tensor_id}}(mace::ConstTensor *const_tensor) {
   const_tensor->set_quantized({{ tensor.quantized | lower}});
 }
 
-}  // namespace {{tag}}
+}  // namespace {{graph_tag}}
+}  // namespace {{model_tag}}
 }  // namespace mace
 

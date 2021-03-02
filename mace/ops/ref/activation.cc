@@ -39,10 +39,8 @@ template<typename T>
 MaceStatus Activation<T>::Compute(const OpContext *context,
                                   const Tensor *input,
                                   Tensor *output) {
-  Tensor::MappingGuard input_guard(input);
   if (input != output) {
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-    Tensor::MappingGuard output_guard(output);
     DoActivation(context, input, output);
   } else {
     DoActivation(context, input, output);
@@ -126,13 +124,17 @@ void Activation<T>::DoActivation(const OpContext *context,
 void RegisterActivationDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Activation<float>, delegator::ActivationParam,
-      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, float, ImplType::REF));
+      MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
+                         float, ImplType::REF));
+
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Activation<BFloat16>, delegator::ActivationParam,
-      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, BFloat16, ImplType::REF));
+      MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
+                         BFloat16, ImplType::REF));
+
   MACE_REGISTER_FP16_DELEGATOR(
       registry, Activation<float16_t>, delegator::ActivationParam,
-      MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+      MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                          float16_t, ImplType::REF));
 }
 

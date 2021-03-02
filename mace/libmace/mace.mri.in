@@ -1,6 +1,8 @@
 create @BASE_PATH@/mace/libmace/libmace_static.a
 addlib @BASE_PATH@/mace/libmace/libmace_API.a
 addlib @BASE_PATH@/mace/ops/libops.a
+@FLOW_LIBS_MRI@
+@RUNTIME_LIBS_MRI@
 addlib @BASE_PATH@/mace/core/libcore.a
 addlib @BASE_PATH@/mace/utils/libutils.a
 addlib @BASE_PATH@/mace/proto/libproto.a

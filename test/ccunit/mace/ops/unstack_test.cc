@@ -28,7 +28,8 @@ void TestUnstack(const std::vector<index_t> &input_shape,
                  const std::vector<index_t> &output_shape,
                  const std::vector<std::vector<float>> &outputs) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
 
   auto op_builder = OpDefBuilder("Unstack", "UnstackOpTest")
                         .Input("Input")
@@ -42,8 +43,8 @@ void TestUnstack(const std::vector<index_t> &input_shape,
   net.RunOp();
 
   for (size_t i = 0; i < outputs.size(); ++i) {
-    net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape,
-                                      outputs[i]);
+    net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+        "ExpectedOutput", output_shape, outputs[i]);
     ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                             *net.GetOutput(MakeString("Output", i).c_str()));
   }

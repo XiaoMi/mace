@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/extract_image_patches.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -48,13 +50,9 @@ MaceStatus ExtractImagePatchesKernel::Compute(
                    output_shape.data());
   }
   output_shape[3] *= kernels[0] * kernels[1];
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
-
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -72,13 +70,13 @@ MaceStatus ExtractImagePatchesKernel::Compute(
       built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
       built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("extract_image_patches",
-                                              kernel_name,
-                                              built_options,
-                                              &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("extract_image_patches",
+                                               kernel_name,
+                                               built_options,
+                                               &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const uint32_t gws[3] = {
@@ -92,7 +90,7 @@ MaceStatus ExtractImagePatchesKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(output->dim(1)));
@@ -102,16 +100,16 @@ MaceStatus ExtractImagePatchesKernel::Compute(
     kernel_.setArg(idx++, strides[1]);
     kernel_.setArg(idx++, kernels[0]);
     kernel_.setArg(idx++, kernels[1]);
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("extract_image_patches_opencl_kernel_", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

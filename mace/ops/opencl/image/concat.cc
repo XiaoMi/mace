@@ -18,13 +18,15 @@
 #include <set>
 #include <string>
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
 namespace image {
 namespace concat {
 namespace {
-std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+std::vector<uint32_t> LocalWS(OpenclExecutor *executor,
                               const uint32_t *gws,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
@@ -32,7 +34,7 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = runtime->device_global_mem_cache_size();
+        cache_size = executor->device_global_mem_cache_size();
     uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
@@ -64,7 +66,7 @@ MaceStatus Concat2(OpContext *context,
       static_cast<uint32_t>(batch * height),
   };
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -85,34 +87,34 @@ MaceStatus Concat2(OpContext *context,
     if (input0->dim(3) % 4 == 0) {
       built_options.emplace("-DDIVISIBLE_FOUR");
     }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("concat", kernel_name,
-                                              built_options, kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("concat", kernel_name,
+                                               built_options, kernel));
 
     *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
   MACE_OUT_OF_RANGE_INIT(*kernel);
   if (IsResetArgsNeeded(context, *prev_input_shape, input0->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_3D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(input0->opencl_image())));
-    kernel->setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(input1->opencl_image())));
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(
+        input0->memory<cl::Image>())));
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(
+        input1->memory<cl::Image>())));
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
     kernel->setArg(idx++, static_cast<int32_t>(input1->dim(3)));
-    kernel->setArg(idx++,
-                   *(static_cast<cl::Image2D *>(output->opencl_image())));
+    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(
+        output->mutable_memory<cl::Image>())));
 
     *prev_input_shape = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
+  const std::vector<uint32_t> lws = LocalWS(executor, gws, *kwg_size);
   std::string tuning_key =
       Concat("concat_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
@@ -127,7 +129,7 @@ MaceStatus ConcatN(OpContext *context,
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -138,10 +140,10 @@ MaceStatus ConcatN(OpContext *context,
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("concat", kernel_name,
-                                              built_options, kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("concat", kernel_name,
+                                               built_options, kernel));
     *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const int inputs_count = input_list.size();
@@ -157,19 +159,19 @@ MaceStatus ConcatN(OpContext *context,
         static_cast<uint32_t>(input_channel_blk), static_cast<uint32_t>(width),
         static_cast<uint32_t>(batch * height),
     };
-    const std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
+    const std::vector<uint32_t> lws = LocalWS(executor, gws, *kwg_size);
 
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_3D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++, *(input->opencl_image()));
+    kernel->setArg(idx++, *(input->memory<cl::Image>()));
     kernel->setArg(idx++, static_cast<int32_t>(chan_blk_offset));
-    kernel->setArg(idx++, *(output->opencl_image()));
+    kernel->setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     chan_blk_offset += input_channel_blk;
     cl_int error;
-    if (runtime->IsNonUniformWorkgroupsSupported()) {
-      error = runtime->command_queue().enqueueNDRangeKernel(
+    if (executor->IsNonUniformWorkgroupsSupported()) {
+      error = executor->command_queue().enqueueNDRangeKernel(
           *kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     } else {
@@ -177,17 +179,17 @@ MaceStatus ConcatN(OpContext *context,
       for (size_t j = 0; j < 3; ++j) {
         roundup_gws[j] = RoundUp(gws[j], lws[j]);
       }
-      error = runtime->command_queue().enqueueNDRangeKernel(
+      error = executor->command_queue().enqueueNDRangeKernel(
           *kernel, cl::NullRange,
           cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     }
     MACE_CL_RET_STATUS(error);
     MACE_OUT_OF_RANGE_VALIDATION;
-    if (context->future() != nullptr && runtime->is_profiling_enabled()) {
+    if (context->future() != nullptr && executor->is_profiling_enabled()) {
       event.wait();
       CallStats tmp_stats;
-      runtime->GetCallStats(event, &tmp_stats);
+      executor->GetCallStats(event, &tmp_stats);
       call_stats.start_micros =
           std::min<int64_t>(tmp_stats.start_micros, call_stats.start_micros);
       call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
@@ -231,11 +233,7 @@ MaceStatus ConcatKernel::Compute(
     }
     output_shape[axis] += input->dim(axis);
   }
-  std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape,
-                              OpenCLBufferType::IN_OUT_CHANNEL,
-                              &image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   switch (inputs_count) {
     case 2:

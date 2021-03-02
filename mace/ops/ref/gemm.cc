@@ -69,10 +69,6 @@ MaceStatus Gemm<T>::Compute(const OpContext *context,
                             const bool rhs_batched,
                             Tensor *output) {
   MACE_UNUSED(context);
-
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard output_guard(output);
   const T *lhs_data = lhs->data<T>();
   const T *rhs_data = rhs->data<T>();
   T *output_data = output->mutable_data<T>();
@@ -152,13 +148,14 @@ MaceStatus Gemm<T>::Compute(const OpContext *context,
 void RegisterGemmDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Gemm<float>, delegator::GemmParam,
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float, ImplType::REF));
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float, ImplType::REF));
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Gemm<BFloat16>, delegator::GemmParam,
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, BFloat16, ImplType::REF));
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, BFloat16, ImplType::REF));
+
   MACE_REGISTER_FP16_DELEGATOR(
       registry, Gemm<float16_t>, delegator::GemmParam,
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float16_t, ImplType::REF));
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float16_t, ImplType::REF));
 }
 
 }  // namespace ref

@@ -34,7 +34,6 @@ MaceStatus Deconv2dBase::ResizeOutAndPadOut(
     std::unique_ptr<Tensor> *padded_output) {
   std::vector<index_t> out_shape;
   if (output_shape) {
-    Tensor::MappingGuard out_shape_guard(output_shape);
     MACE_CHECK(output_shape->size() == 4, "output shape should be 4-dims");
     out_shape =
         std::vector<index_t>(output_shape->data<int32_t>(),
@@ -63,21 +62,10 @@ MaceStatus Deconv2dBase::ResizeOutAndPadOut(
           || padded_out_shape[3] != out_shape[3];
 
   if (is_out_padded) {
-    index_t padded_out_size =
-        std::accumulate(padded_out_shape.begin(),
-                        padded_out_shape.end(),
-                        1,
-                        std::multiplies<index_t>()) * type_size_;
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    index_t scratch_size = PadAlignSize(padded_out_size);
-    scratch->GrowSize(scratch_size);
-
-    std::unique_ptr<Tensor>
-        padded_out
-        (make_unique<Tensor>(scratch->Scratch(scratch_size), output->dtype()));
-    padded_out->Reshape(padded_out_shape);
-    *padded_output = std::move(padded_out);
+    auto *runtime = context->runtime();
+    *padded_output = make_unique<Tensor>(
+        runtime, output->dtype(), output->memory_type(), padded_out_shape);
+    runtime->AllocateBufferForTensor(padded_output->get(), RENT_SCRATCH);
   }
 
   return MaceStatus::MACE_SUCCESS;
@@ -132,8 +120,7 @@ DeconvComputeParam Deconv2dBase::PreWorkAndGetDeconvParam(
   const index_t outw = out_shape[3];
   const index_t out_img_size = outh * outw;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   return DeconvComputeParam(batch, inch, h, w, outch, outh, outw,
                             out_img_size, &thread_pool);
@@ -153,8 +140,7 @@ DepthwiseDeconvComputeParam Deconv2dBase::PreWorkAndGetDepthwiseDeconvParam(
   const index_t outw = out_shape[3];
   const index_t out_img_size = outh * outw;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   return DepthwiseDeconvComputeParam(batch, channels, h, w, in_img_size,
                                      outh, outw, out_img_size, &thread_pool);
@@ -180,8 +166,7 @@ GroupDeconvComputeParam Deconv2dBase::PreWorkAndGetGroupDeconvParam(
   const index_t inch_g = inch / group_;
   const index_t outch_g = outch / group_;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   return GroupDeconvComputeParam(batch, inch, h, w, outch, outh, outw,
                                  in_img_size, out_img_size, inch_g,

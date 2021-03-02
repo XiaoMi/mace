@@ -99,16 +99,11 @@ MaceStatus Eltwise::ComputeSumSub(const OpContext *context,
   QuantizeMultiplier(adjusted_input1_scale, &input1_multiplier, &input1_shift);
   QuantizeMultiplier(adjusted_output_scale, &output_multiplier, &output_shift);
 
-  Tensor::MappingGuard input0_guard(input0);
-  Tensor::MappingGuard input1_guard(input1);
-  Tensor::MappingGuard output_guard(output);
-
   auto input0_ptr = input0->data<uint8_t>();
   auto input1_ptr = input1->data<uint8_t>();
   auto output_ptr = output->mutable_data<uint8_t>();
 
-  utils::ThreadPool &thread_pool =
-      context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   thread_pool.Compute1D(
       [=](index_t start, index_t end, index_t step) {
         for (index_t i = start; i < end; i += step) {
@@ -203,7 +198,8 @@ template MaceStatus Eltwise::ComputeSumSub<SUB>(const OpContext *context,
 void RegisterEltwiseDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Eltwise, delegator::EltwiseParam,
-      MACE_DELEGATOR_KEY(Eltwise, DeviceType::CPU, uint8_t, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Eltwise, RuntimeType::RT_CPU,
+                         uint8_t, ImplType::NEON));
 }
 
 }  // namespace q8

@@ -47,14 +47,11 @@ MaceStatus BiasAdd<T>::Compute(const OpContext *context,
                                const Tensor *bias,
                                Tensor *output,
                                const bool isNCHW) {
-  Tensor::MappingGuard input_guard(input);
-  Tensor::MappingGuard bias_guard(bias);
   if (input != output) {
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
     if (bias == nullptr) {
       output->Copy(*input);
     } else {
-      Tensor::MappingGuard output_guard(output);
       if (isNCHW) {
         AddBiasNCHW(context, input, bias, output);
       } else {
@@ -148,13 +145,16 @@ void BiasAdd<T>::AddBiasNHWC(const OpContext *context,
 void RegisterBiasAddDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, BiasAdd<float>, DelegatorParam,
-      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float, ImplType::REF));
+      MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, float, ImplType::REF));
   MACE_REGISTER_BF16_DELEGATOR(
       registry, BiasAdd<BFloat16>, DelegatorParam,
-      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, BFloat16, ImplType::REF));
+      MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU,
+                         BFloat16, ImplType::REF));
+
   MACE_REGISTER_FP16_DELEGATOR(
       registry, BiasAdd<float16_t>, DelegatorParam,
-      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float16_t, ImplType::REF));
+      MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU,
+                         float16_t, ImplType::REF));
 }
 
 }  // namespace ref

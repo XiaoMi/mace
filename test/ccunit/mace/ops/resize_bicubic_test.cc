@@ -30,8 +30,9 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
   // Add input data
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    {1, 2, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
@@ -42,7 +43,7 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -59,8 +60,9 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCornersFloat) {
   // Add input data
   std::vector<float> input(48);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 4, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    {1, 4, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
@@ -71,7 +73,7 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCornersFloat) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -91,8 +93,9 @@ TEST_F(ResizeBicubicTest, ResizeBicubicWAlignCorners) {
   // Add input data
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    {1, 2, 4, 3}, input);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
@@ -104,7 +107,7 @@ TEST_F(ResizeBicubicTest, ResizeBicubicWAlignCorners) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -114,7 +117,7 @@ TEST_F(ResizeBicubicTest, ResizeBicubicWAlignCorners) {
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestRandomResizeBicubic() {
   testing::internal::LogToStderr();
   static unsigned int seed = time(NULL);
@@ -137,7 +140,7 @@ void TestRandomResizeBicubic() {
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels},
                                  false, true, true);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
     OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
@@ -149,14 +152,15 @@ void TestRandomResizeBicubic() {
         .AddIntsArg("size", {height, width})
         .Finalize(net.NewOperatorDef());
     // Run on CPU
-    net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.RunOp(RuntimeType::RT_CPU);
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
-    Tensor expected;
+    auto cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+    Tensor expected(cpu_runtime, DT_FLOAT);
     expected.Copy(*net.GetOutput("Output"));
 
-    if (D == DeviceType::GPU) {
+    if (D == RuntimeType::RT_OPENCL) {
       OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
           .Input("Input")
           .Output("Output")
@@ -176,7 +180,7 @@ void TestRandomResizeBicubic() {
 }  // namespace
 
 TEST_F(ResizeBicubicTest, OPENCLRandomResizeBicubic) {
-  TestRandomResizeBicubic<DeviceType::GPU>();
+  TestRandomResizeBicubic<RuntimeType::RT_OPENCL>();
 }
 
 }  // namespace test

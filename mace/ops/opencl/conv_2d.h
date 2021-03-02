@@ -19,7 +19,7 @@
 
 #include "mace/ops/common/activation_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
 
 namespace mace {
 class OpContext;
@@ -28,7 +28,7 @@ namespace ops {
 class OpenCLConv2dKernel {
  public:
   virtual bool CheckUseWinograd(
-      OpenCLRuntime *runtime,
+      OpenclExecutor *executor,
       const std::vector<index_t> &filter_shape,
       const std::vector<index_t> &output_shape,
       const int *strides,

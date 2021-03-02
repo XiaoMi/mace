@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/eltwise.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -89,10 +91,7 @@ MaceStatus EltwiseKernel::Compute(
   output_shape[2] = input0->dim(2);
   output_shape[3] = input0->dim(3);
 
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -106,7 +105,7 @@ MaceStatus EltwiseKernel::Compute(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(batch_height_pixels)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
@@ -123,22 +122,22 @@ MaceStatus EltwiseKernel::Compute(
     if (swapped) built_options.emplace("-DSWAPPED");
     if (channels % 4 != 0) built_options.emplace("-DNOT_DIVISIBLE_FOUR");
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("eltwise", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("eltwise", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input0->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input0->opencl_image()));
+    kernel_.setArg(idx++, *(input0->memory<cl::Image>()));
     if (input1 == nullptr) {
       kernel_.setArg(idx++, scalar_input_);
     } else {
-      kernel_.setArg(idx++, *(input1->opencl_image()));
+      kernel_.setArg(idx++, *(input1->memory<cl::Image>()));
     }
     kernel_.setArg(idx++, static_cast<int32_t>(height));
     kernel_.setArg(idx++, static_cast<int32_t>(width));
@@ -147,16 +146,16 @@ MaceStatus EltwiseKernel::Compute(
       kernel_.setArg(idx++, coeff_[0]);
       kernel_.setArg(idx++, coeff_[1]);
     }
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("eltwise_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

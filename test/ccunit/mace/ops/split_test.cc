@@ -25,7 +25,7 @@ namespace test {
 class SplitOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void RandomTest(const int num_outputs, int axis) {
   static unsigned int seed = time(NULL);
   const index_t output_channels = 4 * (1 + rand_r(&seed) % 10);
@@ -38,7 +38,7 @@ void RandomTest(const int num_outputs, int axis) {
   OpsTestNet net;
 
   std::vector<index_t> input_shape;
-  if (D == DeviceType::CPU)
+  if (D == RuntimeType::RT_CPU)
     input_shape = {batch, input_channels, height, width};
   else
     input_shape = {batch, height, width, input_channels};
@@ -62,7 +62,7 @@ void RandomTest(const int num_outputs, int axis) {
 
   // Check
   std::vector<index_t> expected_shape;
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     if (axis == 3) axis = 1;
     expected_shape = {batch, output_channels, height, width};
   } else {
@@ -78,8 +78,8 @@ void RandomTest(const int num_outputs, int axis) {
   const float *output_ptr;
   for (int i = 0; i < num_outputs; ++i) {
     auto output = net.GetOutput(MakeString("Output", i).c_str());
-    EXPECT_THAT(output->shape(), ::testing::ContainerEq(expected_shape));
     Tensor::MappingGuard output_mapper(output);
+    EXPECT_THAT(output->shape(), ::testing::ContainerEq(expected_shape));
     output_ptr = output->data<float>();
     for (int outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
       const int idx =
@@ -92,7 +92,7 @@ void RandomTest(const int num_outputs, int axis) {
   }
 }
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void RandomTestSizeSplits(const int input_channels,
                           std::vector<int32_t> size_splits,
                           int axis) {
@@ -105,7 +105,7 @@ void RandomTestSizeSplits(const int input_channels,
   std::vector<index_t> input_shape;
   const std::vector<index_t> size_splits_shape =
       {static_cast<index_t>(size_splits.size())};
-  if (D == DeviceType::CPU)
+  if (D == RuntimeType::RT_CPU)
     input_shape = {batch, input_channels, height, width};
   else
     input_shape = {batch, height, width, input_channels};
@@ -128,11 +128,15 @@ void RandomTestSizeSplits(const int input_channels,
   // Run
   net.RunOp(D);
   std::vector<std::vector<index_t>> expected_shape_list;
-  if (axis == 3) axis = 1;
-  else if (axis == 2) axis = 3;
-  else if (axis == 1) axis = 2;
+  if (axis == 3) {
+    axis = 1;
+  } else if (axis == 2) {
+    axis = 3;
+  } else if (axis == 1) {
+    axis = 2;
+  }
   for (size_t i = 0; i < size_splits.size(); ++i) {
-    if (D == DeviceType::CPU) {
+    if (D == RuntimeType::RT_CPU) {
       expected_shape_list.push_back({batch, size_splits[i], height, width});
     } else {
       expected_shape_list.push_back({batch, height, width, size_splits[i]});
@@ -146,7 +150,7 @@ void RandomTestSizeSplits(const int input_channels,
       std::accumulate(expected_shape.begin() + axis + 1, expected_shape.end(),
                       1, std::multiplies<index_t>());
   const float *input_ptr = input_data.data();
-  const float *output_ptr;
+  const float *output_ptr = nullptr;
   std::vector<int> previous_channels(size_splits.size(), 0);
   for (size_t i = 1; i < size_splits.size(); ++i) {
     previous_channels[i] = previous_channels[i-1] + size_splits[i-1];
@@ -155,7 +159,6 @@ void RandomTestSizeSplits(const int input_channels,
     auto output = net.GetOutput(MakeString("Output", i).c_str());
     EXPECT_THAT(output->shape(),
                 ::testing::ContainerEq(expected_shape_list[i]));
-    Tensor::MappingGuard output_mapper(output);
     output_ptr = output->data<float>();
     const float *input_base_ptr = input_ptr + previous_channels[i] * inner_size;
     for (int outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
@@ -170,37 +173,35 @@ void RandomTestSizeSplits(const int input_channels,
 }
 }  // namespace
 
-TEST_F(SplitOpTest, CPU) {
-  RandomTest<DeviceType::CPU, float>(2, 3);
-  RandomTest<DeviceType::CPU, float>(4, 3);
-  RandomTest<DeviceType::CPU, float>(11, 3);
+TEST_F(SplitOpTest, RT_CPU) {
+  RandomTest<RuntimeType::RT_CPU, float>(2, 3);
+  RandomTest<RuntimeType::RT_CPU, float>(4, 3);
+  RandomTest<RuntimeType::RT_CPU, float>(11, 3);
 }
 
 TEST_F(SplitOpTest, CPUSizeSplits) {
-  RandomTestSizeSplits<DeviceType::CPU, float>(4, {1, 2, 1}, 3);
-  RandomTestSizeSplits<DeviceType::CPU, float>(
-      96,
-      {10, 14, 9, 15, 8, 16, 7, 17},
-      3);
-  RandomTestSizeSplits<DeviceType::CPU, float>(10, {8, 2}, 3);
+  RandomTestSizeSplits<RuntimeType::RT_CPU, float>(4, {1, 2, 1}, 3);
+  RandomTestSizeSplits<RuntimeType::RT_CPU, float>(
+      96, {10, 14, 9, 15, 8, 16, 7, 17}, 3);
+  RandomTestSizeSplits<RuntimeType::RT_CPU, float>(10, {8, 2}, 3);
 }
 
 TEST_F(SplitOpTest, CPUAxis1) {
-  RandomTest<DeviceType::CPU, float>(2, 3);
-  RandomTest<DeviceType::CPU, float>(4, 3);
-  RandomTest<DeviceType::CPU, float>(11, 3);
+  RandomTest<RuntimeType::RT_CPU, float>(2, 3);
+  RandomTest<RuntimeType::RT_CPU, float>(4, 3);
+  RandomTest<RuntimeType::RT_CPU, float>(11, 3);
 }
 
 TEST_F(SplitOpTest, OPENCLFloat) {
-  RandomTest<DeviceType::GPU, float>(2, 3);
-  RandomTest<DeviceType::GPU, float>(4, 3);
-  RandomTest<DeviceType::GPU, float>(11, 3);
+  RandomTest<RuntimeType::RT_OPENCL, float>(2, 3);
+  RandomTest<RuntimeType::RT_OPENCL, float>(4, 3);
+  RandomTest<RuntimeType::RT_OPENCL, float>(11, 3);
 }
 
 TEST_F(SplitOpTest, OPENCLHalf) {
-  RandomTest<DeviceType::GPU, half>(2, 3);
-  RandomTest<DeviceType::GPU, half>(4, 3);
-  RandomTest<DeviceType::GPU, half>(11, 3);
+  RandomTest<RuntimeType::RT_OPENCL, half>(2, 3);
+  RandomTest<RuntimeType::RT_OPENCL, half>(4, 3);
+  RandomTest<RuntimeType::RT_OPENCL, half>(11, 3);
 }
 
 }  // namespace test

@@ -22,7 +22,7 @@ namespace arm {
 void RegisterGemvDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Gemv<float>, DelegatorParam,
-      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, float, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, float, ImplType::NEON));
 }
 
 }  // namespace arm

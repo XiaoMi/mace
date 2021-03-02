@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ConcatHelper(int iters, int concat_dim, int dim0, int dim1) {
   mace::testing::StopTiming();
 
@@ -34,8 +34,8 @@ void ConcatHelper(int iters, int concat_dim, int dim0, int dim1) {
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, T>("Input0", {dim0, dim1});
-  net.AddRandomInput<DeviceType::CPU, T>("Input1", {dim0, dim1});
+  net.AddRandomInput<RuntimeType::RT_CPU, T>("Input0", {dim0, dim1});
+  net.AddRandomInput<RuntimeType::RT_CPU, T>("Input1", {dim0, dim1});
 
   net.Setup(D);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -59,7 +59,7 @@ void ConcatHelper(int iters, int concat_dim, int dim0, int dim1) {
 
 #define MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, TYPE)                       \
   static void MACE_BM_CONCAT_CPU_##AXIS##_##DIM0##_##DIM1##_##TYPE(int iters) {\
-    ConcatHelper<DeviceType::CPU, TYPE>(iters, AXIS, DIM0, DIM1);              \
+    ConcatHelper<RuntimeType::RT_CPU, TYPE>(iters, AXIS, DIM0, DIM1);          \
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_CONCAT_CPU_##AXIS##_##DIM0##_##DIM1##_##TYPE)
 
@@ -90,8 +90,8 @@ void OpenCLConcatHelper(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input0", shape0);
-  net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input0", shape0);
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input1", shape1);
 
   OpDefBuilder("Concat", "ConcatBM")
       .Input("Input0")
@@ -103,9 +103,11 @@ void OpenCLConcatHelper(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(RuntimeType::RT_OPENCL);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(DeviceType::GPU);
+    net.Run();
   }
+  net.Sync();
 
   const int64_t tot =
       static_cast<int64_t>(iters) *
@@ -113,8 +115,9 @@ void OpenCLConcatHelper(int iters,
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(DeviceType::GPU);
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 

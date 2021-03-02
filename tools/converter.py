@@ -73,7 +73,6 @@ RuntimeTypeStrs = [
     "dsp",
     "hta",
     "apu",
-    "cpu+gpu"
 ]
 
 InOutDataTypeStrs = [
@@ -176,6 +175,8 @@ def parse_device_type(runtime):
         device_type = DeviceType.CPU
     elif runtime == RuntimeType.apu:
         device_type = DeviceType.APU
+    elif runtime == RuntimeType.cpu_gpu:
+        device_type = DeviceType.GPU
 
     return device_type
 
@@ -184,16 +185,27 @@ def get_data_type_and_io_types(configs):
     data_types = []
     input_types = []
     output_types = []
-    for model_name in configs[YAMLKeyword.models]:
-        model_config = configs[YAMLKeyword.models][model_name]
-        dtype = model_config.get(YAMLKeyword.data_type, FPDataType.fp16_fp32)
-        data_types.append(dtype)
-        input_type = model_config.get(YAMLKeyword.input_data_types,
-                                      InOutDataType.float32)
-        input_types.append(input_type)
-        output_type = model_config.get(YAMLKeyword.output_data_types,
-                                       InOutDataType.float32)
-        output_types.append(output_type)
+    for (model_name, model_config) in configs[YAMLKeyword.models].items():
+        default_data_type = model_config[YAMLKeyword.data_type] \
+            if YAMLKeyword.data_type in model_config else FPDataType.fp16_fp32
+        default_input_types = InOutDataType.float32
+        if YAMLKeyword.input_data_types in model_config:
+            default_input_types = model_config[YAMLKeyword.input_data_types]
+        default_output_types = InOutDataType.float32
+        if YAMLKeyword.output_data_types in model_config:
+            default_output_types = model_config[YAMLKeyword.output_data_types]
+
+        subgraphs = model_config[YAMLKeyword.subgraphs]
+        for graph_name, graph_config in subgraphs.items():
+            dtype = graph_config.get(YAMLKeyword.data_type, default_data_type)
+            data_types.append(dtype)
+            input_type_array = graph_config.get(YAMLKeyword.input_data_types,
+                                                default_input_types)
+            input_types.extend(input_type_array)
+            output_type_array = graph_config.get(YAMLKeyword.output_data_types,
+                                                 default_output_types)
+            output_types.extend(output_type_array)
+
     return (data_types, input_types, output_types)
 
 
@@ -216,53 +228,38 @@ def fp16_enabled(configs):
                              InOutDataType.float16)
 
 
-def hexagon_enabled(configs):
+def get_runtimes(configs):
     runtime_list = []
-    for model_name in configs[YAMLKeyword.models]:
-        model_runtime = \
-            configs[YAMLKeyword.models][model_name].get(
-                YAMLKeyword.runtime, "")
-        runtime_list.append(model_runtime.lower())
+    for (model_name, model_config) in configs[YAMLKeyword.models].items():
+        subgraphs = model_config[YAMLKeyword.subgraphs]
+        default_rt = model_config[YAMLKeyword.runtime] \
+            if YAMLKeyword.runtime in model_config else RuntimeType.cpu
+        for graph_name, graph_config in subgraphs.items():
+            model_runtime = graph_config.get(YAMLKeyword.runtime, default_rt)
+            runtime_list.append(model_runtime)
+    return runtime_list
 
-    if RuntimeType.dsp in runtime_list:
+
+def hexagon_enabled(configs):
+    if RuntimeType.dsp in get_runtimes(configs):
         return True
     return False
 
 
 def hta_enabled(configs):
-    runtime_list = []
-    for model_name in configs[YAMLKeyword.models]:
-        model_runtime = \
-            configs[YAMLKeyword.models][model_name].get(
-                YAMLKeyword.runtime, "")
-        runtime_list.append(model_runtime.lower())
-
-    if RuntimeType.hta in runtime_list:
+    if RuntimeType.hta in get_runtimes(configs):
         return True
     return False
 
 
 def apu_enabled(configs):
-    runtime_list = []
-    for model_name in configs[YAMLKeyword.models]:
-        model_runtime = \
-            configs[YAMLKeyword.models][model_name].get(
-                YAMLKeyword.runtime, "")
-        runtime_list.append(model_runtime.lower())
-
-    if RuntimeType.apu in runtime_list:
+    if RuntimeType.apu in get_runtimes(configs):
         return True
     return False
 
 
 def opencl_enabled(configs):
-    runtime_list = []
-    for model_name in configs[YAMLKeyword.models]:
-        model_runtime = \
-            configs[YAMLKeyword.models][model_name].get(
-                YAMLKeyword.runtime, "")
-        runtime_list.append(model_runtime.lower())
-
+    runtime_list = get_runtimes(configs)
     if RuntimeType.gpu in runtime_list or RuntimeType.cpu_gpu in runtime_list \
             or RuntimeType.hta in runtime_list:
         return True
@@ -270,13 +267,15 @@ def opencl_enabled(configs):
 
 
 def quantize_enabled(configs):
-    for model_name in configs[YAMLKeyword.models]:
-        quantize = \
-            configs[YAMLKeyword.models][model_name].get(
-                YAMLKeyword.quantize, 0)
+    for (model_name, model_config) in configs[YAMLKeyword.models].items():
+        quantize = model_config.get(YAMLKeyword.quantize, 0)
         if quantize == 1:
             return True
-
+        subgraphs = model_config[YAMLKeyword.subgraphs]
+        for graph_name, graph_config in subgraphs.items():
+            quantize = graph_config.get(YAMLKeyword.quantize, 0)
+            if quantize == 1:
+                return True
     return False
 
 
@@ -378,6 +377,59 @@ def get_model_files(model_config, model_output_dir):
             MaceLogger.error(ModuleName.MODEL_CONVERTER,
                              "Model range file download failed.")
     model_config[YAMLKeyword.quantize_range_file] = quantize_range_file
+
+
+def get_data_type(parent_config, runtime):
+    data_type = parent_config.get(YAMLKeyword.data_type, "")
+    if runtime == RuntimeType.dsp:
+        if len(data_type) > 0:
+            mace_check(data_type in DSPDataTypeStrs,
+                       ModuleName.YAML_CONFIG,
+                       "'data_type' must be in " + str(DSPDataTypeStrs)
+                       + " for dsp runtime")
+        else:
+            parent_config[YAMLKeyword.data_type] = \
+                DSPDataType.uint8.value
+    elif runtime == RuntimeType.apu:
+        if len(data_type) > 0:
+            mace_check(data_type in APUDataTypeStrs,
+                       ModuleName.YAML_CONFIG,
+                       "'data_type %s' must be in %s for apu runtime" %
+                       (data_type, str(APUDataTypeStrs)))
+        else:
+            parent_config[YAMLKeyword.data_type] = \
+                APUDataType.uint8.value
+    else:
+        if len(data_type) > 0:
+            mace_check(data_type in FPDataTypeStrs,
+                       ModuleName.YAML_CONFIG,
+                       "'data_type' must be in " + str(FPDataTypeStrs)
+                       + " for cpu runtime")
+        else:
+            if runtime == RuntimeType.cpu:
+                parent_config[YAMLKeyword.data_type] = \
+                    FPDataType.fp32_fp32.value
+            else:
+                parent_config[YAMLKeyword.data_type] = \
+                    FPDataType.fp16_fp32.value
+    return data_type
+
+
+def get_graph_runtime(graph_config, model_config, target_abis):
+    runtime = graph_config.get(YAMLKeyword.runtime, "")
+    if len(runtime) == 0:
+        runtime = model_config.get(YAMLKeyword.runtime, "")
+    if runtime == "cpu+gpu":
+        runtime = "gpu"
+    mace_check(runtime in RuntimeTypeStrs, ModuleName.YAML_CONFIG,
+               "runtime '" + runtime +
+               "' must be in " + str(RuntimeTypeStrs))
+
+    if ABIType.host in target_abis:
+        mace_check(runtime == RuntimeType.cpu,
+                   ModuleName.YAML_CONFIG,
+                   "host only support cpu runtime now.")
+    return runtime
 
 
 def format_model_config(flags):
@@ -497,67 +549,110 @@ def format_model_config(flags):
 
         get_model_files(model_config, BUILD_DOWNLOADS_DIR)
 
-        runtime = model_config.get(YAMLKeyword.runtime, "")
-        mace_check(runtime in RuntimeTypeStrs,
-                   ModuleName.YAML_CONFIG,
-                   "'runtime' must be in " + str(RuntimeTypeStrs))
-        if ABIType.host in target_abis:
-            mace_check(runtime == RuntimeType.cpu,
-                       ModuleName.YAML_CONFIG,
-                       "host only support cpu runtime now.")
-
-        data_type = model_config.get(YAMLKeyword.data_type, "")
-        if runtime == RuntimeType.dsp:
-            if len(data_type) > 0:
-                mace_check(data_type in DSPDataTypeStrs,
-                           ModuleName.YAML_CONFIG,
-                           "'data_type' must be in " + str(DSPDataTypeStrs)
-                           + " for dsp runtime")
-            else:
-                model_config[YAMLKeyword.data_type] = \
-                    DSPDataType.uint8.value
-        elif runtime == RuntimeType.apu:
-            if len(data_type) > 0:
-                mace_check(data_type in APUDataTypeStrs,
-                           ModuleName.YAML_CONFIG,
-                           "'data_type %s' must be in %s for apu runtime" %
-                           (data_type, str(APUDataTypeStrs)))
-            else:
-                model_config[YAMLKeyword.data_type] = \
-                    APUDataType.uint8.value
-        else:
-            if len(data_type) > 0:
-                mace_check(data_type in FPDataTypeStrs,
-                           ModuleName.YAML_CONFIG,
-                           "'data_type' must be in " + str(FPDataTypeStrs)
-                           + " for cpu runtime")
-            else:
-                if runtime == RuntimeType.cpu:
-                    model_config[YAMLKeyword.data_type] = \
-                        FPDataType.fp32_fp32.value
-                else:
-                    model_config[YAMLKeyword.data_type] = \
-                        FPDataType.fp16_fp32.value
-
         subgraphs = model_config.get(YAMLKeyword.subgraphs, "")
         mace_check(len(subgraphs) > 0, ModuleName.YAML_CONFIG,
                    "at least one subgraph is needed")
 
-        for subgraph in subgraphs:
+        if isinstance(subgraphs, list):
+            graphs_dict = {}
+            graphs_dict[YAMLKeyword.default_graph] = subgraphs[0]
+            subgraphs = graphs_dict
+            model_config[YAMLKeyword.subgraphs] = subgraphs
+
+        for graph_name, graph_config in subgraphs.items():
+            runtime = get_graph_runtime(graph_config, model_config,
+                                        target_abis)
+            get_data_type(model_config, runtime)
+
+        input_ranges = model_config.get(
+            YAMLKeyword.input_ranges, [])
+        if not isinstance(input_ranges, list):
+            model_config[YAMLKeyword.input_ranges] = [input_ranges]
+        else:
+            model_config[YAMLKeyword.input_ranges] = input_ranges
+        model_config[YAMLKeyword.input_ranges] = \
+            [str(v) for v in model_config[YAMLKeyword.input_ranges]]
+
+        accuracy_validation_script = model_config.get(
+            YAMLKeyword.accuracy_validation_script, "")
+        if isinstance(accuracy_validation_script, list):
+            mace_check(len(accuracy_validation_script) == 1,
+                       ModuleName.YAML_CONFIG,
+                       "Only support one accuracy validation script")
+            accuracy_validation_script = accuracy_validation_script[0]
+        model_config[YAMLKeyword.accuracy_validation_script] = \
+            accuracy_validation_script
+        validation_inputs_data = model_config.get(
+            YAMLKeyword.validation_inputs_data, [])
+        if not isinstance(validation_inputs_data, list):
+            model_config[YAMLKeyword.validation_inputs_data] = [
+                validation_inputs_data]
+        else:
+            model_config[YAMLKeyword.validation_inputs_data] = \
+                validation_inputs_data
+
+        for key in [YAMLKeyword.check_tensors, YAMLKeyword.check_shapes]:
+            value = model_config.get(key, None)
+            if value:
+                if not isinstance(value, list):
+                    model_config[key] = [value]
+                model_config[key] = [str(v) for v in subgraph[key]]
+            else:
+                model_config[key] = []
+
+        validation_threshold = model_config.get(
+            YAMLKeyword.validation_threshold, {})
+        if not isinstance(validation_threshold, dict):
+            raise argparse.ArgumentTypeError(
+                'similarity threshold must be a dict.')
+        threshold_dict = {
+            DeviceType.CPU: ValidationThreshold.cpu_threshold,
+            DeviceType.GPU: ValidationThreshold.gpu_threshold,
+            DeviceType.HEXAGON: ValidationThreshold.quantize_threshold,
+            DeviceType.HTA: ValidationThreshold.quantize_threshold,
+            DeviceType.APU: ValidationThreshold.quantize_threshold,
+            DeviceType.QUANTIZE: ValidationThreshold.quantize_threshold,
+        }
+        for k, v in six.iteritems(validation_threshold):
+            if k.upper() == 'DSP':
+                k = DeviceType.HEXAGON
+            if k.upper() not in (DeviceType.CPU,
+                                 DeviceType.GPU,
+                                 DeviceType.HEXAGON,
+                                 DeviceType.HTA,
+                                 DeviceType.QUANTIZE):
+                raise argparse.ArgumentTypeError(
+                    'Unsupported validation threshold runtime: %s' % k)
+            threshold_dict[k.upper()] = v
+        model_config[YAMLKeyword.validation_threshold] = threshold_dict
+
+        model_backend = model_config.get(YAMLKeyword.backend, "tensorflow")
+        model_config[YAMLKeyword.backend] = model_backend
+        validation_outputs_data = model_config.get(
+            YAMLKeyword.validation_outputs_data, [])
+        if not isinstance(validation_outputs_data, list):
+            model_config[YAMLKeyword.validation_outputs_data] = [
+                validation_outputs_data]
+        else:
+            model_config[YAMLKeyword.validation_outputs_data] = \
+                validation_outputs_data
+
+        for (subname, subgraph) in subgraphs.items():
             for key in [YAMLKeyword.input_tensors,
                         YAMLKeyword.input_shapes,
                         YAMLKeyword.output_tensors,
                         YAMLKeyword.output_shapes]:
                 value = subgraph.get(key, "")
                 mace_check(value != "", ModuleName.YAML_CONFIG,
-                           "'%s' is necessary in subgraph" % key)
+                           "'%s' is necessary in %s" % (key, subname))
                 if not isinstance(value, list):
                     subgraph[key] = [value]
                 subgraph[key] = [str(v) for v in subgraph[key]]
-# --inputs_shapes will be passed to ELF file `mace_run_static', if input_shapes
-# contains spaces, such as: '1, 3, 224, 224', because mace_run.cc use gflags to
-# parse command line arguments, --input_shapes 1, 3, 224, 224 will be passed as
-# `--input_shapes 1,'. So we strip out spaces here.
+                # --inputs_shapes will be passed to ELF file `mace_run_static',
+                # if input_shapes contains spaces, such as: '1, 3, 224, 224',
+                # because mace_run.cc use gflags to parse command line
+                # arguments, --input_shapes 1, 3, 224, 224 will be passed as
+                # `--input_shapes 1,'. So we strip out spaces here.
                 if key in [YAMLKeyword.input_shapes,
                            YAMLKeyword.output_shapes]:
                     subgraph[key] = [e.replace(' ', '') for e in subgraph[key]]
@@ -570,16 +665,6 @@ def format_model_config(flags):
             mace_check(len(subgraph[YAMLKeyword.output_shapes]) == output_size,
                        ModuleName.YAML_CONFIG,
                        "output shapes' size not equal outputs' size.")
-
-            for key in [YAMLKeyword.check_tensors,
-                        YAMLKeyword.check_shapes]:
-                value = subgraph.get(key, "")
-                if value != "":
-                    if not isinstance(value, list):
-                        subgraph[key] = [value]
-                    subgraph[key] = [str(v) for v in subgraph[key]]
-                else:
-                    subgraph[key] = []
 
             for key in [YAMLKeyword.input_data_types,
                         YAMLKeyword.output_data_types]:
@@ -599,15 +684,14 @@ def format_model_config(flags):
                 else:
                     subgraph[key] = [InOutDataType.float32] * count
 
-            input_data_formats = subgraph.get(YAMLKeyword.input_data_formats,
-                                              [])
+            input_data_formats = \
+                subgraph.get(YAMLKeyword.input_data_formats, [])
             if input_data_formats:
                 if not isinstance(input_data_formats, list):
                     subgraph[YAMLKeyword.input_data_formats] = \
                         [input_data_formats] * input_size
                 else:
-                    mace_check(len(input_data_formats)
-                               == input_size,
+                    mace_check(len(input_data_formats) == input_size,
                                ModuleName.YAML_CONFIG,
                                "input_data_formats should match"
                                " the size of input.")
@@ -643,73 +727,6 @@ def format_model_config(flags):
             else:
                 subgraph[YAMLKeyword.output_data_formats] = \
                     [DataFormat.NHWC] * output_size
-
-            validation_threshold = subgraph.get(
-                YAMLKeyword.validation_threshold, {})
-            if not isinstance(validation_threshold, dict):
-                raise argparse.ArgumentTypeError(
-                    'similarity threshold must be a dict.')
-
-            threshold_dict = {
-                DeviceType.CPU: ValidationThreshold.cpu_threshold,
-                DeviceType.GPU: ValidationThreshold.gpu_threshold,
-                DeviceType.HEXAGON: ValidationThreshold.quantize_threshold,
-                DeviceType.HTA: ValidationThreshold.quantize_threshold,
-                DeviceType.APU: ValidationThreshold.quantize_threshold,
-                DeviceType.QUANTIZE: ValidationThreshold.quantize_threshold,
-            }
-            for k, v in six.iteritems(validation_threshold):
-                if k.upper() == 'DSP':
-                    k = DeviceType.HEXAGON
-                if k.upper() not in (DeviceType.CPU,
-                                     DeviceType.GPU,
-                                     DeviceType.HEXAGON,
-                                     DeviceType.HTA,
-                                     DeviceType.QUANTIZE):
-                    raise argparse.ArgumentTypeError(
-                        'Unsupported validation threshold runtime: %s' % k)
-                threshold_dict[k.upper()] = v
-
-            subgraph[YAMLKeyword.validation_threshold] = threshold_dict
-
-            validation_inputs_data = subgraph.get(
-                YAMLKeyword.validation_inputs_data, [])
-            if not isinstance(validation_inputs_data, list):
-                subgraph[YAMLKeyword.validation_inputs_data] = [
-                    validation_inputs_data]
-            else:
-                subgraph[YAMLKeyword.validation_inputs_data] = \
-                    validation_inputs_data
-
-            onnx_backend = subgraph.get(
-                YAMLKeyword.backend, "tensorflow")
-            subgraph[YAMLKeyword.backend] = onnx_backend
-            validation_outputs_data = subgraph.get(
-                YAMLKeyword.validation_outputs_data, [])
-            if not isinstance(validation_outputs_data, list):
-                subgraph[YAMLKeyword.validation_outputs_data] = [
-                    validation_outputs_data]
-            else:
-                subgraph[YAMLKeyword.validation_outputs_data] = \
-                    validation_outputs_data
-            input_ranges = subgraph.get(
-                YAMLKeyword.input_ranges, [])
-            if not isinstance(input_ranges, list):
-                subgraph[YAMLKeyword.input_ranges] = [input_ranges]
-            else:
-                subgraph[YAMLKeyword.input_ranges] = input_ranges
-            subgraph[YAMLKeyword.input_ranges] = \
-                [str(v) for v in subgraph[YAMLKeyword.input_ranges]]
-
-            accuracy_validation_script = subgraph.get(
-                YAMLKeyword.accuracy_validation_script, "")
-            if isinstance(accuracy_validation_script, list):
-                mace_check(len(accuracy_validation_script) == 1,
-                           ModuleName.YAML_CONFIG,
-                           "Only support one accuracy validation script")
-                accuracy_validation_script = accuracy_validation_script[0]
-            subgraph[YAMLKeyword.accuracy_validation_script] = \
-                accuracy_validation_script
 
         for key in [YAMLKeyword.limit_opencl_kernel_time,
                     YAMLKeyword.opencl_queue_window_size,
@@ -825,6 +842,7 @@ def print_library_summary(configs):
 
 def convert_func(flags):
     configs = config_parser.parse(flags.config)
+
     print(configs)
     library_name = configs[YAMLKeyword.library_name]
     if not os.path.exists(BUILD_OUTPUT_DIR):
@@ -893,8 +911,6 @@ def convert_func(flags):
         encrypt.encrypt(model_name,
                         "%s/model/%s.pb" % (model_codegen_dir, model_name),
                         "%s/model/%s.data" % (model_codegen_dir, model_name),
-                        config_parser.parse_device_type(
-                            model_config[YAMLKeyword.runtime]),
                         model_codegen_dir,
                         bool(model_config.get(YAMLKeyword.obfuscate, 1)),
                         model_graph_format == "code",

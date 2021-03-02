@@ -18,6 +18,7 @@
 #include <set>
 #include <vector>
 
+#include "mace/core/runtime/runtime.h"
 #include "mace/port/port.h"
 #include "mace/proto/mace.pb.h"
 
@@ -38,10 +39,10 @@ class NetOptimizer {
   /// \param available_devices available devices of the op
   /// \param inputs_op_devices devices of father ops run on
   /// \return Best device for the op_def
-  DeviceType SelectBestDevice(const OperatorDef *op_def,
-                              DeviceType target_device,
-                              const std::set<DeviceType> &available_devices,
-                              const std::vector<DeviceType> &inputs_op_devices);
+  RuntimeType SelectBestRuntime(
+      const OperatorDef *op_def, RuntimeType target_device,
+      const std::set<RuntimeType> &available_devices,
+      const std::vector<RuntimeType> &inputs_op_devices);
 };
 
 }  // namespace mace

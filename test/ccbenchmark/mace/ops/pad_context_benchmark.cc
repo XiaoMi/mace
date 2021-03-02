@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 void PadContextBM(int iters,
                   const std::vector<index_t> &input_shape,
                   const int left_context,
@@ -41,16 +41,17 @@ void PadContextBM(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
-    net.Sync();
+    net.Run();
   }
+  net.Sync();
 }
 }  // namespace
 
@@ -66,7 +67,7 @@ void PadContextBM(int iters,
           MACE_BM_PAD_CONTEXT_##N##_##H##_##W##_##L##_##R##_##TYPE##_##DEVICE)
 
 #define MACE_BM_PAD_CONTEXT(N, H, W, L, R)                 \
-  MACE_BM_PAD_CONTEXT_MACRO(N, H, W, L, R, float, CPU);
+  MACE_BM_PAD_CONTEXT_MACRO(N, H, W, L, R, float, RT_CPU);
 
 MACE_BM_PAD_CONTEXT(1, 32, 32, 5, 5);
 MACE_BM_PAD_CONTEXT(2, 32, 32, 7, 7);

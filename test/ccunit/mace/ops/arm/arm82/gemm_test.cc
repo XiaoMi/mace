@@ -58,7 +58,7 @@ void TestGemmFloat16(const index_t batch,
   OpContext context(net.ws(), &cpu_device);
   std::unique_ptr<delegator::Gemm> gemm = delegator::Gemm::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float16_t, ImplType::NEON),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float16_t, ImplType::NEON),
       delegator::GemmParam());
   gemm->Compute(&context, &lhs, &rhs, batch, rows, cols, depth, lhs_major,
                 rhs_major, output_major, lhs_batched, rhs_batched, &output);
@@ -67,7 +67,7 @@ void TestGemmFloat16(const index_t batch,
   expected_output.Resize({batch, rows, cols});
   std::unique_ptr<delegator::Gemm> gemm_ref = delegator::Gemm::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float16_t, ImplType::REF),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float16_t, ImplType::REF),
       delegator::GemmParam());
   gemm_ref->Compute(&context, &lhs, &rhs, batch, rows, cols, depth, lhs_major,
                     rhs_major, output_major, lhs_batched, rhs_batched,

@@ -20,7 +20,7 @@ namespace opencl {
 namespace image {
 
 bool Conv2dKernel::CheckUseWinograd(
-    OpenCLRuntime *runtime,
+    OpenclExecutor *executor,
     const std::vector<mace::index_t> &filter_shape,
     const std::vector<mace::index_t> &output_shape,
     const int *strides,
@@ -33,7 +33,7 @@ bool Conv2dKernel::CheckUseWinograd(
   }
   index_t out_channels = filter_shape[0];
   index_t in_channels = filter_shape[1];
-  auto opencl_image_max_size = runtime->GetMaxImage2DSize();
+  auto opencl_image_max_size = executor->GetMaxImage2DSize();
   auto check_opencl_limit = [&](int block_size) -> bool {
     int sqr_block = (block_size + 2) * (block_size + 2);
     uint64_t transformed_width = static_cast<uint64_t>(output_shape[0] *
@@ -96,10 +96,7 @@ MaceStatus Conv2dKernel::Compute(
                    output_shape.data());
   }
 
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   std::function<MaceStatus()> conv_func;
 

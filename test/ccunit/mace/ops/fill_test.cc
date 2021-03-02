@@ -32,12 +32,12 @@ void TestFill(const std::vector<int32_t> &shape,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Shape",
       {static_cast<index_t>(shape.size())},
       shape);
 
-  net.AddInputFromArray<DeviceType::CPU, float>("Value", {}, {value});
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Value", {}, {value});
 
   // Run
   net.RunOp();

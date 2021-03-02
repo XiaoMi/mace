@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/channel_shuffle.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -39,7 +41,7 @@ MaceStatus ChannelShuffleKernel::Compute(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
 
   MACE_OUT_OF_RANGE_DEFINITION;
   if (kernel_.get() == nullptr) {
@@ -51,11 +53,11 @@ MaceStatus ChannelShuffleKernel::Compute(
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     MACE_RETURN_IF_ERROR(
-        runtime->BuildKernel("channel_shuffle", kernel_name,
-                             built_options, &kernel_));
+        executor->BuildKernel("channel_shuffle", kernel_name,
+                              built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
@@ -63,19 +65,19 @@ MaceStatus ChannelShuffleKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
     kernel_.setArg(idx++, groups_);
     kernel_.setArg(idx++, static_cast<uint32_t>(channels_per_group));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("channel_shuffle_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

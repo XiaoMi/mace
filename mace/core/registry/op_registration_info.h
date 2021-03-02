@@ -29,25 +29,25 @@ namespace mace {
 class OpConstructContext;
 class OpConditionContext;
 
-class OpRegistrationInfo {
+struct OpRegistrationInfo {
  public:
   typedef std::function<std::unique_ptr<Operation>(OpConstructContext *)>
       OpCreator;
-  typedef std::function<std::set<DeviceType>(OpConditionContext *)>
-      DevicePlacer;
+  typedef std::function<std::set<RuntimeType>(OpConditionContext *)>
+      RuntimePlacer;
   typedef std::function<void(OpConditionContext *)> MemoryTypeSetter;
   typedef std::function<std::vector<DataFormat>(OpConditionContext *)>
       DataFormatSelector;
 
   OpRegistrationInfo();
 
-  void AddDevice(DeviceType);
+  void AddRuntime(RuntimeType);
 
   void Register(const std::string &key, OpCreator creator);
 
-  std::set<DeviceType> devices;
+  std::set<RuntimeType> runtimes;
   std::unordered_map<std::string, OpCreator> creators;
-  DevicePlacer device_placer;
+  RuntimePlacer runtime_placer;
   MemoryTypeSetter memory_type_setter;
   DataFormatSelector data_format_selector;
 };

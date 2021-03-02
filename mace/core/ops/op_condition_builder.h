@@ -29,7 +29,7 @@ class OpConditionBuilder {
   const std::string type() const;
 
   OpConditionBuilder &SetDevicePlacerFunc(
-      OpRegistrationInfo::DevicePlacer placer);
+      OpRegistrationInfo::RuntimePlacer placer);
 
   // If you set input memory type for specified Op,
   // you must call OpConditionContext::set_output_mem_type
@@ -43,7 +43,7 @@ class OpConditionBuilder {
 
  private:
   std::string type_;
-  OpRegistrationInfo::DevicePlacer placer_;
+  OpRegistrationInfo::RuntimePlacer placer_;
   OpRegistrationInfo::MemoryTypeSetter memory_type_setter_;
   OpRegistrationInfo::DataFormatSelector data_format_selector_;
 };

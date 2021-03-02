@@ -24,8 +24,8 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/ops/common/coordinate_transformation_mode.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 
 namespace mace {
 namespace ops {
@@ -34,11 +34,11 @@ namespace image {
 namespace resize_bicubic {
 constexpr int64_t kTableSize = (1u << 10);
 
-inline std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+inline std::vector<uint32_t> LocalWS(OpenclExecutor *executor,
                                      const uint32_t *gws,
                                      const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = runtime->device_global_mem_cache_size();
+  uint64_t cache_size = executor->device_global_mem_cache_size();
   uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
   if (lws[1] >= base) {

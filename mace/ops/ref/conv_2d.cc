@@ -72,9 +72,6 @@ MaceStatus Conv2d<T>::Compute(const OpContext *context,
   const index_t out_batch_size = filter_shape[0] * out_image_size;
   const index_t filter_size = filter_shape[2] * filter_shape[3];
 
-  Tensor::MappingGuard input_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard output_guard(output);
   auto input_data = input->data<T>();
   auto filter_data = filter->data<T>();
   auto output_data = output->mutable_data<T>();
@@ -127,13 +124,15 @@ MaceStatus Conv2d<T>::Compute(const OpContext *context,
 void RegisterConv2dDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Conv2d<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, float, ImplType::REF));
+      MACE_DELEGATOR_KEY(Conv2d, RuntimeType::RT_CPU, float, ImplType::REF));
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Conv2d<BFloat16>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, BFloat16, ImplType::REF));
+      MACE_DELEGATOR_KEY(Conv2d, RuntimeType::RT_CPU, BFloat16, ImplType::REF));
+
   MACE_REGISTER_FP16_DELEGATOR(
       registry, Conv2d<float16_t>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, float16_t, ImplType::REF));
+      MACE_DELEGATOR_KEY(Conv2d, RuntimeType::RT_CPU,
+                         float16_t, ImplType::REF));
 }
 
 }  // namespace ref

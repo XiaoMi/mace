@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "mace/ops/opencl/buffer/utils.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -33,7 +33,7 @@ namespace buffer {
 
 class PoolingKernel : public OpenCLPoolingKernel {
  public:
-  PoolingKernel() : old_scratch_size_(0) {}
+  PoolingKernel() {}
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -47,7 +47,6 @@ class PoolingKernel : public OpenCLPoolingKernel {
       Tensor *output) override;
 
  private:
-  index_t old_scratch_size_;
   cl::Kernel kernels_[2];
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

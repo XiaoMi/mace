@@ -25,11 +25,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class PadContextOp;
 
 template <typename T>
-class PadContextOp<DeviceType::CPU, T> : public Operation {
+class PadContextOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit PadContextOp(OpConstructContext *context)
       : Operation(context),
@@ -56,8 +56,6 @@ class PadContextOp<DeviceType::CPU, T> : public Operation {
     output_shape[rank - 2] = output_chunk;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
@@ -86,9 +84,9 @@ class PadContextOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterPadContext(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PadContext", PadContextOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "PadContext", PadContextOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

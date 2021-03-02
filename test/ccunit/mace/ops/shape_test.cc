@@ -24,7 +24,7 @@ namespace {
 
 void TestShapeOp(const std::vector<index_t> &input_shape) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input", input_shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", input_shape);
   OpDefBuilder("Shape", "ShapeOpTest")
       .Input("Input")
       .Output("Output")
@@ -37,12 +37,13 @@ void TestShapeOp(const std::vector<index_t> &input_shape) {
   std::vector<int32_t> expected_input_shape(input_shape.begin(),
                                             input_shape.end());
   if (!expected_input_shape.empty()) {
-    net.AddInputFromArray<CPU, int32_t>("ExpectedOutput",
+    net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("ExpectedOutput",
                                         {static_cast<int32_t>(
                                              input_shape.size())},
                                         expected_input_shape);
   } else {
-    net.AddInputFromArray<CPU, int32_t>("ExpectedOutput", {}, {0});
+    net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("ExpectedOutput",
+                                                        {}, {0});
   }
 
   ExpectTensorNear<int32_t>(*net.GetOutput("ExpectedOutput"),

@@ -34,9 +34,10 @@ void TestGemmBFloat16(const index_t batch,
                       const MatrixMajor output_major,
                       const bool lhs_batched,
                       const bool rhs_batched) {
-  Tensor lhs(GetCPUAllocator(), DT_BFLOAT16);
-  Tensor rhs(GetCPUAllocator(), DT_BFLOAT16);
-  Tensor output(GetCPUAllocator(), DT_BFLOAT16);
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  Tensor lhs(cpu_runtime, DT_BFLOAT16);
+  Tensor rhs(cpu_runtime, DT_BFLOAT16);
+  Tensor output(cpu_runtime, DT_BFLOAT16);
   lhs.Resize({lhs_batched ? batch : 1, rows, depth});
   rhs.Resize({rhs_batched ? batch : 1, depth, cols});
   output.Resize({batch, rows, cols});
@@ -53,21 +54,20 @@ void TestGemmBFloat16(const index_t batch,
 
   utils::ThreadPool thread_pool(1, AFFINITY_NONE);
   thread_pool.Init();
-  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
   OpsTestNet net;
-  OpContext context(net.ws(), &cpu_device);
+  OpContext context(net.ws(), cpu_runtime);
   std::unique_ptr<delegator::Gemm> gemm = delegator::Gemm::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, BFloat16, ImplType::NEON),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, BFloat16, ImplType::NEON),
       delegator::GemmParam());
   gemm->Compute(&context, &lhs, &rhs, batch, rows, cols, depth, lhs_major,
                 rhs_major, output_major, lhs_batched, rhs_batched, &output);
 
-  Tensor expected_output(GetCPUAllocator(), DataType::DT_BFLOAT16);
+  Tensor expected_output(cpu_runtime, DataType::DT_BFLOAT16);
   expected_output.Resize({batch, rows, cols});
   std::unique_ptr<delegator::Gemm> gemm_ref = delegator::Gemm::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, BFloat16, ImplType::REF),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, BFloat16, ImplType::REF),
       delegator::GemmParam());
   gemm_ref->Compute(&context, &lhs, &rhs, batch, rows, cols, depth, lhs_major,
                     rhs_major, output_major, lhs_batched, rhs_batched,

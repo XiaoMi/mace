@@ -42,8 +42,21 @@
 
 namespace mace {
 
+class MultiNetDef;
 class NetDef;
 
+enum RuntimeType {  // should not > RT_MAX
+  RT_CPU = 0,
+  RT_OPENCL = 2,
+  RT_HEXAGON = 3,
+  RT_HTA = 4,
+  RT_APU = 5,
+
+  RT_NONE = 65534,
+  RT_MAX = 65535,
+};
+
+// @Deprecated, replaced by RuntimeType
 enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, HTA = 4, APU = 5 };
 
 // Must be the same as DataType
@@ -59,6 +72,11 @@ enum IDataType {
   IDT_INT8 = 8,
 
   IDT_END,
+};
+
+enum MemoryType {
+  CPU_BUFFER = 0, GPU_BUFFER = 1, GPU_IMAGE = 2,
+  MEMORY_NONE = 10000,
 };
 
 enum class DataFormat {
@@ -226,15 +244,18 @@ class MACE_API MaceStatus {
 /// \brief GPU context contain the status used for GPU device.
 ///
 /// There are some data in common between different MaceEngines using GPU,
-/// use one GPUContext could avoid duplication.
+/// use one OpenclContext could avoid duplication.
 ///
 /// Thread-safe.
-/// You could use one GPUContext for multiple parallel MaceEngines.
-class GPUContext;
+/// You could use one OpenclContext for multiple parallel MaceEngines.
+class OpenclContext;
 
-/// \brief GPUContext builder.
+// @Deprecated, will be removed in future version
+typedef OpenclContext GPUContext;
+
+/// \brief OpenclContext builder.
 ///
-/// Use the GPUContextBuilder to generate GPUContext.
+/// Use the GPUContextBuilder to generate OpenclContext.
 /// Not thread-safe
 class MACE_API GPUContextBuilder {
  public:
@@ -297,30 +318,44 @@ class MACE_API GPUContextBuilder {
   GPUContextBuilder &SetOpenCLParameter(const unsigned char *data,
                                         const size_t size);
 
-  std::shared_ptr<GPUContext> Finalize();
+  std::shared_ptr<OpenclContext> Finalize();
 
  private:
   class Impl;
   std::unique_ptr<Impl> impl_;
 };
 
+class MaceEngineCfgImpl;
 class MACE_API MaceEngineConfig {
-  friend class MaceEngine;
+  friend class BaseEngine;
 
  public:
-  explicit MaceEngineConfig(const DeviceType device_type);
+  MaceEngineConfig();
   ~MaceEngineConfig();
+
+  // @Deprecated, will be removed in future version
+  explicit MaceEngineConfig(const DeviceType device_type);
+
   MaceEngineConfig(const MaceEngineConfig &) = delete;
   MaceEngineConfig(const MaceEngineConfig &&) = delete;
   MaceEngineConfig &operator=(const MaceEngineConfig &) = delete;
   MaceEngineConfig &operator=(const MaceEngineConfig &&) = delete;
 
-  /// \brief Set GPUContext
+  /// \brief Set Runtime Type for sub graph
   ///
-  /// Just use one GPUContext for multiple models run on GPU.
+  /// Set Runtime Type for sub graph. If SetRuntimeType not called, MACE will
+  /// use the runtime type config in the yml file.
+  /// \param runtime_type runtime type
+  /// \param sub_graph_name sub graph name
+  void SetRuntimeType(const RuntimeType runtime_type,
+                      const char *sub_graph_name = "default");
+
+  /// \brief Set OpenclContext
+  ///
+  /// Just use one OpenclContext for multiple models run on GPU.
   /// \param context created use GPUContextBuilder
   /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
-  MaceStatus SetGPUContext(std::shared_ptr<GPUContext> context);
+  MaceStatus SetGPUContext(std::shared_ptr<OpenclContext> context);
 
   /// \brief Set GPU hints, currently only supports Adreno GPU.
   ///
@@ -397,13 +432,12 @@ class MACE_API MaceEngineConfig {
                          const std::string &storage_file);
 
  private:
-  class Impl;
-  std::unique_ptr<Impl> impl_;
+  std::unique_ptr<MaceEngineCfgImpl> impl_;
 };
 
 // MACE input/output tensor
 class MACE_API MaceTensor {
-  friend class MaceEngine;
+  friend class BaseFlow;
 
  public:
   // shape - the shape of the tensor, with size n, if shape is unknown
@@ -419,7 +453,8 @@ class MACE_API MaceTensor {
   MaceTensor(const std::vector<int64_t> &shape,
              std::shared_ptr<void> data,
              const DataFormat format = DataFormat::NHWC,
-             const IDataType data_type = IDataType::IDT_FLOAT);
+             const IDataType data_type = IDataType::IDT_FLOAT,
+             const MemoryType mem_type = MemoryType::CPU_BUFFER);
   MaceTensor();
   MaceTensor(const MaceTensor &other);
   MaceTensor(const MaceTensor &&other);
@@ -441,6 +476,7 @@ class MACE_API MaceTensor {
   }
   DataFormat data_format() const;
   IDataType data_type() const;
+  MemoryType memory_type() const;
 
  private:
   std::shared_ptr<void> raw_data() const;
@@ -456,13 +492,14 @@ class MACE_API MaceEngine {
   explicit MaceEngine(const MaceEngineConfig &config);
   ~MaceEngine();
 
-  MaceStatus Init(const NetDef *net_def,
+  MaceStatus Init(const MultiNetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data,
-                  const int64_t model_data_size);
+                  const int64_t model_data_size,
+                  bool *model_data_unused = nullptr);
 
-  MaceStatus Init(const NetDef *net_def,
+  MaceStatus Init(const MultiNetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
                   const std::string &model_data_file);
@@ -478,7 +515,22 @@ class MACE_API MaceEngine {
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
-                  const unsigned char *model_data);
+                  const unsigned char *model_data,
+                  const int64_t model_data_size,
+                  bool *model_data_unused = nullptr);
+
+  // @Deprecated, will be removed in future version
+  MaceStatus Init(const NetDef *net_def,
+                  const std::vector<std::string> &input_nodes,
+                  const std::vector<std::string> &output_nodes,
+                  const std::string &model_data_file);
+
+  // @Deprecated, will be removed in future version
+  MaceStatus Init(const NetDef *net_def,
+                  const std::vector<std::string> &input_nodes,
+                  const std::vector<std::string> &output_nodes,
+                  const unsigned char *model_data,
+                  bool *model_data_unused = nullptr);
 
   /// \brief Release intermediate buffer for layers' activations
   ///
@@ -546,7 +598,6 @@ MACE_API MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
     std::shared_ptr<MaceEngine> *engine) MACE_DEPRECATED;
-
 
 }  // namespace mace
 

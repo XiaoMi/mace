@@ -19,11 +19,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class SelectOp;
 
 template<class T>
-class SelectOp<DeviceType::CPU, T> : public Operation {
+class SelectOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit SelectOp(OpConstructContext *context)
       : Operation(context) {}
@@ -106,10 +106,11 @@ class SelectOp<DeviceType::CPU, T> : public Operation {
     } else {
       const index_t condition_size = condition->size();
       const index_t condition_rank = condition->dim_size();
-      auto div_buffer = context->device()->scratch_buffer();
-      div_buffer->Rewind();
-      MACE_RETURN_IF_ERROR(div_buffer->GrowSize(
-          condition_rank * sizeof(index_t)));
+
+      auto *runtime = context->runtime();
+      const index_t bytes = condition_rank * sizeof(index_t);
+      MemInfo mem_info(output->memory_type(), DataType::DT_UINT8, {bytes});
+      auto div_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
       index_t *div_ptr = div_buffer->mutable_data<index_t>();
       div_ptr[condition_rank - 1] = 1;
       for (index_t dim = condition_rank - 1; dim > 0; --dim) {
@@ -168,12 +169,10 @@ class SelectOp<DeviceType::CPU, T> : public Operation {
 
     const index_t condition_size = condition->size();
     const index_t x_size = x->size();
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     if (condition_size == x_size) {
       thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
         for (index_t k = start; k < end; k += step) {
-          // LOG(INFO) << "condition_data[" << k << "] = " << condition_data[k];
           output_data[k] = condition_data[k] ? x_data[k] : y_data[k];
         }
       }, 0, x_size, 1);
@@ -207,9 +206,9 @@ class SelectOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterSelect(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Select", SelectOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Select", SelectOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

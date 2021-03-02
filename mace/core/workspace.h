@@ -20,28 +20,28 @@
 #include <vector>
 #include <memory>
 
-#include "mace/core/device.h"
-#include "mace/core/memory_optimizer.h"
-#include "mace/core/preallocated_pooled_allocator.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 
+class BaseFlow;
 class OpDelegatorRegistry;
-class MemoryOptimizer;
 
 class Workspace {
  public:
   typedef std::map<std::string, std::unique_ptr<Tensor>> TensorMap;
 
-  explicit Workspace(const OpDelegatorRegistry *registry);
-  ~Workspace() {}
+  explicit Workspace(const OpDelegatorRegistry *registry, BaseFlow *flow);
+  ~Workspace();
 
-  Tensor *CreateTensor(const std::string &name,
-                       Allocator *alloc,
-                       DataType type,
-                       bool is_weight = false);
+  const BaseFlow *GetMaceFlow() const;
+
+  Tensor *CreateTensor(const std::string &name, Runtime *runtime,
+                       DataType type, bool is_weight = false,
+                       MemoryType mem_type = MEMORY_NONE,
+                       BufferContentType content_type = IN_OUT_CHANNEL);
 
   inline bool HasTensor(const std::string &name) const {
     return tensor_map_.find(name) != tensor_map_.end();
@@ -51,52 +51,38 @@ class Workspace {
     return diffused_buffer_;
   }
 
-  inline bool buffer_reallocated() const {
-    return buffer_reallocated_;
-  }
-
-  inline bool buffer_released() const {
-    return buffer_released_;
-  }
-
-  const Tensor *GetTensor(const std::string &name) const;
-
-  Tensor *GetTensor(const std::string &name);
+  Tensor *GetTensor(const std::string &name) const;
+  MaceStatus AddTensor(const std::string &name, std::unique_ptr<Tensor> tensor);
 
   std::vector<std::string> Tensors() const;
 
-  MaceStatus LoadModelTensor(const NetDef &net_def, Device *device,
+  MaceStatus LoadModelTensor(const NetDef &net_def, Runtime *runtime,
                              const unsigned char *model_data,
                              const index_t model_data_size);
 
-  MaceStatus PreallocateOutputTensor(const NetDef &net_def,
-                                     const MemoryOptimizer *mem_optimizer,
-                                     Device *device);
-
-  MaceStatus AllocateIntermediateBuffer(bool reallocate = true);
-
-  MaceStatus ReleaseIntermediateBuffer();
+  MaceStatus AddQuantizeInfoForOutputTensor(const NetDef &net_def,
+                                            Runtime *runtime);
 
   void RemoveUnusedBuffer();
 
   void RemoveAndReloadBuffer(const NetDef &net_def,
                              const unsigned char *model_data,
-                             Allocator *alloc);
+                             Runtime *runtime);
 
   void RemoveTensor(const std::string &name);
 
   const OpDelegatorRegistry *GetDelegatorRegistry() const;
 
+  MaceStatus ReleaseIntermediateBuffer(Runtime **runtimes, size_t size,
+                                       Runtime *cpu_runtime);
+
  private:
   TensorMap tensor_map_;
-  std::unique_ptr<BufferBase> tensor_buffer_;
-  PreallocatedPooledAllocator preallocated_allocator_;
-  std::vector<MemoryBlock> mem_blocks_;
-  bool buffer_reallocated_;
-  bool buffer_released_;
+  std::unique_ptr<Buffer> tensor_buffer_;
   bool diffused_buffer_;
 
   const OpDelegatorRegistry *op_delegator_registry_;
+  BaseFlow *parent_flow_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Workspace);
 };

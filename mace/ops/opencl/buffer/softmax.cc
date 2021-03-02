@@ -14,6 +14,7 @@
 
 #include "mace/ops/opencl/buffer/softmax.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
 
 namespace mace {
 namespace ops {
@@ -51,7 +52,7 @@ MaceStatus SoftmaxKernel::Compute(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION
 
   if (kernel_.get() == nullptr) {
@@ -64,22 +65,22 @@ MaceStatus SoftmaxKernel::Compute(
     built_options.emplace("-DOUT_DATA_TYPE=" + DtToCLDt(output->dtype()));
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     if (use_log_) built_options.emplace("-DUSE_LOG");
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("softmax_buffer", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("softmax_buffer", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, logits->shape())) {
     uint32_t idx = 0;
     MACE_BUFF_OUT_OF_RANGE_SET_ARGS(kernel_, output->size());
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(logits->opencl_buffer()));
+    kernel_.setArg(idx++, *(logits->memory<cl::Buffer>()));
     kernel_.setArg(idx++, static_cast<int>(height));
     kernel_.setArg(idx++, static_cast<int>(channels));
     kernel_.setArg(idx++, remain_channels);
-    kernel_.setArg(idx++, *(output->opencl_buffer()));
+    kernel_.setArg(idx++, *(output->memory<cl::Buffer>()));
 
     input_shape_ = logits->shape();
   }
@@ -87,9 +88,9 @@ MaceStatus SoftmaxKernel::Compute(
   std::vector<uint32_t> lws = {4, 4, 4, 0};
   std::string tuning_key =
       Concat("softmax_opencl_kernel", batch, height, width, channels);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
-  MACE_OUT_OF_RANGE_VALIDATION
+  MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
 

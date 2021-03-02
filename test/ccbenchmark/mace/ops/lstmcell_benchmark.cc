@@ -21,7 +21,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
   mace::testing::StopTiming();
 
@@ -37,16 +37,16 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
 
   const float &forget_add = 0.0f;
 
-  if (D == DeviceType::CPU) {
-    net.CopyData<DeviceType::CPU, float>("Input", "InputCPU");
-    net.CopyData<DeviceType::CPU, float>("PreOutput", "PreOutputCPU");
-    net.CopyData<DeviceType::CPU, float>("Weight", "WeightCPU");
-    net.CopyData<DeviceType::CPU, float>("Bias", "BiasCPU");
-    net.CopyData<DeviceType::CPU, float>("PreCell", "PreCellCPU");
+  if (D == RuntimeType::RT_CPU) {
+    net.CopyData<RuntimeType::RT_CPU, float>("Input", "InputCPU");
+    net.CopyData<RuntimeType::RT_CPU, float>("PreOutput", "PreOutputCPU");
+    net.CopyData<RuntimeType::RT_CPU, float>("Weight", "WeightCPU");
+    net.CopyData<RuntimeType::RT_CPU, float>("Bias", "BiasCPU");
+    net.CopyData<RuntimeType::RT_CPU, float>("PreCell", "PreCellCPU");
 
     LSTMCellCPU<float>(&net, "InputCPU", "PreOutputCPU", "WeightCPU", "BiasCPU",
                        "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("LSTMCell", "LSTMCellTest")
         .Input("Input")
         .Input("PreOutput")
@@ -62,14 +62,15 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
   }
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -92,12 +93,12 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_LSTMCELL(N, INPUT_SIZE, HIDDEN_UNITS)                 \
-  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, CPU);    \
-  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, GPU);    \
-  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, half, GPU)
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, RT_CPU);    \
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, RT_OPENCL);    \
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, half, RT_OPENCL)
 #else
 #define MACE_BM_LSTMCELL(N, INPUT_SIZE, HIDDEN_UNITS)                 \
-  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, CPU)
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, RT_CPU)
 #endif
 
 MACE_BM_LSTMCELL(1, 64, 256);

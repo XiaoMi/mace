@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/batch_norm.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -49,7 +51,8 @@ MaceStatus BatchNormKernel::Compute(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -80,37 +83,37 @@ MaceStatus BatchNormKernel::Compute(
       default:LOG(FATAL) << "Unknown activation type: " << activation_;
     }
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("batch_norm", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("batch_norm", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(scale->opencl_image()));
-    kernel_.setArg(idx++, *(offset->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(scale->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(offset->memory<cl::Image>()));
     if (not_folded) {
-      kernel_.setArg(idx++, *(mean->opencl_image()));
-      kernel_.setArg(idx++, *(var->opencl_image()));
+      kernel_.setArg(idx++, *(mean->memory<cl::Image>()));
+      kernel_.setArg(idx++, *(var->memory<cl::Image>()));
       kernel_.setArg(idx++, epsilon_);
     }
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
     kernel_.setArg(idx++, relux_max_limit_);
     kernel_.setArg(idx++, activation_coefficient_);
 
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

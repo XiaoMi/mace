@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 
 namespace mace {
 namespace ops {

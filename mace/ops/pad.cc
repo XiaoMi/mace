@@ -53,11 +53,11 @@ int get_src_idx(int out, int in_size, int pad, int l_add, int r_add) {
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class PadOp;
 
 template<typename T>
-class PadOp<DeviceType::CPU, T> : public Operation {
+class PadOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit PadOp(OpConstructContext *context)
       : Operation(context),
@@ -98,8 +98,6 @@ class PadOp<DeviceType::CPU, T> : public Operation {
                                          input_shape[3] + this->paddings_[6]
                                              + this->paddings_[7]}));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     auto input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
@@ -176,7 +174,7 @@ class PadOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class PadOp<DeviceType::CPU, uint8_t> : public Operation {
+class PadOp<RuntimeType::RT_CPU, uint8_t> : public Operation {
  public:
   explicit PadOp(OpConstructContext *context)
       : Operation(context),
@@ -294,7 +292,7 @@ class PadOp<DeviceType::CPU, uint8_t> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class PadOp<DeviceType::GPU, float> : public Operation {
+class PadOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit PadOp(OpConstructContext *context)
       : Operation(context) {
@@ -323,10 +321,10 @@ class PadOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterPad(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Pad", PadOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Pad", PadOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Pad", PadOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Pad", PadOp, RuntimeType::RT_CPU);
 #ifdef MACE_ENABLE_QUANTIZE
-  MACE_REGISTER_OP(op_registry, "Pad", PadOp, DeviceType::CPU, uint8_t);
+  MACE_REGISTER_OP(op_registry, "Pad", PadOp, RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Pad", PadOp);

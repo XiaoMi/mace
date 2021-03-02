@@ -39,29 +39,31 @@
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/common/gemmlowp_util.h"
 #include "mace/ops/arm/q8/quantization_util.h"
+#include "mace/runtimes/cpu/cpu_runtime.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/buffer/conv_2d.h"
 #include "mace/ops/opencl/image/conv_2d.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class Conv2dOp;
 
 template<class T>
-class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
+class Conv2dOp<RuntimeType::RT_CPU, T> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
         activation_delegator_(
             delegator::Activation::Create(
                 context->workspace(),
-                MACE_DELEGATOR_KEY(Activation, DeviceType::CPU,
+                MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                                    T, kCpuImplType),
                 delegator::ActivationParam(
                     ops::StringToActivationType(
@@ -72,7 +74,7 @@ class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
                                                      0.0f)))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -82,7 +84,8 @@ class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
     Tensor *output = this->Output(OUTPUT);
 
     if (conv2d_delegator_ == nullptr) {
-      auto tag = MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, T, kCpuImplType);
+      auto tag = MACE_DELEGATOR_KEY(Conv2d,
+                                    RuntimeType::RT_CPU, T, kCpuImplType);
       if (kCpuImplType == NEON) {
         // the following params are used to decide which conv delegator to use
         const index_t stride_h = strides_[0];
@@ -98,62 +101,62 @@ class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
         // We do not support changeable filter for now.
         if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
             && dilation_h == 1 && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K1x1);
         } else if (filter_h == 3 && filter_w == 3
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
           if (input_channels >= 8 && channels >= 8) {
-            tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+            tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType, K3x3Winograd);
           } else {
-            tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+            tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                         kCpuImplType, K3x3S1);
           }
         } else if (filter_h == 3 && filter_w == 3
             && stride_h == 2 && stride_w == 2 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K3x3S2);
         } else if (filter_h == 5 && filter_w == 5
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K5x5S1);
         } else if (filter_h == 7 && filter_w == 7
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K7x7S1);
         } else if (filter_h == 7 && filter_w == 7
             && stride_h == 2 && stride_w == 2 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K7x7S2);
         } else if (filter_h == 7 && filter_w == 7
             && stride_h == 3 && stride_w == 3 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K7x7S3);
         } else if (filter_h == 1 && filter_w == 7
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K1x7S1);
         } else if (filter_h == 7 && filter_w == 1
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K7x1S1);
         } else if (filter_h == 1 && filter_w == 15
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K1x15S1);
         } else if (filter_h == 15 && filter_w == 1
             && stride_h == 1 && stride_w == 1 && dilation_h == 1
             && dilation_w == 1) {
-          tag = MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU, T,
+          tag = MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU, T,
                                       kCpuImplType, K15x1S1);
         }
       }
@@ -182,7 +185,7 @@ class Conv2dOp<DeviceType::CPU, T> : public ConvPool2dOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
+class Conv2dOp<RuntimeType::RT_CPU, uint8_t> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
@@ -202,7 +205,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
     MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1,
                "Quantization convolution does not support dilation > 1 yet.");
 
-    auto gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
+    auto gemm_context = CpuRuntime::Get(context)->GetGemmlowpContext();
     MACE_CHECK_NOTNULL(gemm_context);
 
     std::vector<index_t> output_shape(4);
@@ -260,10 +263,6 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
                input_channels);
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard filter_guard(filter);
-    Tensor::MappingGuard output_guard(output);
-
     auto input_data = input->data<uint8_t>();
     auto filter_data = filter->data<uint8_t>();
     auto output_data = output->mutable_data<uint8_t>();
@@ -279,11 +278,11 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
         filter_h != 1 || filter_w != 1 || stride_h != 1 || stride_w != 1;
     if (im2col_required) {
       // prepare im2col
-      index_t im2col_size = depth * columns * sizeof(uint8_t);
-      ScratchBuffer *scratch = context->device()->scratch_buffer();
-      scratch->Rewind();
-      scratch->GrowSize(im2col_size);
-      im2col = make_unique<Tensor>(scratch->Scratch(im2col_size), DT_UINT8);
+      auto *runtime = context->runtime();
+      std::vector<index_t> tensor_shape = {depth, columns};
+      im2col = make_unique<Tensor>(runtime, DT_UINT8,
+                                   input->memory_type(), tensor_shape);
+      runtime->AllocateBufferForTensor(im2col.get(), BufRentType::RENT_SCRATCH);
       uint8_t *im2col_data = im2col->mutable_data<uint8_t>();
       Im2col(context, input_data, input->shape(), filter_h, filter_w, stride_h,
              stride_w, static_cast<uint8_t>(input->zero_point()),
@@ -328,8 +327,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
     const index_t input_row_size = in_shape[2] * in_shape[3];
     const index_t patch_row_size = filter_w * in_shape[3];
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1,
@@ -425,7 +423,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
+class Conv2dOp<RuntimeType::RT_OPENCL, float> : public ConvPool2dOpBase {
  public:
   explicit Conv2dOp(OpConstructContext *context)
       : ConvPool2dOpBase(context),
@@ -450,7 +448,7 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
     if (filter_tensor != nullptr && filter_tensor->is_weight()) {
       if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
           (kernel_->CheckUseWinograd(
-            context->device()->gpu_runtime()->opencl_runtime(),
+            OpenclRuntime::Get(context)->GetOpenclExecutor(),
             filter_tensor->shape(),
             std::vector<index_t>(operator_def_->output_shape(0).dims().begin(),
                                  operator_def_->output_shape(0).dims().end()),
@@ -459,13 +457,13 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
             &wino_block_size_))) {
         MACE_CHECK(TransformFilter(
             context, operator_def_.get(), 1,
-            OpenCLBufferType::WINOGRAD_FILTER, mem_type, wino_block_size_)
+            BufferContentType::WINOGRAD_FILTER, mem_type, wino_block_size_)
                        == MaceStatus::MACE_SUCCESS);
       } else {
         wino_block_size_ = 0;
         MACE_CHECK(TransformFilter(
             context, operator_def_.get(), 1,
-            OpenCLBufferType::CONV2D_FILTER, mem_type)
+            BufferContentType::CONV2D_FILTER, mem_type)
                        == MaceStatus::MACE_SUCCESS);
       }
     } else {
@@ -475,7 +473,7 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
 
     if (operator_def_->input_size() > 2) {
       auto ret = TransformFilter(context, operator_def_.get(), 2,
-                                 OpenCLBufferType::ARGUMENT, mem_type);
+                                 BufferContentType::ARGUMENT, mem_type);
       MACE_CHECK(ret == MaceStatus::MACE_SUCCESS);
     }
   }
@@ -489,6 +487,18 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
                             strides_.data(), padding_type_, paddings_,
                             dilations_.data(), activation_, relux_max_limit_,
                             activation_coefficient_, wino_block_size_, output);
+  }
+
+ protected:
+  BufferContentType GetInputTensorContentType(size_t idx) const override {
+    if (idx == FILTER) {
+      if (wino_block_size_ == 0) {
+        return BufferContentType::CONV2D_FILTER;
+      } else {
+        return BufferContentType::WINOGRAD_FILTER;
+      }
+    }
+    return Operation::GetInputTensorContentType(idx);
   }
 
  private:
@@ -505,12 +515,13 @@ class Conv2dOp<DeviceType::GPU, float> : public ConvPool2dOpBase {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterConv2D(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU);
-  MACE_REGISTER_FP16_OP(op_registry, "Conv2D", Conv2dOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Conv2D", Conv2dOp, RuntimeType::RT_CPU);
+  MACE_REGISTER_FP16_OP(op_registry, "Conv2D", Conv2dOp, RuntimeType::RT_CPU);
+
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Conv2D", Conv2dOp);
@@ -520,7 +531,7 @@ void RegisterConv2D(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("Conv2D").SetInputMemoryTypeSetter(
           [](OpConditionContext *context) -> void {
-            SetFilterMemoryType(context, OpenCLBufferType::CONV2D_FILTER);
+            SetFilterMemoryType(context, BufferContentType::CONV2D_FILTER);
           }));
 #endif  // MACE_ENABLE_OPENCL
 

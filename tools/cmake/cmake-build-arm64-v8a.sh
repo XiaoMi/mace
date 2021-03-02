@@ -40,9 +40,9 @@ if [[ "$QUANTIZE" == "ON" ]]; then
     MACE_ENABLE_QUANTIZE=ON
 fi
 
-DMACE_ENABLE_BFLOAT16=OFF
+MACE_ENABLE_BFLOAT16=OFF
 if [[ "$BFLOAT16" == "ON" ]]; then
-    DMACE_ENABLE_BFLOAT16=ON
+    MACE_ENABLE_BFLOAT16=ON
 fi
 
 mkdir -p ${BUILD_DIR} && cd ${BUILD_DIR}
@@ -71,4 +71,6 @@ make -j$(nproc) && make install
 cd ../../..
 
 # Detect the plugin-device and copy the valid so to the output dir
-python tools/python/apu_utils.py copy-so-files --target_abi arm64-v8a --apu_path $LIB_DIR
+if [[ "$RUNTIME" == "APU" ]]; then
+    python tools/python/apu_utils.py copy-so-files --target_abi arm64-v8a --apu_path $LIB_DIR
+fi

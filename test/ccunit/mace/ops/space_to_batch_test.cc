@@ -22,24 +22,25 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void RunSpaceToBatch(const std::vector<index_t> &input_shape,
                      const std::vector<float> &input_data,
                      const std::vector<int> &block_shape_data,
                      const std::vector<int> &padding_data,
                      const Tensor *expected) {
   OpsTestNet net;
-  net.AddInputFromArray<D, float>("Input", input_shape, input_data);
+  net.AddInputFromArray<RT_CPU, float>("Input", input_shape, input_data);
 
-  if (D == GPU) {
+  if (D == RT_OPENCL) {
     OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
         .Input("Input")
         .Output("Output")
+        .OutputShape(expected->shape())
         .AddIntsArg("paddings", padding_data)
         .AddIntsArg("block_shape", block_shape_data)
         .Finalize(net.NewOperatorDef());
-  } else if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  } else if (D == RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
         .Input("InputNCHW")
@@ -52,15 +53,15 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
   // Run
   net.RunOp(D);
 
-  if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void RunBatchToSpace(const std::vector<index_t> &input_shape,
                      const std::vector<float> &input_data,
                      const std::vector<int> &block_shape_data,
@@ -70,15 +71,16 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  if (D == GPU) {
+  if (D == RT_OPENCL) {
     OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
         .Input("Input")
         .Output("Output")
+        .OutputShape(expected->shape())
         .AddIntsArg("crops", crops_data)
         .AddIntsArg("block_shape", block_shape_data)
         .Finalize(net.NewOperatorDef());
-  } else if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  } else if (D == RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
         .Input("InputNCHW")
@@ -91,8 +93,8 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   // Run
   net.RunOp(D);
 
-  if (D == CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
   // Check
@@ -107,7 +109,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
                                 const std::vector<index_t> &batch_shape,
                                 const std::vector<float> &batch_data) {
   OpsTestNet net;
-  auto space_tensor = net.CreateTensor<T, GPU>();
+  auto space_tensor = net.CreateTensor<T, RuntimeType::RT_OPENCL>();
   space_tensor->Resize(space_shape);
   {
     Tensor::MappingGuard space_mapper(space_tensor.get());
@@ -118,7 +120,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
     memcpy(space_ptr, space_data.data(), space_data.size() * sizeof(T));
   }
 
-  auto batch_tensor = net.CreateTensor<T, GPU>();
+  auto batch_tensor = net.CreateTensor<T, RuntimeType::RT_OPENCL>();
   batch_tensor->Resize(batch_shape);
   {
     Tensor::MappingGuard batch_mapper(batch_tensor.get());
@@ -127,23 +129,22 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
     memcpy(batch_ptr, batch_data.data(), batch_data.size() * sizeof(T));
   }
 
-  RunSpaceToBatch<DeviceType::GPU>(space_shape, space_data, block_data,
-                                   padding_data, batch_tensor.get());
-  RunSpaceToBatch<DeviceType::CPU>(space_shape, space_data, block_data,
-                                   padding_data, batch_tensor.get());
+  RunSpaceToBatch<RuntimeType::RT_OPENCL>(space_shape, space_data, block_data,
+                                          padding_data, batch_tensor.get());
+  RunSpaceToBatch<RuntimeType::RT_CPU>(space_shape, space_data, block_data,
+                                       padding_data, batch_tensor.get());
 
-  RunBatchToSpace<DeviceType::GPU>(batch_shape, batch_data, block_data,
-                                   padding_data, space_tensor.get());
-  RunBatchToSpace<DeviceType::CPU>(batch_shape, batch_data, block_data,
-                                   padding_data, space_tensor.get());
+  RunBatchToSpace<RuntimeType::RT_OPENCL>(batch_shape, batch_data, block_data,
+                                          padding_data, space_tensor.get());
+  RunBatchToSpace<RuntimeType::RT_CPU>(batch_shape, batch_data, block_data,
+                                       padding_data, space_tensor.get());
 }
-
 
 void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
                                 const std::vector<int> &block_shape_data,
                                 const std::vector<int> &padding_data) {
   OpsTestNet net;
-  net.AddRandomInput<GPU, float>("Input", input_shape);
+  net.AddRandomInput<RT_OPENCL, float>("Input", input_shape);
 
   // run gpu
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
@@ -152,10 +153,10 @@ void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
       .AddIntsArg("paddings", padding_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputNCHW")
@@ -163,8 +164,8 @@ void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
       .AddIntsArg("paddings", padding_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // Check
@@ -176,7 +177,7 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
                                  const std::vector<int> &block_shape_data,
                                  const std::vector<int> &crops_data) {
   OpsTestNet net;
-  net.AddRandomInput<GPU, float>("Input", input_shape);
+  net.AddRandomInput<RT_OPENCL, float>("Input", input_shape);
 
   // run gpu
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
@@ -185,10 +186,10 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
       .AddIntsArg("crops", crops_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputNCHW")
@@ -196,8 +197,8 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
       .AddIntsArg("crops", crops_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // Check
@@ -209,16 +210,11 @@ void TestSpaceToBatchQuantize(const std::vector<index_t> &input_shape,
                               const std::vector<int> &block_shape_data,
                               const std::vector<int> &padding_data) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input",
-                                 input_shape,
-                                 false,
-                                 false,
-                                 true,
-                                 -1.f,
-                                 1.f);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
+      "Input", input_shape, false, false, true, -1.f, 1.f);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputNCHW")
@@ -226,8 +222,8 @@ void TestSpaceToBatchQuantize(const std::vector<index_t> &input_shape,
       .AddIntsArg("paddings", padding_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // run quantize
@@ -270,16 +266,11 @@ void TestoBatchToSpaceQuantize(const std::vector<index_t> &input_shape,
                                const std::vector<int> &block_shape_data,
                                const std::vector<int> &crops_data) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input",
-                                 input_shape,
-                                 false,
-                                 false,
-                                 true,
-                                 -1.f,
-                                 1.f);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
+      "Input", input_shape, false, false, true, -1.f, 1.f);
 
   // run cpu
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputNCHW")
@@ -287,8 +278,8 @@ void TestoBatchToSpaceQuantize(const std::vector<index_t> &input_shape,
       .AddIntsArg("crops", crops_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "OutputCPU", DataFormat::NHWC);
 
   // run quantize

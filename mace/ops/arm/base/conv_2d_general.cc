@@ -41,10 +41,6 @@ MaceStatus Conv2dGeneral<T>::Compute(const OpContext *context,
   }
   out_tensor->Clear();
 
-  Tensor::MappingGuard in_guard(input);
-  Tensor::MappingGuard filter_guard(filter);
-  Tensor::MappingGuard out_guard(output);
-
   const T *filter_data = filter->data<T>();
   const T *input_data = in_tensor->data<T>();
   T *output_data = out_tensor->mutable_data<T>();
@@ -203,11 +199,12 @@ MaceStatus Conv2dGeneral<T>::DoCompute(
 void RegisterConv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dGeneral<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, float, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Conv2d, RuntimeType::RT_CPU, float, ImplType::NEON));
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Conv2dGeneral<BFloat16>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY(Conv2d, DeviceType::CPU, BFloat16, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Conv2d, RuntimeType::RT_CPU,
+                         BFloat16, ImplType::NEON));
 }
 
 }  // namespace arm

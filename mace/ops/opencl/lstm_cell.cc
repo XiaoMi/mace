@@ -19,19 +19,19 @@
 
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/lstm_cell.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class LSTMCellOp;
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class LSTMCellOp<DeviceType::GPU, float> : public Operation {
+class LSTMCellOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit LSTMCellOp(OpConstructContext *context)
       : Operation(context) {
@@ -48,23 +48,23 @@ class LSTMCellOp<DeviceType::GPU, float> : public Operation {
         operator_def_->input(1));
     if (pre_output->is_weight()) {
       auto status = TransformFilter(context, operator_def_.get(),
-                                    1, OpenCLBufferType::IN_OUT_CHANNEL,
+                                    1, BufferContentType::IN_OUT_CHANNEL,
                                     mem_type);
       MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     }
     auto status = TransformFilter(context, operator_def_.get(),
-                                  2, OpenCLBufferType::IN_OUT_CHANNEL,
+                                  2, BufferContentType::IN_OUT_CHANNEL,
                                   mem_type);
     MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     status = TransformFilter(context, operator_def_.get(),
-                             3, OpenCLBufferType::ARGUMENT,
+                             3, BufferContentType::ARGUMENT,
                              mem_type);
     MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     const Tensor *pre_cell =
         context->workspace()->GetTensor(operator_def_->input(4));
     if (pre_cell->is_weight()) {
       status = TransformFilter(context, operator_def_.get(),
-                               4, OpenCLBufferType::IN_OUT_CHANNEL,
+                               4, BufferContentType::IN_OUT_CHANNEL,
                                mem_type);
       MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
     }

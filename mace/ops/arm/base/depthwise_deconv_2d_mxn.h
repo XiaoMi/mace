@@ -56,12 +56,7 @@ class DepthwiseDeconv2dKMxN : public Deconv2dBase {
     if (padded_out != nullptr) {
       out_tensor = padded_out.get();
     }
-
     out_tensor->Clear();
-
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard filter_mapper(filter);
-    Tensor::MappingGuard output_mapper(output);
 
     const T *input_data = input->data<float>();
     const T *filter_data = filter->data<float>();
@@ -105,12 +100,7 @@ class GroupDeconv2dKMxN : public Deconv2dBase {
     if (padded_out != nullptr) {
       out_tensor = padded_out.get();
     }
-
     out_tensor->Clear();
-
-    Tensor::MappingGuard input_mapper(input);
-    Tensor::MappingGuard filter_mapper(filter);
-    Tensor::MappingGuard output_mapper(output);
 
     auto input_data = input->data<float>();
     auto filter_data = filter->data<float>();

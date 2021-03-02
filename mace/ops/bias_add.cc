@@ -22,26 +22,26 @@
 #include "mace/ops/delegator/bias_add.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/bias_add.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 #include "mace/utils/memory.h"
 
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class BiasAddOp;
 
 template<class T>
-class BiasAddOp<DeviceType::CPU, T> : public Operation {
+class BiasAddOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
         has_data_format_(Operation::GetOptionalArg<int>("has_data_format", 0)),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -71,7 +71,7 @@ class BiasAddOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class BiasAddOp<DeviceType::GPU, float> : public Operation {
+class BiasAddOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit BiasAddOp(OpConstructContext *context)
       : Operation(context),
@@ -86,8 +86,8 @@ class BiasAddOp<DeviceType::GPU, float> : public Operation {
 
     // for const bias tensor
     if (context->workspace()->GetTensor(operator_def_->input(1)) != nullptr) {
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
+      MACE_CHECK(TransformFilter(context, operator_def_.get(), 1,
+                                 BufferContentType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS, "TransformFilter failed");
     }
   }
@@ -112,20 +112,23 @@ class BiasAddOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterBiasAdd(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp,
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "BiasAdd",
+                        BiasAddOp, RuntimeType::RT_CPU);
 #ifdef MACE_ENABLE_QUANTIZE
-  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp, DeviceType::CPU, uint8_t);
+  MACE_REGISTER_OP(op_registry, "BiasAdd", BiasAddOp,
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
   MACE_REGISTER_GPU_OP(op_registry, "BiasAdd", BiasAddOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("BiasAdd")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
@@ -136,9 +139,9 @@ void RegisterBiasAdd(OpRegistry *op_registry) {
                             << has_data_format
                             << ", op->output_shape(0).dims_size()="
                             << op->output_shape(0).dims_size();
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

@@ -22,6 +22,7 @@ class NPEncoder(json.JSONEncoder):
 class ModelVisualizer(object):
     def __init__(self, model_name, proto, output_dir):
         self._output_file = "%s/%s_index.html" % (output_dir, model_name)
+        print("Store to html file: %s" % self._output_file)
         self._proto = proto
 
     def render_html(self):

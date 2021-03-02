@@ -1,0 +1,40 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_quantize_enabled",
+    "if_rpcmem_enabled",
+)
+
+cc_library(
+    name = "cpu_runtimes",
+    srcs = glob([
+        "*.cc",
+    ]) + if_rpcmem_enabled(glob([
+        "ion/*.cc",
+    ])),
+    hdrs = glob([
+        "*.h",
+    ]) + if_rpcmem_enabled(glob([
+        "ion/*.h",
+    ])),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
+    ]) + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
+    ]),
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/core",
+    ] + if_quantize_enabled([
+        "@gemmlowp",
+    ]),
+)

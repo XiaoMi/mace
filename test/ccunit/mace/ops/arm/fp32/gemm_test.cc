@@ -34,9 +34,10 @@ void TestGemmFloat32(const index_t batch,
                      const MatrixMajor output_major,
                      const bool lhs_batched,
                      const bool rhs_batched) {
-  Tensor lhs(GetCPUAllocator(), DataType::DT_FLOAT);
-  Tensor rhs(GetCPUAllocator(), DataType::DT_FLOAT);
-  Tensor output(GetCPUAllocator(), DataType::DT_FLOAT);
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  Tensor lhs(cpu_runtime, DataType::DT_FLOAT);
+  Tensor rhs(cpu_runtime, DataType::DT_FLOAT);
+  Tensor output(cpu_runtime, DataType::DT_FLOAT);
   lhs.Resize({lhs_batched ? batch : 1, rows, depth});
   rhs.Resize({rhs_batched ? batch : 1, depth, cols});
   output.Resize({batch, rows, cols});
@@ -51,14 +52,11 @@ void TestGemmFloat32(const index_t batch,
     GenerateRandomRealTypeData<float>(output.shape(), output_data);
   }
 
-  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
-  thread_pool.Init();
-  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
   OpsTestNet net;
-  OpContext context(net.ws(), &cpu_device);
+  OpContext context(net.ws(), cpu_runtime);
   std::unique_ptr<delegator::Gemm> gemm = delegator::Gemm::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float, ImplType::NEON),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float, ImplType::NEON),
       delegator::GemmParam());
   gemm->Compute(&context,
                 &lhs,
@@ -74,11 +72,12 @@ void TestGemmFloat32(const index_t batch,
                 rhs_batched,
                 &output);
 
-  Tensor expected_output(GetCPUAllocator(), DataType::DT_FLOAT);
+  Tensor expected_output(cpu_runtime, DataType::DT_FLOAT);
   expected_output.Resize({batch, rows, cols});
   std::unique_ptr<delegator::Gemm> gemm_ref = delegator::Gemm::Create(
-      context.workspace(), MACE_DELEGATOR_KEY(
-          Gemm, DeviceType::CPU, float, ImplType::REF), delegator::GemmParam());
+      context.workspace(),
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float, ImplType::REF),
+      delegator::GemmParam());
   gemm_ref->Compute(&context,
                     &lhs,
                     &rhs,

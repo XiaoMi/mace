@@ -20,16 +20,15 @@
 #include <vector>
 
 #include "mace/core/ops/operator.h"
+#include "mace/core/ops/ops_utils.h"
 #include "mace/core/ops/op_condition_context.h"
+#include "mace/core/proto/net_def_helper.h"
 #include "mace/core/registry/ops_registry.h"
 #include "mace/utils/math.h"
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_util.h"
-#endif  // MACE_ENABLE_OPENCL
+
 namespace mace {
 
 namespace {
-
 struct FilterRulerInfo {
   const int filter_idx;
   const std::vector<int> nhwc_oihw;
@@ -45,12 +44,12 @@ typedef std::unordered_map<
 
 FilterTransposeRuler GetFilterTransposeRuler() {
   FilterTransposeRuler filter_ruler;
-  // filter's src format is actually HWIO in tf, OIHW in others
-  // for Conv2D in MACE, the dst format is OIHW
+  // Filter's src format is actually HWIO in tf, OIHW in others
+  // For Conv2D in MACE, the dst format is OIHW
   filter_ruler.emplace("Conv2D", make_unique<FilterRulerInfo>(
       1, std::vector<int>({3, 2, 0, 1}), std::vector<int>({})));
 
-  // filter's src format is actually HWOI in tf, MIHW in others
+  // Filter's src format is actually HWOI in tf, MIHW in others
   filter_ruler.emplace("Deconv2D", make_unique<FilterRulerInfo>(
       1, std::vector<int>({2, 3, 0, 1}), std::vector<int>({})));
 
@@ -63,18 +62,18 @@ FilterTransposeRuler GetFilterTransposeRuler() {
   return filter_ruler;
 }
 
-DataFormat GetDefaultDataFormat(DeviceType device_type,
+DataFormat GetDefaultDataFormat(RuntimeType runtime_type,
                                 bool is_quantized_model) {
-  if (device_type == CPU) {
+  if (runtime_type == RuntimeType::RT_CPU) {
     if (is_quantized_model) {
       return DataFormat::NHWC;
     } else {
       return DataFormat::NCHW;
     }
-  } else if (device_type == GPU) {
+  } else if (runtime_type == RuntimeType::RT_OPENCL) {
     return DataFormat::NHWC;
   } else {
-    LOG(FATAL) << "MACE do not support the device " << device_type;
+    LOG(FATAL) << "MACE do not support the runtime " << runtime_type;
     return DataFormat::NONE;
   }
 }
@@ -94,14 +93,14 @@ void BuildTransposeOpDef(
     const std::vector<index_t> &output_shape,
     const std::vector<int> dst_dims,
     const DataType dt,
-    DeviceType device_type,
+    RuntimeType runtime_type,
     OperatorDef *op_def) {
   std::string op_name = "mace_node_" + output_name;
   op_def->set_name(op_name);
   op_def->set_type("Transpose");
   op_def->add_input(input_name);
   op_def->add_output(output_name);
-  op_def->set_device_type(device_type);
+  op_def->set_device_type(runtime_type);
   Argument *arg = op_def->add_arg();
   arg->set_name("dims");
   for (auto dim : dst_dims) {
@@ -124,10 +123,10 @@ NetDefAdapter::NetDefAdapter(const OpRegistry *op_registry,
                              const Workspace *ws)
     : op_registry_(op_registry), ws_(ws) {}
 
-MaceStatus NetDefAdapter::AdaptNetDef(
-    const NetDef *net_def,
-    Device *target_device,
-    NetDef *target_net_def) {
+MaceStatus NetDefAdapter::AdaptNetDef(const NetDef *net_def,
+                                      Runtime *target_runtime,
+                                      Runtime *cpu_runtime,
+                                      NetDef *target_net_def) {
   MACE_LATENCY_LOGGER(1, "Adapting original NetDef");
   // Copy from original op_def, leave ops alone.
   target_net_def->mutable_arg()->CopyFrom(net_def->arg());
@@ -135,18 +134,13 @@ MaceStatus NetDefAdapter::AdaptNetDef(
   target_net_def->mutable_input_info()->CopyFrom(net_def->input_info());
   target_net_def->mutable_output_info()->CopyFrom(net_def->output_info());
 
-  std::unique_ptr<CPUDevice> cpu_device = make_unique<CPUDevice>(
-      target_device->cpu_runtime()->num_threads(),
-      target_device->cpu_runtime()->policy(),
-      &(target_device->cpu_runtime()->thread_pool()));
-
-  // quantize model flag
-  bool is_quantized_model = IsQuantizedModel(*net_def);
+  // Quantize model flag
+  bool is_quantized_model = NetDefHelper::IsQuantizedModel(*net_def);
   // tensor -> shape
   TensorShapeMap tensor_shape_map;
   // Output tensors -> information
   TensorInfoMap output_map;
-  // output tensor : related information
+  // Output tensor : related information
   std::unordered_set<std::string> transformed_set;
 
   for (auto &tensor : net_def->tensors()) {
@@ -154,18 +148,10 @@ MaceStatus NetDefAdapter::AdaptNetDef(
         std::vector<index_t>(tensor.dims().begin(), tensor.dims().end());
   }
 
-  MemoryType mem_type = MemoryType::CPU_BUFFER;
-  if (target_device->device_type() == DeviceType::CPU) {
-    mem_type = MemoryType::CPU_BUFFER;
-  } else if (target_device->device_type() == DeviceType::GPU) {
-    mem_type = MemoryType::GPU_BUFFER;
-  } else {
-    LOG(FATAL) << "MACE do not support the device type: "
-               << target_device->device_type();
-  }
-
-  DataFormat expected_data_format = GetDefaultDataFormat(
-      target_device->device_type(), is_quantized_model);
+  const auto mem_type = target_runtime->GetBaseMemoryType();
+  const auto runtime_type = target_runtime->GetRuntimeType();
+  DataFormat expected_data_format =
+      GetDefaultDataFormat(runtime_type, is_quantized_model);
   int input_size = target_net_def->input_info_size();
   for (int i = 0; i < input_size; ++i) {
     auto input_info = target_net_def->mutable_input_info(i);
@@ -207,17 +193,17 @@ MaceStatus NetDefAdapter::AdaptNetDef(
     context.set_operator_def(&op_def);
     // Select device
     MACE_RETURN_IF_ERROR(this->AdaptDevice(&context,
-                                           target_device,
-                                           cpu_device.get(),
+                                           target_runtime,
+                                           cpu_runtime,
                                            output_map,
                                            target_net_def,
                                            &op_def));
 
     // Adapt data type
-    MACE_RETURN_IF_ERROR(this->AdaptDataType(&context,
-                                             &op_def));
+    MACE_RETURN_IF_ERROR(this->AdaptDataType(&context, &op_def));
 
-    if (op_def.device_type() == DeviceType::GPU) {
+    auto runtime_type = static_cast<RuntimeType>(op_def.device_type());
+    if (runtime_type == RuntimeType::RT_OPENCL) {
       MACE_RETURN_IF_ERROR(this->AdaptDataFormat(&context,
                                                  &op_def,
                                                  is_quantized_model,
@@ -287,18 +273,20 @@ MaceStatus NetDefAdapter::AdaptNetDef(
     target_net_def->add_op()->CopyFrom(op_def);
   }
 
-#ifdef MACE_ENABLE_OPENCL
-  if (target_device->device_type() == DeviceType::GPU) {
+  // For outputs' convert
+  auto target_runtime_type = target_runtime->GetRuntimeType();
+  if (target_runtime_type != RuntimeType::RT_CPU) {
     // Add buffer transform for GPU if necessary
-    MemoryType target_mem_type = MemoryType::GPU_BUFFER;
+    MemoryType target_mem_type = target_runtime->GetBaseMemoryType();
     for (auto &output_info : net_def->output_info()) {
       auto output_data_type = output_info.data_type();
       if (output_data_type == DT_FLOAT16) {
         output_data_type = DT_HALF;
       }
       auto &internal_output_info = output_map.at(output_info.name());
-      if ((internal_output_info.mem_type != target_mem_type &&
-          internal_output_info.mem_type != MemoryType::CPU_BUFFER) ||
+      auto internal_omt = internal_output_info.mem_type;
+      if ((internal_omt != target_mem_type &&
+          internal_omt != MemoryType::CPU_BUFFER) ||
           internal_output_info.dtype != output_info.data_type()) {
         VLOG(1) << "Add Transform operation to transform output tensor '"
                 << output_info.name() << "', from memory type "
@@ -327,71 +315,72 @@ MaceStatus NetDefAdapter::AdaptNetDef(
           }
         }
         auto transformed_op_def = target_net_def->add_op();
-        OpenCLUtil::BuildTransformOpDef(
+        OpsUtils::BuildTransformOpDef(
             t_output_name,
             internal_output_info.shape,
             output_info.name(),
+            target_runtime_type,
             output_data_type,
-            OpenCLBufferType::IN_OUT_CHANNEL,
+            BufferContentType::IN_OUT_CHANNEL,
             target_mem_type,
             internal_output_info.data_format,
             transformed_op_def);
-        // set data format arg
+        // Set data format arg
         SetProtoArg<int>(
             transformed_op_def,
             "data_format",
             static_cast<int>(internal_output_info.data_format));
-        // set output memory type argument
+        // Set output memory type argument
         SetProtoArg<int>(transformed_op_def,
                          OutputMemoryTypeTagName(),
                          target_mem_type);
       }
     }
   }
-#endif  // MACE_ENABLE_OPENCL
 
   VLOG(3) << DebugString(target_net_def);
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus NetDefAdapter::AdaptDevice(OpConditionContext *context,
-                                      Device *target_device,
-                                      Device *cpu_device,
+                                      Runtime *target_runtime,
+                                      Runtime *cpu_runtime,
                                       const TensorInfoMap &output_map,
                                       const NetDef *net_def,
                                       OperatorDef *op_def) {
   VLOG(3) << "Adapt device for op " << op_def->name();
-  DeviceType target_device_type = target_device->device_type();
-  DeviceType device_type = DeviceType::CPU;
-  context->set_device(target_device);
-  if (target_device_type != DeviceType::CPU) {
-    std::vector<DeviceType> producer_devices;
+  RuntimeType target_runtime_type = target_runtime->GetRuntimeType();
+  VLOG(3) << "target_runtime_type: " << static_cast<int>(target_runtime_type);
+  RuntimeType runtime_type = RuntimeType::RT_CPU;
+  context->set_runtime(target_runtime);
+  if (target_runtime_type != RuntimeType::RT_CPU) {
+    std::vector<RuntimeType> producer_runtimes;
     for (auto input : op_def->input()) {
       if (output_map.count(input) == 1) {
         if (output_map.at(input).op_idx < 0) {
-          producer_devices.push_back(target_device_type);
+          producer_runtimes.push_back(target_runtime_type);
         } else {
-          producer_devices.push_back(
-              static_cast<DeviceType>(
+          producer_runtimes.push_back(
+              static_cast<RuntimeType>(
                   net_def->op(output_map.at(input).op_idx).device_type()));
         }
       }
     }
-    // Get available devices
-    auto available_devices =
-        op_registry_->AvailableDevices(op_def->type(), context);
-    device_type = net_optimizer_.SelectBestDevice(op_def,
-                                                  target_device_type,
-                                                  available_devices,
-                                                  producer_devices);
-    if (device_type != target_device_type) {
-      context->set_device(cpu_device);
+    // Get available runtimes
+    auto available_runtimes =
+        op_registry_->AvailableRuntimes(op_def->type(), context);
+    runtime_type = net_optimizer_.SelectBestRuntime(op_def,
+                                                    target_runtime_type,
+                                                    available_runtimes,
+                                                    producer_runtimes);
+    if (runtime_type != target_runtime_type) {
+      context->set_runtime(cpu_runtime);
       SetProtoArg<int>(op_def, IsFallbackTagName(), 1);
       LOG(INFO) << "Op " << op_def->name() << "(" << op_def->type() << ")"
                 << " fall back to CPU";
     }
   }
-  op_def->set_device_type(device_type);
+  op_def->set_device_type(runtime_type);
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -403,7 +392,8 @@ MaceStatus NetDefAdapter::AdaptDataType(OpConditionContext *context,
   DataType dtype = static_cast<DataType>(
       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
           *op_def, "T", static_cast<int>(DT_FLOAT)));
-  if (op_def->device_type() == DeviceType::CPU && dtype == DT_HALF) {
+  auto runtime_type = static_cast<RuntimeType>(op_def->device_type());
+  if (runtime_type == RuntimeType::RT_CPU && dtype == DT_HALF) {
     SetProtoArg<int>(op_def, "T", static_cast<int>(DataType::DT_FLOAT));
   }
   return MaceStatus::MACE_SUCCESS;
@@ -423,10 +413,10 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
       static_cast<DataFormat>(ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
           *op_def, "data_format",
           static_cast<int>(DataFormat::NONE)));
-  // adjust the data format of operation
+  auto runtime_type = static_cast<RuntimeType>(op_def->device_type());
+  // Adjust the data format of operation
   if (op_data_format == DataFormat::AUTO) {
-    op_data_format = GetDefaultDataFormat(
-        static_cast<DeviceType>(op_def->device_type()), is_quantized_model);
+    op_data_format = GetDefaultDataFormat(runtime_type, is_quantized_model);
     SetProtoArg<int>(op_def, "data_format", static_cast<int>(op_data_format));
     if (op_data_format == DataFormat::NCHW) {
       int output_shape_size = op_def->output_shape_size();
@@ -445,9 +435,10 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
   }
   *op_output_df = op_data_format;
 
-  // the output memory type of transpose op is based on the consumer op's device
+  // The output memory type of transpose op is based
+  // on the consumer op's runtime
   MemoryType target_mem_type = MemoryType::CPU_BUFFER;
-  if (op_def->device_type() == DeviceType::GPU) {
+  if (runtime_type == RuntimeType::RT_OPENCL) {
     target_mem_type = MemoryType::GPU_BUFFER;
   }
   auto inputs_data_format = op_registry_->InputsDataFormat(op_def->type(),
@@ -456,13 +447,14 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
   int input_size = op_def->input_size();
   for (int i = 0; i < input_size; ++i) {
     if (output_map->count(op_def->input(i)) == 0) {
-      // check this input is const tensor(filter)
+      // Check this input is const tensor(filter)
       MACE_CHECK(ws_->GetTensor(op_def->input(i)) != nullptr
                      && ws_->GetTensor(op_def->input(i))->is_weight(),
                  "Tensor ", op_def->input(i), " of ",
                  op_def->name(), " is not allocated by Workspace ahead");
       continue;
     }
+
     src_df = output_map->at(op_def->input(i)).data_format;
     dst_df = inputs_data_format[i];
 
@@ -470,7 +462,7 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
         GetDstDimsFromTransposeRuler(output_map, op_def, i, src_df, dst_df);
     if (dst_dims.size() > 0) {
       AddTranposeOpForDataFormat(output_map, tensor_shape_map, transformed_set,
-                                 target_net_def, target_mem_type,
+                                 target_net_def, runtime_type, target_mem_type,
                                  op_def, i, dst_df, dst_dims);
     }
   }
@@ -489,6 +481,8 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
   // Get expected output memory type
   // (only support one kind of memory type for multiple outputs)
   op_registry_->GetInOutMemoryTypes(op_def->type(), context);
+
+  auto runtime_type = context->runtime()->GetRuntimeType();
 #ifdef MACE_ENABLE_OPENCL
   int input_size = op_def->input_size();
   for (int i = 0; i < input_size; ++i) {
@@ -500,7 +494,7 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
       continue;
     }
     auto &input_info = output_map->at(op_def->input(i));
-    // check whether to do transform
+    // Check whether to do transform
     MemoryType src_mem_type = input_info.mem_type;
     MemoryType dst_mem_type = context->GetInputMemType(i);
     auto wanted_input_dtype = context->GetInputDataType(i);
@@ -508,40 +502,49 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
         (input_info.dtype != wanted_input_dtype &&
             (src_mem_type != MemoryType::CPU_BUFFER
                 || dst_mem_type != MemoryType::CPU_BUFFER))) {
+      // GPU_IMAGE => CPU_BUFFER change to GPU_IMAGE =>GPU_BUFFER
+      if (src_mem_type == GPU_IMAGE) {
+        runtime_type = RT_OPENCL;
+        if (dst_mem_type == CPU_BUFFER) {
+          dst_mem_type = GPU_BUFFER;
+          context->SetInputInfo(i, dst_mem_type, wanted_input_dtype);
+        }
+      }
+
       auto transformed_name = TransformedName(op_def->input(i),
                                               "mem_type",
                                               dst_mem_type);
-      // check whether the tensor has been transformed
+      // Check whether the tensor has been transformed
       if (transformed_set->count(transformed_name) == 0) {
-        VLOG(1) << "Add Transform operation " << op_def->name()
-                << " to transform tensor "
+        VLOG(1) << "Add Transform operation for " << op_def->name()
+                << " to transform its tensor "
                 << op_def->input(i) << "', from memory type "
-                << input_info.mem_type << " to "
-                << dst_mem_type;
+                << src_mem_type << " to " << dst_mem_type;
         OperatorDef *transformed_op_def = target_net_def->add_op();
-        OpenCLUtil::BuildTransformOpDef(
+        OpsUtils::BuildTransformOpDef(
             op_def->input(i),
             input_info.shape,
             transformed_name,
+            runtime_type,
             wanted_input_dtype,
-            context->GetInputOpenCLBufferType(i),
+            context->GetInputBufferContentType(i),
             dst_mem_type,
             input_info.data_format,
             transformed_op_def);
-        // set data format arg
+        // Set data format arg
         SetProtoArg<int>(transformed_op_def,
                          "data_format",
                          static_cast<int>(input_info.data_format));
-        // set output memory type argument
+        // Set output memory type argument
         SetProtoArg<int>(transformed_op_def,
                          OutputMemoryTypeTagName(),
                          dst_mem_type);
 
-        // update tensor consumer information
+        // Update tensor consumer information
         output_map->at(op_def->input(i)).consumer_op_indices.push_back(
             target_net_def->op_size() - 1);
 
-        // update output information map
+        // Update output information map
         output_map->emplace(
             transformed_name,
             InternalOutputInfo(
@@ -550,21 +553,23 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
                 input_info.data_format,
                 input_info.shape,
                 target_net_def->op_size() - 1));
-        // update tensor shape map
+        // Update tensor shape map
         tensor_shape_map->emplace(transformed_name, input_info.shape);
-        // record transformed tensors
+        // Record transformed tensors
         transformed_set->insert(transformed_name);
       }
-      // update original op_def's input
+      // Update original op_def's input
       op_def->set_input(i, transformed_name);
     }
   }
 #else
+  MACE_UNUSED(runtime_type);
   MACE_UNUSED(output_map);
   MACE_UNUSED(tensor_shape_map);
   MACE_UNUSED(transformed_set);
   MACE_UNUSED(target_net_def);
 #endif  // MACE_ENABLE_OPENCL
+
   *op_output_mem_types = context->output_mem_type();
   SetProtoArg<int>(op_def,
                    OutputMemoryTypeTagName(),
@@ -581,7 +586,7 @@ std::vector<int> NetDefAdapter::GetDstDimsFromTransposeRuler(
     return dst_dims;
   }
 
-  if (src_df != dst_df) {  // for other operators
+  if (src_df != dst_df) {  // For other operators
     bool transposable = false;
     if (src_df == DataFormat::NCHW && dst_df == DataFormat::NHWC) {
       dst_dims = {0, 2, 3, 1};
@@ -615,8 +620,8 @@ std::vector<int> NetDefAdapter::GetDstDimsFromTransposeRuler(
 MaceStatus NetDefAdapter::AddTranposeOpForDataFormat(
     TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
     std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
-    MemoryType target_mem_type, OperatorDef *op_def, const int i,
-    const DataFormat dst_df, const std::vector<int> &dst_dims) {
+    RuntimeType runtime_type, MemoryType target_mem_type, OperatorDef *op_def,
+    const int i, const DataFormat dst_df, const std::vector<int> &dst_dims) {
   std::string transformed_name = TransformedName(
       op_def->input(i), "data_format", MakeString(dst_dims));
   if (transformed_set->count(transformed_name) == 0) {
@@ -627,37 +632,37 @@ MaceStatus NetDefAdapter::AddTranposeOpForDataFormat(
                                                          dst_dims);
     OperatorDef *transpose_op_def = target_net_def->add_op();
     BuildTransposeOpDef(op_def->input(i), transformed_name, output_shape,
-                        dst_dims, input_info.dtype, DeviceType::CPU,
+                        dst_dims, input_info.dtype, runtime_type,
                         transpose_op_def);
-    // set data format arg
+    // Set data format arg
     SetProtoArg<int>(transpose_op_def, "data_format", static_cast<int>(dst_df));
-    // set output memory type argument
+    // Set output memory type argument
     SetProtoArg<int>(transpose_op_def,
                      OutputMemoryTypeTagName(), target_mem_type);
-    // update tensor consumer information
+    // Update tensor consumer information
     output_map->at(op_def->input(i)).consumer_op_indices.push_back(
         target_net_def->op_size() - 1);
 
-    // update output information map
+    // Update output information map
     output_map->emplace(transformed_name, InternalOutputInfo(
         target_mem_type, input_info.dtype, dst_df, output_shape,
         target_net_def->op_size() - 1));
-    // update tensor shape map
+    // Update tensor shape map
     tensor_shape_map->emplace(transformed_name, output_shape);
-    // record transformed tensors
+    // Record transformed tensors
     transformed_set->insert(transformed_name);
   }
-  // update original op_def's input
+  // Update original op_def's input
   op_def->set_input(i, transformed_name);
   return MaceStatus::MACE_SUCCESS;
 }
 
 std::string NetDefAdapter::DebugString(const NetDef *net_def) {
   std::stringstream sstream;
-  auto DeviceTypeToStrFunc = [](DeviceType device_type) -> std::string {
-    if (device_type == DeviceType::CPU) {
+  auto RuntimeTypeToStrFunc = [](RuntimeType runtime_type) -> std::string {
+    if (runtime_type == RuntimeType::RT_CPU) {
       return "CPU";
-    } else if (device_type == DeviceType::GPU) {
+    } else if (runtime_type == RuntimeType::RT_OPENCL) {
       return "GPU";
     } else {
       return "Unknown";
@@ -690,8 +695,8 @@ std::string NetDefAdapter::DebugString(const NetDef *net_def) {
     }
   };
   for (auto &op : net_def->op()) {
-    std::string device_type = DeviceTypeToStrFunc(
-        static_cast<DeviceType>(op.device_type()));
+    std::string runtime_type = RuntimeTypeToStrFunc(
+        static_cast<RuntimeType>(op.device_type()));
     auto dt = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
         op, "T", static_cast<int>(DT_FLOAT));
     std::string data_type = DataTypeToString(static_cast<DataType>(dt));
@@ -709,7 +714,7 @@ std::string NetDefAdapter::DebugString(const NetDef *net_def) {
     sstream << "{" << std::endl;
     sstream << "  name: " << op.name() << std::endl;
     sstream << "  type: " << op.type() << std::endl;
-    sstream << "  device: " << device_type << std::endl;
+    sstream << "  runtime: " << runtime_type << std::endl;
     sstream << "  data type: " << data_type << std::endl;
     sstream << "  data format: " << data_format << std::endl;
     sstream << "  memory type: " << mem_type << std::endl;

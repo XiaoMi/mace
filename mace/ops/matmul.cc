@@ -28,14 +28,15 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/common/gemmlowp_util.h"
+#include "mace/runtimes/cpu/cpu_runtime.h"
 #ifdef MACE_ENABLE_NEON
 #include "mace/ops/arm/q8/gemv.h"
 #endif  // MACE_ENABLE_NEON
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/matmul.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 #ifdef MACE_ENABLE_NEON
 #include "mace/ops/arm/fp16/gemv.h"
@@ -89,21 +90,21 @@ class MatMulOpBase : public Operation {
   bool transpose_b_;
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class MatMulOp;
 
 template<class T>
-class MatMulOp<CPU, T> : public MatMulOpBase {
+class MatMulOp<RT_CPU, T> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context),
         gemm_(delegator::Gemm::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, T, kCpuImplType),
             delegator::GemmParam())),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -177,7 +178,6 @@ class MatMulOp<CPU, T> : public MatMulOpBase {
                             rhs_batched,
                             C);
     } else {
-      context->device()->scratch_buffer()->Rewind();
       MaceStatus ret = gemm_->Compute(context,
                                       lhs,
                                       rhs,
@@ -195,13 +195,10 @@ class MatMulOp<CPU, T> : public MatMulOpBase {
       if (bias != nullptr) {
         MACE_CHECK(bias->dim_size() == 1 && bias->dim(0) == cols,
                    "bias' dim should be <= 2.");
-        Tensor::MappingGuard bias_guard(bias);
-        Tensor::MappingGuard c_guard(C);
         const T *bias_data = bias->data<T>();
         T *c_data = C->mutable_data<T>();
 
-        utils::ThreadPool
-            &thread_pool = context->device()->cpu_runtime()->thread_pool();
+        utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
         thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                                   index_t start1, index_t end1, index_t step1) {
@@ -269,15 +266,11 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
                            C);
     } else {
 #endif  // MACE_ENABLE_NEON
-      Tensor::MappingGuard guarda(A);
-      Tensor::MappingGuard guardb(B);
-      Tensor::MappingGuard guardc(C);
       auto a_ptr_base = A->data<uint8_t>();
       auto b_ptr_base = B->data<uint8_t>();
       auto c_ptr_base = C->mutable_data<uint8_t>();
 
-      auto gemm_context =
-          context->device()->cpu_runtime()->GetGemmlowpContext();
+      auto gemm_context = CpuRuntime::Get(context)->GetGemmlowpContext();
       MACE_CHECK_NOTNULL(gemm_context);
 
       index_t a_size = height * K;
@@ -360,15 +353,10 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
                            C);
     } else {
 #endif  // MACE_ENABLE_NEON
-      Tensor::MappingGuard guarda(A);
-      Tensor::MappingGuard guardb(B);
-      Tensor::MappingGuard guardc(C);
       auto a_ptr_base = A->data<uint8_t>();
       auto b_ptr_base = B->data<uint8_t>();
       auto c_ptr_base = C->mutable_data<int32_t>();
-      auto
-          gemm_context =
-          context->device()->cpu_runtime()->GetGemmlowpContext();
+      auto gemm_context = CpuRuntime::Get(context)->GetGemmlowpContext();
       MACE_CHECK_NOTNULL(gemm_context);
 
       index_t a_size = height * K;
@@ -406,7 +394,7 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
 };
 
 template<>
-class MatMulOp<DeviceType::CPU, uint8_t> : public MatMulOpBase {
+class MatMulOp<RuntimeType::RT_CPU, uint8_t> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context) {}
@@ -497,7 +485,7 @@ class MatMulOp<DeviceType::CPU, uint8_t> : public MatMulOpBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class MatMulOp<DeviceType::GPU, float> : public MatMulOpBase {
+class MatMulOp<RuntimeType::RT_OPENCL, float> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context) {
@@ -519,7 +507,7 @@ class MatMulOp<DeviceType::GPU, float> : public MatMulOpBase {
 
 #if defined(MACE_ENABLE_FP16_NEON) && defined(__ANDROID__)
 template <>
-class MatMulOp<CPU, float16_t> : public MatMulOpBase {
+class MatMulOp<RT_CPU, float16_t> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context) {}
@@ -556,9 +544,6 @@ class MatMulOp<CPU, float16_t> : public MatMulOpBase {
 
     MACE_RETURN_IF_ERROR(C->Resize(c_shape));
 
-    Tensor::MappingGuard guarda(A);
-    Tensor::MappingGuard guardb(B);
-    Tensor::MappingGuard guardc(C);
     auto *c_ptr_base = C->mutable_data<float>();
 
     MACE_CHECK(batch == 1, "matmul fp16 only support batch = 1 now");
@@ -592,18 +577,18 @@ class MatMulOp<CPU, float16_t> : public MatMulOpBase {
 
 void RegisterMatMul(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "MatMul", MatMulOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
 #if defined(MACE_ENABLE_FP16_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
-                   DeviceType::CPU, float16_t);
+                   RuntimeType::RT_CPU, float16_t);
 #endif  // MACE_ENABLE_FP16_NEON && __ANDROID__
 }
 

@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/depth_to_space.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -43,11 +45,7 @@ MaceStatus DepthToSpaceKernel::Compute(
                                        output_height,
                                        output_width,
                                        output_depth};
-  std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape,
-                              OpenCLBufferType::IN_OUT_CHANNEL,
-                              &image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   uint32_t gws[3];
   if (output_depth < 3) {
@@ -59,7 +57,7 @@ MaceStatus DepthToSpaceKernel::Compute(
     gws[1] = static_cast<uint32_t>(output_width);
     gws[2] = static_cast<uint32_t>(output_height * batch);
   }
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -78,12 +76,12 @@ MaceStatus DepthToSpaceKernel::Compute(
     auto dt = input->dtype();
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("depth_to_space",
-                                              obfuscated_kernel_name,
-                                              built_options,
-                                              &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("depth_to_space",
+                                               obfuscated_kernel_name,
+                                               built_options,
+                                               &kernel_));
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
@@ -91,14 +89,14 @@ MaceStatus DepthToSpaceKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
     kernel_.setArg(idx++, static_cast<int32_t>(input_height));
     kernel_.setArg(idx++, static_cast<int32_t>(input_width));
     kernel_.setArg(idx++, static_cast<int32_t>(block_size_));
     kernel_.setArg(idx++, static_cast<int32_t>(output_height));
     kernel_.setArg(idx++, static_cast<int32_t>(output_width));
     kernel_.setArg(idx++, static_cast<int32_t>(output_depth));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input->shape();
   }
@@ -106,8 +104,8 @@ MaceStatus DepthToSpaceKernel::Compute(
   std::string tuning_key = Concat("depth_to_space",
                                   batch, output_height,
                                   output_width, output_depth);
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

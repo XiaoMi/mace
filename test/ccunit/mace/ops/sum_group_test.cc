@@ -21,20 +21,18 @@ namespace test {
 class SumGroupOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestSumGroup(const std::vector<index_t> &input_shape,
                   const std::vector<T> &input,
                   const std::vector<int> &sizes,
                   const std::vector<index_t> &output_shape,
                   const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, T>(MakeString("Input"),
-                                input_shape,
-                                input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>(
+      MakeString("Input"), input_shape, input);
   const index_t output_dim = sizes.size();
-  net.AddInputFromArray<CPU, int>(MakeString("Sizes"),
-                                  {output_dim},
-                                  sizes);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int>(
+      MakeString("Sizes"), {output_dim}, sizes);
 
   OpDefBuilder("SumGroup", "SumGroupTest")
       .Input("Input")
@@ -44,14 +42,15 @@ void TestSumGroup(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, T>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>("ExpectedOutput",
+                                                output_shape, output);
   ExpectTensorNear<T>(*net.GetOutput("ExpectedOutput"),
                       *net.GetOutput("Output"));
 }
 }  // namespace
 
 TEST_F(SumGroupOpTest, SimpleTest) {
-  TestSumGroup<DeviceType::CPU, float>(
+  TestSumGroup<RuntimeType::RT_CPU, float>(
     {1, 5, 10},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
      2, 3, 4, 5, 6, 7, 8, 9, 10, 11,

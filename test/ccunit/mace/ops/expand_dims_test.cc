@@ -22,7 +22,7 @@ namespace test {
 class ExpandDimsTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestExpandDims(const std::vector<index_t> &input_shape,
                     const int &axis,
                     const std::vector<index_t> &output_shape) {
@@ -55,8 +55,8 @@ void TestExpandDims(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(ExpandDimsTest, SimpleCPU) {
-  TestExpandDims<DeviceType::CPU, float>({3, 2, 1}, 1, {3, 1, 2, 1});
-  TestExpandDims<DeviceType::CPU, float>({1, 2, 3}, -1, {1, 2, 3, 1});
+  TestExpandDims<RuntimeType::RT_CPU, float>({3, 2, 1}, 1, {3, 1, 2, 1});
+  TestExpandDims<RuntimeType::RT_CPU, float>({1, 2, 3}, -1, {1, 2, 3, 1});
 }
 
 }  // namespace test

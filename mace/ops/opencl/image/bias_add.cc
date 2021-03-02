@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/bias_add.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -35,7 +37,7 @@ MaceStatus BiasAddKernel::Compute(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -46,10 +48,10 @@ MaceStatus BiasAddKernel::Compute(
     built_options.emplace("-Dbias_add=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("bias_add", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("bias_add", kernel_name,
+                                               built_options, &kernel_));
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input->shape())) {
@@ -57,18 +59,18 @@ MaceStatus BiasAddKernel::Compute(
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
     kernel_.setArg(idx++, static_cast<int>(bias->dim_size() > 1 ? height : 0));
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(bias->opencl_image()));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(bias->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
 
   cl::Event event;
   cl_int error;
-  if (runtime->IsNonUniformWorkgroupsSupported()) {
-    error = runtime->command_queue().enqueueNDRangeKernel(
+  if (executor->IsNonUniformWorkgroupsSupported()) {
+    error = executor->command_queue().enqueueNDRangeKernel(
         kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
   } else {
@@ -77,7 +79,7 @@ MaceStatus BiasAddKernel::Compute(
       if (lws[i] != 0) roundup_gws[i] = RoundUp(gws[i], lws[i]);
     }
 
-    error = runtime->command_queue().enqueueNDRangeKernel(
+    error = executor->command_queue().enqueueNDRangeKernel(
         kernel_, cl::NullRange,
         cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
         cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
@@ -85,10 +87,10 @@ MaceStatus BiasAddKernel::Compute(
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION;
   if (context->future() != nullptr) {
-    context->future()->wait_fn = [runtime, event](CallStats *stats) {
+    context->future()->wait_fn = [executor, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
+        executor->GetCallStats(event, stats);
       }
     };
   }

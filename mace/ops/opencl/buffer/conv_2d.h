@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "mace/ops/opencl/buffer/utils.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -60,10 +60,10 @@ extern MaceStatus Conv2dGeneral(OpContext *context,
 
 class Conv2dKernel : public OpenCLConv2dKernel {
  public:
-  Conv2dKernel() : old_scratch_size_(0) {}
+  Conv2dKernel() {}
 
   bool CheckUseWinograd(
-      OpenCLRuntime *runtime,
+      OpenclExecutor *executor,
       const std::vector<index_t> &filter_shape,
       const std::vector<index_t> &output_shape,
       const int *strides,
@@ -86,7 +86,6 @@ class Conv2dKernel : public OpenCLConv2dKernel {
       Tensor *output) override;
 
  private:
-  index_t old_scratch_size_;
   cl::Kernel kernels_[2];
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

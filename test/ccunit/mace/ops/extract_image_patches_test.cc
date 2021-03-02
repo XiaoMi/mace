@@ -28,12 +28,12 @@ TEST_F(ExtractImagePatchesOpTest, VALID) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 4, 4, 2},
       {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
        8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
@@ -48,14 +48,14 @@ TEST_F(ExtractImagePatchesOpTest, VALID) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
-  auto expected =
-      net.CreateTensor<float>({1, 2, 2, 8},
-          {0, 16, 1, 17, 4, 20, 5, 21, 2, 18, 3, 19, 6, 22, 7, 23,
-           8, 24, 9, 25, 12, 28, 13, 29, 10, 26, 11, 27, 14, 30, 15, 31});
+  auto expected = net.CreateTensor<float>(
+      {1, 2, 2, 8},
+      {0, 16, 1, 17, 4, 20, 5, 21, 2, 18, 3, 19, 6, 22, 7, 23,
+       8, 24, 9, 25, 12, 28, 13, 29, 10, 26, 11, 27, 14, 30, 15, 31});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -65,10 +65,10 @@ TEST_F(ExtractImagePatchesOpTest, SAME) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 3, 1},
-                                                {0, 1, 2, 3, 4, 5, 6, 7, 8});
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "Input", {1, 3, 3, 1}, {0, 1, 2, 3, 4, 5, 6, 7, 8});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
@@ -83,7 +83,7 @@ TEST_F(ExtractImagePatchesOpTest, SAME) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -98,11 +98,11 @@ TEST_F(ExtractImagePatchesOpTest, VALID_DILATION) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 4, 4, 1},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
@@ -117,7 +117,7 @@ TEST_F(ExtractImagePatchesOpTest, VALID_DILATION) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -132,11 +132,11 @@ TEST_F(ExtractImagePatchesOpTest, k2x2s2x2) {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
       "Input", {1, 2, 9, 1},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
@@ -151,7 +151,7 @@ TEST_F(ExtractImagePatchesOpTest, k2x2s2x2) {
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -163,7 +163,7 @@ TEST_F(ExtractImagePatchesOpTest, k2x2s2x2) {
 }
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void SimpleExtractImagePatches3S2() {
   // Construct graph
   OpsTestNet net;
@@ -174,8 +174,8 @@ void SimpleExtractImagePatches3S2() {
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
        14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26});
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     // Run
     OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
@@ -187,9 +187,9 @@ void SimpleExtractImagePatches3S2() {
         .AddIntsArg("dilations", {1, 1})
         .Finalize(net.NewOperatorDef());
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
         .Input("Input")
         .Output("Output")
@@ -213,11 +213,11 @@ void SimpleExtractImagePatches3S2() {
 }  // namespace
 
 TEST_F(ExtractImagePatchesOpTest, CPUSimpleExtractImagePatches3S2) {
-  SimpleExtractImagePatches3S2<CPU>();
+  SimpleExtractImagePatches3S2<RuntimeType::RT_CPU>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ExtractImagePatches3S2(const std::vector<index_t> &input_shape,
                             const std::vector<int> &strides,
                             Padding padding) {
@@ -227,7 +227,7 @@ void ExtractImagePatches3S2(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddRandomInput<D, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("ExtractImagePatches", "ExtractImagePatchesTest")
@@ -242,7 +242,7 @@ void ExtractImagePatches3S2(const std::vector<index_t> &input_shape,
   // run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
@@ -269,27 +269,42 @@ void ExtractImagePatches3S2(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(ExtractImagePatchesOpTest, OPENCLAlignedExtractImagePatches3S2) {
-  ExtractImagePatches3S2<GPU, float>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, float>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, float>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, float>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
-  ExtractImagePatches3S2<GPU, float>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
-  ExtractImagePatches3S2<GPU, float>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
-  ExtractImagePatches3S2<GPU, float>({3, 63, 31, 32}, {2, 2}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, float>({3, 65, 27, 32}, {2, 1}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 64, 32, 32},
+                                           {1, 1}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 64, 32, 32},
+                                           {2, 2}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 64, 32, 32},
+                                           {1, 2}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 64, 32, 32},
+                                           {1, 1}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 64, 32, 32},
+                                           {2, 2}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 64, 32, 32},
+                                           {2, 1}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 63, 31, 32},
+                                           {2, 2}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, float>({3, 65, 27, 32},
+                                           {2, 1}, Padding::SAME);
 }
 
 TEST_F(ExtractImagePatchesOpTest, OPENCLHalfAlignedExtractImagePatches3S2) {
-  ExtractImagePatches3S2<GPU, half>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, half>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, half>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, half>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
-  ExtractImagePatches3S2<GPU, half>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
-  ExtractImagePatches3S2<GPU, half>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
-  ExtractImagePatches3S2<GPU, half>({3, 63, 31, 32}, {2, 2}, Padding::VALID);
-  ExtractImagePatches3S2<GPU, half>({3, 65, 27, 32}, {2, 1}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 64, 32, 32},
+                                          {1, 1}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 64, 32, 32},
+                                          {2, 2}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 64, 32, 32},
+                                          {1, 2}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 64, 32, 32},
+                                          {1, 1}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 64, 32, 32},
+                                          {2, 2}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 64, 32, 32},
+                                          {2, 1}, Padding::SAME);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 63, 31, 32},
+                                          {2, 2}, Padding::VALID);
+  ExtractImagePatches3S2<RT_OPENCL, half>({3, 65, 27, 32},
+                                          {2, 1}, Padding::SAME);
 }
-
 
 }  // namespace test
 }  // namespace ops

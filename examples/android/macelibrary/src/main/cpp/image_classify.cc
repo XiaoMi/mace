@@ -38,7 +38,7 @@ struct ModelInfo {
 };
 
 struct MaceContext {
-  std::shared_ptr<mace::GPUContext> gpu_context;
+  std::shared_ptr<mace::OpenclContext> gpu_context;
   std::shared_ptr<mace::MaceEngine> engine;
   std::string model_name;
   mace::DeviceType device_type = mace::DeviceType::CPU;
@@ -108,7 +108,7 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
 
   // create MaceEngineConfig
   mace::MaceStatus status;
-  mace::MaceEngineConfig config(mace_context.device_type);
+  mace::MaceEngineConfig config;
   status = config.SetCPUThreadPolicy(
       num_threads,
       static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy));

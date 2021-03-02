@@ -26,11 +26,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class SumGroupOp;
 
 template <typename T>
-class SumGroupOp<DeviceType::CPU, T> : public Operation {
+class SumGroupOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit SumGroupOp(OpConstructContext *context)
       : Operation(context) {}
@@ -61,9 +61,6 @@ class SumGroupOp<DeviceType::CPU, T> : public Operation {
     output_shape[dim_size - 1] = output_dim;
 
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_sizes(sizes);
-    Tensor::MappingGuard guard_output(output);
     const T *input_data = input->data<T>();
     const int *sizes_data = sizes->data<int>();
     T *output_data = output->mutable_data<T>();
@@ -81,8 +78,7 @@ class SumGroupOp<DeviceType::CPU, T> : public Operation {
       MACE_CHECK(cur_index <= input_dim)
         << "size value over-ranged:" << cur_index << "<=" << input_dim;
     }
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
       for (index_t i = start0; i < end0; i += step0) {
@@ -104,9 +100,9 @@ class SumGroupOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterSumGroup(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SumGroup", SumGroupOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "SumGroup", SumGroupOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

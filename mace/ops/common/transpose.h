@@ -20,7 +20,6 @@
 #endif  // MACE_ENABLE_NEON
 #include <algorithm>
 #include <vector>
-#include "mace/core/ops/op_context.h"
 #include "mace/public/mace.h"
 
 namespace mace {

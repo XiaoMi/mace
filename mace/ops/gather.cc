@@ -20,7 +20,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template <RuntimeType D, class T>
 class GatherOp : public Operation {
  public:
   explicit GatherOp(OpConstructContext *context)
@@ -47,9 +47,6 @@ class GatherOp : public Operation {
                         params->shape().end());
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard indices_guard(indices);
-    Tensor::MappingGuard params_guard(params);
-    Tensor::MappingGuard output_guard(output);
     const int32_t *indices_data = indices->data<int32_t>();
     const T *params_data = params->data<T>();
     T *output_data = output->mutable_data<T>();
@@ -88,16 +85,16 @@ class GatherOp : public Operation {
 
 void RegisterGather(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Gather", GatherOp, DeviceType::CPU);
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Gather", GatherOp, RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 #if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
-                   DeviceType::CPU, float16_t);
+                   RuntimeType::RT_CPU, float16_t);
 #endif
 }
 

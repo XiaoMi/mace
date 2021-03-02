@@ -47,11 +47,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class DynamicLSTMOp;
 
 template<typename T>
-class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
+class DynamicLSTMOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit DynamicLSTMOp(OpConstructContext *context)
       : Operation(context),
@@ -75,7 +75,7 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
             Operation::GetRepeatedArgs<index_t>("out_cache_indexes")),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   inline void Validate() {
@@ -193,8 +193,8 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     const index_t affine_a_out_dim = weights_a->dim(0);
     const index_t affine_a_depth = weights_a->dim(1);
     MACE_CHECK(affine_a_in_dim == affine_a_depth)
-        << "affine_a's input_dim:" << affine_a_in_dim
-        << "!=" << "affine_a's weights' depth:" << affine_a_depth << std::endl;
+      << "affine_a's input_dim:" << affine_a_in_dim
+      << "!=" << "affine_a's weights' depth:" << affine_a_depth << std::endl;
 
     const index_t lstm_input_dim = affine_a_out_dim + prev_cell_dim_;
     const index_t lstm_cell_dim = lstm_input_dim / 5;
@@ -205,70 +205,53 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
                lstm_cell_dim, ").");
     MACE_CHECK(lstm_params->dim(0) == 3 &&
         params_stride == lstm_cell_dim && lstm_cell_dim == prev_cell_dim_)
-        << " lstm params rows: " << lstm_params->dim(0)
-        << " params_stride: " << params_stride
-        << " != " << " cell_dim: " << lstm_cell_dim << std::endl;
+      << " lstm params rows: " << lstm_params->dim(0)
+      << " params_stride: " << params_stride
+      << " != " << " cell_dim: " << lstm_cell_dim << std::endl;
     const index_t affine_b_out_dim = weights_b->dim(0);
     const index_t affine_b_depth = weights_b->dim(1);
     const index_t affine_b_in_dim = lstm_cell_dim;
     MACE_CHECK(affine_b_in_dim == affine_b_depth)
-        << "affine_b's input_dim:" << affine_b_in_dim
-        << "!=" << "affine_b's weights' depth:" << affine_b_depth << std::endl;
+      << "affine_b's input_dim:" << affine_b_in_dim
+      << "!=" << "affine_b's weights' depth:" << affine_b_depth << std::endl;
 
     const index_t output_dim = affine_b_out_dim;
     MACE_CHECK(prev_out_offset_ + prev_out_dim_ <= output_dim)
-        << " prev_out_offset: " << prev_out_offset_
-        << " prev_out_dim: " << prev_out_dim_
-        << " output_dim: " << output_dim;
-
-    const index_t affine_a_in_size =
-        PadAlignSize(affine_a_in_dim * sizeof(T));
-    const index_t affine_a_out_size =
-        PadAlignSize(affine_a_out_dim * sizeof(T));
-    const index_t affine_b_in_size =
-        PadAlignSize(affine_b_in_dim * sizeof(T));
-    const index_t affine_b_out_size =
-        PadAlignSize(affine_b_out_dim * sizeof(T));
+      << " prev_out_offset: " << prev_out_offset_
+      << " prev_out_dim: " << prev_out_dim_
+      << " output_dim: " << output_dim;
 
     const int out_buf_chunk = abs(prev_out_delay_ / subsample_factor_);
     const int cell_buf_chunk = abs(prev_cell_delay_ / subsample_factor_);
-    const index_t out_buf_size =
-        PadAlignSize(out_buf_chunk * prev_out_dim_ * sizeof(T));
-    const index_t cell_buf_size =
-        PadAlignSize(cell_buf_chunk * prev_cell_dim_ * sizeof(T));
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(affine_a_in_size + affine_a_out_size
-                          + affine_b_in_size + affine_b_out_size
-                          + out_buf_size + cell_buf_size);
 
-    Tensor prev_out_buf(scratch->Scratch(out_buf_size), DataTypeToEnum<T>::v());
-    prev_out_buf.Reshape({out_buf_chunk, prev_out_dim_});
+    Runtime *runtime = context->runtime();
+    auto mem_type = input->memory_type();
+    auto data_type = DataTypeToEnum<T>::v();
+
+    Tensor prev_out_buf(runtime, data_type, mem_type,
+                        {out_buf_chunk, prev_out_dim_});
+    runtime->AllocateBufferForTensor(&prev_out_buf, BufRentType::RENT_SCRATCH);
     T *prev_out_buf_data = prev_out_buf.mutable_data<T>();
 
-    Tensor prev_cell_buf(
-        scratch->Scratch(cell_buf_size), DataTypeToEnum<T>::v());
-    prev_cell_buf.Reshape({cell_buf_chunk, prev_cell_dim_});
+    Tensor prev_cell_buf(runtime, data_type, mem_type,
+                         {cell_buf_chunk, prev_cell_dim_});
+    runtime->AllocateBufferForTensor(&prev_cell_buf, BufRentType::RENT_SCRATCH);
     T *prev_cell_buf_data = prev_cell_buf.mutable_data<T>();
 
-    Tensor affine_a_in(
-        scratch->Scratch(affine_a_in_size), DataTypeToEnum<T>::v());
-    affine_a_in.Reshape({1, affine_a_in_dim});
+    Tensor affine_a_in(runtime, data_type, mem_type, {1, affine_a_in_dim});
+    runtime->AllocateBufferForTensor(&affine_a_in, BufRentType::RENT_SCRATCH);
     T *affine_a_in_data = affine_a_in.mutable_data<T>();
 
-    Tensor affine_a_out(
-        scratch->Scratch(affine_a_out_size), DataTypeToEnum<T>::v());
-    affine_a_out.Reshape({1, affine_a_out_dim});
+    Tensor affine_a_out(runtime, data_type, mem_type, {1, affine_a_out_dim});
+    runtime->AllocateBufferForTensor(&affine_a_out, BufRentType::RENT_SCRATCH);
     T *affine_a_out_data = affine_a_out.mutable_data<T>();
 
-    Tensor affine_b_in(
-        scratch->Scratch(affine_b_in_size), DataTypeToEnum<T>::v());
-    affine_b_in.Reshape({1, affine_b_in_dim});
+    Tensor affine_b_in(runtime, data_type, mem_type, {1, affine_b_in_dim});
+    runtime->AllocateBufferForTensor(&affine_b_in, BufRentType::RENT_SCRATCH);
     T *affine_b_in_data = affine_b_in.mutable_data<T>();
 
-    Tensor affine_b_out(
-        scratch->Scratch(affine_b_out_size), DataTypeToEnum<T>::v());
-    affine_b_out.Reshape({1, affine_b_out_dim});
+    Tensor affine_b_out(runtime, data_type, mem_type, {1, affine_b_out_dim});
+    runtime->AllocateBufferForTensor(&affine_b_out, BufRentType::RENT_SCRATCH);
     T *affine_b_out_data = affine_b_out.mutable_data<T>();
 
     Tensor *output = this->Output(OUTPUT);
@@ -288,15 +271,6 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     MACE_RETURN_IF_ERROR(out_cache->Resize(prev_out_shape));
     MACE_RETURN_IF_ERROR(cell_cache->Resize(prev_cell_shape));
-
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard prev_out_guard(prev_out);
-    Tensor::MappingGuard prev_cell_guard(prev_cell);
-    Tensor::MappingGuard lstm_params_guard(lstm_params);
-
-    Tensor::MappingGuard output_guard(output);
-    Tensor::MappingGuard out_cache_guard(out_cache);
-    Tensor::MappingGuard cell_cache_guard(cell_cache);
 
     const T *input_data = input->data<T>();
     const T *prev_out_data = prev_out->data<T>();
@@ -340,15 +314,15 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
         T *curr_cell_ptr = lstm_cell_ptr;
         // LSTMNonlinear
         LSTMNonlinearKernel<T>(context,
-                            affine_a_out_data,
-                            lstm_cell_ptr,
-                            nullptr,
-                            lstm_params_data,
-                            false,
-                            params_stride,
-                            lstm_cell_dim,
-                            curr_cell_ptr,
-                            affine_b_in_data);
+                               affine_a_out_data,
+                               lstm_cell_ptr,
+                               nullptr,
+                               lstm_params_data,
+                               false,
+                               params_stride,
+                               lstm_cell_dim,
+                               curr_cell_ptr,
+                               affine_b_in_data);
         UpdateCell(curr_cell_ptr, prev_cell_dim_, scale_);
         // Affine
         gemv_->Compute(context,
@@ -420,9 +394,9 @@ class DynamicLSTMOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterDynamicLSTM(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DynamicLSTM", DynamicLSTMOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "DynamicLSTM", DynamicLSTMOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

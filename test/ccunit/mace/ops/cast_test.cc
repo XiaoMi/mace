@@ -35,7 +35,8 @@ void TestCast(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, SrcType>("Input", input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, SrcType>("Input",
+                                                      input_shape, input);
 
   // Run
   net.RunOp();

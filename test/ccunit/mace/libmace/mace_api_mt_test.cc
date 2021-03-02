@@ -16,6 +16,7 @@
 
 #include <thread>  // NOLINT(build/c++11)
 
+#include "mace/core/proto/arg_helper.h"
 #include "mace/libmace/mace_api_test.h"
 
 namespace mace {
@@ -26,7 +27,8 @@ class MaceMTAPITest  : public ::testing::Test {};
 namespace {
 
 // The height and width of input and output must be equal.
-void MaceRunFunc(const int in_out_size) {
+void MaceRunFunc(const int in_out_size,
+                 std::unique_ptr<ops::test::OpTestContext> op_context) {
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
   for (int i = 0; i < in_out_size; ++i) {
@@ -40,6 +42,8 @@ void MaceRunFunc(const int in_out_size) {
   const std::vector<int64_t> filter_shape = {16, 16, 3, 3};
 
   std::shared_ptr<NetDef> net_def(new NetDef());
+  SetProtoArg(net_def.get(), "runtime_type", static_cast<int>(RT_OPENCL));
+  SetProtoArg(net_def.get(), "opencl_mem_type", static_cast<int>(GPU_IMAGE));
 
   std::vector<half> data;
   ops::test::GenerateRandomRealTypeData<half>(filter_shape, &data);
@@ -64,8 +68,8 @@ void MaceRunFunc(const int in_out_size) {
                   net_def.get());
   }
 
-  MaceEngineConfig config(DeviceType::GPU);
-  config.SetGPUContext(mace::ops::test::OpTestContext::Get()->gpu_context());
+  MaceEngineConfig config;
+  config.SetGPUContext(op_context->gpu_context());
 
   MaceEngine engine(config);
   MaceStatus status = engine.Init(
@@ -88,7 +92,7 @@ void MaceRunFunc(const int in_out_size) {
     }
   }
 
-  CheckOutputs<DeviceType::GPU, half>(*net_def, inputs, outputs, data);
+  CheckOutputs<RuntimeType::RT_OPENCL, half>(*net_def, inputs, outputs, data);
 }
 
 }  // namespace
@@ -97,7 +101,8 @@ TEST_F(MaceMTAPITest, MultipleThread) {
   const int thread_num = 10;
   std::vector<std::thread> threads;
   for (int i = 0; i < thread_num; ++i) {
-    threads.push_back(std::thread(MaceRunFunc, 1));
+    auto op_context = ops::test::OpTestContext::New();
+    threads.push_back(std::thread(MaceRunFunc, 1, std::move(op_context)));
   }
   for (auto &t : threads) {
     t.join();

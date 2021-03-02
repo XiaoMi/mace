@@ -587,9 +587,6 @@ MaceStatus Gemm<float16_t>::Compute(const OpContext *context,
                                     Tensor *output) {
   MACE_CHECK(output->size() == batch * rows * cols,
              "Need resize output tensor before call gemm.");
-  Tensor::MappingGuard lhs_guard(lhs);
-  Tensor::MappingGuard rhs_guard(rhs);
-  Tensor::MappingGuard output_guard(output);
   const float16_t *lhs_data = lhs->data<float16_t>();
   const float16_t *rhs_data = rhs->data<float16_t>();
   float16_t *output_data = output->mutable_data<float16_t>();
@@ -603,45 +600,38 @@ MaceStatus Gemm<float16_t>::Compute(const OpContext *context,
   const index_t cols_padded = RoundUp(cols, col_block_size);
   const index_t depth_padded = RoundUp(depth, depth_block_size);
 
-  ScratchBuffer *scratch = context->device()->scratch_buffer();
+  auto *runtime = context->runtime();
+  MemInfo mem_info(output->memory_type(), DT_FLOAT16,
+                   {rows_padded * depth_padded});
+  auto packed_lhs_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  mem_info.dims = {depth_padded * cols_padded};
+  auto packed_rhs_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+  mem_info.dims = {rows_padded * cols_padded};
+  auto packed_output_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
 
-  index_t packed_lhs_size =
-      PadAlignSize(sizeof(float16_t) * rows_padded * depth_padded);
-  index_t packed_rhs_size =
-      PadAlignSize(sizeof(float16_t) * depth_padded * cols_padded);
-  index_t packed_output_size =
-      PadAlignSize(sizeof(float16_t) * rows_padded * cols_padded);
-  // resize to the total size of lhs & rhs & output anyway,
-  // in case we do not cache const tensor for saving memory
-  scratch->Rewind();
-  MACE_RETURN_IF_ERROR(scratch->GrowSize(
-      packed_lhs_size + packed_rhs_size + packed_output_size));
-  float16_t *packed_lhs_data =
-      scratch->Scratch(packed_lhs_size).mutable_data<float16_t>();
-  float16_t *packed_rhs_data =
-      scratch->Scratch(packed_rhs_size).mutable_data<float16_t>();
+  float16_t *packed_lhs_data = packed_lhs_buffer->mutable_data<float16_t>();
+  float16_t *packed_rhs_data = packed_rhs_buffer->mutable_data<float16_t>();
   float16_t *packed_output_data =
-      scratch->Scratch(packed_output_size).mutable_data<float16_t>();
+      packed_output_buffer->mutable_data<float16_t>();
 
   int cache_side = kNoCache;
   if (cached_ == kCacheLhs) {
-    packed_lhs_data = pack_cache_.mutable_data<float16_t>();
+    packed_lhs_data = pack_cache_->mutable_data<float16_t>();
   } else if (cached_ == kCacheRhs) {
-    packed_rhs_data = pack_cache_.mutable_data<float16_t>();
+    packed_rhs_data = pack_cache_->mutable_data<float16_t>();
   } else if (should_cache_pack_) {
     if (lhs->is_weight() && (!lhs_batched || batch == 1)) {
       cache_side = kCacheLhs;
-      pack_cache_.Resize(packed_lhs_size);
-      packed_lhs_data = pack_cache_.mutable_data<float16_t>();
+      pack_cache_->Resize({packed_lhs_buffer->size()});
+      packed_lhs_data = pack_cache_->mutable_data<float16_t>();
     } else if (rhs->is_weight() && (!rhs_batched || batch == 1)) {
       cache_side = kCacheRhs;
-      pack_cache_.Resize(packed_rhs_size);
-      packed_rhs_data = pack_cache_.mutable_data<float16_t>();
+      pack_cache_->Resize({packed_rhs_buffer->size()});
+      packed_rhs_data = pack_cache_->mutable_data<float16_t>();
     }
   }
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   for (index_t b = 0; b < batch; ++b) {
     MatrixMap<const float16_t>
@@ -678,9 +668,8 @@ MaceStatus Gemm<float16_t>::Compute(const OpContext *context,
 
       if (cache_side == kCacheLhs) {
         cached_ = kCacheLhs;
-        if (lhs->UnderlyingBuffer()->OnHost()) {
-          AdviseFree(reinterpret_cast<void *>(const_cast<float16_t *>(lhs->data<
-                     float16_t>())),
+        if (lhs->GetCurRuntime()->GetRuntimeType() == RT_CPU) {
+          AdviseFree(const_cast<float16_t *>(lhs->data<float16_t>()),
                      lhs->raw_size());
         }
       }
@@ -705,9 +694,8 @@ MaceStatus Gemm<float16_t>::Compute(const OpContext *context,
 
       if (cache_side == kCacheRhs) {
         cached_ = kCacheRhs;
-        if (rhs->UnderlyingBuffer()->OnHost()) {
-          AdviseFree(reinterpret_cast<void *>(const_cast<float16_t *>(rhs->data<
-                     float16_t>())),
+        if (rhs->GetCurRuntime()->GetRuntimeType() == RT_CPU) {
+          AdviseFree(const_cast<float16_t *>(rhs->data<float16_t>()),
                      rhs->raw_size());
         }
       }
@@ -756,7 +744,7 @@ MaceStatus Gemm<float16_t>::Compute(const OpContext *context,
 void RegisterFP16GemmDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_FP16_DELEGATOR(
       registry, Gemm<float16_t>, delegator::GemmParam,
-      MACE_DELEGATOR_KEY(Gemm, DeviceType::CPU, float16_t, ImplType::NEON));
+      MACE_DELEGATOR_KEY(Gemm, RuntimeType::RT_CPU, float16_t, ImplType::NEON));
 }
 }  // namespace arm
 }  // namespace ops

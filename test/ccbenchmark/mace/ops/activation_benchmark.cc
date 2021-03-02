@@ -22,16 +22,16 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -45,14 +45,15 @@ void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -69,20 +70,20 @@ void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
 
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_BM_RELU_BF16_MACRO(N, C, H, W)      \
-  MACE_BM_RELU_MACRO(N, C, H, W, BFloat16, CPU)
+  MACE_BM_RELU_MACRO(N, C, H, W, BFloat16, RT_CPU)
 #else
 #define MACE_BM_RELU_BF16_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_RELU_GPU_MACRO(N, C, H, W)       \
-  MACE_BM_RELU_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_RELU_MACRO(N, C, H, W, half, GPU)
+  MACE_BM_RELU_MACRO(N, C, H, W, float, RT_OPENCL);    \
+  MACE_BM_RELU_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_RELU_GPU_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_OPENCL
 
 #define MACE_BM_RELU(N, C, H, W)                 \
-  MACE_BM_RELU_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_RELU_MACRO(N, C, H, W, float, RT_CPU);    \
   MACE_BM_RELU_BF16_MACRO(N, C, H, W);           \
   MACE_BM_RELU_GPU_MACRO(N, C, H, W)
 
@@ -93,14 +94,14 @@ MACE_BM_RELU(1, 32, 112, 112);
 MACE_BM_RELU(1, 64, 256, 256);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
@@ -115,14 +116,15 @@ void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -139,20 +141,20 @@ void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
 
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_BM_RELUX_BF16_MACRO(N, C, H, W)      \
-  MACE_BM_RELUX_MACRO(N, C, H, W, BFloat16, CPU)
+  MACE_BM_RELUX_MACRO(N, C, H, W, BFloat16, RT_CPU)
 #else
 #define MACE_BM_RELUX_BF16_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_OPENCL
-#define MACE_BM_RELUX_GPU_MACRO(N, C, H, W)       \
-  MACE_BM_RELUX_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_RELUX_MACRO(N, C, H, W, half, GPU)
+#define MACE_BM_RELUX_GPU_MACRO(N, C, H, W)          \
+  MACE_BM_RELUX_MACRO(N, C, H, W, float, RT_OPENCL); \
+  MACE_BM_RELUX_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_RELUX_GPU_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_OPENCL
 
 #define MACE_BM_RELUX(N, C, H, W)                 \
-  MACE_BM_RELUX_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_RELUX_MACRO(N, C, H, W, float, RT_CPU); \
   MACE_BM_RELUX_BF16_MACRO(N, C, H, W);           \
   MACE_BM_RELUX_GPU_MACRO(N, C, H, W)
 
@@ -163,16 +165,16 @@ MACE_BM_RELUX(1, 32, 112, 112);
 MACE_BM_RELUX(1, 64, 256, 256);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -188,14 +190,15 @@ void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -212,20 +215,20 @@ void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
 
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_BM_PRELU_BF16_MACRO(N, C, H, W)      \
-  MACE_BM_PRELU_MACRO(N, C, H, W, BFloat16, CPU)
+  MACE_BM_PRELU_MACRO(N, C, H, W, BFloat16, RT_CPU)
 #else
 #define MACE_BM_PRELU_BF16_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_OPENCL
-#define MACE_BM_PRELU_GPU_MACRO(N, C, H, W)       \
-  MACE_BM_PRELU_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_PRELU_MACRO(N, C, H, W, half, GPU)
+#define MACE_BM_PRELU_GPU_MACRO(N, C, H, W)          \
+  MACE_BM_PRELU_MACRO(N, C, H, W, float, RT_OPENCL); \
+  MACE_BM_PRELU_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_PRELU_GPU_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_OPENCL
 
 #define MACE_BM_PRELU(N, C, H, W)                 \
-  MACE_BM_PRELU_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_PRELU_MACRO(N, C, H, W, float, RT_CPU); \
   MACE_BM_PRELU_BF16_MACRO(N, C, H, W);           \
   MACE_BM_PRELU_GPU_MACRO(N, C, H, W)
 
@@ -236,16 +239,16 @@ MACE_BM_PRELU(1, 32, 112, 112);
 MACE_BM_PRELU(1, 64, 256, 256);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void EluBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -261,14 +264,15 @@ void EluBenchmark(int iters, int batch, int channels, int height, int width) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -285,12 +289,12 @@ void EluBenchmark(int iters, int batch, int channels, int height, int width) {
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_ELU(N, C, H, W)              \
-  MACE_BM_ELU_MACRO(N, C, H, W, float, CPU); \
-  MACE_BM_ELU_MACRO(N, C, H, W, float, GPU); \
-  MACE_BM_ELU_MACRO(N, C, H, W, half, GPU)
+  MACE_BM_ELU_MACRO(N, C, H, W, float, RT_CPU); \
+  MACE_BM_ELU_MACRO(N, C, H, W, float, RT_OPENCL); \
+  MACE_BM_ELU_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_ELU(N, C, H, W)              \
-  MACE_BM_ELU_MACRO(N, C, H, W, float, CPU)
+  MACE_BM_ELU_MACRO(N, C, H, W, float, RT_CPU)
 #endif
 
 MACE_BM_ELU(1, 1, 512, 512);
@@ -300,14 +304,14 @@ MACE_BM_ELU(1, 32, 112, 112);
 MACE_BM_ELU(1, 64, 256, 256);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
@@ -321,14 +325,15 @@ void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -345,20 +350,20 @@ void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
 
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_BM_TANH_BF16_MACRO(N, C, H, W)      \
-  MACE_BM_TANH_MACRO(N, C, H, W, BFloat16, CPU)
+  MACE_BM_TANH_MACRO(N, C, H, W, BFloat16, RT_CPU)
 #else
 #define MACE_BM_TANH_BF16_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_OPENCL
-#define MACE_BM_TANH_GPU_MACRO(N, C, H, W)       \
-  MACE_BM_TANH_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_TANH_MACRO(N, C, H, W, half, GPU)
+#define MACE_BM_TANH_GPU_MACRO(N, C, H, W)          \
+  MACE_BM_TANH_MACRO(N, C, H, W, float, RT_OPENCL); \
+  MACE_BM_TANH_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_TANH_GPU_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_OPENCL
 
 #define MACE_BM_TANH(N, C, H, W)                 \
-  MACE_BM_TANH_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_TANH_MACRO(N, C, H, W, float, RT_CPU); \
   MACE_BM_TANH_BF16_MACRO(N, C, H, W);           \
   MACE_BM_TANH_GPU_MACRO(N, C, H, W)
 
@@ -369,7 +374,7 @@ MACE_BM_TANH(1, 32, 112, 112);
 MACE_BM_TANH(1, 64, 256, 256);
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void SigmoidBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
@@ -377,7 +382,7 @@ void SigmoidBenchmark(
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
@@ -391,14 +396,15 @@ void SigmoidBenchmark(
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -415,20 +421,20 @@ void SigmoidBenchmark(
 
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_BM_SIGMOID_BF16_MACRO(N, C, H, W)      \
-  MACE_BM_SIGMOID_MACRO(N, C, H, W, BFloat16, CPU)
+  MACE_BM_SIGMOID_MACRO(N, C, H, W, BFloat16, RT_CPU)
 #else
 #define MACE_BM_SIGMOID_BF16_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_OPENCL
-#define MACE_BM_SIGMOID_GPU_MACRO(N, C, H, W)       \
-  MACE_BM_SIGMOID_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_SIGMOID_MACRO(N, C, H, W, half, GPU)
+#define MACE_BM_SIGMOID_GPU_MACRO(N, C, H, W)          \
+  MACE_BM_SIGMOID_MACRO(N, C, H, W, float, RT_OPENCL); \
+  MACE_BM_SIGMOID_MACRO(N, C, H, W, half, RT_OPENCL)
 #else
 #define MACE_BM_SIGMOID_GPU_MACRO(N, C, H, W)
 #endif  // MACE_ENABLE_OPENCL
 
 #define MACE_BM_SIGMOID(N, C, H, W)                 \
-  MACE_BM_SIGMOID_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_SIGMOID_MACRO(N, C, H, W, float, RT_CPU); \
   MACE_BM_SIGMOID_BF16_MACRO(N, C, H, W);           \
   MACE_BM_SIGMOID_GPU_MACRO(N, C, H, W)
 

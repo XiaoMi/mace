@@ -1,0 +1,43 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_bfloat16_enabled",
+    "if_fp16_enabled",
+)
+
+cc_library(
+    name = "cpu_flows",
+    srcs = glob([
+        "cpu_ref*.cc",
+    ]) + if_bfloat16_enabled(glob([
+        "cpu_bf16*.cc",
+    ])) + if_fp16_enabled(glob([
+        "cpu_fp16*.cc",
+    ])),
+    hdrs = glob([
+        "cpu_ref*.h",
+    ]) + if_bfloat16_enabled(glob([
+        "cpu_bf16*.h",
+    ])) + if_fp16_enabled(glob([
+        "cpu_fp16*.h",
+    ])),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_bfloat16_enabled([
+        "-DMACE_ENABLE_BFLOAT16",
+    ]) + if_fp16_enabled([
+        "-DMACE_ENABLE_FP16",
+        "-march=armv8.2-a+fp16",
+    ]),
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/core",
+    ],
+)

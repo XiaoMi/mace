@@ -14,7 +14,10 @@
 
 #include "mace/ops/arm/base/conv_2d_1x1.h"
 
+#include <memory>
 #include <vector>
+
+#include "mace/core/runtime/runtime.h"
 
 namespace mace {
 namespace ops {
@@ -44,66 +47,43 @@ MaceStatus Conv2dK1x1<T>::Compute(const OpContext *context,
   const index_t padded_in_width = in_width + in_pad_size[2] + in_pad_size[3];
 
   // pad input and transform input
-  const bool is_in_padded =
-      in_height != padded_in_height || in_width != padded_in_width;
-  auto scratch_buffer = context->device()->scratch_buffer();
-  const index_t padded_in_size = is_in_padded ? PadAlignSize(
-      sizeof(T) * batch * in_channels * padded_in_height
-          * padded_in_width) : 0;
-  const index_t pack_filter_size =
-      PadAlignSize(sizeof(T) * out_channels * in_channels);
-  const index_t pack_input_size =
-      PadAlignSize(
-          sizeof(T) * in_channels * padded_in_height * padded_in_width);
-  const index_t pack_output_size =
-      PadAlignSize(
-          sizeof(T) * out_channels * padded_in_height * padded_in_width);
+  MaceStatus ret = MaceStatus::MACE_RUNTIME_ERROR;
+  if (in_height != padded_in_height || in_width != padded_in_width) {
+    Runtime *runtime = context->runtime();
+    auto mem_type = input->memory_type();
+    auto tensor_shape = {batch, in_channels, padded_in_height, padded_in_width};
+    std::unique_ptr<Tensor> padded_in =
+        make_unique<Tensor>(runtime, DT_FLOAT, mem_type, tensor_shape);
+    Tensor tmp_padded_in(runtime, DT_FLOAT, mem_type, tensor_shape);
 
-  const index_t gemm_pack_size =
-      pack_filter_size + pack_input_size + pack_output_size;
-
-  scratch_buffer->Rewind();
-  scratch_buffer->GrowSize(padded_in_size + gemm_pack_size);
-
-  const Tensor *padded_in = input;
-  Tensor tmp_padded_in
-      (scratch_buffer->Scratch(padded_in_size), DataType::DT_FLOAT);
-  if (is_in_padded) {
-    tmp_padded_in.Resize({batch, in_channels, padded_in_height,
-                          padded_in_width});
     PadInput(*input, in_pad_size[0], in_pad_size[2], &tmp_padded_in);
-    padded_in = &tmp_padded_in;
+
+    ret = gemm_.Compute(context, filter, &tmp_padded_in,
+                        batch, out_channels, in_channels, in_channels,
+                        out_height * out_width, false, false, false,
+                        false, true, output);
+  } else {
+    ret = gemm_.Compute(context, filter, input, batch, out_channels,
+                        in_channels, in_channels, out_height * out_width,
+                        false, false, false, false, true, output);
   }
 
-  return gemm_.Compute(context,
-                       filter,
-                       padded_in,
-                       batch,
-                       out_channels,
-                       in_channels,
-                       in_channels,
-                       out_height * out_width,
-                       false,
-                       false,
-                       false,
-                       false,
-                       true,
-                       output);
+  return ret;
 }
 
 void RegisterConv2dK1x1Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Conv2dK1x1<float>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K1x1));
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, Conv2dK1x1<BFloat16>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             BFloat16, ImplType::NEON, K1x1));
   MACE_REGISTER_FP16_DELEGATOR(
       registry, Conv2dK1x1<float16_t>, delegator::Conv2dParam,
-      MACE_DELEGATOR_KEY_EX(Conv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Conv2d, RuntimeType::RT_CPU,
                             float16_t, ImplType::NEON, K1x1));
 }
 

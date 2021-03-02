@@ -28,8 +28,9 @@ void TestTile(const std::vector<index_t> &input_shape,
               const std::vector<index_t> &output_shape,
               const std::vector<float> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Multiples", {static_cast<int32_t>(multiples.size())}, multiples);
 
   OpDefBuilder("Tile", "TileOpTest")
@@ -40,7 +41,8 @@ void TestTile(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }
@@ -51,11 +53,12 @@ void TestTileWithDataFormat(const std::vector<index_t> &input_shape,
                             const std::vector<index_t> &output_shape,
                             const std::vector<float> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Multiples", {static_cast<int32_t>(multiples.size())}, multiples);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("Tile", "TileOpTest")
@@ -67,9 +70,10 @@ void TestTileWithDataFormat(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape, output);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("ExpectedOutput",
+                                                    output_shape, output);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }

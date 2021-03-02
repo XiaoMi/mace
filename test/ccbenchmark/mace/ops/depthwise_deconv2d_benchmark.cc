@@ -23,7 +23,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 static void DepthwiseDeconv2d(int iters,
                               int batch,
                               int channels,
@@ -38,7 +38,7 @@ static void DepthwiseDeconv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
   } else {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
@@ -94,13 +94,14 @@ static void DepthwiseDeconv2d(int iters,
         ##_##TYPE##_##DEVICE)
 
 #ifdef MACE_ENABLE_OPENCL
-#define MACE_BM_DEPTHWISE_DECONV2D(N, C, H, W, KH, KW, S, P)              \
-  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, CPU); \
-  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, GPU); \
-  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, half, GPU);
+#define MACE_BM_DEPTHWISE_DECONV2D(N, C, H, W, KH, KW, S, P)                 \
+  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, RT_CPU); \
+  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW,                       \
+                                   S, P, float, RT_OPENCL);                  \
+  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, half, RT_OPENCL);
 #else
 #define MACE_BM_DEPTHWISE_DECONV2D(N, C, H, W, KH, KW, S, P)              \
-  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, CPU)
+  MACE_BM_DEPTHWISE_DECONV2D_MACRO(N, C, H, W, KH, KW, S, P, float, RT_CPU)
 #endif
 
 MACE_BM_DEPTHWISE_DECONV2D(1, 128, 15, 15, 1, 1, 1, 0);

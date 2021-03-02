@@ -19,14 +19,11 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/arg_helper.h"
 #include "mace/core/ops/op_construct_context.h"
 #include "mace/core/ops/op_context.h"
+#include "mace/core/proto/arg_helper.h"
 #include "mace/core/tensor.h"
 #include "mace/proto/mace.pb.h"
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_util.h"
-#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 class OpInitContext;
@@ -69,8 +66,8 @@ class Operation {
     return ProtoArgHelper::ExistArg<OperatorDef>(*operator_def_, name);
   }
 
-  DeviceType device_type() const {
-    return static_cast<DeviceType>(operator_def_->device_type());
+  RuntimeType runtime_type() const {
+    return static_cast<RuntimeType>(operator_def_->device_type());
   }
 
   const Tensor *Input(unsigned int idx) {
@@ -90,7 +87,9 @@ class Operation {
 
   // Run Op asynchronously (depends on device), return a future if not nullptr.
   virtual MaceStatus Init(OpInitContext *);
-  virtual MaceStatus Run(OpContext *) = 0;
+  virtual MaceStatus Forward(OpContext *context);
+  virtual MaceStatus Run(OpContext *context) = 0;
+  virtual int ReuseTensorMapId(size_t output_idx) const;
 
   const OperatorDef &debug_def() const {
     MACE_CHECK(has_debug_def(), "operator_def was null!");
@@ -107,6 +106,9 @@ class Operation {
   inline std::shared_ptr<OperatorDef> operator_def() {
     return operator_def_;
   }
+
+ protected:
+  virtual BufferContentType GetInputTensorContentType(size_t idx) const;
 
  protected:
   std::shared_ptr<OperatorDef> operator_def_;

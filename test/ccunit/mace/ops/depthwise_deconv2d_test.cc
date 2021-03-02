@@ -24,7 +24,7 @@ namespace test {
 class DepthwiseDeconv2dOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void RunTestSimple(const int group,
                    const std::vector<index_t> &input_shape,
                    const std::vector<float> &input_data,
@@ -44,7 +44,7 @@ void RunTestSimple(const int group,
   const index_t out_channels = expected_shape[3];
   net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data, true);
 
-  if (D == DeviceType::GPU) {
+  if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
         .Input("Input")
         .Input("FilterOIHW")
@@ -57,7 +57,7 @@ void RunTestSimple(const int group,
 
     net.RunOp(D);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
         .Input("InputNCHW")
@@ -70,7 +70,7 @@ void RunTestSimple(const int group,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   }
 
@@ -78,7 +78,7 @@ void RunTestSimple(const int group,
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.0001);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3_DW() {
   RunTestSimple<D>(3,
                    {1, 3, 3, 3},
@@ -99,7 +99,7 @@ void TestNHWCSimple3x3_DW() {
                     1, 1, 1, 2, 2, 2, 3, 3, 3, 2, 2, 2, 1, 1, 1});
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void TestNHWCSimple3x3_Group() {
   RunTestSimple<D>(2,
                    {1, 3, 3, 4},
@@ -148,15 +148,15 @@ void TestNHWCSimple3x3_Group() {
 }  // namespace
 
 TEST_F(DepthwiseDeconv2dOpTest, CPUSimple3X3Depthwise) {
-  TestNHWCSimple3x3_DW<DeviceType::CPU>();
+  TestNHWCSimple3x3_DW<RuntimeType::RT_CPU>();
 }
 
 TEST_F(DepthwiseDeconv2dOpTest, CPUSimple3X3Group) {
-  TestNHWCSimple3x3_Group<DeviceType::CPU>();
+  TestNHWCSimple3x3_Group<RuntimeType::RT_CPU>();
 }
 
 TEST_F(DepthwiseDeconv2dOpTest, GPUSimple3X3Depthwise) {
-  TestNHWCSimple3x3_DW<DeviceType::GPU>();
+  TestNHWCSimple3x3_DW<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
@@ -176,7 +176,7 @@ void RandomTest(index_t batch,
   // Add input data
   std::vector<float> input_data(batch * height * width * channel);
   GenerateRandomRealTypeData({batch, height, width, channel}, &input_data);
-  net.AddInputFromArray<DeviceType::GPU, float>("Input",
+  net.AddInputFromArray<RuntimeType::RT_OPENCL, float>("Input",
                                                 {batch,
                                                  height,
                                                  width,
@@ -185,16 +185,16 @@ void RandomTest(index_t batch,
   std::vector<float> filter_data(kernel * kernel * channel * multiplier);
   GenerateRandomRealTypeData({multiplier, channel, kernel, kernel},
                              &filter_data);
-  net.AddInputFromArray<DeviceType::GPU, float>(
+  net.AddInputFromArray<RuntimeType::RT_OPENCL, float>(
       "Filter", {multiplier, channel, kernel, kernel}, filter_data, true,
       false);
   std::vector<float> bias_data(channel * multiplier);
   GenerateRandomRealTypeData({channel * multiplier}, &bias_data);
-  net.AddInputFromArray<DeviceType::GPU, float>("Bias",
+  net.AddInputFromArray<RuntimeType::RT_OPENCL, float>("Bias",
                                                 {channel * multiplier},
                                                 bias_data, true, false);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
       .Input("InputNCHW")
@@ -210,8 +210,8 @@ void RandomTest(index_t batch,
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
       .Finalize(net.NewOperatorDef());
   // Run
-  net.RunOp(DeviceType::CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
 
@@ -233,7 +233,7 @@ void RandomTest(index_t batch,
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -267,6 +267,7 @@ TEST_F(DepthwiseDeconv2dOpTest, RandomTestHalf) {
 }
 
 }  // namespace
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

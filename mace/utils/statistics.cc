@@ -137,7 +137,7 @@ int64_t StatMACs(const std::string &op_type,
 
 void OpStat::StatMetadata(const RunMetadata &meta_data) {
   if (meta_data.op_stats.empty()) {
-    LOG(FATAL) << "Op metadata should not be empty";
+    return;
   }
   int64_t order_idx = 0;
   int64_t total_time = 0;
@@ -318,9 +318,8 @@ std::string OpStat::Summary() const {
   std::stringstream stream;
   if (!records_.empty()) {
     stream << total_time_.ToString("Summary of Ops' Stat") << std::endl;
+    stream << records_.size() << " ops total." << std::endl;
   }
-
-  stream << records_.size() << " ops total." << std::endl;
 
   return stream.str();
 }

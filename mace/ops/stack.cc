@@ -21,7 +21,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class StackOp : public Operation {
  public:
   explicit StackOp(OpConstructContext *context)
@@ -44,14 +44,6 @@ class StackOp : public Operation {
     output_shape.insert(output_shape.begin() + axis_, inputs.size());
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    // Some inputs_ may be in gpu memory, so add mapping here.
-    std::vector<Tensor::MappingGuard> mappers;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      mappers.emplace_back(Tensor::MappingGuard(inputs[i]));
-    }
-
-    // Output is on host, no need to map data
-    Tensor::MappingGuard output_guard(output);
     auto *output_data = output->mutable_data<T>();
     std::vector<const T *> input_data(inputs.size());
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -79,9 +71,9 @@ class StackOp : public Operation {
 };
 
 void RegisterStack(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Stack", StackOp, DeviceType::CPU);
-  MACE_REGISTER_OP(op_registry, "Stack", StackOp, DeviceType::CPU, int32_t);
+  MACE_REGISTER_OP(op_registry, "Stack", StackOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Stack", StackOp, RuntimeType::RT_CPU);
+  MACE_REGISTER_OP(op_registry, "Stack", StackOp, RuntimeType::RT_CPU, int32_t);
 }
 
 }  // namespace ops

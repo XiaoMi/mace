@@ -20,7 +20,7 @@ namespace test {
 
 class LocalResponseNormOpTest : public OpsTestBase {};
 
-template <DeviceType D>
+template <RuntimeType D>
 void Simple() {
   OpsTestNet net;
 
@@ -28,7 +28,7 @@ void Simple() {
   net.AddInputFromArray<D, float>("Input", {1, 1, 2, 6},
                                   {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.TransformDataFormat<D, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
@@ -54,7 +54,7 @@ void Simple() {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0, 1e-2);
 }
 
-TEST_F(LocalResponseNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
+TEST_F(LocalResponseNormOpTest, SimpleCPU) { Simple<RuntimeType::RT_CPU>(); }
 
 }  // namespace test
 }  // namespace ops

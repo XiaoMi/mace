@@ -23,7 +23,7 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/core/tensor.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/ops/common/reduce_type.h"
 
 namespace mace {
@@ -43,7 +43,7 @@ class ReduceKernel : public OpenCLReduceKernel {
       Tensor *output) override;
 
  private:
-  MaceStatus BuildReduceKernel(OpenCLRuntime *runtime);
+  MaceStatus BuildReduceKernel(OpenclExecutor *executor);
   MaceStatus GraduallyComputeReduce(
       OpContext *context, const index_t batch, const index_t channel_blocks,
       const index_t in_height, const index_t in_width,

@@ -1,0 +1,101 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_hexagon_enabled",
+    "if_hta_enabled",
+    "if_opencl_enabled",
+    "if_rpcmem_enabled",
+)
+
+cc_library(
+    name = "base",
+    srcs = glob([
+        "*.cc",
+    ]),
+    hdrs = glob([
+        "*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
+    ]),
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/core",
+        "//mace/runtimes/cpu:cpu_runtimes",
+    ],
+)
+
+cc_library(
+    name = "dsp",
+    srcs = glob([
+        "dsp/*.cc",
+    ]),
+    hdrs = glob([
+        "dsp/*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkopts = ["-ldl"],
+    deps = [
+        "base",
+        "//third_party/nnlib:libhexagon",
+    ],
+)
+
+cc_library(
+    name = "hta",
+    srcs = glob([
+        "hta/*.cc",
+    ]) + if_opencl_enabled(glob([
+        "hta/opencl/*.cc",
+    ])),
+    hdrs = glob([
+        "hta/*.h",
+    ]) + if_opencl_enabled(glob([
+        "hta/opencl/*.h",
+    ])),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
+    ]),
+    linkopts = ["-ldl"],
+    deps = [
+        "base",
+        "//third_party/hta",
+    ] + if_opencl_enabled([
+        "@half//:half",
+        "//mace/runtimes/opencl:opencl_runtimes",
+    ]),
+)
+
+cc_library(
+    name = "hexagon_runtimes",
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkopts = ["-ldl"],
+    deps = if_hexagon_enabled([
+        ":dsp",
+    ]) + if_hta_enabled([
+        ":hta",
+    ]),
+)

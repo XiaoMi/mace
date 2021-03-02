@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void BatchNorm(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
@@ -28,9 +28,9 @@ void BatchNorm(
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -53,18 +53,18 @@ void BatchNorm(
 
   // tuning
   setenv("MACE_TUNING", "1", 1);
-  net.RunOp(D);
+  net.Setup(D);
   unsetenv("MACE_TUNING");
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -82,12 +82,12 @@ void BatchNorm(
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_BATCH_NORM(N, C, H, W)                 \
-  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, CPU);    \
-  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, GPU);    \
-  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, half, GPU);
+  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, RT_CPU);    \
+  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, RT_OPENCL);    \
+  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, half, RT_OPENCL);
 #else
 #define MACE_BM_BATCH_NORM(N, C, H, W)                 \
-  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, CPU);
+  MACE_BM_BATCH_NORM_MACRO(N, C, H, W, float, RT_CPU);
 #endif
 
 MACE_BM_BATCH_NORM(1, 1, 512, 512);

@@ -25,11 +25,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class SplitOp;
 
 template<typename T>
-class SplitOp<DeviceType::CPU, T> : public Operation {
+class SplitOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit SplitOp(OpConstructContext *context)
       : Operation(context),
@@ -149,7 +149,7 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class SplitOp<DeviceType::GPU, float> : public Operation {
+class SplitOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit SplitOp(OpConstructContext *context)
       : Operation(context) {
@@ -177,8 +177,8 @@ class SplitOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterSplit(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Split", SplitOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Split", SplitOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Split", SplitOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Split", SplitOp, RuntimeType::RT_CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "Split", SplitOp);
 
@@ -186,19 +186,19 @@ void RegisterSplit(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("Split")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "axis", 3);
                 if (axis != 3 || op->output_shape(0).dims_size() != 4 ||
                     (op->output_shape(0).dims()[3] % 4 != 0) ||
                     op->input_size() > 1) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

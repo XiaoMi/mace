@@ -17,29 +17,29 @@
 
 namespace mace {
 class Workspace;
-class Device;
+class Runtime;
 
 // memory_optimizer, device
 class OpInitContext {
  public:
-  explicit OpInitContext(Workspace *ws, Device *device = nullptr);
+  explicit OpInitContext(Workspace *ws, Runtime *runtime = nullptr);
   ~OpInitContext() = default;
 
   Workspace *workspace() const {
     return ws_;
   }
 
-  void set_device(Device *device) {
-    device_ = device;
+  void set_runtime(Runtime *runtime) {
+    runtime_ = runtime;
   }
 
-  Device *device() const {
-    return device_;
+  Runtime *runtime() const {
+    return runtime_;
   }
 
  private:
   Workspace *ws_;
-  Device *device_;
+  Runtime *runtime_;
 };
 
 }  // namespace mace

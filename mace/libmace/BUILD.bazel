@@ -29,8 +29,20 @@ load(
 cc_library(
     name = "libmace",
     srcs = glob(
-        ["*.cc"],
-    ),
+        [
+            "*.cc",
+            "engines/*.cc",
+        ],
+        exclude = [
+            "gpu_context_builder.cc",
+        ],
+    ) + if_opencl_enabled([
+        "gpu_context_builder.cc",
+    ]),
+    hdrs = glob([
+        "*.h",
+        "engines/*.h",
+    ]),
     copts = [
         "-Werror",
         "-Wextra",
@@ -65,6 +77,7 @@ cc_library(
     ),
     deps = [
         "//include:public_headers",
+        "//mace/flows",
         "//mace/ops",
     ],
     alwayslink = 1,
@@ -107,6 +120,7 @@ genrule(
         "//include:public_headers",
         "//mace/codegen:generated_version",
         "//mace/core",
+        "//mace/flows",
         "//mace/ops:common",
         "//mace/ops:ref_kernels",
         "//mace/ops:internal_ops",
@@ -116,6 +130,7 @@ genrule(
         "//mace/port/posix:port_posix",
         "//mace/utils",
         "//mace/proto:mace_cc",
+        "//mace/runtimes",
         "@com_google_protobuf//:protobuf_lite",
     ] + if_linux_base([
         "//mace/port/linux_base:port_linux_base",

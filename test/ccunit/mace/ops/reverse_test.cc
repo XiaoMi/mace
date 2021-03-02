@@ -28,8 +28,9 @@ void TestReverse(const std::vector<index_t> &input_shape,
                  const std::vector<int32_t> &axis,
                  const std::vector<float> &outputs) {
   OpsTestNet net;
-  net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>("Axis", axis_shape, axis);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>("Input",
+                                                    input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("Axis", axis_shape, axis);
 
   OpDefBuilder("Reverse", "ReverseOpTest")
       .Input("Input")
@@ -39,8 +40,8 @@ void TestReverse(const std::vector<index_t> &input_shape,
 
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput", input_shape,
-                                    outputs);
+  net.AddInputFromArray<RuntimeType::RT_CPU, float>(
+      "ExpectedOutput", input_shape, outputs);
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
                           *net.GetOutput("Output"));
 }

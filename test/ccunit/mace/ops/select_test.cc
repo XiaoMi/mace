@@ -21,7 +21,7 @@ namespace test {
 class SelectOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestSelect(const std::vector<index_t> &input_shape,
                 const std::vector<uint8_t> &input,
                 const std::vector<index_t> &x_shape,
@@ -56,7 +56,7 @@ void TestSelect(const std::vector<index_t> &input_shape,
 
 
 TEST_F(SelectOpTest, SimpleTestWithData) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2, 3},
     {true, false, false, false, true, true},
     {2, 3},
@@ -68,7 +68,7 @@ TEST_F(SelectOpTest, SimpleTestWithData) {
 }
 
 TEST_F(SelectOpTest, SimpleTestWithDataBroadcast) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2},
     {true, false},
     {2, 3},
@@ -80,7 +80,7 @@ TEST_F(SelectOpTest, SimpleTestWithDataBroadcast) {
 }
 
 TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast1) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2},
     {true, false},
     {}, {}, {}, {},
@@ -89,7 +89,7 @@ TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast1) {
 }
 
 TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast2) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2, 3},
     {true, false, false, false, true, true},
     {}, {}, {}, {},
@@ -98,7 +98,7 @@ TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast2) {
 }
 
 TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast3) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2, 2, 3},
     {true, false, false, false, true, true,
      true, false, false, false, true, true},
@@ -109,7 +109,7 @@ TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast3) {
 }
 
 TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast4) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2, 2, 2, 3},
     {true, false, false, false, true, true,
      true, false, false, false, true, true,
@@ -124,7 +124,7 @@ TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast4) {
 }
 
 TEST_F(SelectOpTest, SimpleTestWithNoDataBroadcast5) {
-  TestSelect<DeviceType::CPU, float>(
+  TestSelect<RuntimeType::RT_CPU, float>(
     {2, 2, 2, 2, 3},
     {true, false, false, false, true, true,
     true, false, false, false, true, true,

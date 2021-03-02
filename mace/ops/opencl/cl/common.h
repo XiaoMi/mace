@@ -121,7 +121,11 @@ inline void check_out_of_range_for_image2d(__write_only image2d_t image,
                                            __global int *oorc_flag) {
   int2 image_dim = get_image_dim(image);
   if (x >= image_dim.x || y >= image_dim.y) {
-    *oorc_flag = 1;
+    int idx = x * 1000000 + y;
+    if (idx == 0) {
+      idx = 1;
+    }
+    *oorc_flag = idx;
   }
 }
 

@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/crop.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -51,11 +53,7 @@ MaceStatus CropKernel::Compute(
   MACE_CHECK(offsets[3] % 4 == 0,
              "MACE opencl only supports cropping channel"
              " offset divisible by 4.");
-  std::vector<size_t> image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape,
-                              OpenCLBufferType::IN_OUT_CHANNEL,
-                              &image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
   const index_t offset_chan_blk = RoundUpDiv4(offsets[3]);
   const index_t channel_blk = RoundUpDiv4(output->dim(3));
@@ -64,7 +62,7 @@ MaceStatus CropKernel::Compute(
       static_cast<uint32_t>(output->dim(0) * output->dim(1))
   };
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -76,18 +74,18 @@ MaceStatus CropKernel::Compute(
     auto dt = input0->dtype();
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("crop", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("crop", kernel_name,
+                                               built_options, &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, input0->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(input0->opencl_image()));
+    kernel_.setArg(idx++, *(input0->memory<cl::Image>()));
     kernel_.setArg(idx++, static_cast<int>(offsets[0]));
     kernel_.setArg(idx++, static_cast<int>(offsets[1]));
     kernel_.setArg(idx++, static_cast<int>(offsets[2]));
@@ -96,16 +94,16 @@ MaceStatus CropKernel::Compute(
     kernel_.setArg(idx++, static_cast<int>(input0->dim(2)));
     kernel_.setArg(idx++, static_cast<int>(output->dim(1)));
     kernel_.setArg(idx++, static_cast<int>(output->dim(2)));
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     input_shape_ = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("crop_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

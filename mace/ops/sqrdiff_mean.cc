@@ -25,7 +25,7 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class SqrDiffMeanOp : public Operation {
  public:
   explicit SqrDiffMeanOp(OpConstructContext *context)
@@ -56,11 +56,8 @@ class SqrDiffMeanOp : public Operation {
   void Compute(const Tensor *input0,
                const Tensor *input1,
                Tensor *output) {
-    Tensor::MappingGuard input0_mapper(input0);
-    Tensor::MappingGuard input1_mapper(input1);
     const T *input_ptr0 = input0->data<T>();
     const T *input_ptr1 = input1->data<T>();
-    Tensor::MappingGuard output_map(output);
     T *output_ptr = output->mutable_data<T>();
     memset(static_cast<void *>(output_ptr), 0, output->size() * sizeof(T));
 
@@ -80,7 +77,7 @@ class SqrDiffMeanOp : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class SqrDiffMeanOp<DeviceType::GPU, float> : public Operation {
+class SqrDiffMeanOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit SqrDiffMeanOp(OpConstructContext *context)
       : Operation(context) {
@@ -104,9 +101,9 @@ class SqrDiffMeanOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterSqrDiffMean(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
   MACE_REGISTER_GPU_OP(op_registry, "SqrDiffMean", SqrDiffMeanOp);
 }

@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void CropHelper(int iters,
                 const std::vector<index_t> &shape0,
                 const std::vector<index_t> &shape1,
@@ -36,13 +36,13 @@ void CropHelper(int iters,
     offsets[i] = offset;
   }
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     auto input_shape0 = TransposeShape<index_t, index_t>(shape0, {0, 3, 1, 2});
     auto input_shape1 = TransposeShape<index_t, index_t>(shape1, {0, 3, 1, 2});
     net.AddRandomInput<D, float>("Input0", input_shape0);
     net.AddRandomInput<D, float>("Input1", input_shape1);
 #ifdef MACE_ENABLE_OPENCL
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     // Add input data
     net.AddRandomInput<D, T>("Input0", shape0);
     net.AddRandomInput<D, T>("Input1", shape1);
@@ -89,12 +89,12 @@ void CropHelper(int iters,
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_CROP(N, H, W, C, AXIS, OFFSET)               \
-  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, CPU, float);  \
-  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, float);  \
-  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, GPU, half)
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, RT_CPU, float);  \
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, RT_OPENCL, float);  \
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, RT_OPENCL, half)
 #else
 #define MACE_BM_CROP(N, H, W, C, AXIS, OFFSET)               \
-  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, CPU, float)
+  MACE_BM_CROP_MACRO(N, H, W, C, AXIS, OFFSET, RT_CPU, float)
 #endif  // MACE_ENABLE_OPENCL
 
 MACE_BM_CROP(4, 32, 32, 32, 2, 4);

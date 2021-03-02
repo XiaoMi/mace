@@ -32,11 +32,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class PNormOp;
 
 template<typename T>
-class PNormOp<DeviceType::CPU, T> : public Operation {
+class PNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit PNormOp(OpConstructContext *context)
       : Operation(context),
@@ -61,17 +61,13 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
     output_shape[dim_size - 1] = output_dim_;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_output(output);
-
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
     const index_t bh =
         std::accumulate(input->shape().begin(), input->shape().end() - 1, 1,
                         std::multiplies<index_t>());
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     if (p_ == 0) {
       thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
@@ -135,9 +131,9 @@ class PNormOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterPNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "PNorm", PNormOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "PNorm", PNormOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

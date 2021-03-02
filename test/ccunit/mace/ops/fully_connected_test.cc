@@ -23,7 +23,7 @@ namespace test {
 class FullyConnectedOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_value,
             const std::vector<index_t> &weight_shape,
@@ -39,7 +39,7 @@ void Simple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Weight", weight_shape, weight_value, true);
   net.AddInputFromArray<D, float>("Bias", bias_shape, bias_value, true);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
         .Input("Input")
         .Input("Weight")
@@ -50,12 +50,13 @@ void Simple(const std::vector<index_t> &input_shape,
     net.RunOp(D);
     net.TransformDataFormat<D, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
         .Input("Input")
         .Input("Weight")
         .Input("Bias")
         .Output("Output")
+        .OutputShape(output_shape)
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -71,14 +72,14 @@ void Simple(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(FullyConnectedOpTest, SimpleCPU) {
-  Simple<DeviceType::CPU>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 2, 2},
-                          {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
-                          {206});
-  Simple<DeviceType::CPU>(
+  Simple<RuntimeType::RT_CPU>(
+      {1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 2, 2},
+      {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1}, {206});
+  Simple<RuntimeType::RT_CPU>(
       {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 1, 2, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
       {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
-  Simple<DeviceType::CPU>(
+  Simple<RuntimeType::RT_CPU>(
       {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 1, 2, 3},
       {1, 2, 3, 4,  5,  6,  10, 20, 30, 40, 50, 60, 1, 2, 3,
        4, 5, 6, 10, 20, 30, 40, 50, 60, 1,  2,  3,  4, 5, 6},
@@ -86,19 +87,20 @@ TEST_F(FullyConnectedOpTest, SimpleCPU) {
 }
 
 TEST_F(FullyConnectedOpTest, SimpleCPUWithBatch) {
-  Simple<DeviceType::CPU>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 1, 2, 2},
-                          {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
+  Simple<RuntimeType::RT_CPU>(
+      {2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 1, 2, 2},
+      {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
-  Simple<DeviceType::GPU>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 2, 2},
-                          {1, 3, 5, 7, 2, 4, 6, 8}, {1}, {2}, {1, 1, 1, 1},
-                          {206});
-  Simple<DeviceType::GPU>(
+  Simple<RuntimeType::RT_OPENCL>(
+      {1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 2, 2},
+      {1, 3, 5, 7, 2, 4, 6, 8}, {1}, {2}, {1, 1, 1, 1}, {206});
+  Simple<RuntimeType::RT_OPENCL>(
       {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 5, 1, 2},
       {1, 6, 2, 7, 3, 8, 4, 9, 5, 10, 10, 60, 20, 70, 30, 80, 40, 90, 50, 100},
       {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
-  Simple<DeviceType::GPU>(
+  Simple<RuntimeType::RT_OPENCL>(
       {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 3, 1, 2},
       {1, 4, 2, 5,  3,  6,  10, 40, 20, 50, 30, 60, 1, 4, 2,
        5, 3, 6, 10, 40, 20, 50, 30, 60, 1,  4,  2,  5, 3, 6},
@@ -106,8 +108,9 @@ TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
 }
 
 TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
-  Simple<DeviceType::GPU>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 1, 2},
-                          {1, 3, 2, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
+  Simple<RuntimeType::RT_OPENCL>(
+      {2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 1, 2},
+      {1, 3, 2, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
 namespace {
@@ -123,14 +126,14 @@ void Random(const index_t batch,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input",
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Input",
       {batch, height, width, channels}, false, false);
-  net.AddRandomInput<DeviceType::GPU, float>(
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>(
       "Weight", {out_channel, channels, height, width}, true, false);
-  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel}, true,
+  net.AddRandomInput<RuntimeType::RT_OPENCL, float>("Bias", {out_channel}, true,
       false);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("InputNCHW")
@@ -144,7 +147,7 @@ void Random(const index_t batch,
   // run cpu
   net.RunOp();
 
-  net.TransformDataFormat<CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   // Check
@@ -157,13 +160,14 @@ void Random(const index_t batch,
       .Input("Weight")
       .Input("Bias")
       .Output("Output")
+      .OutputShape(expected->shape())
       .AddStringArg("activation", "LEAKYRELU")
       .AddFloatArg("activation_coefficient", 0.1f)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Run
-  net.RunOp(DeviceType::GPU);
+  net.RunOp(RuntimeType::RT_OPENCL);
 
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-1,
@@ -212,14 +216,14 @@ void QuantRandom(const index_t batch,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Input", {batch, height, width, channels});
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Weight", {out_channel, height, width, channels}, true);
-  net.AddRandomInput<CPU, float>("Bias", {out_channel}, true);
-  net.TransformDataFormat<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Bias", {out_channel}, true);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-  net.TransformFilterDataFormat<CPU, float>(
+  net.TransformFilterDataFormat<RuntimeType::RT_CPU, float>(
       "Weight", DataFormat::OHWI, "WeightOIHW", DataFormat::OIHW);
 
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
@@ -230,7 +234,7 @@ void QuantRandom(const index_t batch,
       .AddIntArg("T", DT_FLOAT)
       .Finalize(net.NewOperatorDef());
   net.RunOp();
-  net.TransformDataFormat<CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeWeight")
@@ -271,7 +275,7 @@ void QuantRandom(const index_t batch,
       quantize_util(OpTestContext::Get()->thread_pool());
   quantize_util.QuantizeWithScaleAndZeropoint(
       bias_data, bias->size(), bias_scale, 0, q_bias.data());
-  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "QuantizedBias", {out_channel}, q_bias, true, bias_scale, 0);
 
   OpDefBuilder("FullyConnected", "QuantizeFullyConnectedTest")
@@ -281,7 +285,7 @@ void QuantRandom(const index_t batch,
       .Output("QuantizedOutput")
       .AddIntArg("T", DT_UINT8)
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(eq_output->scale());

@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/batch_to_space.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -26,11 +28,7 @@ MaceStatus BatchToSpaceKernel::Compute(
     const std::vector<int> &block_shape,
     const std::vector<index_t> &output_shape,
     Tensor *space_tensor) {
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(
-      space_tensor->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
 
   const uint32_t chan_blk =
       static_cast<uint32_t>(RoundUpDiv4(batch_tensor->dim(3)));
@@ -39,7 +37,7 @@ MaceStatus BatchToSpaceKernel::Compute(
       chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
       static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -55,21 +53,21 @@ MaceStatus BatchToSpaceKernel::Compute(
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("batch_to_space",
-                                              obfuscated_kernel_name,
-                                              built_options,
-                                              &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("batch_to_space",
+                                               obfuscated_kernel_name,
+                                               built_options,
+                                               &kernel_));
 
     kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (IsResetArgsNeeded(context, input_shape_, batch_tensor->shape())) {
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws);
-    kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
-    kernel_.setArg(idx++, *(space_tensor->opencl_image()));
+    kernel_.setArg(idx++, *(batch_tensor->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(space_tensor->memory<cl::Image>()));
     kernel_.setArg(idx++, block_shape[0]);
     kernel_.setArg(idx++, block_shape[1]);
     kernel_.setArg(idx++, paddings[0]);
@@ -83,11 +81,11 @@ MaceStatus BatchToSpaceKernel::Compute(
     input_shape_ = batch_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   std::string tuning_key =
       Concat("batch_to_space", batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;

@@ -21,11 +21,11 @@ namespace arm {
 void RegisterDeconv2dK2x2Delegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, Deconv2dK2x2S1<float>, delegator::Deconv2dParam,
-      MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K2x2S1));
   MACE_REGISTER_DELEGATOR(
       registry, Deconv2dK2x2S2<float>, delegator::Deconv2dParam,
-      MACE_DELEGATOR_KEY_EX(Deconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY_EX(Deconv2d, RuntimeType::RT_CPU,
                             float, ImplType::NEON, K2x2S2));
 }
 

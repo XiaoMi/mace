@@ -91,7 +91,7 @@ void ScalarEltwise(const T* in0,
 }  // namespace
 
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class ScalarMathOp : public Operation {
  public:
   explicit ScalarMathOp(OpConstructContext *context)
@@ -110,11 +110,9 @@ class ScalarMathOp : public Operation {
     const Tensor* input1 = (inputs_.size() >= 2) ? inputs_[1] : nullptr;
     MACE_CHECK(input0->dim_size() <= 1 && input0->size() == 1,
                "not support input dim size") << input0->dim_size();
-    Tensor::MappingGuard in0_guard(input0);
     const T* in0 = input0->data<T>();
     auto v = static_cast<T>(scalar_input_);
     const T* in1 = &v;
-    Tensor::MappingGuard in1_guard(input1);
     if (input1) {
       MACE_CHECK(input1->dim_size() == 0);
       in1 = input1->data<T>();
@@ -125,7 +123,6 @@ class ScalarMathOp : public Operation {
       output->Resize({});
     }
 
-    Tensor::MappingGuard output_guard(output);
     bool swapped = scalar_input_index_ == 0;
 
     if (IsLogicalType(type_)) {
@@ -157,11 +154,11 @@ class ScalarMathOp : public Operation {
 
 void RegisterScalarMath(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ScalarMath", ScalarMathOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
   MACE_REGISTER_OP(op_registry, "ScalarMath", ScalarMathOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 }
 
 }  // namespace ops

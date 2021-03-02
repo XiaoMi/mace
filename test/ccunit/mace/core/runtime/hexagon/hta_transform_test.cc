@@ -23,7 +23,7 @@ namespace test {
 class HTATransformTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void TestHTAQuantizeDequantize(const std::vector<float> &input) {
   float min_val, max_val;
   FindMinMax(input.data(), input.size(), &min_val, &max_val);
@@ -32,7 +32,7 @@ void TestHTAQuantizeDequantize(const std::vector<float> &input) {
   AdjustRange<uint8_t>(min_val, max_val, false, &scale, &zero);
 
   OpsTestNet net;
-    Device *device = OpTestContext::Get()->GetDevice(D);
+    Runtime *runtime = OpTestContext::Get()->GetRuntime(D);
 
   net.AddInputFromArray<D, float>("Input",
                                   {static_cast<index_t>(input.size())},
@@ -41,12 +41,12 @@ void TestHTAQuantizeDequantize(const std::vector<float> &input) {
   input_tensor->SetScale(scale);
   input_tensor->SetZeroPoint(zero);
   Tensor *quantized_output = net.ws()->CreateTensor(
-      "QuantizedOutput", device->allocator(), DT_UINT8);
+      "QuantizedOutput", runtime, DT_UINT8);
   Tensor *dequantized_output = net.ws()->CreateTensor(
-      "DequantizedOutput", device->allocator(), DT_FLOAT);
+      "DequantizedOutput", runtime, DT_FLOAT);
 
   mace::HexagonHTATranformer<D> transformer;
-  transformer.Init(device);
+  transformer.Init(runtime);
   transformer.Quantize(input_tensor, quantized_output);
   transformer.Dequantize(quantized_output, dequantized_output);
 
@@ -58,28 +58,28 @@ void TestHTAQuantizeDequantize(const std::vector<float> &input) {
 }  // namespace
 
 TEST_F(HTATransformTest, TestHTAQuantize) {
-  TestHTAQuantizeDequantize<CPU>({-2, -1, 0, 1, 2, 3, 4});
-  TestHTAQuantizeDequantize<GPU>({-2, -1, 0, 1, 2, 3, 4});
+  TestHTAQuantizeDequantize<RuntimeType::RT_CPU>({-2, -1, 0, 1, 2, 3, 4});
+  TestHTAQuantizeDequantize<RT_OPENCL>({-2, -1, 0, 1, 2, 3, 4});
 }
 
 namespace {
 void TestHTAInputTransform(const std::vector<index_t> &input_shape,
                            const hexagon_hta_hw_layout format) {
   OpsTestNet net;
-  Device *device = OpTestContext::Get()->GetDevice(DeviceType::GPU);
-  net.AddRandomInput<GPU, uint8_t>("Input", input_shape);
+  Runtime *runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL);
+  net.AddRandomInput<RT_OPENCL, uint8_t>("Input", input_shape);
   Tensor *input_tensor = net.GetOutput("Input");
   input_tensor->SetScale(0.1);
   input_tensor->SetZeroPoint(1);
   Tensor *cpu_transformed_tensor = net.ws()->CreateTensor(
-      "CpuTransformedOutput", device->allocator(), DT_UINT8);
+      "CpuTransformedOutput", runtime, DT_UINT8);
   Tensor *gpu_transformed_tensor = net.ws()->CreateTensor(
-      "GpuTransformedOutput", device->allocator(), DT_UINT8);
+      "GpuTransformedOutput", runtime, DT_UINT8);
 
-  mace::HexagonHTATranformer<CPU> cpu_transformer;
-  mace::HexagonHTATranformer<GPU> gpu_transformer;
-  cpu_transformer.Init(device);
-  gpu_transformer.Init(device);
+  mace::HexagonHTATranformer<RuntimeType::RT_CPU> cpu_transformer;
+  mace::HexagonHTATranformer<RT_OPENCL> gpu_transformer;
+  cpu_transformer.Init(runtime);
+  gpu_transformer.Init(runtime);
   cpu_transformer.SetInputTransformer(format);
   gpu_transformer.SetInputTransformer(format);
   cpu_transformer.TransformInput(input_tensor, cpu_transformed_tensor, 0);
@@ -114,20 +114,20 @@ void TestHTAOutputTransform(const std::vector<index_t> &output_shape,
       batch, height, RoundUpDiv<index_t>(channels, 32), width, 32};
 
   OpsTestNet net;
-  Device *device = OpTestContext::Get()->GetDevice(DeviceType::GPU);
-  net.AddRandomInput<GPU, uint8_t>("Input", input_shape);
+  Runtime *runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_OPENCL);
+  net.AddRandomInput<RT_OPENCL, uint8_t>("Input", input_shape);
   Tensor *input_tensor = net.GetOutput("Input");
   Tensor *cpu_transformed_tensor = net.ws()->CreateTensor(
-      "CpuTransformedOutput", device->allocator(), DT_UINT8);
+      "CpuTransformedOutput", runtime, DT_UINT8);
   Tensor *gpu_transformed_tensor = net.ws()->CreateTensor(
-      "GpuTransformedOutput", device->allocator(), DT_UINT8);
+      "GpuTransformedOutput", runtime, DT_UINT8);
   cpu_transformed_tensor->Resize(output_shape);
   gpu_transformed_tensor->Resize(output_shape);
 
-  mace::HexagonHTATranformer<CPU> cpu_transformer;
-  mace::HexagonHTATranformer<GPU> gpu_transformer;
-  cpu_transformer.Init(device);
-  gpu_transformer.Init(device);
+  mace::HexagonHTATranformer<RuntimeType::RT_CPU> cpu_transformer;
+  mace::HexagonHTATranformer<RT_OPENCL> gpu_transformer;
+  cpu_transformer.Init(runtime);
+  gpu_transformer.Init(runtime);
   cpu_transformer.SetOutputTransformer(format);
   gpu_transformer.SetOutputTransformer(format);
   cpu_transformer.TransformOutput(input_tensor, cpu_transformed_tensor, 0);

@@ -20,21 +20,21 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void BMSpaceToBatch(
     int iters, int batch, int height, int width, int channels, int shape) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     if (DataTypeToEnum<T>::value != DT_UINT8) {
       net.AddRandomInput<D, float>(
           "Input", {batch, channels, height, width});
     } else {
-      net.AddRandomInput<DeviceType::CPU, uint8_t>(
+      net.AddRandomInput<RuntimeType::RT_CPU, uint8_t>(
           "Input", {batch, height, width, channels});
     }
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
 
@@ -46,14 +46,15 @@ void BMSpaceToBatch(
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -72,20 +73,20 @@ void BMSpaceToBatch(
 
 #if defined(MACE_ENABLE_OPENCL) && defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU); \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU); \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, CPU)
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, RT_OPENCL); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, RT_CPU); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, RT_CPU)
 #elif defined(MACE_ENABLE_OPENCL)
 #define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU); \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU)
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, RT_OPENCL); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, RT_CPU)
 #elif defined(MACE_ENABLE_QUANTIZE)
 #define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU); \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, CPU)
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, RT_CPU); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, RT_CPU)
 #else
 #define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU)
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, RT_CPU)
 #endif
 
 MACE_BM_SPACE_TO_BATCH(128, 16, 16, 128, 2);

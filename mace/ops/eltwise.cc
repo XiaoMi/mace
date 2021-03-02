@@ -33,8 +33,8 @@
 #include "mace/utils/memory.h"
 #include "mace/core/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/eltwise.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
@@ -233,8 +233,7 @@ inline void TensorBroadcastEltwise(const OpContext *context,
                                    const index_t common_size,
                                    const bool swapped,
                                    DstType *output) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -425,8 +424,7 @@ inline void TensorEltwise(const OpContext *context,
                           const index_t size,
                           const bool swapped,
                           DstType *output) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
     switch (type) {
@@ -555,8 +553,7 @@ inline void TensorScalarEltwise(const OpContext *context,
                                 const index_t size,
                                 const bool swapped,
                                 DstType *output) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
     switch (type) {
@@ -692,8 +689,7 @@ inline void TensorEltwisePerChannel(const OpContext *context,
                                     const index_t image_size,
                                     const bool swapped,
                                     DstType *output) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -950,7 +946,7 @@ inline void TensorEltwisePerChannel(const OpContext *context,
   }, 0, batch0, 1, 0, channel, 1);
 }
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class EltwiseOp : public Operation {
  public:
   explicit EltwiseOp(OpConstructContext *context)
@@ -975,11 +971,15 @@ class EltwiseOp : public Operation {
     const Tensor *input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
     Tensor *output = this->Output(0);
     if (input1 == nullptr) {
-      scalar_tensor_.Resize({});
-      Tensor::MappingGuard guard(&scalar_tensor_);
-      auto scalar_data = scalar_tensor_.mutable_data<T>();
+      auto *runtime = context->runtime();
+      if (scalar_tensor_ == nullptr) {
+        scalar_tensor_.reset(new Tensor(
+            runtime, input0->dtype(), MemoryType::CPU_BUFFER));
+        runtime->AllocateBufferForTensor(scalar_tensor_.get(), RENT_SCRATCH);
+      }
+      auto scalar_data = scalar_tensor_->mutable_data<T>();
       scalar_data[0] = static_cast<T>(scalar_input_);
-      input1 = &scalar_tensor_;
+      input1 = scalar_tensor_.get();
     }
 
     if (type_ == CLIP) {
@@ -1058,14 +1058,10 @@ class EltwiseOp : public Operation {
       }
     }
 
-    Tensor::MappingGuard input0_guard(input0);
-    Tensor::MappingGuard input1_guard(input1);
-
     const T *input0_ptr = input0->data<T>();
     const T *input1_ptr = input1->data<T>();
     if (has_data_format_ && input0->dim_size() == 4 && input1->dim_size() > 0) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
-      Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
       if (input1->dim_size() < input0->dim_size()) {
         TensorEltwisePerChannel(context,
@@ -1100,7 +1096,6 @@ class EltwiseOp : public Operation {
         output_shape[i] = std::max(input0_shape[i], input1_shape[i]);
       }
       MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-      Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
 
       bool need_general_broadcast = false;
@@ -1143,13 +1138,13 @@ class EltwiseOp : public Operation {
   float scalar_input_;
   int32_t scalar_input_index_;
   int has_data_format_;
-  Tensor scalar_tensor_;
   bool is_fallback_;
+  std::unique_ptr<Tensor> scalar_tensor_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
+class EltwiseOp<RuntimeType::RT_CPU, uint8_t> : public Operation {
  public:
   explicit EltwiseOp(OpConstructContext *context)
       : Operation(context),
@@ -1161,7 +1156,8 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
             "scalar_input_index", 1)),
         eltwise_delegator_(delegator::Eltwise::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Eltwise, DeviceType::CPU, uint8_t, kCpuImplType),
+            MACE_DELEGATOR_KEY(Eltwise, RuntimeType::RT_CPU,
+                               uint8_t, kCpuImplType),
             delegator::EltwiseParam(
                 static_cast<ops::EltwiseType>(
                     Operation::GetOptionalArg<int>(
@@ -1190,14 +1186,13 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
   std::vector<float> coeff_;
   float scalar_input_;
   int32_t scalar_input_index_;
-  Tensor scalar_tensor_;
   std::unique_ptr<delegator::Eltwise> eltwise_delegator_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class EltwiseOp<DeviceType::GPU, float> : public Operation {
+class EltwiseOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit EltwiseOp(OpConstructContext *context)
       : Operation(context) {
@@ -1232,14 +1227,14 @@ class EltwiseOp<DeviceType::GPU, float> : public Operation {
               context,
               operator_def_.get(),
               i,
-              OpenCLBufferType::ARGUMENT,
+              BufferContentType::ARGUMENT,
               mem_type) == MaceStatus::MACE_SUCCESS);
         } else if (ws->GetTensor(operator_def_->input(i))->dim_size() == 4) {
           MACE_CHECK(TransformFilter(
               context,
               operator_def_.get(),
               i,
-              OpenCLBufferType::IN_OUT_CHANNEL,
+              BufferContentType::IN_OUT_CHANNEL,
               mem_type) == MaceStatus::MACE_SUCCESS);
         } else {
           MACE_NOT_IMPLEMENTED;
@@ -1263,39 +1258,40 @@ class EltwiseOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterEltwise(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Eltwise", EltwiseOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Eltwise",
+                   EltwiseOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Eltwise", EltwiseOp, RuntimeType::RT_CPU);
 
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
-                   DeviceType::CPU, int32_t);
+                   RuntimeType::RT_CPU, int32_t);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Eltwise", EltwiseOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry, OpConditionBuilder("Eltwise").SetDevicePlacerFunc(
-                       [](OpConditionContext *context) -> std::set<DeviceType> {
-                         auto op = context->operator_def();
-                         if (op->output_shape_size() != op->output_size()) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+      [](OpConditionContext *context) -> std::set<RuntimeType> {
+        auto op = context->operator_def();
+        if (op->output_shape_size() != op->output_size()) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         int input_size = op->input_size();
-                         auto ws = context->workspace();
-                         for (int i = 0; i < input_size; ++i) {
-                           if (ws->HasTensor(op->input(i)) &&
-                               ws->GetTensor(op->input(i))->is_weight()) {
-                             int dims = ws->GetTensor(op->input(i))->dim_size();
-                             if (dims != 1 && dims != 4) {
-                               return {DeviceType::CPU};
-                             }
-                           }
-                         }
-                         return {DeviceType::CPU, DeviceType::GPU};
-                       }));
+        int input_size = op->input_size();
+        auto ws = context->workspace();
+        for (int i = 0; i < input_size; ++i) {
+          if (ws->HasTensor(op->input(i)) &&
+              ws->GetTensor(op->input(i))->is_weight()) {
+            int dims = ws->GetTensor(op->input(i))->dim_size();
+            if (dims != 1 && dims != 4) {
+              return {RuntimeType::RT_CPU};
+            }
+          }
+        }
+        return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+      }));
 }
 
 }  // namespace ops

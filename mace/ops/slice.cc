@@ -21,11 +21,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 class SliceOp;
 
 template <typename T>
-class SliceOp<DeviceType::CPU, T> : public Operation {
+class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit SliceOp(OpConstructContext *context)
       : Operation(context),
@@ -88,8 +88,6 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
     output_shape[axis] = output_dim;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
     index_t inner_size = 1;
@@ -119,8 +117,8 @@ class SliceOp<DeviceType::CPU, T> : public Operation {
 };
 
 void RegisterSlice(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Slice", SliceOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Slice", SliceOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Slice", SliceOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Slice", SliceOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

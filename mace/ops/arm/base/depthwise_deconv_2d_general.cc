@@ -39,12 +39,7 @@ MaceStatus DepthwiseDeconv2dGeneral<T>::Compute(const OpContext *context,
   if (padded_out != nullptr) {
     out_tensor = padded_out.get();
   }
-
   out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
 
   const T *input_data = input->data<T>();
   const T *filter_data = filter->data<T>();
@@ -72,8 +67,7 @@ MaceStatus DepthwiseDeconv2dGeneral<T>::Compute(const OpContext *context,
     }
   }
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1) {
@@ -125,12 +119,7 @@ MaceStatus GroupDeconv2dGeneral<T>::Compute(const OpContext *context,
   if (padded_out != nullptr) {
     out_tensor = padded_out.get();
   }
-
   out_tensor->Clear();
-
-  Tensor::MappingGuard input_mapper(input);
-  Tensor::MappingGuard filter_mapper(filter);
-  Tensor::MappingGuard output_mapper(output);
 
   const T *input_data = input->data<T>();
   const T *filter_data = filter->data<T>();
@@ -167,8 +156,7 @@ MaceStatus GroupDeconv2dGeneral<T>::Compute(const OpContext *context,
   const int in_channels_g = in_channels / group_;
   const int out_channels_g = out_channels / group_;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute3D([=](index_t start0, index_t end0, index_t step0,
                             index_t start1, index_t end1, index_t step1,
@@ -212,14 +200,14 @@ void RegisterDepthwiseDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, DepthwiseDeconv2dGeneral<float>,
       delegator::DepthwiseDeconv2dParam,
-      MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY(DepthwiseDeconv2d, RuntimeType::RT_CPU,
                          float, ImplType::NEON));
 }
 
 void RegisterGroupDeconv2dGeneralDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, GroupDeconv2dGeneral<float>, delegator::GroupDeconv2dParam,
-      MACE_DELEGATOR_KEY(GroupDeconv2d, DeviceType::CPU,
+      MACE_DELEGATOR_KEY(GroupDeconv2d, RuntimeType::RT_CPU,
                          float, ImplType::NEON));
 }
 

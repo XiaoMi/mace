@@ -22,6 +22,7 @@ import copy
 import yaml
 from enum import Enum
 
+from utils import util
 from utils.util import mace_check
 from utils.util import MaceLogger
 from py_proto import mace_pb2
@@ -86,6 +87,8 @@ class ModelKeys(object):
     output_data_formats = "output_data_formats"
     check_tensors = "check_tensors"
     check_shapes = "check_shapes"
+    output_aliases = "output_aliases"
+    input_aliases = "input_aliases"
     model_file_path = "model_file_path"
     model_sha256_checksum = "model_sha256_checksum"
     weight_file_path = "weight_file_path"
@@ -100,6 +103,8 @@ class ModelKeys(object):
     cl_mem_type = "cl_mem_type"
     data_type = "data_type"
     subgraphs = "subgraphs"
+    default_graph = 'default_graph'
+    order = 'order'
     validation_inputs_data = "validation_inputs_data"
 
 
@@ -119,6 +124,14 @@ def parse_data_format(str):
     mace_check(str in [e.name for e in DataFormat],
                "unknown data format %s" % str)
     return DataFormat[str]
+
+
+# must be same as MemoryType in mace.h
+class MemoryType(Enum):
+    CPU_BUFFER = 0
+    GPU_BUFFER = 1
+    GPU_IMAGE = 2
+    MEMORY_NONE = 10000
 
 
 class DeviceType(Enum):
@@ -208,7 +221,7 @@ def parse_float_array(xs):
 
 
 def normalize_input_data_types(conf, input_count):
-    default_input_dt = conf[ModelKeys.data_type]
+    default_input_dt = conf.get(ModelKeys.data_type, mace_pb2.DT_FLOAT)
     if default_input_dt == mace_pb2.DT_HALF:
         default_input_dt = mace_pb2.DT_FLOAT  # Compatible with old version
     conf_input_dts = to_list(conf.get(ModelKeys.input_data_types, []))
@@ -226,7 +239,7 @@ def normalize_input_data_types(conf, input_count):
 
 
 def normalize_output_data_types(conf, output_count):
-    default_output_dt = conf[ModelKeys.data_type]
+    default_output_dt = conf.get(ModelKeys.data_type, mace_pb2.DT_FLOAT)
     if default_output_dt == mace_pb2.DT_HALF:
         default_output_dt = mace_pb2.DT_FLOAT  # Compatible with old version
     conf_output_dts = to_list(conf.get(ModelKeys.output_data_types, []))
@@ -243,41 +256,58 @@ def normalize_output_data_types(conf, output_count):
     conf[ModelKeys.output_data_types] = output_data_types
 
 
-def normalize_model_config(conf):
+def normalize_graph_config(conf, model_output, org_model_dir):
     conf = copy.deepcopy(conf)
-    if ModelKeys.subgraphs in conf:
-        subgraph = conf[ModelKeys.subgraphs][0]
-        del conf[ModelKeys.subgraphs]
-        conf.update(subgraph)
+    if ModelKeys.platform in conf:
+        conf[ModelKeys.platform] = parse_platform(conf[ModelKeys.platform])
+    if ModelKeys.model_file_path in conf and org_model_dir is not None:
+        model_file = util.download_or_get_model(
+            conf[ModelKeys.model_file_path],
+            conf[ModelKeys.model_sha256_checksum], org_model_dir)
+        conf[ModelKeys.model_file_path] = model_file
+    if ModelKeys.weight_file_path in conf:
+        weight_file = util.download_or_get_model(
+            conf[ModelKeys.weight_file_path],
+            conf[ModelKeys.weight_sha256_checksum], "/tmp/")
+        conf[ModelKeys.weight_file_path] = weight_file
 
-    conf[ModelKeys.platform] = parse_platform(conf[ModelKeys.platform])
-    conf[ModelKeys.runtime] = parse_device_type(conf[ModelKeys.runtime])
+    if ModelKeys.runtime in conf:
+        conf[ModelKeys.runtime] = parse_device_type(conf[ModelKeys.runtime])
 
-    if ModelKeys.quantize in conf and conf[ModelKeys.quantize] == 1:
-        conf[ModelKeys.data_type] = mace_pb2.DT_FLOAT
-    else:
-        if ModelKeys.data_type in conf:
-            conf[ModelKeys.data_type] = parse_internal_data_type(
-                conf[ModelKeys.data_type])
-        else:
-            conf[ModelKeys.data_type] = mace_pb2.DT_HALF
+    if ModelKeys.data_type in conf:
+        conf[ModelKeys.data_type] = parse_internal_data_type(
+            conf[ModelKeys.data_type])
 
-    # parse input
-    conf[ModelKeys.input_tensors] = to_list(conf[ModelKeys.input_tensors])
-    conf[ModelKeys.input_tensors] = [str(i) for i in
-                                     conf[ModelKeys.input_tensors]]
-    input_count = len(conf[ModelKeys.input_tensors])
-    conf[ModelKeys.input_shapes] = [parse_int_array(shape) for shape in
-                                    to_list(conf[ModelKeys.input_shapes])]
-    mace_check(
-        len(conf[ModelKeys.input_shapes]) == input_count,
-        "input node count and shape count do not match")
+    # TODO: remove the following after quantize tool is made
+    if ModelKeys.quantize_range_file in conf and model_output is not None:
+        range_file = util.download_or_get_model(
+            conf[ModelKeys.quantize_range_file],
+            "", model_output)
+        conf[ModelKeys.quantize_range_file] = range_file
 
-    normalize_input_data_types(conf, input_count)
+    input_count = 0
+    input_data_formats = []
+    input_ranges = []
+    if ModelKeys.input_tensors in conf:
+        conf[ModelKeys.input_tensors] = to_list(conf[ModelKeys.input_tensors])
+        conf[ModelKeys.input_tensors] = [str(i) for i in
+                                         conf[ModelKeys.input_tensors]]
+        input_count = len(conf[ModelKeys.input_tensors])
+        input_data_formats = [parse_data_format(df) for df in
+                              to_list(conf.get(ModelKeys.input_data_formats,
+                                               ["NHWC"]))]
+        input_ranges = [parse_float_array(r) for r in
+                        to_list(conf.get(ModelKeys.input_ranges,
+                                         ["-1.0,1.0"]))]
+        normalize_input_data_types(conf, input_count)
 
-    input_data_formats = [parse_data_format(df) for df in
-                          to_list(conf.get(ModelKeys.input_data_formats,
-                                           ["NHWC"]))]
+    if ModelKeys.input_shapes in conf:
+        conf[ModelKeys.input_shapes] = [parse_int_array(shape) for shape in
+                                        to_list(conf[ModelKeys.input_shapes])]
+        mace_check(
+            len(conf[ModelKeys.input_shapes]) == input_count,
+            "input node count and shape count do not match")
+
     if len(input_data_formats) == 1 and input_count > 1:
         input_data_formats = [input_data_formats[0]] * input_count
     mace_check(len(input_data_formats) == input_count,
@@ -285,9 +315,6 @@ def normalize_model_config(conf):
                "the same as input tensors")
     conf[ModelKeys.input_data_formats] = input_data_formats
 
-    input_ranges = [parse_float_array(r) for r in
-                    to_list(conf.get(ModelKeys.input_ranges,
-                                     ["-1.0,1.0"]))]
     if len(input_ranges) == 1 and input_count > 1:
         input_ranges = [input_ranges[0]] * input_count
     mace_check(len(input_ranges) == input_count,
@@ -296,20 +323,27 @@ def normalize_model_config(conf):
     conf[ModelKeys.input_ranges] = input_ranges
 
     # parse output
-    conf[ModelKeys.output_tensors] = to_list(conf[ModelKeys.output_tensors])
-    conf[ModelKeys.output_tensors] = [str(i) for i in
-                                      conf[ModelKeys.output_tensors]]
-    output_count = len(conf[ModelKeys.output_tensors])
-    conf[ModelKeys.output_shapes] = [parse_int_array(shape) for shape in
-                                     to_list(conf[ModelKeys.output_shapes])]
-    mace_check(len(conf[ModelKeys.output_tensors]) == output_count,
-               "output node count and shape count do not match")
+    output_count = 0
+    output_data_types = []
+    output_data_formats = []
+    if ModelKeys.output_tensors in conf:
+        conf[ModelKeys.output_tensors] = \
+            to_list(conf[ModelKeys.output_tensors])
+        conf[ModelKeys.output_tensors] = [str(i) for i in
+                                          conf[ModelKeys.output_tensors]]
+        output_count = len(conf[ModelKeys.output_tensors])
+        output_data_formats = [parse_data_format(df) for df in
+                               to_list(conf.get(ModelKeys.output_data_formats,
+                                                ["NHWC"]))]
+        normalize_output_data_types(conf, output_count)
 
-    normalize_output_data_types(conf, output_count)
+    if ModelKeys.output_shapes in conf:
+        conf[ModelKeys.output_shapes] = [
+            parse_int_array(shape) for shape in
+            to_list(conf[ModelKeys.output_shapes])]
+        mace_check(len(conf[ModelKeys.output_tensors]) == output_count,
+                   "output node count and shape count do not match")
 
-    output_data_formats = [parse_data_format(df) for df in
-                           to_list(conf.get(ModelKeys.output_data_formats,
-                                            ["NHWC"]))]
     if len(output_data_formats) == 1 and output_count > 1:
         output_data_formats = [output_data_formats[0]] * output_count
     mace_check(len(output_data_formats) == output_count,
@@ -324,7 +358,130 @@ def normalize_model_config(conf):
         mace_check(len(conf[ModelKeys.check_tensors]) == len(
             conf[ModelKeys.check_shapes]),
                    "check tensors count and shape count do not match.")
+    return conf
+
+
+def set_default_config_value(nor_subgraph, model):
+    if ModelKeys.quantize in model and model[ModelKeys.quantize] == 1:
+        model[ModelKeys.data_type] = mace_pb2.DT_FLOAT
+    if ModelKeys.quantize in nor_subgraph and \
+            nor_subgraph[ModelKeys.quantize] == 1:
+        nor_subgraph[ModelKeys.data_type] = mace_pb2.DT_FLOAT
+    elif ModelKeys.data_type not in nor_subgraph:
+        if ModelKeys.data_type in model:
+            nor_subgraph[ModelKeys.data_type] = model[ModelKeys.data_type]
+        elif ModelKeys.quantize in model and model[ModelKeys.quantize] == 1:
+            nor_subgraph[ModelKeys.data_type] = mace_pb2.DT_FLOAT
+        else:
+            nor_subgraph[ModelKeys.data_type] = mace_pb2.DT_HALF
+
+
+def normalize_model_config(conf, model_output=None, org_model_dir=None):
+    conf = normalize_graph_config(conf, model_output, org_model_dir)
+    if ModelKeys.subgraphs in conf:
+        nor_subgraphs = {}
+        if isinstance(conf[ModelKeys.subgraphs], list):
+            nor_subgraph = normalize_graph_config(conf[ModelKeys.subgraphs][0],
+                                                  model_output, org_model_dir)
+            conf[ModelKeys.input_tensors] = \
+                nor_subgraph[ModelKeys.input_tensors]
+            conf[ModelKeys.output_tensors] = \
+                nor_subgraph[ModelKeys.output_tensors]
+            set_default_config_value(nor_subgraph, conf)
+            nor_subgraphs[ModelKeys.default_graph] = nor_subgraph
+        else:
+            for graph_name, subgraph in conf[ModelKeys.subgraphs].items():
+                nor_subgraph = normalize_graph_config(subgraph, model_output,
+                                                      org_model_dir)
+                set_default_config_value(nor_subgraph, conf)
+                nor_subgraphs[graph_name] = nor_subgraph
+
+        conf[ModelKeys.subgraphs] = nor_subgraphs
+
+        model_base_conf = copy.deepcopy(conf)
+        del model_base_conf[ModelKeys.subgraphs]
+        subgraphs = conf[ModelKeys.subgraphs]
+        for net_name, subgraph in subgraphs.items():
+            net_conf = copy.deepcopy(model_base_conf)
+            net_conf.update(subgraph)
+            subgraphs[net_name] = net_conf
 
     MaceLogger.summary(conf)
-
     return conf
+
+
+def find_input_tensors_info(subgraphs, tensor_names):
+    tensors_info = {}
+    all_tensor_names = []
+    all_tensor_shapes = []
+    all_data_formats = []
+    all_data_types = []
+    all_ranges = []
+    for (subname, subgraph) in subgraphs.items():
+        all_tensor_names.extend(subgraph[ModelKeys.input_tensors])
+        all_tensor_shapes.extend(subgraph[ModelKeys.input_shapes])
+        all_data_formats.extend(subgraph[ModelKeys.input_data_formats])
+        all_data_types.extend(subgraph[ModelKeys.input_data_types])
+        if ModelKeys.input_ranges in subgraph:
+            all_ranges.extend(subgraph[ModelKeys.input_ranges])
+        else:
+            all_ranges.extend([None] * len(subgraph[ModelKeys.input_tensors]))
+    name_id = {}
+    for i in range(len(all_tensor_names)):
+        name_id[all_tensor_names[i]] = i
+    tensors_info[ModelKeys.input_tensors] = []
+    tensors_info[ModelKeys.input_shapes] = []
+    tensors_info[ModelKeys.input_data_formats] = []
+    tensors_info[ModelKeys.input_data_types] = []
+    tensors_info[ModelKeys.input_ranges] = []
+    for tensor_name in tensor_names:
+        i = name_id[tensor_name]
+        tensors_info[ModelKeys.input_tensors].append(tensor_name)
+        tensors_info[ModelKeys.input_shapes].append(all_tensor_shapes[i])
+        tensors_info[ModelKeys.input_data_formats].append(all_data_formats[i])
+        tensors_info[ModelKeys.input_data_types].append(all_data_types[i])
+        tensors_info[ModelKeys.input_ranges].append(all_ranges[i])
+    return tensors_info
+
+
+def find_output_tensors_info(subgraphs, tensor_names):
+    tensors_info = {}
+    all_tensor_names = []
+    all_tensor_shapes = []
+    all_data_formats = []
+    all_data_types = []
+    all_check_tensor_names = []
+    all_check_tensor_shapes = []
+    for (subname, subgraph) in subgraphs.items():
+        all_tensor_names.extend(subgraph[ModelKeys.output_tensors])
+        all_tensor_shapes.extend(subgraph[ModelKeys.output_shapes])
+        all_data_formats.extend(subgraph[ModelKeys.output_data_formats])
+        all_data_types.extend(subgraph[ModelKeys.output_data_types])
+        output_num = len(subgraph[ModelKeys.output_tensors])
+        if ModelKeys.check_tensors in subgraph:
+            all_check_tensor_names.extend(subgraph[ModelKeys.check_tensors])
+        else:
+            all_check_tensor_names.extend([None] * output_num)
+        if ModelKeys.check_shapes in subgraph:
+            all_check_tensor_shapes.extend(subgraph[ModelKeys.check_shapes])
+        else:
+            all_check_tensor_shapes.extend([None] * output_num)
+
+    name_id = {}
+    for i in range(len(all_tensor_names)):
+        name_id[all_tensor_names[i]] = i
+    tensors_info[ModelKeys.output_tensors] = []
+    tensors_info[ModelKeys.output_shapes] = []
+    tensors_info[ModelKeys.output_data_formats] = []
+    tensors_info[ModelKeys.output_data_types] = []
+    tensors_info[ModelKeys.check_tensors] = []
+    tensors_info[ModelKeys.check_shapes] = []
+    for tensor_name in tensor_names:
+        i = name_id[tensor_name]
+        tensors_info[ModelKeys.output_tensors].append(tensor_name)
+        tensors_info[ModelKeys.output_shapes].append(all_tensor_shapes[i])
+        tensors_info[ModelKeys.output_data_formats].append(all_data_formats[i])
+        tensors_info[ModelKeys.output_data_types].append(all_data_types[i])
+        tensors_info[ModelKeys.check_tensors].append(all_check_tensor_names[i])
+        tensors_info[ModelKeys.check_shapes].append(all_check_tensor_shapes[i])
+    return tensors_info

@@ -31,7 +31,7 @@ void TestIdentity(const std::vector<index_t> &shape) {
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", shape);
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Input", shape);
 
   // Run
   net.RunOp();

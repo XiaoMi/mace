@@ -16,7 +16,7 @@
 
 namespace mace {
 
-OpInitContext::OpInitContext(Workspace *ws, Device *device)
-    : ws_(ws), device_(device) {}
+OpInitContext::OpInitContext(Workspace *ws, Runtime *runtime)
+    : ws_(ws), runtime_(runtime) {}
 
 }  // namespace mace

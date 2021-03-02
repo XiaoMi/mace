@@ -29,11 +29,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class GroupNormOp;
 
 template<class T>
-class GroupNormOp<DeviceType::CPU, T> : public Operation {
+class GroupNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit GroupNormOp(OpConstructContext *context)
       : Operation(context),
@@ -58,20 +58,16 @@ class GroupNormOp<DeviceType::CPU, T> : public Operation {
                "group_num_ invalid.", channel, group_num_);
     const auto group_size = channel / group_num_;
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_output(output);
-
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
     const auto outer_loop = batch * group_num_;
     const auto inner_loop = group_size * height * width;
-    utils::ThreadPool &thread_pool =
-        context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
-    auto *scratch_buffer = context->device()->scratch_buffer();
-    scratch_buffer->Rewind();
-    auto scratch_buffer_size = outer_loop * sizeof(float) * 2;
-    MACE_RETURN_IF_ERROR(scratch_buffer->GrowSize(scratch_buffer_size));
+    auto *runtime = context->runtime();
+    MemInfo mem_info(input->memory_type(),
+                     DataType::DT_FLOAT, {outer_loop * 2});
+    auto scratch_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
     float *mean_ptr = scratch_buffer->mutable_data<float>();
     float *variance_ptr = mean_ptr + outer_loop;
 
@@ -135,7 +131,7 @@ class GroupNormOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class GroupNormOp<DeviceType::GPU, float> : public Operation {
+class GroupNormOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit GroupNormOp(OpConstructContext *context) : Operation(context) {
     const auto group_num = Operation::GetOptionalArg<int>("group_num", 32);
@@ -168,15 +164,16 @@ class GroupNormOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterGroupNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "GroupNorm", GroupNormOp,
-                   DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "GroupNorm", GroupNormOp, DeviceType::CPU);
+                   RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "GroupNorm",
+                        GroupNormOp, RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "GroupNorm", GroupNormOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry, OpConditionBuilder("GroupNorm").SetDevicePlacerFunc(
-      [](OpConditionContext *context) -> std::set<DeviceType> {
+      [](OpConditionContext *context) -> std::set<RuntimeType> {
         auto op = context->operator_def();
         if (op->output_shape_size() != op->output_size()) {
-          return {DeviceType::CPU, DeviceType::GPU};
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
         }
 
         const int group_num = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
@@ -184,10 +181,10 @@ void RegisterGroupNorm(OpRegistry *op_registry) {
         auto output_channels = op->output_shape(0).dims()[3];
         const int group_size = output_channels / group_num;
         if (group_size % 4 == 0) {
-          return {DeviceType::CPU, DeviceType::GPU};
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
         }
 
-        return {DeviceType::CPU};
+        return {RuntimeType::RT_CPU};
       }));
 }
 

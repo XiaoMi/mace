@@ -22,7 +22,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
@@ -40,15 +40,15 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
+  net.Setup(D);
+
   // Warm-up
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
     net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
     net.Sync();
   }
 }
@@ -67,12 +67,12 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_ADDN(INPUTS, N, H, W, C)                 \
-  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU);    \
-  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, GPU);    \
-  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, half, GPU);
+  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, RT_CPU);    \
+  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, RT_OPENCL);    \
+  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, half, RT_OPENCL);
 #else
 #define MACE_BM_ADDN(INPUTS, N, H, W, C)                 \
-  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU);
+  MACE_BM_ADDN_MACRO(INPUTS, N, H, W, C, float, RT_CPU);
 #endif
 
 MACE_BM_ADDN(2, 1, 256, 256, 32);

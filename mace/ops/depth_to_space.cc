@@ -25,11 +25,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class DepthToSpaceOp;
 
 template<class T>
-class DepthToSpaceOp<CPU, T> : public Operation {
+class DepthToSpaceOp<RT_CPU, T> : public Operation {
  public:
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context),
@@ -56,9 +56,6 @@ class DepthToSpaceOp<CPU, T> : public Operation {
                                          output_height, output_width};
 
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-
-    Tensor::MappingGuard logits_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
@@ -95,7 +92,7 @@ class DepthToSpaceOp<CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class DepthToSpaceOp<CPU, uint8_t> : public Operation {
+class DepthToSpaceOp<RT_CPU, uint8_t> : public Operation {
  public:
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context),
@@ -122,9 +119,6 @@ class DepthToSpaceOp<CPU, uint8_t> : public Operation {
         output_shape = {batch_size, output_height, output_width, output_depth};
 
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-
-    Tensor::MappingGuard logits_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const uint8_t *input_ptr = input->data<uint8_t>();
     uint8_t *output_ptr = output->mutable_data<uint8_t>();
 
@@ -162,7 +156,7 @@ class DepthToSpaceOp<CPU, uint8_t> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class DepthToSpaceOp<DeviceType::GPU, float> : public Operation {
+class DepthToSpaceOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context) {
@@ -187,13 +181,13 @@ class DepthToSpaceOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterDepthToSpace(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthToSpace",
-                   DepthToSpaceOp, DeviceType::CPU, float);
+                   DepthToSpaceOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "DepthToSpace",
-                        DepthToSpaceOp, DeviceType::CPU);
+                        DepthToSpaceOp, RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "DepthToSpace",
-                   DepthToSpaceOp, DeviceType::CPU, uint8_t);
+                   DepthToSpaceOp, RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "DepthToSpace", DepthToSpaceOp);

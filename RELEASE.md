@@ -77,7 +77,7 @@ yungchienhsu, gasgallo, albu, yunikkk
 1. Remove all APIs in mace_runtime.h
 
 ## New APIs
-1. Add GPUContext and GPUContextBuilder API.
+1. Add OpenclContext and GPUContextBuilder API.
 2. Add MaceEngineConfig API.
 3. Add MaceStatus API.
 4. MaceTensor support data format.

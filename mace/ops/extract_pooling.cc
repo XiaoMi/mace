@@ -29,15 +29,14 @@
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
 
-
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class ExtractPoolingOp;
 
-template <typename T>
-class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
+template<typename T>
+class ExtractPoolingOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit ExtractPoolingOp(OpConstructContext *context)
       : Operation(context),
@@ -62,7 +61,7 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
                forward_indexes_.size(), ").");
     for (size_t i = 0; i < counts_.size(); ++i) {
       MACE_CHECK(static_cast<index_t>(counts_[i]) ==
-                     forward_indexes_[2 * i + 1] - forward_indexes_[2 * i],
+          forward_indexes_[2 * i + 1] - forward_indexes_[2 * i],
                  "invalid forward indexes and counts values");
     }
   }
@@ -89,24 +88,18 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
     output_shape[dim_size - 2] = output_chunk;
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    const index_t extract_out_size = PadAlignSize(output_dim * sizeof(T));
-    ScratchBuffer *scratch = context->device()->scratch_buffer();
-    scratch->Rewind();
-    scratch->GrowSize(extract_out_size);
+    Runtime *runtime = context->runtime();
+    Tensor extract_out(runtime, DataTypeToEnum<T>::v(),
+                       input->memory_type(), {1, output_dim});
+    runtime->AllocateBufferForTensor(&extract_out, RENT_SCRATCH);
 
-    Tensor extract_out(
-        scratch->Scratch(extract_out_size), DataTypeToEnum<T>::v());
-    extract_out.Reshape({1, output_dim});
     extract_out.Clear();
     T *extract_out_data = extract_out.mutable_data<T>();
 
-    Tensor::MappingGuard guard_input(input);
-    Tensor::MappingGuard guard_output(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     for (index_t b = 0; b < batch; ++b) {
       for (index_t i = 0; i < output_chunk; ++i) {
@@ -180,9 +173,9 @@ class ExtractPoolingOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterExtractPooling(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExtractPooling", ExtractPoolingOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "ExtractPooling", ExtractPoolingOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

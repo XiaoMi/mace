@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "mace/core/ops/op_context.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/ops/common/activation_type.h"
-#include "mace/core/runtime/opencl/opencl_helper.h"
+#include "mace/runtimes/opencl/core/opencl_executor.h"
+#include "mace/runtimes/opencl/core/opencl_helper.h"
+#include "mace/runtimes/opencl/opencl_runtime.h"
 
 namespace mace {
 namespace ops {
@@ -27,7 +28,7 @@ namespace {
 const uint32_t kernel_cache_size = (4 + 4 + 4) * 4 * 4;
 // TODO(liuqi): Fix the specific value.
 const uint32_t lws_limit = 128;
-std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+std::vector<uint32_t> LocalWS(OpenclExecutor *executor,
                               const uint32_t *gws,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
@@ -35,8 +36,8 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = runtime->device_global_mem_cache_size();
-    uint32_t compute_units = runtime->device_compute_units();
+        cache_size = executor->device_global_mem_cache_size();
+    uint32_t compute_units = executor->device_compute_units();
     const uint32_t base =
         std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
@@ -96,7 +97,7 @@ MaceStatus Conv2dK1x1(OpContext *context,
   const index_t width_blocks = RoundUpDiv4(width);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
@@ -144,11 +145,11 @@ MaceStatus Conv2dK1x1(OpContext *context,
       }
     }
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("conv_2d_1x1", kernel_name,
-                                              built_options, kernel));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("conv_2d_1x1", kernel_name,
+                                               built_options, kernel));
 
     *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
@@ -161,12 +162,12 @@ MaceStatus Conv2dK1x1(OpContext *context,
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
     MACE_SET_3D_GWS_ARGS(*kernel, gws);
-    kernel->setArg(idx++, *(input->opencl_image()));
-    kernel->setArg(idx++, *(filter->opencl_image()));
+    kernel->setArg(idx++, *(input->memory<cl::Image>()));
+    kernel->setArg(idx++, *(filter->memory<cl::Image>()));
     if (bias != nullptr) {
-      kernel->setArg(idx++, *(bias->opencl_image()));
+      kernel->setArg(idx++, *(bias->memory<cl::Image>()));
     }
-    kernel->setArg(idx++, *(output->opencl_image()));
+    kernel->setArg(idx++, *(output->mutable_memory<cl::Image>()));
     // FIXME handle flexable data type: half not supported
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, activation_coefficient);
@@ -181,11 +182,11 @@ MaceStatus Conv2dK1x1(OpContext *context,
     *prev_input_shape = input->shape();
   }
 
-  std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
+  std::vector<uint32_t> lws = LocalWS(executor, gws, *kwg_size);
   std::string tuning_key =
       Concat("conv2d_1x1_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

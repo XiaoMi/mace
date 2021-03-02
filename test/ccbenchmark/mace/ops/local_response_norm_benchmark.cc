@@ -19,7 +19,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 static void LocalResponseNorm(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
@@ -27,7 +27,7 @@ static void LocalResponseNorm(
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   }
 
@@ -38,18 +38,19 @@ static void LocalResponseNorm(
 
   // tuning
   setenv("MACE_TUNING", "1", 1);
-  net.RunOp(D);
+  net.Setup(D);
+  net.Run();
   unsetenv("MACE_TUNING");
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -66,7 +67,7 @@ static void LocalResponseNorm(
       MACE_BM_LOCAL_RESPONSE_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_LOCAL_RESPONSE_NORM(N, C, H, W)                 \
-  MACE_BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, CPU);
+  MACE_BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, RT_CPU);
 
 MACE_BM_LOCAL_RESPONSE_NORM(1, 1, 512, 512);
 MACE_BM_LOCAL_RESPONSE_NORM(1, 3, 128, 128);

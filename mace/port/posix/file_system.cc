@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <string>
+#include <iostream>
 
 #include "mace/utils/memory.h"
 

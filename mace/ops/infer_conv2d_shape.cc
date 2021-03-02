@@ -31,7 +31,6 @@ class InferConv2dShapeOp : public Operation {
     Tensor *output = this->Output(0);
     MACE_CHECK(input->dim_size() == 4);
     output->Resize({input->dim_size()});
-    Tensor::MappingGuard output_guard(output);
     int32_t *output_data = output->mutable_data<int32_t>();
 
     auto has_data_format =
@@ -104,14 +103,14 @@ class InferConv2dShapeOp : public Operation {
 
 void RegisterInferConv2dShape(OpRegistry *op_registry) {
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
-                            InferConv2dShapeOp, DeviceType::CPU, float);
+                            InferConv2dShapeOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, "InferConv2dShape",
-                                 InferConv2dShapeOp, DeviceType::CPU);
+                                 InferConv2dShapeOp, RuntimeType::RT_CPU);
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
-                            InferConv2dShapeOp, DeviceType::CPU, int32_t);
+                            InferConv2dShapeOp, RuntimeType::RT_CPU, int32_t);
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP_BY_CLASS(op_registry, "InferConv2dShape",
-                            InferConv2dShapeOp, DeviceType::GPU, float);
+                            InferConv2dShapeOp, RuntimeType::RT_OPENCL, float);
 #endif  // MACE_ENABLE_OPENCL
 }
 

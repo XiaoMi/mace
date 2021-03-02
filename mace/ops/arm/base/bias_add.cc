@@ -43,15 +43,10 @@ MaceStatus BiasAdd<T>::Compute(const OpContext *context,
       output->Copy(*input);
     } else {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-      Tensor::MappingGuard input_guard(input);
-      Tensor::MappingGuard bias_guard(bias);
-      Tensor::MappingGuard output_guard(output);
       AddBias(context, input, bias, output, isNCHW);
     }
   } else {
     if (bias != nullptr) {
-      Tensor::MappingGuard input_guard(input);
-      Tensor::MappingGuard bias_guard(bias);
       AddBias(context, input, bias, output, isNCHW);
     }
   }
@@ -65,9 +60,7 @@ void BiasAdd<T>::AddBias(const OpContext *context,
                          const Tensor *bias,
                          mace::Tensor *output,
                          const bool isNCHW) {
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
-
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
   if (isNCHW) {
     if (bias->dim_size() == 1) {
       AddBiasNCHW<1>(&thread_pool, input, bias, output);
@@ -127,7 +120,6 @@ void BiasAdd<T>::AddBiasNCHW(utils::ThreadPool *thread_pool,
       0, batch, 1, 0, channels, 1);
 }
 
-
 template <typename T>
 template <int Dim>
 void BiasAdd<T>::AddBiasNHWC(utils::ThreadPool *thread_pool,
@@ -167,17 +159,19 @@ void BiasAdd<T>::AddBiasNHWC(utils::ThreadPool *thread_pool,
 void RegisterBiasAddDelegator(OpDelegatorRegistry *registry) {
   MACE_REGISTER_DELEGATOR(
       registry, BiasAdd<float>, DelegatorParam,
-      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, float, ImplType::NEON));
+      MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, float, ImplType::NEON));
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_DELEGATOR(
       registry, BiasAdd<uint8_t>, DelegatorParam,
-      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, uint8_t, ImplType::NEON));
+      MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU,
+                         uint8_t, ImplType::NEON));
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_BF16_DELEGATOR(
       registry, BiasAdd<BFloat16>, DelegatorParam,
-      MACE_DELEGATOR_KEY(BiasAdd, DeviceType::CPU, BFloat16, ImplType::NEON));
+      MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU,
+                         BFloat16, ImplType::NEON));
 }
 
 }  // namespace arm

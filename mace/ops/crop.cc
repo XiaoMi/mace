@@ -25,11 +25,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class CropOp;
 
 template<class T>
-class CropOp<DeviceType::CPU, T> : public Operation {
+class CropOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit CropOp(OpConstructContext *context)
       : Operation(context),
@@ -112,7 +112,7 @@ class CropOp<DeviceType::CPU, T> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class CropOp<DeviceType::GPU, float> : public Operation {
+class CropOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit CropOp(OpConstructContext *context)
       : Operation(context) {
@@ -133,26 +133,26 @@ class CropOp<DeviceType::GPU, float> : public Operation {
 #endif  // MACE_ENABLE_OPENCL
 
 void RegisterCrop(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "Crop", CropOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "Crop", CropOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "Crop", CropOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "Crop", CropOp, RuntimeType::RT_CPU);
   MACE_REGISTER_GPU_OP(op_registry, "Crop", CropOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry,
       OpConditionBuilder("Crop")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 int has_data_format =
                     ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                         *op, "has_data_format", 0);
                 if (!has_data_format ||
                     op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

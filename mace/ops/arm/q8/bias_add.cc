@@ -17,6 +17,7 @@
 #include <arm_neon.h>
 
 #include "mace/core/quantize.h"
+#include "mace/ops/common/gemmlowp_util.h"
 
 namespace mace {
 namespace ops {

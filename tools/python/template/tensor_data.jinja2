@@ -17,7 +17,7 @@
 #include "mace/public/mace.h"
 
 namespace mace {
-namespace {{tag}} {
+namespace {{model_tag}} {
 
 alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
 {% for d in model_data %}{{"0x%02X, " % d }}{%endfor%}
@@ -31,6 +31,6 @@ MACE_API int64_t GetModelSize() {
   return {{ model_data_size }};
 }
 
-}  // namespace {{tag}}
+}  // namespace {{model_tag}}
 }  // namespace mace
 

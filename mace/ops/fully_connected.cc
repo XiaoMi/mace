@@ -25,10 +25,11 @@
 #include "mace/ops/delegator/gemv.h"
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/fully_connected.h"
+#include "mace/runtimes/opencl/transform/buffer_transformer.h"
 #endif  // MACE_ENABLE_OPENCL
 
+#include "mace/runtimes/cpu/cpu_runtime.h"
 #include "mace/utils/memory.h"
 
 namespace mace {
@@ -53,22 +54,24 @@ class FullyConnectedOpBase : public Operation {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class FullyConnectedOp;
 
 template<class T>
-class FullyConnectedOp<DeviceType::CPU, T> : public FullyConnectedOpBase {
+class FullyConnectedOp<RuntimeType::RT_CPU, T> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context),
         activation_delegator_(delegator::Activation::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Activation, DeviceType::CPU, T, kCpuImplType),
-            delegator::ActivationParam(
-                activation_, relux_max_limit_, activation_coefficient_))),
+            MACE_DELEGATOR_KEY(Activation,
+                               RuntimeType::RT_CPU, T, kCpuImplType),
+            delegator::ActivationParam(activation_,
+                                       relux_max_limit_,
+                                       activation_coefficient_))),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, T, kCpuImplType),
+            MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, T, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -119,14 +122,15 @@ class FullyConnectedOp<DeviceType::CPU, T> : public FullyConnectedOpBase {
 
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
-class FullyConnectedOp<DeviceType::CPU, uint8_t>
+class FullyConnectedOp<RuntimeType::RT_CPU, uint8_t>
     : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
-            MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, uint8_t, kCpuImplType),
+            MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU,
+                               uint8_t, kCpuImplType),
             DelegatorParam())) {}
 
   MaceStatus Run(OpContext *context) override {
@@ -147,7 +151,7 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
                  " and shape of Bias: ", bias->dim(0),
                  " don't match.");
     }
-    auto gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
+    auto gemm_context = CpuRuntime::Get(context)->GetGemmlowpContext();
     MACE_CHECK_NOTNULL(gemm_context);
 
     std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
@@ -176,7 +180,8 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
+class FullyConnectedOp<RuntimeType::RT_OPENCL, float>
+    : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context) {
@@ -192,11 +197,11 @@ class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
         context,
         operator_def_.get(),
         1,
-        OpenCLBufferType::WEIGHT_WIDTH,
+        BufferContentType::WEIGHT_WIDTH,
         mem_type) == MaceStatus::MACE_SUCCESS);
     if (operator_def_->input_size() > 2) {
-      MACE_CHECK(TransformFilter(
-          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
+      MACE_CHECK(TransformFilter(context, operator_def_.get(), 2,
+                                 BufferContentType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
   }
@@ -224,13 +229,13 @@ class FullyConnectedOp<DeviceType::GPU, float> : public FullyConnectedOpBase {
 
 void RegisterFullyConnected(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "FullyConnected",
-                   FullyConnectedOp, DeviceType::CPU, float);
+                   FullyConnectedOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "FullyConnected",
-                        FullyConnectedOp, DeviceType::CPU);
+                        FullyConnectedOp, RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "FullyConnected",
-                   FullyConnectedOp, DeviceType::CPU, uint8_t);
+                   FullyConnectedOp, RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "FullyConnected", FullyConnectedOp);

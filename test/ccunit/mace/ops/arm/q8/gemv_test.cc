@@ -30,10 +30,11 @@ void TestGemvInt32(const index_t batch,
                    const index_t width,
                    const bool lhs_batched,
                    const bool rhs_batched) {
-  Tensor lhs(GetCPUAllocator(), DataType::DT_UINT8);
-  Tensor rhs(GetCPUAllocator(), DataType::DT_UINT8);
-  Tensor bias(GetCPUAllocator(), DataType::DT_INT32);
-  Tensor output(GetCPUAllocator(), DataType::DT_INT32);
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  Tensor lhs(cpu_runtime, DataType::DT_UINT8);
+  Tensor rhs(cpu_runtime, DataType::DT_UINT8);
+  Tensor bias(cpu_runtime, DataType::DT_INT32);
+  Tensor output(cpu_runtime, DataType::DT_INT32);
   lhs.SetScale(0.5);
   rhs.SetScale(0.3);
   lhs.SetZeroPoint(0);
@@ -54,14 +55,11 @@ void TestGemvInt32(const index_t batch,
     GenerateRandomIntTypeData<int32_t>(bias.shape(), bias_data);
   }
 
-  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
-  thread_pool.Init();
-  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
   OpsTestNet net;
-  OpContext context(net.ws(), &cpu_device);
+  OpContext context(net.ws(), cpu_runtime);
   std::unique_ptr<delegator::Gemv> gemv = delegator::Gemv::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, int32_t, ImplType::NEON),
+      MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, int32_t, ImplType::NEON),
       DelegatorParam());
   gemv->Compute(&context,
                 &lhs,
@@ -74,11 +72,11 @@ void TestGemvInt32(const index_t batch,
                 rhs_batched,
                 &output);
 
-  Tensor expected_output(GetCPUAllocator(), DataType::DT_INT32);
+  Tensor expected_output(cpu_runtime, DataType::DT_INT32);
   expected_output.Resize({batch, height});
   std::unique_ptr<delegator::Gemv> gemv_ref = delegator::Gemv::Create(
       context.workspace(), MACE_DELEGATOR_KEY(
-      Gemv, DeviceType::CPU, int32_t, ImplType::REF), DelegatorParam());
+      Gemv, RuntimeType::RT_CPU, int32_t, ImplType::REF), DelegatorParam());
   gemv_ref->Compute(&context,
                     &lhs,
                     &rhs,
@@ -105,10 +103,11 @@ void TestGemvUint8(const index_t batch,
                    const index_t width,
                    const bool lhs_batched,
                    const bool rhs_batched) {
-  Tensor lhs(GetCPUAllocator(), DataType::DT_UINT8);
-  Tensor rhs(GetCPUAllocator(), DataType::DT_UINT8);
-  Tensor bias(GetCPUAllocator(), DataType::DT_INT32);
-  Tensor output(GetCPUAllocator(), DataType::DT_UINT8);
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RuntimeType::RT_CPU);
+  Tensor lhs(cpu_runtime, DataType::DT_UINT8);
+  Tensor rhs(cpu_runtime, DataType::DT_UINT8);
+  Tensor bias(cpu_runtime, DataType::DT_INT32);
+  Tensor output(cpu_runtime, DataType::DT_UINT8);
   lhs.SetScale(0.5);
   rhs.SetScale(0.3);
   output.SetScale(0.6);
@@ -132,14 +131,11 @@ void TestGemvUint8(const index_t batch,
     GenerateRandomIntTypeData<int32_t>(bias.shape(), bias_data);
   }
 
-  utils::ThreadPool thread_pool(1, AFFINITY_NONE);
-  thread_pool.Init();
-  CPUDevice cpu_device(1, AFFINITY_NONE, &thread_pool);
   OpsTestNet net;
-  OpContext context(net.ws(), &cpu_device);
+  OpContext context(net.ws(), cpu_runtime);
   std::unique_ptr<delegator::Gemv> gemv = delegator::Gemv::Create(
       context.workspace(),
-      MACE_DELEGATOR_KEY(Gemv, DeviceType::CPU, uint8_t, ImplType::NEON),
+      MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, uint8_t, ImplType::NEON),
       DelegatorParam());
   gemv->Compute(&context,
                 &lhs,
@@ -152,13 +148,13 @@ void TestGemvUint8(const index_t batch,
                 rhs_batched,
                 &output);
 
-  Tensor expected_output(GetCPUAllocator(), DataType::DT_INT32);
+  Tensor expected_output(cpu_runtime, DataType::DT_INT32);
   expected_output.SetScale(0.6);
   expected_output.SetZeroPoint(57);
   expected_output.Resize({batch, height});
   std::unique_ptr<delegator::Gemv> gemv_ref = delegator::Gemv::Create(
       context.workspace(), MACE_DELEGATOR_KEY(
-      Gemv, DeviceType::CPU, uint8_t, ImplType::REF), DelegatorParam());
+      Gemv, RuntimeType::RT_CPU, uint8_t, ImplType::REF), DelegatorParam());
   gemv_ref->Compute(&context,
                     &lhs,
                     &rhs,

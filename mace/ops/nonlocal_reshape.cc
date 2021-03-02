@@ -26,7 +26,7 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<RuntimeType D, class T>
 class NonlocalReshapeOp : public Operation {
  public:
   explicit NonlocalReshapeOp(OpConstructContext *context)
@@ -52,6 +52,14 @@ class NonlocalReshapeOp : public Operation {
     return MaceStatus::MACE_SUCCESS;
   }
 
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0) {
+      return 0;
+    } else {
+      return Operation::ReuseTensorMapId(output_idx);
+    }
+  }
+
  private:
   bool has_df_;
 
@@ -62,11 +70,11 @@ class NonlocalReshapeOp : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template <>
-class NonlocalReshapeOp<GPU, float> : public Operation {
+class NonlocalReshapeOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit NonlocalReshapeOp(OpConstructContext *context)
-      : Operation(context) {
-    if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
+      : Operation(context), mem_type_(context->GetOpMemoryType()) {
+    if (mem_type_ == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ReshapeKernel>(context);
     } else {
       kernel_ = make_unique<opencl::buffer::ReshapeKernel>();
@@ -87,8 +95,17 @@ class NonlocalReshapeOp<GPU, float> : public Operation {
     return kernel_->Compute(context, input, out_shape, output);
   }
 
+  int ReuseTensorMapId(size_t output_idx) const override {
+    if (output_idx == 0 && mem_type_ == MemoryType::GPU_BUFFER) {
+      return 0;
+    } else {
+      return Operation::ReuseTensorMapId(output_idx);
+    }
+  }
+
  private:
   std::unique_ptr<OpenCLReshapeKernel> kernel_;
+  MemoryType mem_type_;
   MACE_OP_INPUT_TAGS(INPUT, SHAPE);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
@@ -96,44 +113,44 @@ class NonlocalReshapeOp<GPU, float> : public Operation {
 
 void RegisterNonlocalReshape(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "NonlocalReshape",
-                   NonlocalReshapeOp, DeviceType::CPU, float);
+                   NonlocalReshapeOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_OP(op_registry, "NonlocalReshape",
-                   NonlocalReshapeOp, DeviceType::CPU, int32_t);
+                   NonlocalReshapeOp, RuntimeType::RT_CPU, int32_t);
   MACE_REGISTER_GPU_OP(op_registry, "NonlocalReshape", NonlocalReshapeOp);
   MACE_REGISTER_OP_CONDITION(
       op_registry, OpConditionBuilder("NonlocalReshape").SetDevicePlacerFunc(
-                       [](OpConditionContext *context) -> std::set<DeviceType> {
-                         auto op = context->operator_def();
-                         if (op->output_shape_size() != op->output_size()) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+      [](OpConditionContext *context) -> std::set<RuntimeType> {
+        auto op = context->operator_def();
+        if (op->output_shape_size() != op->output_size()) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         // When transforming a model, has_data_format is set
-                         // to true only when the data dimension conforms to
-                         // specific rules, such as dimension == 4
-                         int has_data_format =
-                             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                                 *op, "has_data_format", 0);
-                         if (has_data_format) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+        // When transforming a model, has_data_format is set
+        // to true only when the data dimension conforms to
+        // specific rules, such as dimension == 4
+        int has_data_format =
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *op, "has_data_format", 0);
+        if (has_data_format) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         DataFormat op_data_format = static_cast<DataFormat>(
-                             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                                 *context->operator_def(), "data_format",
-                                 static_cast<int>(DataFormat::NONE)));
-                         auto tensor_shape_info = context->tensor_shape_info();
-                         const std::string &input_0 = op->input(0);
-                         const auto out_dims_size =
-                             op->output_shape(0).dims_size();
-                         if (op_data_format == DataFormat::NHWC &&
-                             4 == tensor_shape_info->at(input_0).size() &&
-                             (out_dims_size == 4 || out_dims_size == 2)) {
-                           return {DeviceType::CPU, DeviceType::GPU};
-                         }
+        DataFormat op_data_format = static_cast<DataFormat>(
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *context->operator_def(), "data_format",
+                static_cast<int>(DataFormat::NONE)));
+        auto tensor_shape_info = context->tensor_shape_info();
+        const std::string &input_0 = op->input(0);
+        const auto out_dims_size =
+            op->output_shape(0).dims_size();
+        if (op_data_format == DataFormat::NHWC &&
+            4 == tensor_shape_info->at(input_0).size() &&
+            (out_dims_size == 4 || out_dims_size == 2)) {
+          return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
+        }
 
-                         return {DeviceType::CPU};
-                       }));
+        return {RuntimeType::RT_CPU};
+      }));
 }
 
 }  // namespace ops

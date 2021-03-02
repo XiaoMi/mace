@@ -67,15 +67,24 @@ def run_model(flags, args, conf):
     model_conf = get_model_conf_by_name(flags, conf)
     mace_check(model_conf is not None, "Get model conf failed.")
     model_conf = config_parser.normalize_model_config(model_conf)
-    run_model_with_conf(flags, args, flags.model_name, model_conf)
+    mace_check(len(model_conf[ModelKeys.subgraphs].items()) == 1,
+               "MACE Micro does not support multi graph.")
+    for graph_name, graph_config in model_conf[ModelKeys.subgraphs].items():
+        run_model_with_conf(flags, args, flags.model_name, graph_config)
 
 
 def gen_sub_model_conf(output_config, flags, conf):
     model_conf = copy.deepcopy(get_model_conf_by_name(flags, conf))
-    model_conf['subgraphs'][0]['output_tensors'] = \
-        output_config['output_tensors']
-    model_conf['subgraphs'][0]['output_shapes'] = \
-        output_config['output_shapes']
+    if isinstance(model_conf[ModelKeys.subgraphs], list):
+        model_conf[ModelKeys.subgraphs][0][
+            ModelKeys.output_tensors] = output_config[ModelKeys.output_tensors]
+        model_conf[ModelKeys.subgraphs][0][
+            ModelKeys.output_shapes] = output_config[ModelKeys.output_shapes]
+    else:
+        model_conf[ModelKeys.subgraphs][ModelKeys.default_graph][
+            ModelKeys.output_tensors] = output_config[ModelKeys.output_tensors]
+        model_conf[ModelKeys.subgraphs][ModelKeys.default_graph][
+            ModelKeys.output_shapes] = output_config[ModelKeys.output_shapes]
     return model_conf
 
 
@@ -94,6 +103,7 @@ def run_layers_validate(flags, args, original_conf):
     for i in range(len(output_configs)):
         sub_model_conf = gen_sub_model_conf(
             output_configs[i], flags, original_conf)
+        print(output_configs[i]['model_file_path'])
         with open(output_configs[i]['model_file_path'], "rb") as model_file:
             net_def = mace_pb2.NetDef()
             net_def.ParseFromString(model_file.read())
@@ -104,7 +114,8 @@ def run_layers_validate(flags, args, original_conf):
                 MicroConverter(micro_conf, net_def,
                                weights, model_name).gen_code()
                 build_engine(model_name, micro_conf[ModelKeys.data_type])
-                run_model_with_conf(flags, args, model_name, micro_conf)
+                for graph_name, graph_config in micro_conf[ModelKeys.subgraphs].items():  # noqa
+                    run_model_with_conf(flags, args, model_name, graph_config)
 
 
 def run_model_with_conf(flags, args, model_name, model_conf):
@@ -217,7 +228,7 @@ def generate_input_data(input_file, input_node, input_shape, input_ranges,
     np.random.seed()
     for i in range(len(input_node)):
         data = np.random.random(input_shape[i]) * (
-            input_ranges[i][1] - input_ranges[i][0]) + input_ranges[i][0]
+                input_ranges[i][1] - input_ranges[i][0]) + input_ranges[i][0]
         input_file_name = util.formatted_file_name(input_file, input_node[i])
         MaceLogger.info('Generate input file: %s' % input_file_name)
         if input_data_type[i] == mace_pb2.DT_FLOAT or \

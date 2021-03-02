@@ -20,7 +20,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void DepthToSpace(
     int iters, int batch, int channels, int height, int width, int block_size) {
   mace::testing::StopTiming();
@@ -28,9 +28,9 @@ void DepthToSpace(
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -44,14 +44,15 @@ void DepthToSpace(
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -70,12 +71,12 @@ void DepthToSpace(
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_DEPTH_TO_SPACE(N, C, H, W, G)                 \
-  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, CPU);    \
-  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, GPU);    \
-  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, half, GPU);
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, RT_CPU);    \
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, RT_OPENCL);    \
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, half, RT_OPENCL);
 #else
 #define MACE_BM_DEPTH_TO_SPACE(N, C, H, W, G)                 \
-  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, CPU)
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, RT_CPU)
 #endif
 
 MACE_BM_DEPTH_TO_SPACE(1, 4, 512, 512, 2);

@@ -36,11 +36,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class SoftmaxOp;
 
 template<class T>
-class SoftmaxOp<DeviceType::CPU, T> : public Operation {
+class SoftmaxOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context),
@@ -52,8 +52,6 @@ class SoftmaxOp<DeviceType::CPU, T> : public Operation {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
 
     if (isNCHW(input)) {  // NCHW
       return RunForNCHW(context);
@@ -83,11 +81,11 @@ class SoftmaxOp<DeviceType::CPU, T> : public Operation {
     index_t batch_stride = class_size;
     index_t batch_size = batch_stride * input->dim(0);
 
-    auto cache_buffer = context->device()->scratch_buffer();
-    cache_buffer->Rewind();
-    MACE_RETURN_IF_ERROR(cache_buffer->GrowSize(hw_size * sizeof(float)));
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    auto *runtime = context->runtime();
+    MemInfo mem_info(input->memory_type(), DataType::DT_FLOAT, {hw_size});
+    auto cache_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     float std_lowest = std::numeric_limits<float>::lowest();
     float *cache_ptr = cache_buffer->mutable_data<float>();
 
@@ -194,8 +192,7 @@ class SoftmaxOp<DeviceType::CPU, T> : public Operation {
                                          1,
                                          std::multiplies<index_t>());
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
     const T *input_data = input->data<T>();
     float std_lowest = std::numeric_limits<float>::lowest();
     for (index_t b_offset = 0; b_offset < batch_size;
@@ -248,7 +245,7 @@ static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
 
 template <>
-class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
+class SoftmaxOp<RuntimeType::RT_CPU, uint8_t> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context),
@@ -285,14 +282,11 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
       depth = input->dim(3);
     }
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const uint8_t *input_data = input->data<uint8_t>();
     float input_scale = input->scale();
     uint8_t *output_data = output->mutable_data<uint8_t>();
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     // If depth is short, do it using float32. Float computation should not
     // be here, but as long as it is on CPU, it is fine.
@@ -494,7 +488,7 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
 
 #ifdef MACE_ENABLE_OPENCL
 template<>
-class SoftmaxOp<DeviceType::GPU, float> : public Operation {
+class SoftmaxOp<RuntimeType::RT_OPENCL, float> : public Operation {
  public:
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context) {
@@ -523,15 +517,16 @@ class SoftmaxOp<DeviceType::GPU, float> : public Operation {
 
 void RegisterSoftmax(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
-                   DeviceType::CPU, float);
+                   RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "Softmax", SoftmaxOp,
-                        DeviceType::CPU);
+                        RuntimeType::RT_CPU);
+
   MACE_REGISTER_FP16_OP(op_registry, "Softmax", SoftmaxOp,
-                         DeviceType::CPU);
+                        RuntimeType::RT_CPU);
 
 #ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
-                   DeviceType::CPU, uint8_t);
+                   RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
 
   MACE_REGISTER_GPU_OP(op_registry, "Softmax", SoftmaxOp);
@@ -540,16 +535,16 @@ void RegisterSoftmax(OpRegistry *op_registry) {
       op_registry,
       OpConditionBuilder("Softmax")
           .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<DeviceType> {
+              [](OpConditionContext *context) -> std::set<RuntimeType> {
                 auto op = context->operator_def();
                 if (op->output_shape_size() != op->output_size()) {
-                  return {DeviceType::CPU, DeviceType::GPU};
+                  return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
                 }
                 if (op->output_shape(0).dims_size() != 2 &&
                     op->output_shape(0).dims_size() != 4) {
-                  return {DeviceType::CPU};
+                  return {RuntimeType::RT_CPU};
                 }
-                return {DeviceType::CPU, DeviceType::GPU};
+                return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }
 

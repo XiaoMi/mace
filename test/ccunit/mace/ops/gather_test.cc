@@ -33,8 +33,9 @@ void TestGather(const std::vector<index_t> &weight_shape,
                 const std::vector<T> &output) {
   OpsTestNet net;
 
-  net.AddInputFromArray<CPU, T>("Params", weight_shape, weight);
-  net.AddInputFromArray<CPU, int32_t>("Indices", input_shape, input);
+  net.AddInputFromArray<RuntimeType::RT_CPU, T>("Params", weight_shape, weight);
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>("Indices",
+                                                      input_shape, input);
 
   OpDefBuilder("Gather", "GatherTest")
       .Input("Params")
@@ -44,7 +45,7 @@ void TestGather(const std::vector<index_t> &weight_shape,
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   // Run
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   auto expected = net.CreateTensor<T>(output_shape, output);
 

@@ -44,8 +44,7 @@ void LSTMNonlinearKernel(const OpContext *context,
   float o_scale =
       (embed_scales && scale_data) ? static_cast<float>(scale_data[2]) : 1.0f;
 
-  utils::ThreadPool
-      &thread_pool = context->device()->cpu_runtime()->thread_pool();
+  utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
   thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
     if (prev_data == nullptr) {

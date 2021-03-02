@@ -21,11 +21,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template<RuntimeType D, class T>
 class LocalResponseNormOp;
 
 template<class T>
-class LocalResponseNormOp<DeviceType::CPU, T> : public Operation {
+class LocalResponseNormOp<RuntimeType::RT_CPU, T> : public Operation {
  public:
   explicit LocalResponseNormOp(OpConstructContext *context)
       : Operation(context),
@@ -55,8 +55,7 @@ class LocalResponseNormOp<DeviceType::CPU, T> : public Operation {
     const index_t image_size = height * width;
     const index_t batch_size = channels * image_size;
 
-    utils::ThreadPool
-        &thread_pool = context->device()->cpu_runtime()->thread_pool();
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
     thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
                               index_t start1, index_t end1, index_t step1) {
@@ -94,9 +93,9 @@ class LocalResponseNormOp<DeviceType::CPU, T> : public Operation {
 
 void RegisterLocalResponseNorm(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "LocalResponseNorm",
-                   LocalResponseNormOp, DeviceType::CPU, float);
+                   LocalResponseNormOp, RuntimeType::RT_CPU, float);
   MACE_REGISTER_BF16_OP(op_registry, "LocalResponseNorm",
-                        LocalResponseNormOp, DeviceType::CPU);
+                        LocalResponseNormOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

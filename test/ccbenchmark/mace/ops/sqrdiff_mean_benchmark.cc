@@ -21,14 +21,14 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void SqrDiffMean(int iters, int batch, int channels,
                 int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
   // Add input data
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
     net.AddRandomInput<D, T>("Input1", {batch, channels, 1, 1});
   } else {
@@ -44,14 +44,15 @@ void SqrDiffMean(int iters, int batch, int channels,
       .Finalize(net.NewOperatorDef());
 
   // Warm-up
+  net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -70,12 +71,12 @@ void SqrDiffMean(int iters, int batch, int channels,
 
 #ifdef MACE_ENABLE_OPENCL
 #define MACE_BM_SQRDIFF_MEAN(N, C, H, W)                 \
-  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, GPU);  \
-  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, half, GPU);   \
-  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, CPU)
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, RT_OPENCL);  \
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, half, RT_OPENCL);   \
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, RT_CPU)
 #else
 #define MACE_BM_SQRDIFF_MEAN(N, C, H, W)                 \
-  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, CPU)
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, RT_CPU)
 #endif
 
 

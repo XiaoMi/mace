@@ -23,7 +23,7 @@ namespace test {
 class LSTMCellTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestLSTMCell(const uint32_t &batch,
                   const uint32_t &input_size,
                   const uint32_t &hidden_units,
@@ -31,24 +31,24 @@ void TestLSTMCell(const uint32_t &batch,
   // Construct graph
   OpsTestNet net;
 
-  net.AddRandomInput<D, float>("Input", {batch, input_size});
-  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units}, true);
-  net.AddRandomInput<D, float>("Weight", {input_size + hidden_units,
+  net.AddRandomInput<RT_CPU, float>("Input", {batch, input_size});
+  net.AddRandomInput<RT_CPU, float>("PreOutput", {batch, hidden_units}, true);
+  net.AddRandomInput<RT_CPU, float>("Weight", {input_size + hidden_units,
                                           4 * hidden_units}, true);
-  net.AddRandomInput<D, float>("Bias", {4 * hidden_units}, true);
-  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units}, true);
+  net.AddRandomInput<RT_CPU, float>("Bias", {4 * hidden_units}, true);
+  net.AddRandomInput<RT_CPU, float>("PreCell", {batch, hidden_units}, true);
 
-  net.CopyData<DeviceType::CPU, float>("Input", "InputCPU");
-  net.CopyData<DeviceType::CPU, float>("PreOutput", "PreOutputCPU");
-  net.CopyData<DeviceType::CPU, float>("Weight", "WeightCPU");
-  net.CopyData<DeviceType::CPU, float>("Bias", "BiasCPU");
-  net.CopyData<DeviceType::CPU, float>("PreCell", "PreCellCPU");
+  net.CopyData<RuntimeType::RT_CPU, float>("Input", "InputCPU");
+  net.CopyData<RuntimeType::RT_CPU, float>("PreOutput", "PreOutputCPU");
+  net.CopyData<RuntimeType::RT_CPU, float>("Weight", "WeightCPU");
+  net.CopyData<RuntimeType::RT_CPU, float>("Bias", "BiasCPU");
+  net.CopyData<RuntimeType::RT_CPU, float>("PreCell", "PreCellCPU");
 
   // Run on CPU
   LSTMCellCPU<float>(&net, "InputCPU", "PreOutputCPU", "WeightCPU", "BiasCPU",
                      "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
   // Run
-  net.RunOp(DeviceType::CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   // Run on GPU
   OpDefBuilder("LSTMCell", "LSTMCellTest")
@@ -65,7 +65,9 @@ void TestLSTMCell(const uint32_t &batch,
   // Run
   net.RunOp(D);
 
-  Tensor expected_cell, expected_output;
+  auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RT_CPU);
+  Tensor expected_cell(cpu_runtime, DT_FLOAT);
+  Tensor expected_output(cpu_runtime, DT_FLOAT);
   expected_cell.Copy(*net.GetOutput("CellCPU"));
   expected_output.Copy(*net.GetOutput("OutputCPU"));
 
@@ -80,17 +82,17 @@ void TestLSTMCell(const uint32_t &batch,
 }  // namespace
 
 TEST_F(LSTMCellTest, OPENCLRandomHalf) {
-  TestLSTMCell<GPU, half>(1, 3, 8, 0.0f);
-  TestLSTMCell<GPU, half>(2, 16, 24, 0.0f);
-  TestLSTMCell<GPU, half>(2, 200, 280, 0.5f);
-  TestLSTMCell<GPU, half>(20, 320, 512, 0.5f);
+  TestLSTMCell<RT_OPENCL, half>(1, 3, 8, 0.0f);
+  TestLSTMCell<RT_OPENCL, half>(2, 16, 24, 0.0f);
+  TestLSTMCell<RT_OPENCL, half>(2, 200, 280, 0.5f);
+  TestLSTMCell<RT_OPENCL, half>(20, 320, 512, 0.5f);
 }
 
 TEST_F(LSTMCellTest, OPENCLRandomFloat) {
-  TestLSTMCell<GPU, float>(1, 3, 8, 0.0f);
-  TestLSTMCell<GPU, float>(2, 16, 24, 0.0f);
-  TestLSTMCell<GPU, float>(2, 200, 280, 0.5f);
-  TestLSTMCell<GPU, float>(20, 320, 512, 0.5f);
+  TestLSTMCell<RT_OPENCL, float>(1, 3, 8, 0.0f);
+  TestLSTMCell<RT_OPENCL, float>(2, 16, 24, 0.0f);
+  TestLSTMCell<RT_OPENCL, float>(2, 200, 280, 0.5f);
+  TestLSTMCell<RT_OPENCL, float>(20, 320, 512, 0.5f);
 }
 
 }  // namespace test

@@ -22,7 +22,7 @@ namespace test {
 class DepthwiseConv2dOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void SimpleValidTest() {
   testing::internal::LogToStderr();
   // Construct graph
@@ -38,8 +38,8 @@ void SimpleValidTest() {
       {1.0f, 2.0f, 3.0f, 4.0f, 2.0f, 4.0f, 6.0f, 8.0f},
       true);
   net.AddInputFromArray<D, float>("Bias", {2}, {.1f, .2f}, true);
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputNCHW")
@@ -52,9 +52,9 @@ void SimpleValidTest() {
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -85,19 +85,19 @@ void SimpleValidTest() {
 }  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, SimpleCPU) {
-  SimpleValidTest<DeviceType::CPU, float>();
+  SimpleValidTest<RuntimeType::RT_CPU, float>();
 }
 
 TEST_F(DepthwiseConv2dOpTest, SimpleOpenCL) {
-  SimpleValidTest<DeviceType::GPU, float>();
+  SimpleValidTest<RuntimeType::RT_OPENCL, float>();
 }
 
 TEST_F(DepthwiseConv2dOpTest, SimpleOpenCLHalf) {
-  SimpleValidTest<DeviceType::GPU, half>();
+  SimpleValidTest<RuntimeType::RT_OPENCL, half>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void ComplexValidTest(index_t batch,
                       index_t channel,
                       index_t height,
@@ -126,8 +126,8 @@ void ComplexValidTest(index_t batch,
                                   bias_data,
                                   true);
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>(
+  if (D == RuntimeType::RT_CPU) {
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputNCHW")
@@ -141,9 +141,9 @@ void ComplexValidTest(index_t batch,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
-  } else if (D == DeviceType::GPU) {
+  } else if (D == RuntimeType::RT_OPENCL) {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("Input")
         .Input("Filter")
@@ -207,23 +207,23 @@ void ComplexValidTest(index_t batch,
 }  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, ComplexCPU) {
-  ComplexValidTest<DeviceType::CPU, float>(1, 3, 10, 10, 5, 1, 2);
+  ComplexValidTest<RuntimeType::RT_CPU, float>(1, 3, 10, 10, 5, 1, 2);
 }
 
 TEST_F(DepthwiseConv2dOpTest, ComplexCPU3x3s1) {
-  ComplexValidTest<DeviceType::CPU, float>(1, 3, 10, 10, 3, 1, 1);
+  ComplexValidTest<RuntimeType::RT_CPU, float>(1, 3, 10, 10, 3, 1, 1);
 }
 
 TEST_F(DepthwiseConv2dOpTest, ComplexCPU3x3s2) {
-  ComplexValidTest<DeviceType::CPU, float>(1, 3, 10, 10, 3, 1, 2);
+  ComplexValidTest<RuntimeType::RT_CPU, float>(1, 3, 10, 10, 3, 1, 2);
 }
 
 TEST_F(DepthwiseConv2dOpTest, ComplexOpenCL) {
-  ComplexValidTest<DeviceType::GPU, float>(1, 3, 10, 10, 5, 1, 2);
+  ComplexValidTest<RuntimeType::RT_OPENCL, float>(1, 3, 10, 10, 5, 1, 2);
 }
 
 TEST_F(DepthwiseConv2dOpTest, ComplexOpenCLHalf) {
-  ComplexValidTest<DeviceType::GPU, half>(1, 3, 10, 10, 5, 1, 2);
+  ComplexValidTest<RuntimeType::RT_OPENCL, half>(1, 3, 10, 10, 5, 1, 2);
 }
 
 namespace {
@@ -241,15 +241,14 @@ void TestNxNS12(const index_t height, const index_t width) {
     OpsTestNet net;
 
     // Add input data
-    net.AddRandomInput<DeviceType::GPU, float>(
+    net.AddRandomInput<RuntimeType::RT_OPENCL, float>(
         "Input", {batch, height, width, channel});
-    net.AddRandomInput<DeviceType::GPU, float>(
+    net.AddRandomInput<RuntimeType::RT_OPENCL, float>(
         "Filter", {multiplier, channel, kernel_h, kernel_w}, true, false);
-    net.AddRandomInput<DeviceType::GPU, float>("Bias",
-                                               {multiplier * channel},
-                                               true, false);
+    net.AddRandomInput<RuntimeType::RT_OPENCL, float>(
+        "Bias", {multiplier * channel}, true, false);
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputNCHW")
@@ -267,7 +266,7 @@ void TestNxNS12(const index_t height, const index_t width) {
     // Run on cpu
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>(
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>(
         "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
     // Check
@@ -287,7 +286,7 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddFloatArg("activation_coefficient", 0.1)
         .Finalize(net.NewOperatorDef());
 
-    net.RunOp(DeviceType::GPU);
+    net.RunOp(RuntimeType::RT_OPENCL);
     // Check
     if (DataTypeToEnum<T>::value == DT_FLOAT) {
       ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5,
@@ -337,15 +336,15 @@ void QuantSimpleValidTest() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<CPU, uint8_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>(
       "Input", {1, 3, 3, 2},
       {31, 98, 1, 54, 197, 172, 70, 146, 255, 71, 24, 182, 28, 78, 85, 96, 180,
        59}, false, 0.00735299, 86);
-  net.AddInputFromArray<CPU, uint8_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, uint8_t>(
       "Filter", {3, 3, 2, 1},
       {212, 239, 110, 170, 216, 91, 162, 161, 255, 2, 10, 120, 183, 101, 100,
        33, 137, 51}, true, 0.0137587, 120);
-  net.AddInputFromArray<CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "Bias", {2}, {2, 2}, true, 0.000101168, 0);
 
   OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
@@ -359,7 +358,7 @@ void QuantSimpleValidTest() {
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
 
-  net.Setup(CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *output = net.GetTensor("Output");
   output->SetScale(0.013241);
   output->SetZeroPoint(0);
@@ -383,14 +382,14 @@ void TestQuant(const index_t batch,
                const std::vector<int> &strides) {
   OpsTestNet net;
   const index_t out_channels = multiplier * in_channels;
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Input", {batch, in_height, in_width, in_channels}, false, false);
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Filter", {k_height, k_width, in_channels, multiplier}, true, false);
-  net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Bias", {out_channels}, true);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
-  net.TransformFilterDataFormat<DeviceType::CPU, float>(
+  net.TransformFilterDataFormat<RuntimeType::RT_CPU, float>(
       "Filter", DataFormat::HWIO, "FilterOIHW", DataFormat::OIHW);
 
   OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
@@ -403,8 +402,8 @@ void TestQuant(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.RunOp(RuntimeType::RT_CPU);
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   OpDefBuilder("Quantize", "QuantizeFilter")
@@ -444,7 +443,7 @@ void TestQuant(const index_t batch,
       quantize_util(OpTestContext::Get()->thread_pool());
   quantize_util.QuantizeWithScaleAndZeropoint(
       bias_data, bias->size(), bias_scale, 0, q_bias.data());
-  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(
       "QuantizedBias", {out_channels}, q_bias, true, bias_scale, 0);
 
   OpDefBuilder("DepthwiseConv2d", "QuantizedDepthwiseConv2DTest")
@@ -457,7 +456,7 @@ void TestQuant(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
+  net.Setup(RuntimeType::RT_CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
   Tensor *q_output = net.GetTensor("QuantizedOutput");
   q_output->SetScale(eq_output->scale());
@@ -505,14 +504,14 @@ void TestBFloat16(const index_t batch,
                   const std::vector<int> &strides) {
   OpsTestNet net;
   const index_t out_channels = multiplier * in_channels;
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Input", {batch, in_channels, in_height, in_width}, false, false);
-  net.AddRandomInput<CPU, float>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float>(
       "Filter", {multiplier, in_channels, k_height, k_width}, true, false);
-  net.AddRandomInput<CPU, float>("Bias", {out_channels}, true);
-  net.Cast<CPU, float, BFloat16>("Input", "BF16Input");
-  net.Cast<CPU, float, BFloat16>("Filter", "BF16Filter");
-  net.Cast<CPU, float, BFloat16>("Bias", "BF16Bias");
+  net.AddRandomInput<RuntimeType::RT_CPU, float>("Bias", {out_channels}, true);
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Input", "BF16Input");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Filter", "BF16Filter");
+  net.Cast<RuntimeType::RT_CPU, float, BFloat16>("Bias", "BF16Bias");
 
   OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("Input")
@@ -524,7 +523,7 @@ void TestBFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("DepthwiseConv2d", "BF16DepthwiseConv2DTest")
       .Input("BF16Input")
@@ -536,9 +535,9 @@ void TestBFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_BFLOAT16))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
-  net.Cast<CPU, BFloat16, float>("BF16Output", "CastOutput");
+  net.Cast<RuntimeType::RT_CPU, BFloat16, float>("BF16Output", "CastOutput");
 
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("CastOutput"), 1e-4);
@@ -573,14 +572,15 @@ void TestFloat16(const index_t batch,
                  const std::vector<int> &strides) {
   OpsTestNet net;
   const index_t out_channels = multiplier * in_channels;
-  net.AddRandomInput<CPU, float16_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float16_t>(
       "Input", {batch, in_channels, in_height, in_width}, false, false);
-  net.AddRandomInput<CPU, float16_t>(
+  net.AddRandomInput<RuntimeType::RT_CPU, float16_t>(
       "Filter", {multiplier, in_channels, k_height, k_width}, true, false);
-  net.AddRandomInput<CPU, float16_t>("Bias", {out_channels}, true);
-  net.Cast<CPU, float, float16_t>("Input", "FP16Input");
-  net.Cast<CPU, float, float16_t>("Filter", "FP16Filter");
-  net.Cast<CPU, float, float16_t>("Bias", "FP16Bias");
+  net.AddRandomInput<RuntimeType::RT_CPU, float16_t>("Bias", {out_channels},
+                                                     true);
+  net.Cast<RuntimeType::RT_CPU, float, float16_t>("Input", "FP16Input");
+  net.Cast<RuntimeType::RT_CPU, float, float16_t>("Filter", "FP16Filter");
+  net.Cast<RuntimeType::RT_CPU, float, float16_t>("Bias", "FP16Bias");
 
   OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("Input")
@@ -592,7 +592,7 @@ void TestFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
   OpDefBuilder("DepthwiseConv2d", "FP16DepthwiseConv2DTest")
       .Input("FP16Input")
@@ -604,9 +604,9 @@ void TestFloat16(const index_t batch,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DT_FLOAT16))
       .Finalize(net.NewOperatorDef());
-  net.RunOp(CPU);
+  net.RunOp(RuntimeType::RT_CPU);
 
-  net.Cast<CPU, float16_t, float>("FP16Output", "CastOutput");
+  net.Cast<RuntimeType::RT_CPU, float16_t, float>("FP16Output", "CastOutput");
 
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("CastOutput"), 1e-4);

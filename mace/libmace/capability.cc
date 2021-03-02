@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "mace/core/proto/arg_helper.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
 #include "mace/public/mace.h"
 
@@ -44,7 +45,7 @@ const Capability kDSPDefaultCapability = {
 class BMNet {
  public:
   static BMNet *Get();
-  MaceStatus Run(DeviceType device,
+  MaceStatus Run(RuntimeType device,
                  float *exec_time);
 
  private:
@@ -155,6 +156,9 @@ void BMNet::SetUp() {
   }
   // allocate weight data
   weight_.resize(weight_size_, 0);
+  net_.set_name("BMNet");
+  net_.set_data_offset(0);
+  net_.set_data_size(weight_size_);
 }
 
 void BMNet::AddIntArg(mace::OperatorDef *op_def,
@@ -339,15 +343,22 @@ std::string BMNet::AddExpandedConv(
   return middle_output_name;
 }
 
-MaceStatus BMNet::Run(DeviceType device,
+MaceStatus BMNet::Run(RuntimeType runtime_type,
                       float *exec_time) {
   std::lock_guard<std::mutex> lock(run_mutex_);
   MaceStatus status;
-  MaceEngineConfig config(device);
+  MaceEngineConfig config;
   config.SetCPUThreadPolicy(-1, CPUAffinityPolicy::AFFINITY_BIG_ONLY);
-  if (device == DeviceType::GPU) {
+#ifdef MACE_ENABLE_OPENCL
+  if (runtime_type == RuntimeType::RT_OPENCL) {
     config.SetGPUHints(GPUPerfHint::PERF_HIGH, GPUPriorityHint::PRIORITY_LOW);
+    auto opencl_context = GPUContextBuilder().Finalize();
+    config.SetGPUContext(opencl_context);
   }
+#endif
+  SetProtoArg(&net_, "runtime_type", static_cast<int>(runtime_type));
+  auto mem_type = (runtime_type == RT_OPENCL ? GPU_IMAGE : CPU_BUFFER);
+  SetProtoArg(&net_, "opencl_mem_type", static_cast<int>(mem_type));
   MaceEngine engine(config);
 
   status = engine.Init(&net_, input_names_, output_names_,
@@ -402,18 +413,19 @@ MaceStatus BMNet::Run(DeviceType device,
 
 Capability GetCapability(DeviceType device_type, float cpu_float32_exec_time) {
   Capability capability;
-  if (device_type == DeviceType::HEXAGON) {
+  auto runtime_type = static_cast<RuntimeType>(device_type);
+  if (runtime_type == RuntimeType::RT_HEXAGON) {
     return capability::kDSPDefaultCapability;
-  } else if (device_type == DeviceType::CPU) {
+  } else if (runtime_type == RuntimeType::RT_CPU) {
     capability = capability::kCPUDefaultCapability;
-  } else if (device_type == DeviceType::GPU) {
+  } else if (runtime_type == RuntimeType::RT_OPENCL) {
     capability = capability::kGPUDefaultCapability;
   } else {
     LOG(FATAL) << "No support the device " << device_type;
   }
   capability::BMNet *net = capability::BMNet::Get();
   float exec_time;
-  MaceStatus status = net->Run(device_type, &exec_time);
+  MaceStatus status = net->Run(runtime_type, &exec_time);
   if (status == MaceStatus::MACE_SUCCESS) {
     capability.float32_performance.exec_time =
         exec_time / cpu_float32_exec_time;

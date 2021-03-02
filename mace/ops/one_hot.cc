@@ -39,11 +39,11 @@ class OneHotOpBase : public Operation {
   int axis_;
 };
 
-template<DeviceType D, typename T>
+template<RuntimeType D, typename T>
 class OneHotOp;
 
 template<typename T>
-class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
+class OneHotOp<RuntimeType::RT_CPU, T> : public OneHotOpBase {
  public:
   explicit OneHotOp(OpConstructContext *context) : OneHotOpBase(context) {}
 
@@ -70,8 +70,6 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
 
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
@@ -149,8 +147,8 @@ class OneHotOp<DeviceType::CPU, T> : public OneHotOpBase {
 };
 
 void RegisterOneHot(OpRegistry *op_registry) {
-  MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, DeviceType::CPU, float);
-  MACE_REGISTER_BF16_OP(op_registry, "OneHot", OneHotOp, DeviceType::CPU);
+  MACE_REGISTER_OP(op_registry, "OneHot", OneHotOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_BF16_OP(op_registry, "OneHot", OneHotOp, RuntimeType::RT_CPU);
 }
 
 }  // namespace ops

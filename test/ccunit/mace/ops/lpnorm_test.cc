@@ -21,31 +21,31 @@ namespace test {
 class LpNormOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestLpNorm(const std::vector<index_t> &input_shape,
                 const std::vector<T> &input,
                 const int p,
                 const int axis,
                 const std::vector<T> &output) {
   OpsTestNet net;
-  net.AddInputFromArray<D, T>(MakeString("Input"), input_shape, input);
+  net.AddInputFromArray<RT_CPU, T>(MakeString("Input"), input_shape, input);
 
-  if (D == DeviceType::GPU) {
-    net.TransformDataFormat<GPU, float>(
+  if (D == RuntimeType::RT_OPENCL) {
+    net.TransformDataFormat<RT_OPENCL, float>(
         "Input", DataFormat::NCHW, "InputNHWC", DataFormat::NHWC);
   }
 
   OpDefBuilder("LpNorm", "LpNormTest")
-      .Input(D == DeviceType::CPU ? "Input" : "InputNHWC")
+      .Input(D == RuntimeType::RT_CPU ? "Input" : "InputNHWC")
       .AddIntArg("p", p)
       .AddIntArg("axis", axis)
-      .Output(D == DeviceType::CPU ? "Output" : "OutputNHWC")
+      .Output(D == RuntimeType::RT_CPU ? "Output" : "OutputNHWC")
       .Finalize(net.NewOperatorDef());
 
   net.RunOp(D);
 
-  if (D == DeviceType::GPU) {
-    net.TransformDataFormat<GPU, float>(
+  if (D == RuntimeType::RT_OPENCL) {
+    net.TransformDataFormat<RT_OPENCL, float>(
         "OutputNHWC", DataFormat::NHWC, "Output", DataFormat::NCHW);
   }
 
@@ -56,7 +56,7 @@ void TestLpNorm(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(LpNormOpTest, SimpleTestFabs) {
-  TestLpNorm<DeviceType::CPU, float>(
+  TestLpNorm<RuntimeType::RT_CPU, float>(
     {1, 8, 1, 2},  // NCHW
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
     1, 1,
@@ -67,7 +67,7 @@ TEST_F(LpNormOpTest, SimpleTestFabs) {
 }
 
 TEST_F(LpNormOpTest, SimpleTestSquare) {
-  TestLpNorm<DeviceType::CPU, float>(
+  TestLpNorm<RuntimeType::RT_CPU, float>(
     {1, 8, 1, 2},  // NCHW
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
     2, 1,
@@ -78,7 +78,7 @@ TEST_F(LpNormOpTest, SimpleTestSquare) {
 }
 
 TEST_F(LpNormOpTest, SimpleTestPSquare2) {
-TestLpNorm<DeviceType::CPU, float>(
+TestLpNorm<RuntimeType::RT_CPU, float>(
     {1, 8, 1, 2},  // NCHW
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
     2, 2,
@@ -89,7 +89,7 @@ TestLpNorm<DeviceType::CPU, float>(
 }
 
 TEST_F(LpNormOpTest, SimpleTestFabsOpenCL) {
-  TestLpNorm<DeviceType::GPU, float>(
+  TestLpNorm<RuntimeType::RT_OPENCL, float>(
     {1, 8, 1, 2},  // NCHW
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
     1, 1,
@@ -100,7 +100,7 @@ TEST_F(LpNormOpTest, SimpleTestFabsOpenCL) {
 }
 
 TEST_F(LpNormOpTest, SimpleTestSquareOpenCL) {
-  TestLpNorm<DeviceType::GPU, float>(
+  TestLpNorm<RuntimeType::RT_OPENCL, float>(
     {1, 8, 1, 2},  // NCHW
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
     2, 1,
@@ -111,7 +111,7 @@ TEST_F(LpNormOpTest, SimpleTestSquareOpenCL) {
 }
 
 TEST_F(LpNormOpTest, SimpleTestSquareOpenCL2) {
-  TestLpNorm<DeviceType::GPU, float>(
+  TestLpNorm<RuntimeType::RT_OPENCL, float>(
     {1, 8, 1, 2},  // NCHW
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
     2, 2,
@@ -123,7 +123,7 @@ TEST_F(LpNormOpTest, SimpleTestSquareOpenCL2) {
 
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void TestLpNormRandom(const std::vector<index_t> &input_shape,
                       const int p,
                       const int axis) {
@@ -131,9 +131,9 @@ void TestLpNormRandom(const std::vector<index_t> &input_shape,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", input_shape);
+  net.AddRandomInput<RT_CPU, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   OpDefBuilder("LpNorm", "LpNormTest")
@@ -146,7 +146,7 @@ void TestLpNormRandom(const std::vector<index_t> &input_shape,
   // run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
 
   auto expected = net.CreateTensor<float>();
@@ -171,11 +171,11 @@ void TestLpNormRandom(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(LpNormOpTest, SimpleTestSquareHalfOpenCL) {
-  TestLpNormRandom<DeviceType::GPU, half>({1, 8, 1, 2}, 2, 1);
+  TestLpNormRandom<RuntimeType::RT_OPENCL, half>({1, 8, 1, 2}, 2, 1);
 }
 
 TEST_F(LpNormOpTest, SimpleTestSquareHalfOpenCL2) {
-  TestLpNormRandom<DeviceType::GPU, half>({1, 8, 1, 2}, 2, 2);
+  TestLpNormRandom<RuntimeType::RT_OPENCL, half>({1, 8, 1, 2}, 2, 2);
 }
 
 }  // namespace test

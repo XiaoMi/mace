@@ -37,15 +37,15 @@ namespace mace {
 class OpRegistry {
  public:
   OpRegistry() = default;
-  virtual ~OpRegistry() = default;
+  virtual ~OpRegistry();
   MaceStatus Register(const std::string &op_type,
-                      const DeviceType device_type,
+                      const RuntimeType runtime_type,
                       const DataType dt,
                       OpRegistrationInfo::OpCreator creator);
 
   MaceStatus Register(const OpConditionBuilder &builder);
 
-  const std::set<DeviceType> AvailableDevices(
+  const std::set<RuntimeType> AvailableRuntimes(
       const std::string &op_type, OpConditionContext *context) const;
 
   void GetInOutMemoryTypes(
@@ -56,7 +56,7 @@ class OpRegistry {
 
   std::unique_ptr<Operation> CreateOperation(
       OpConstructContext *context,
-      DeviceType device_type) const;
+      RuntimeType runtime_type) const;
 
   template<class DerivedType>
   static std::unique_ptr<Operation> DefaultCreator(
@@ -70,36 +70,37 @@ class OpRegistry {
   MACE_DISABLE_COPY_AND_ASSIGN(OpRegistry);
 };
 
-#define MACE_REGISTER_OP(op_registry, op_type, class_name, device, dt) \
-  op_registry->Register(op_type,                                       \
-                        device,                                        \
-                        DataTypeToEnum<dt>::value,                     \
-                        OpRegistry::DefaultCreator<class_name<device, dt>>)
+#define MACE_REGISTER_OP(op_registry, op_type, class_name, runtime, dt) \
+  op_registry->Register(op_type,                                        \
+                        runtime,                                        \
+                        DataTypeToEnum<dt>::value,                      \
+                        OpRegistry::DefaultCreator<class_name<runtime, dt>>)
 
 #define MACE_REGISTER_OP_BY_CLASS(\
-    op_registry, op_type, class_name, device, dt)  \
-  op_registry->Register(op_type,                   \
-                        device,                    \
-                        DataTypeToEnum<dt>::value, \
+    op_registry, op_type, class_name, runtime, dt)  \
+  op_registry->Register(op_type,                    \
+                        runtime,                    \
+                        DataTypeToEnum<dt>::value,  \
                         OpRegistry::DefaultCreator<class_name>)
 
 #ifndef MACE_REGISTER_BF16_OP
 #ifdef MACE_ENABLE_BFLOAT16
-#define MACE_REGISTER_BF16_OP(op_registry, op_type, class_name, device) \
-    MACE_REGISTER_OP(op_registry, op_type, class_name, device, BFloat16)
+#define MACE_REGISTER_BF16_OP(op_registry, op_type, class_name, runtime) \
+    MACE_REGISTER_OP(op_registry, op_type, class_name, runtime, BFloat16)
 #else
-#define MACE_REGISTER_BF16_OP(op_registry, op_type, class_name, device)
+#define MACE_REGISTER_BF16_OP(op_registry, op_type, class_name, runtime)
 #endif  // MACE_ENABLE_BFLOAT16
 #endif  // MACE_REGISTER_BF16_OP
 
 #ifndef MACE_REGISTER_BF16_OP_BY_CLASS
 #ifdef MACE_ENABLE_BFLOAT16
 #define MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, op_type, \
-                                       class_name, device)   \
+                                       class_name, runtime)  \
     MACE_REGISTER_OP_BY_CLASS(op_registry, op_type,          \
-                              class_name, device, BFloat16)
+                              class_name, runtime, BFloat16)
 #else
-#define MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, op_type, class_name, device)
+#define MACE_REGISTER_BF16_OP_BY_CLASS(op_registry, op_type, \
+                                       class_name, runtime)
 #endif  // MACE_ENABLE_BFLOAT16
 #endif  // MACE_REGISTER_BF16_OP_BY_CLASS
 
@@ -128,9 +129,9 @@ class OpRegistry {
 #define MACE_REGISTER_GPU_OP(op_registry, op_type, class_name) \
   op_registry->Register(                                       \
       op_type,                                                 \
-      DeviceType::GPU,                                         \
+      RuntimeType::RT_OPENCL,                                  \
       DT_FLOAT,                                                \
-      OpRegistry::DefaultCreator<class_name<DeviceType::GPU, float>>)
+      OpRegistry::DefaultCreator<class_name<RuntimeType::RT_OPENCL, float>>)
 #else
 #define MACE_REGISTER_GPU_OP(op_registry, op_type, class_name)
 #endif

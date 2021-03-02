@@ -18,33 +18,33 @@
 
 namespace mace {
 
-DeviceType NetOptimizer::SelectBestDevice(
+RuntimeType NetOptimizer::SelectBestRuntime(
     const OperatorDef *op_def,
-    DeviceType target_device_type,
-    const std::set<DeviceType> &available_devices,
-    const std::vector<DeviceType> &inputs_op_devices) {
+    RuntimeType target_runtime_type,
+    const std::set<RuntimeType> &available_runtimes,
+    const std::vector<RuntimeType> &inputs_op_runtimes) {
   static const std::set<std::string> kComputeIntensiveOps = {
       "Conv2D", "DepthwiseConv2d", "Deconv2D", "DepthwiseDeconv2d",
       "FullyConnected"
   };
-  // CPU is the device to fall back
-  DeviceType best_device = DeviceType::CPU;
-  if (available_devices.count(target_device_type) == 1) {
-    best_device = target_device_type;
+  // CPU is the runtime to fall back
+  RuntimeType best_runtime = RuntimeType::RT_CPU;
+  if (available_runtimes.count(target_runtime_type) == 1) {
+    best_runtime = target_runtime_type;
   }
-  if (best_device == DeviceType::CPU) {
-    return best_device;
+  if (best_runtime == RuntimeType::RT_CPU) {
+    return best_runtime;
   }
-  // Put compute-intensive ops in target device
+  // Put compute-intensive ops in target runtime
   if (kComputeIntensiveOps.count(op_def->type()) == 1) {
-    return best_device;
+    return best_runtime;
   }
   // Greedy strategy: Use input op's device type as current op's device
-  for (auto device_type : inputs_op_devices) {
-    if (device_type == best_device) {
-      return best_device;
+  for (auto runtime_type : inputs_op_runtimes) {
+    if (runtime_type == best_runtime) {
+      return best_runtime;
     }
   }
-  return DeviceType::CPU;
+  return RuntimeType::RT_CPU;
 }
 }  // namespace mace

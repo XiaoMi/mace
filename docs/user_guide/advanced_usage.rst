@@ -409,16 +409,16 @@ Tuning for specific SoC's GPU
 
             // 1. configuration
             MaceStatus status;
-            MaceEngineConfig config(device_type);
-            std::shared_ptr<GPUContext> gpu_context;
+            MaceEngineConfig config;
+            std::shared_ptr<OpenclContext> opencl_context;
 
             const std::string storage_path ="path/to/storage";
-            gpu_context = GPUContextBuilder()
+            opencl_context = GPUContextBuilder()
                 .SetStoragePath(storage_path)
                 .SetOpenCLBinaryPaths(path/to/opencl_binary_paths)
                 .SetOpenCLParameterPath(path/to/opencl_parameter_file)
                 .Finalize();
-            config.SetGPUContext(gpu_context);
+            config.SetGPUContext(opencl_context);
             config.SetGPUHints(
                 static_cast<GPUPerfHint>(GPUPerfHint::PERF_NORMAL),
                 static_cast<GPUPriorityHint>(GPUPriorityHint::PRIORITY_LOW));

@@ -22,7 +22,7 @@ namespace test {
 class SqrDiffMeanOpTest : public OpsTestBase {};
 
 namespace {
-template <DeviceType D>
+template <RuntimeType D>
 void Simple(const std::vector<index_t> &input_shape0,
             const std::vector<float> &input0,
             const std::vector<index_t> &input_shape1,
@@ -35,16 +35,16 @@ void Simple(const std::vector<index_t> &input_shape0,
   net.AddInputFromArray<D, float>("Input0", input_shape0, input0);
   net.AddInputFromArray<D, float>("Input1", input_shape1, input1);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input0",
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>("Input0",
                                                   DataFormat::NHWC,
                                                   "InputNCHW0",
                                                   DataFormat::NCHW);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input1",
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>("Input1",
                                                   DataFormat::NHWC,
                                                   "InputNCHW1",
                                                   DataFormat::NCHW);
 
-  if (D == DeviceType::CPU) {
+  if (D == RuntimeType::RT_CPU) {
     OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
         .Input("InputNCHW0")
         .Input("InputNCHW1")
@@ -53,7 +53,7 @@ void Simple(const std::vector<index_t> &input_shape0,
     // Run
     net.RunOp(D);
 
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+    net.TransformDataFormat<RuntimeType::RT_CPU, float>("OutputNCHW",
                                                     DataFormat::NCHW,
                                                     "Output",
                                                     DataFormat::NHWC);
@@ -70,7 +70,7 @@ void Simple(const std::vector<index_t> &input_shape0,
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
 }
 
-template <DeviceType D>
+template <RuntimeType D>
 void Simple12Test() {
   Simple<D>({2, 2, 3, 4},
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -88,15 +88,15 @@ void Simple12Test() {
 }  // namespace
 
 TEST_F(SqrDiffMeanOpTest, CPUSimple12) {
-  Simple12Test<DeviceType::CPU>();
+  Simple12Test<RuntimeType::RT_CPU>();
 }
 
 TEST_F(SqrDiffMeanOpTest, GPUSimple12) {
-  Simple12Test<DeviceType::GPU>();
+  Simple12Test<RuntimeType::RT_OPENCL>();
 }
 
 namespace {
-template <DeviceType D, typename T>
+template <RuntimeType D, typename T>
 void RandomTest(const std::vector<index_t> &input_shape0,
                 const std::vector<index_t> &input_shape1) {
   testing::internal::LogToStderr();
@@ -107,9 +107,9 @@ void RandomTest(const std::vector<index_t> &input_shape0,
   net.AddRandomInput<D, float>("Input0", input_shape0);
   net.AddRandomInput<D, float>("Input1", input_shape1);
 
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input0", DataFormat::NHWC, "InputNCHW0", DataFormat::NCHW);
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "Input1", DataFormat::NHWC, "InputNCHW1", DataFormat::NCHW);
   OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
       .Input("InputNCHW0")
@@ -118,7 +118,7 @@ void RandomTest(const std::vector<index_t> &input_shape0,
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>(
+  net.TransformDataFormat<RuntimeType::RT_CPU, float>(
       "OutputNCHW", DataFormat::NCHW, "Output", DataFormat::NHWC);
   OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
       .Input("Input0")
@@ -138,23 +138,23 @@ void RandomTest(const std::vector<index_t> &input_shape0,
 }  // namespace
 
 TEST_F(SqrDiffMeanOpTest, GPURandomFloat) {
-  RandomTest<DeviceType::GPU, float>({4, 64, 64, 3}, {4, 1, 1, 3});
-  RandomTest<DeviceType::GPU, float>({2, 64, 64, 4}, {2, 1, 1, 4});
-  RandomTest<DeviceType::GPU, float>({8, 128, 128, 64}, {8, 1, 1, 64});
-  RandomTest<DeviceType::GPU, float>({1, 640, 480, 64}, {1, 1, 1, 64});
-  RandomTest<DeviceType::GPU, float>({8, 117, 87, 33}, {8, 1, 1, 33});
-  RandomTest<DeviceType::GPU, float>({1, 619, 450, 61}, {1, 1, 1, 61});
-  RandomTest<DeviceType::GPU, float>({11, 511, 561, 1}, {11, 1, 1, 1});
+  RandomTest<RuntimeType::RT_OPENCL, float>({4, 64, 64, 3}, {4, 1, 1, 3});
+  RandomTest<RuntimeType::RT_OPENCL, float>({2, 64, 64, 4}, {2, 1, 1, 4});
+  RandomTest<RuntimeType::RT_OPENCL, float>({8, 128, 128, 64}, {8, 1, 1, 64});
+  RandomTest<RuntimeType::RT_OPENCL, float>({1, 640, 480, 64}, {1, 1, 1, 64});
+  RandomTest<RuntimeType::RT_OPENCL, float>({8, 117, 87, 33}, {8, 1, 1, 33});
+  RandomTest<RuntimeType::RT_OPENCL, float>({1, 619, 450, 61}, {1, 1, 1, 61});
+  RandomTest<RuntimeType::RT_OPENCL, float>({11, 511, 561, 1}, {11, 1, 1, 1});
 }
 
 TEST_F(SqrDiffMeanOpTest, GPURandomHalf) {
-  RandomTest<DeviceType::GPU, half>({4, 64, 64, 3}, {4, 1, 1, 3});
-  RandomTest<DeviceType::GPU, half>({2, 64, 64, 4}, {2, 1, 1, 4});
-  RandomTest<DeviceType::GPU, half>({8, 128, 128, 64}, {8, 1, 1, 64});
-  RandomTest<DeviceType::GPU, half>({1, 640, 480, 64}, {1, 1, 1, 64});
-  RandomTest<DeviceType::GPU, half>({8, 117, 87, 33}, {8, 1, 1, 33});
-  RandomTest<DeviceType::GPU, half>({1, 619, 450, 61}, {1, 1, 1, 61});
-  RandomTest<DeviceType::GPU, half>({11, 511, 561, 1}, {11, 1, 1, 1});
+  RandomTest<RuntimeType::RT_OPENCL, half>({4, 64, 64, 3}, {4, 1, 1, 3});
+  RandomTest<RuntimeType::RT_OPENCL, half>({2, 64, 64, 4}, {2, 1, 1, 4});
+  RandomTest<RuntimeType::RT_OPENCL, half>({8, 128, 128, 64}, {8, 1, 1, 64});
+  RandomTest<RuntimeType::RT_OPENCL, half>({1, 640, 480, 64}, {1, 1, 1, 64});
+  RandomTest<RuntimeType::RT_OPENCL, half>({8, 117, 87, 33}, {8, 1, 1, 33});
+  RandomTest<RuntimeType::RT_OPENCL, half>({1, 619, 450, 61}, {1, 1, 1, 61});
+  RandomTest<RuntimeType::RT_OPENCL, half>({11, 511, 561, 1}, {11, 1, 1, 1});
 }
 
 }  // namespace test

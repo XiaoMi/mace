@@ -14,6 +14,8 @@
 
 #include "mace/ops/opencl/image/fully_connected.h"
 
+#include "mace/runtimes/opencl/opencl_runtime.h"
+
 namespace mace {
 namespace ops {
 namespace opencl {
@@ -30,12 +32,9 @@ MaceStatus FullyConnectedKernel::Compute(
     const float activation_coefficient,
     Tensor *output) {
   std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
-  std::vector<size_t> output_image_shape;
-  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
-                              &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-  auto runtime = context->device()->gpu_runtime()->opencl_runtime();
+  auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
@@ -77,19 +76,19 @@ MaceStatus FullyConnectedKernel::Compute(
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
-    if (runtime->gpu_type() != GPUType::QUALCOMM_ADRENO) {
+    if (executor->gpu_type() != GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_QUALCOMM_ADRENO");
     }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("fully_connected", kernel_name,
-                                              built_options, &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel("fully_connected", kernel_name,
+                                               built_options, &kernel_));
 
     const uint32_t kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
 
-    if (runtime->gpu_type() == GPUType::QUALCOMM_ADRENO) {
+    if (executor->gpu_type() == GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
       const uint32_t wave_size =
-          static_cast<uint32_t>(runtime->GetKernelWaveSize(kernel_));
+          static_cast<uint32_t>(executor->GetKernelWaveSize(kernel_));
 
       gws_ = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
 
@@ -111,12 +110,12 @@ MaceStatus FullyConnectedKernel::Compute(
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_3D_GWS_ARGS(kernel_, gws_);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(weight->opencl_image()));
+    kernel_.setArg(idx++, *(input->memory<cl::Image>()));
+    kernel_.setArg(idx++, *(weight->memory<cl::Image>()));
     if (bias != nullptr) {
-      kernel_.setArg(idx++, *(bias->opencl_image()));
+      kernel_.setArg(idx++, *(bias->memory<cl::Image>()));
     }
-    kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->mutable_memory<cl::Image>()));
     kernel_.setArg(idx++, (lws_[0] * lws_[1] * lws_[2] * sizeof(float)),
                    nullptr);
     kernel_.setArg(idx++, static_cast<int>(input->dim(1)));
@@ -130,8 +129,8 @@ MaceStatus FullyConnectedKernel::Compute(
   }
   cl::Event event;
   cl_int error;
-  if (runtime->IsNonUniformWorkgroupsSupported()) {
-    error = runtime->command_queue().enqueueNDRangeKernel(
+  if (executor->IsNonUniformWorkgroupsSupported()) {
+    error = executor->command_queue().enqueueNDRangeKernel(
         kernel_, cl::NullRange, cl::NDRange(gws_[0], gws_[1], gws_[2]),
         cl::NDRange(lws_[0], lws_[1], lws_[2]), nullptr, &event);
   } else {
@@ -139,7 +138,7 @@ MaceStatus FullyConnectedKernel::Compute(
     for (size_t i = 0; i < lws_.size(); ++i) {
       roundup_gws[i] = RoundUp(gws_[i], lws_[i]);
     }
-    error = runtime->command_queue().enqueueNDRangeKernel(
+    error = executor->command_queue().enqueueNDRangeKernel(
         kernel_, cl::NullRange,
         cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
         cl::NDRange(lws_[0], lws_[1], lws_[2]), nullptr, &event);
@@ -148,10 +147,10 @@ MaceStatus FullyConnectedKernel::Compute(
   MACE_CL_RET_STATUS(error);
 
   if (context->future() != nullptr) {
-    context->future()->wait_fn = [runtime, event](CallStats *stats) {
+    context->future()->wait_fn = [executor, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
+        executor->GetCallStats(event, stats);
       }
     };
   }
