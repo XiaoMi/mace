@@ -31,6 +31,7 @@ const std::map<std::string, ClProgramInfo> {{variable_name}} = {
         {{header|tojson}},
         {%- endfor -%}
       },
+      {{encrypted_code['hash_str']|tojson}},
       {
         {%- for ele in encrypted_code['code'] -%}
         {{ele}},

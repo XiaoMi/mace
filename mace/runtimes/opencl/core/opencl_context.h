@@ -28,6 +28,9 @@ namespace mace {
 class OpenclContext {
  public:
   OpenclContext(const std::string &storage_path = "",
+                const std::string &opencl_cache_full_path = "",
+                const OpenCLCacheReusePolicy &opencl_cache_reuse_policy =
+                    OpenCLCacheReusePolicy::REUSE_SAME_GPU,
                 const std::vector<std::string> &opencl_binary_path = {},
                 const std::string &opencl_parameter_path = "",
                 const unsigned char *opencl_binary_ptr = nullptr,
@@ -39,12 +42,14 @@ class OpenclContext {
   std::shared_ptr<KVStorage> opencl_binary_storage();
   std::shared_ptr<KVStorage> opencl_cache_storage();
   std::shared_ptr<Tuner<uint32_t>> opencl_tuner();
+  OpenCLCacheReusePolicy opencl_cache_reuse_policy();
 
  private:
   std::unique_ptr<KVStorageFactory> storage_factory_;
   std::shared_ptr<Tuner<uint32_t>> opencl_tuner_;
   std::shared_ptr<KVStorage> opencl_binary_storage_;
   std::shared_ptr<KVStorage> opencl_cache_storage_;
+  OpenCLCacheReusePolicy opencl_cache_reuse_policy_;
 };
 
 }  // namespace mace

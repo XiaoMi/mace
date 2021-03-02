@@ -42,7 +42,9 @@ public class AppModel {
             @Override
             public void run() {
                 int result = JniMaceUtils.maceMobilenetCreateGPUContext(
-                        initData.getStoragePath());
+                        initData.getStoragePath(),
+                        initData.getOpenclCacheFullPath(),
+                        initData.getOpenclCacheReusePolicy());
                 Log.i("APPModel", "maceMobilenetCreateGPUContext result = " + result);
             }
         });

@@ -100,7 +100,7 @@ std::string ObfuscateString(const std::string &src) {
   return ObfuscateString(src, "Mobile-AI-Compute-Engine");
 }
 
-// Obfuscate synbol or path string
+// Obfuscate symbol or path string
 std::string ObfuscateSymbol(const std::string &src) {
   std::string dest = src;
   if (dest.empty()) {
@@ -143,5 +143,33 @@ std::vector<std::string> Split(const std::string &str, char delims) {
     }
   }
   return result;
+}
+
+void StripString(std::string *s) {
+    if (s->empty()) {
+        return;
+    }
+    std::string whitespaces(" \t\f\v\n\r");
+    s->erase(0, s->find_first_not_of(whitespaces));
+    s->erase(s->find_last_not_of(whitespaces) + 1);
+}
+
+std::string GetStrAfterPattern(const std::string &str,
+                               const std::string &pattern) {
+  std::string whitespaces(" \t\f\v\n\r");
+  size_t pat_start;
+  size_t idx = str.find(pattern);
+  if (idx == std::string::npos) {
+    return "";
+  }
+  pat_start = str.find_first_not_of(whitespaces, idx+pattern.size());
+  if (pat_start == std::string::npos) {
+    return "";
+  }
+  idx = str.find_first_of(whitespaces, pat_start);
+  if (idx == std::string::npos) {
+    return str.substr(pat_start);
+  }
+  return str.substr(pat_start, idx-pat_start);
 }
 }  // namespace mace

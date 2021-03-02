@@ -22,6 +22,7 @@
 
 #include "mace/public/mace.h"
 #include "mace/utils/rwlock.h"
+#include "mace/proto/mace.pb.h"
 
 namespace mace {
 

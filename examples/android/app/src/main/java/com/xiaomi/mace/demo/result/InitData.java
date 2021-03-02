@@ -28,14 +28,17 @@ public class InitData {
     private String device = "";
     private int ompNumThreads;
     private int cpuAffinityPolicy;
+    private int openclCacheReusePolicy;
     private int gpuPerfHint;
     private int gpuPriorityHint;
+    private String openclCacheFullPath = "";
     private String storagePath = "";
 
     public InitData() {
         model = MODELS[0];
         ompNumThreads = 2;
         cpuAffinityPolicy = 1;
+        openclCacheReusePolicy = 1;
         gpuPerfHint = 3;
         gpuPriorityHint = 3;
         device = DEVICES[0];
@@ -44,6 +47,7 @@ public class InitData {
         if (!file.exists()) {
             file.mkdir();
         }
+        openclCacheFullPath  = storagePath + File.separator + "mace_cl_compiled_program.bin";
 
     }
 
@@ -79,6 +83,14 @@ public class InitData {
         this.cpuAffinityPolicy = cpuAffinityPolicy;
     }
 
+    public int getOpenclCacheReusePolicy() {
+        return openclCacheReusePolicy;
+    }
+
+    public void setOpenclCacheReusePolicy(int openclCacheReusePolicy) {
+        this.openclCacheReusePolicy = openclCacheReusePolicy;
+    }
+
     public int getGpuPerfHint() {
         return gpuPerfHint;
     }
@@ -93,6 +105,14 @@ public class InitData {
 
     public void setGpuPriorityHint(int gpuPriorityHint) {
         this.gpuPriorityHint = gpuPriorityHint;
+    }
+
+    public String getOpenclCacheFullPath() {
+        return openclCacheFullPath;
+    }
+
+    public void setOpenclCacheFullPath(String openclCacheFullPath) {
+        this.openclCacheFullPath = openclCacheFullPath;
     }
 
     public String getStoragePath() {

@@ -30,7 +30,9 @@ extern "C" {
 JNIEXPORT jint JNICALL
 Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateGPUContext(JNIEnv *,
                                                                 jclass,
-                                                                jstring);
+                                                                jstring,
+                                                                jstring,
+                                                                jint);
 
 /*
  * Class:     com_xiaomi_mace_JniMaceUtils

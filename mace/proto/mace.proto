@@ -17,6 +17,7 @@ enum DataType {
   DT_BFLOAT16 = 6;
   DT_INT16 = 7;
   DT_INT8 = 8;
+  DT_UINT32 = 9;
 }
 
 message ConstTensor {
@@ -120,4 +121,14 @@ message MultiNetDef {
 
   repeated string input_tensor = 100;
   repeated string output_tensor = 101;
+}
+
+message KVPair {
+  optional string key = 1;
+  optional bytes bytes_value = 2;
+  repeated uint32 uint32s_value = 3;
+}
+
+message PairContainer {
+  repeated KVPair pairs = 1;
 }

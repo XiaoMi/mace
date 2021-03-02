@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import hashlib
 import os
 import shutil
 import sys
@@ -76,26 +77,36 @@ def get_module_key(file_name):
     return module_key
 
 
+def get_hash_value(file_path, hash_val_last_n=10):
+    hash_obj = hashlib.md5()
+    hash_obj.update(open(file_path, 'rb').read())
+    return hash_obj.hexdigest()[-hash_val_last_n:]
+
+
 def encrypt_opencl_codegen(cl_kernel_dir, output_path):
     if not os.path.exists(cl_kernel_dir):
         print("Input cl_kernel_dir " + cl_kernel_dir + " doesn't exist!")
 
     encrypted_code_maps = {}
+    common_h_hash = get_hash_value(os.path.join(cl_kernel_dir, "common.h"))
     for file_name in os.listdir(cl_kernel_dir):
         file_path = os.path.join(cl_kernel_dir, file_name)
         module_key = get_module_key(file_name)
         if module_key is not None and len(module_key) > 0:
+            hash_str = get_hash_value(file_path)
             with open(file_path, "r") as f:
                 code_str = ""
                 headers = []
                 for line in f.readlines():
                     if "#include <common.h>" in line:
                         headers.append(get_module_key("common.h"))
+                        hash_str += common_h_hash
                     else:
                         code_str += line
                 encrypted_code_arr = encrypt_code(code_str)
                 encrypted_code = {}
                 encrypted_code['headers'] = headers
+                encrypted_code['hash_str'] = hash_str
                 encrypted_code['code'] = encrypted_code_arr
                 encrypted_code_maps[module_key] = encrypted_code
 

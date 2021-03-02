@@ -24,6 +24,8 @@ class GPUContextBuilder::Impl {
  public:
   Impl();
   void SetStoragePath(const std::string &path);
+  void SetOpenCLCacheReusePolicy(const OpenCLCacheReusePolicy &policy);
+  void SetOpenCLCacheFullPath(const std::string &path);
 
   void SetOpenCLBinaryPaths(const std::vector<std::string> &paths);
 
@@ -37,6 +39,8 @@ class GPUContextBuilder::Impl {
 
  public:
   std::string storage_path_;
+  std::string opencl_cache_full_path_;
+  OpenCLCacheReusePolicy opencl_cache_reuse_policy_;
   std::vector<std::string> opencl_binary_paths_;
   std::string opencl_parameter_path_;
   const unsigned char *opencl_binary_ptr_;
@@ -46,7 +50,9 @@ class GPUContextBuilder::Impl {
 };
 
 GPUContextBuilder::Impl::Impl()
-    : storage_path_(""), opencl_binary_paths_(0), opencl_parameter_path_(""),
+    : storage_path_(""), opencl_cache_full_path_(""),
+      opencl_cache_reuse_policy_(OpenCLCacheReusePolicy::REUSE_SAME_GPU),
+      opencl_binary_paths_(0), opencl_parameter_path_(""),
       opencl_binary_ptr_(nullptr), opencl_binary_size_(0),
       opencl_parameter_ptr_(nullptr), opencl_parameter_size_(0) {}
 
@@ -54,6 +60,14 @@ void GPUContextBuilder::Impl::SetStoragePath(const std::string &path) {
   storage_path_ = path;
 }
 
+void GPUContextBuilder::Impl::SetOpenCLCacheReusePolicy(
+    const OpenCLCacheReusePolicy &policy) {
+  opencl_cache_reuse_policy_ = policy;
+}
+
+void GPUContextBuilder::Impl::SetOpenCLCacheFullPath(const std::string &path) {
+  opencl_cache_full_path_ = path;
+}
 void GPUContextBuilder::Impl::SetOpenCLBinaryPaths(
     const std::vector<std::string> &paths) {
   opencl_binary_paths_ = paths;
@@ -80,7 +94,8 @@ void GPUContextBuilder::Impl::SetOpenCLParameter(const unsigned char *data,
 std::shared_ptr<OpenclContext> GPUContextBuilder::Impl::Finalize() {
 #ifdef MACE_ENABLE_OPENCL
   return std::shared_ptr<OpenclContext>(new OpenclContext(
-      storage_path_, opencl_binary_paths_, opencl_parameter_path_,
+      storage_path_, opencl_cache_full_path_, opencl_cache_reuse_policy_,
+      opencl_binary_paths_, opencl_parameter_path_,
       opencl_binary_ptr_, opencl_binary_size_, opencl_parameter_ptr_,
       opencl_parameter_size_));
 #else
@@ -95,6 +110,19 @@ GPUContextBuilder::~GPUContextBuilder() = default;
 
 GPUContextBuilder &GPUContextBuilder::SetStoragePath(const std::string &path) {
   impl_->SetStoragePath(path);
+  return *this;
+}
+
+
+GPUContextBuilder &GPUContextBuilder::SetOpenCLCacheReusePolicy(
+    const OpenCLCacheReusePolicy &policy) {
+  impl_->SetOpenCLCacheReusePolicy(policy);
+  return *this;
+}
+
+GPUContextBuilder &GPUContextBuilder::SetOpenCLCacheFullPath(
+    const std::string &path) {
+  impl_->SetOpenCLCacheFullPath(path);
   return *this;
 }
 

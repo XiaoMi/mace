@@ -135,9 +135,13 @@ DEFINE_string(input_dir,
 DEFINE_string(output_dir,
               "output",
               "output directory name");
+DEFINE_string(opencl_cache_full_path,
+              "",
+              "opencl cache file path");
 DEFINE_string(opencl_binary_file,
               "",
-              "compiled opencl binary file path");
+              "compiled opencl binary file path: "
+              "will be deprecated in the future, use opencl_cache_full_path");
 DEFINE_string(opencl_parameter_file,
               "",
               "tuned OpenCL parameter file path");
@@ -162,6 +166,9 @@ DEFINE_int32(num_threads, -1, "num of threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 DEFINE_int32(apu_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
+DEFINE_int32(opencl_cache_reuse_policy,
+            1,
+            "0:NONE/1:REUSE_SAME_GPU");
 DEFINE_bool(benchmark, false, "enable benchmark op");
 
 namespace {
@@ -288,6 +295,9 @@ bool RunModel(const std::string &model_name,
 
   opencl_context = GPUContextBuilder()
       .SetStoragePath(storage_path)
+      .SetOpenCLCacheFullPath(FLAGS_opencl_cache_full_path)
+      .SetOpenCLCacheReusePolicy(
+          static_cast<OpenCLCacheReusePolicy>(FLAGS_opencl_cache_reuse_policy))
       .SetOpenCLBinaryPaths(opencl_binary_paths)
       .SetOpenCLParameterPath(FLAGS_opencl_parameter_file)
       .Finalize();

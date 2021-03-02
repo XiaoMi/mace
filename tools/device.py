@@ -198,6 +198,7 @@ class DeviceWrapper:
                    libmace_dynamic_library_path,
                    num_threads=-1,
                    cpu_affinity_policy=1,
+                   cl_cache_reuse_policy=1,
                    gpu_perf_hint=3,
                    gpu_priority_hint=3,
                    apu_cache_policy=0,
@@ -264,6 +265,7 @@ class DeviceWrapper:
                     "--restart_round=%s" % restart_round,
                     "--num_threads=%s" % num_threads,
                     "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+                    "--opencl_cache_reuse_policy=%s" % cl_cache_reuse_policy,
                     "--gpu_perf_hint=%s" % gpu_perf_hint,
                     "--gpu_priority_hint=%s" % gpu_priority_hint,
                     "--model_file=%s" % mace_model_path,
@@ -376,6 +378,9 @@ class DeviceWrapper:
                 "--restart_round=%s" % restart_round,
                 "--num_threads=%s" % num_threads,
                 "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+                "--opencl_cache_reuse_policy=%s" % cl_cache_reuse_policy,
+                "--opencl_cache_full_path=%s/%s" %
+                (DEVICE_INTERIOR_DIR, CL_COMPILED_BINARY_FILE_NAME),
                 "--gpu_perf_hint=%s" % gpu_perf_hint,
                 "--gpu_priority_hint=%s" % gpu_priority_hint,
                 "--model_file=%s" % mace_model_phone_path,
@@ -619,6 +624,7 @@ class DeviceWrapper:
                 YAMLKeyword.model_graph_format],
             num_threads=flags.num_threads,
             cpu_affinity_policy=flags.cpu_affinity_policy,
+            cl_cache_reuse_policy=flags.opencl_cache_reuse_policy,
             gpu_perf_hint=flags.gpu_perf_hint,
             gpu_priority_hint=flags.gpu_priority_hint,
             apu_cache_policy=flags.apu_cache_policy,
@@ -907,14 +913,14 @@ class DeviceWrapper:
                 sh.rm('-rf', opencl_parameter_bin_path)
 
             # merge all model's opencl binaries together
-            sh_commands.merge_opencl_binaries(
+            sh_commands.merge_opencl_binaries_or_parameters(
                 model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
-                opencl_output_bin_path
+                opencl_output_bin_path, sh_commands.MergeType.binary
             )
             # merge all model's opencl parameter together
-            sh_commands.merge_opencl_parameters(
+            sh_commands.merge_opencl_binaries_or_parameters(
                 model_output_dirs, CL_TUNED_PARAMETER_FILE_NAME,
-                opencl_parameter_bin_path
+                opencl_parameter_bin_path, sh_commands.MergeType.parameter
             )
             sh_commands.gen_opencl_binary_cpps(
                 opencl_output_bin_path,
