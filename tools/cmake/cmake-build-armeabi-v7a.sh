@@ -37,6 +37,11 @@ if [[ "$BFLOAT16" == "ON" ]]; then
     DMACE_ENABLE_BFLOAT16=ON
 fi
 
+MACE_ENABLE_RPCMEM=OFF
+if [[ "$RPCMEM" == "ON" ]]; then
+    MACE_ENABLE_RPCMEM=ON
+fi
+
 mkdir -p ${BUILD_DIR} && cd ${BUILD_DIR}
 cmake -DANDROID_ABI="armeabi-v7a" \
       -DANDROID_ARM_NEON=ON \
@@ -56,7 +61,7 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DMACE_ENABLE_TESTS=ON                                 \
       -DMACE_ENABLE_BENCHMARKS=ON                            \
       -DMACE_ENABLE_CODE_MODE=${MACE_ENABLE_CODE_MODE}       \
-      -DMACE_ENABLE_RPCMEM=ON                                \
+      -DMACE_ENABLE_RPCMEM=${MACE_ENABLE_RPCMEM}             \
       -DCMAKE_INSTALL_PREFIX=install                         \
       ../../..
 make -j$(nproc)1 && make install

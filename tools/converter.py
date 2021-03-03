@@ -792,7 +792,7 @@ def print_configuration(configs):
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
 
-def build_model_lib(configs, address_sanitizer, debug_mode):
+def build_model_lib(configs, address_sanitizer, use_rpc_mem, debug_mode):
     MaceLogger.header(StringFormatter.block("Building model library"))
 
     # create model library dir
@@ -815,6 +815,7 @@ def build_model_lib(configs, address_sanitizer, debug_mode):
             enable_quantize=quantize_enabled(configs),
             enable_bfloat16=bfloat16_enabled(configs),
             enable_fp16=fp16_enabled(configs),
+            enable_rpcmem=use_rpc_mem,
             address_sanitizer=address_sanitizer,
             symbol_hidden=get_symbol_hidden_mode(debug_mode),
             debug_mode=debug_mode
@@ -939,7 +940,10 @@ def convert_func(flags):
             StringFormatter.block("Model %s converted" % model_name))
 
     if model_graph_format == ModelFormat.code:
-        build_model_lib(configs, flags.address_sanitizer, flags.debug_mode)
+        build_model_lib(configs,
+                        flags.address_sanitizer,
+                        flags.use_rpc_mem,
+                        flags.debug_mode)
 
     print_library_summary(configs)
 
@@ -948,7 +952,7 @@ def convert_func(flags):
 # run
 ################################
 def build_mace_run(configs, target_abi, toolchain, address_sanitizer,
-                   mace_lib_type, debug_mode, device):
+                   mace_lib_type, use_rpc_mem, debug_mode, device):
     library_name = configs[YAMLKeyword.library_name]
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -979,6 +983,7 @@ def build_mace_run(configs, target_abi, toolchain, address_sanitizer,
         enable_quantize=quantize_enabled(configs),
         enable_bfloat16=bfloat16_enabled(configs),
         enable_fp16=fp16_enabled(configs),
+        enable_rpcmem=use_rpc_mem,
         address_sanitizer=address_sanitizer,
         symbol_hidden=get_symbol_hidden_mode(debug_mode, mace_lib_type),
         debug_mode=debug_mode,
@@ -1025,6 +1030,7 @@ def run_mace(flags):
                                toolchain,
                                flags.address_sanitizer,
                                flags.mace_lib_type,
+                               flags.use_rpc_mem,
                                flags.debug_mode,
                                device)
                 # run
@@ -1103,6 +1109,10 @@ def parse_args():
         type=str,
         default="",
         help="Target SOCs, comma seperated list.")
+    all_type_parent_parser.add_argument(
+        "--use_rpc_mem",
+        action="store_true",
+        help="Enable rpc_mem optimizations.")
     all_type_parent_parser.add_argument(
         "--debug_mode",
         action="store_true",
