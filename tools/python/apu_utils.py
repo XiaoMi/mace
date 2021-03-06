@@ -58,7 +58,7 @@ def get_apu_so_paths_by_props(android_ver, target_soc):
     elif apu_version == 3:
         so_path += "android_R/"
         # For android R except mt689x&mt6877
-        if target_soc != "mt6875":
+        if target_soc != "mt6785":
             so_path_array.append(so_path + "libapu-apuwareapusys.mtk.so")
         so_path_array.append(so_path + "libapu-apuwareutils.mtk.so")
         so_path_array.append(so_path + "libapu-apuwarexrp.mtk.so")
