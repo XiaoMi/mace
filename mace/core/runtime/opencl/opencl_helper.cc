@@ -88,11 +88,12 @@ std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
     uint64_t cache_size = runtime->device_global_mem_cache_size();
     uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-    lws[2] =
-        std::min<uint32_t>(std::min<uint32_t>(gws[2], base), kwg_size / lws[1]);
+    lws[2] = std::min<uint32_t>(std::min<uint32_t>(gws[2], base),
+                                kwg_size / lws[1]);
     const uint32_t lws_size = lws[1] * lws[2];
     lws[0] = std::max<uint32_t>(std::min<uint32_t>(base, kwg_size / lws_size),
                                 1);
+    lws[0] = std::min<uint32_t>(lws[0], gws[0]);
   }
   return lws;
 }
