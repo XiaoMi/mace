@@ -237,6 +237,36 @@ cl::Platform FindGpuPlatform() {
   return all_platforms[0];
 }
 
+std::vector<unsigned char> GetBinaryFromProgram(const cl::Program &program) {
+  // Keep built program binary
+  size_t device_list_size = 1;
+  std::unique_ptr<size_t[]> program_binary_sizes(
+      new size_t[device_list_size]);
+  cl_int err = clGetProgramInfo(program(), CL_PROGRAM_BINARY_SIZES,
+                                sizeof(size_t) * device_list_size,
+                                program_binary_sizes.get(), nullptr);
+  MACE_CHECK(err == CL_SUCCESS, "error: ", OpenCLErrorToString(err));
+
+  std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
+      new std::unique_ptr<unsigned char[]>[device_list_size]);
+  for (cl_uint i = 0; i < device_list_size; ++i) {
+    program_binaries[i] = std::unique_ptr<unsigned char[]>(
+        new unsigned char[program_binary_sizes[i]]);
+  }
+
+  err = clGetProgramInfo(program(), CL_PROGRAM_BINARIES,
+                         sizeof(unsigned char *) * device_list_size,
+                         program_binaries.get(), nullptr);
+  MACE_CHECK(err == CL_SUCCESS, "error: ", OpenCLErrorToString(err));
+
+  std::vector<unsigned char> content(
+      reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
+      reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
+          program_binary_sizes[0]);
+
+  return content;
+}
+
 std::shared_ptr<cl::Device> FindGpuDevice(
     const cl::Platform &default_platform) {
   // get default device (CPUs, GPUs) of the default platform
@@ -473,7 +503,7 @@ MaceStatus OpenclExecutor::Init(std::shared_ptr<OpenclContext> opencl_context,
   std::string cached_binary_device_name;
   auto cache_storage = opencl_context_->opencl_cache_storage();
   if (cache_storage != nullptr) {
-    if (cache_storage->Load() != 0) {
+    if (cache_storage->Load() != 0 && !tuner->IsTuning()) {
       LOG(WARNING) << "Load OpenCL cached compiled kernel file failed. "
                    << "Please make sure the storage directory exist, "
                    << "the file is not modified illegally, "
@@ -526,7 +556,7 @@ MaceStatus OpenclExecutor::Init(std::shared_ptr<OpenclContext> opencl_context,
       VLOG(1) << "There is no precompiled OpenCL binary in"
                  " all OpenCL binary paths.";
     } else {
-      if (precompiled_binary_storage->Load() != 0) {
+      if (precompiled_binary_storage->Load() != 0 && !tuner->IsTuning()) {
         LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
                      << "Please make sure the storage directory exist "
                      << "and you have Write&Read permission";
@@ -651,7 +681,9 @@ bool OpenclExecutor::BuildProgramFromCache(
     cl::Program *program) {
   // Find from binary
   auto cache_storage = opencl_context_->opencl_cache_storage();
-  if (cache_storage == nullptr) return false;
+  if (cache_storage == nullptr) {
+    return false;
+  }
   std::string program_name;
   bool hash_match = false;
   std::string cached_program_hash;
@@ -673,7 +705,9 @@ bool OpenclExecutor::BuildProgramFromCache(
       }
     }
   }
-  if (!hash_match) return false;
+  if (!hash_match) {
+    return false;
+  }
   auto content = cache_storage->Find(built_program_key);
   if (content == nullptr) {
     return false;
@@ -729,6 +763,7 @@ bool OpenclExecutor::BuildProgramFromPrecompiledBinary(
                  << MakeString(ret);
     return false;
   }
+  programs_need_store_.insert(built_program_key);
   VLOG(3) << "Program from precompiled binary: " << built_program_key;
   return true;
 }
@@ -790,61 +825,8 @@ bool OpenclExecutor::BuildProgramFromSource(
       return false;
     }
 
-    // Keep built program binary
-    size_t device_list_size = 1;
-    std::unique_ptr<size_t[]> program_binary_sizes(
-        new size_t[device_list_size]);
-    cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
-                                  sizeof(size_t) * device_list_size,
-                                  program_binary_sizes.get(), nullptr);
-    if (err != CL_SUCCESS) {
-      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
-      return false;
-    }
-    std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
-        new std::unique_ptr<unsigned char[]>[device_list_size]);
-    for (cl_uint i = 0; i < device_list_size; ++i) {
-      program_binaries[i] = std::unique_ptr<unsigned char[]>(
-          new unsigned char[program_binary_sizes[i]]);
-    }
-
-    err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
-                           sizeof(unsigned char *) * device_list_size,
-                           program_binaries.get(), nullptr);
-    if (err != CL_SUCCESS) {
-      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
-      return false;
-    }
-    std::vector<unsigned char> content(
-        reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
-        reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
-            program_binary_sizes[0]);
-
-    auto cache_storage = opencl_context_->opencl_cache_storage();
-    if (cache_storage != nullptr) {
-      cache_storage->Insert(built_program_key, content);
-      // update platform info
-      cache_storage->Insert(
-          kOpenCLPlatformInfoKey,
-          std::vector<unsigned char>(platform_info_.begin(),
-                                     platform_info_.end()));
-      std::string hash_str;
-      MaceStatus status = GetProgramHashByName(program_name, &hash_str);
-      if (status == MaceStatus::MACE_SUCCESS) {
-        std::vector<unsigned char> hash_vec(hash_str.begin(), hash_str.end());
-        // update program hash
-        cache_storage->Insert(program_key_hash_prefix_ + built_program_key,
-                              hash_vec);
-      } else {
-        LOG(WARNING) << "Failed to get hash value of program " << program_name;
-      }
-      // update device name
-      cache_storage->Insert(kOpenCLDeviceNameKey,
-                            std::vector<unsigned char>(device_name_.begin(),
-                                                       device_name_.end()));
-    }
-
     VLOG(3) << "Program from source: " << built_program_key;
+    programs_need_store_.insert(built_program_key);
   }
   return true;
 }
@@ -903,13 +885,49 @@ MaceStatus OpenclExecutor::BuildKernel(
 
 void OpenclExecutor::SaveBuiltCLProgram() {
   auto cache_storage = opencl_context_->opencl_cache_storage();
-  if (cache_storage != nullptr) {
-    if (cache_storage->Flush() != 0) {
-      LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
-                 << "Please make sure the storage directory exist "
-                 << "and you have Write&Read permission";
+  if (programs_need_store_.empty() || cache_storage == nullptr) {
+    return;
+  }
+
+  // update device name
+  cache_storage->Insert(kOpenCLDeviceNameKey,
+                        std::vector<unsigned char>(device_name_.begin(),
+                                                   device_name_.end()));
+  for (auto i = programs_need_store_.begin();
+       i != programs_need_store_.end(); ++i) {
+    auto &program_key = *i;
+    MACE_CHECK(built_program_map_.count(program_key) > 0);
+    auto &program = built_program_map_.at(program_key);
+
+    auto content = GetBinaryFromProgram(program);
+    cache_storage->Insert(program_key, content);
+
+    std::string hash_str;
+    std::string program_name;
+    MaceStatus ret = ParseProgramNameByKey(program_key, &program_name);
+    MACE_CHECK_SUCCESS(ret);
+    ret = GetProgramHashByName(program_name, &hash_str);
+    if (ret == MaceStatus::MACE_SUCCESS) {
+      std::vector<unsigned char> hash_vec(hash_str.begin(), hash_str.end());
+      // update program hash
+      cache_storage->Insert(program_key_hash_prefix_ + program_key, hash_vec);
+    } else {
+      LOG(WARNING) << "Failed to get hash value of program " << program_name;
     }
   }
+
+  // update platform info
+  auto platform_info = std::vector<unsigned char>(platform_info_.begin(),
+                                                  platform_info_.end());
+  cache_storage->Insert(kOpenCLPlatformInfoKey, platform_info);
+
+  if (cache_storage->Flush() != 0) {
+    LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
+               << "Please make sure the storage directory exist "
+               << "and you have Write&Read permission";
+  }
+
+  programs_need_store_.clear();
 }
 
 void OpenclExecutor::GetCallStats(const cl::Event &event, CallStats *stats) {

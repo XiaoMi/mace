@@ -148,6 +148,7 @@ class OpenclExecutor {
   std::shared_ptr<cl::Device> device_;
   std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
+  std::set<std::string> programs_need_store_;
   std::mutex program_build_mutex_;
   std::string platform_info_;
   std::string precompiled_binary_platform_info_;
