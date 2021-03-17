@@ -230,6 +230,36 @@ GPUType ParseGPUType(const std::string &device_name) {
   }
 }
 
+std::vector<unsigned char> GetBinaryFromProgram(const cl::Program &program) {
+  // Keep built program binary
+  size_t device_list_size = 1;
+  std::unique_ptr<size_t[]> program_binary_sizes(
+      new size_t[device_list_size]);
+  cl_int err = clGetProgramInfo(program(), CL_PROGRAM_BINARY_SIZES,
+                                sizeof(size_t) * device_list_size,
+                                program_binary_sizes.get(), nullptr);
+  MACE_CHECK(err == CL_SUCCESS, "error: ", OpenCLErrorToString(err));
+
+  std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
+      new std::unique_ptr<unsigned char[]>[device_list_size]);
+  for (cl_uint i = 0; i < device_list_size; ++i) {
+    program_binaries[i] = std::unique_ptr<unsigned char[]>(
+        new unsigned char[program_binary_sizes[i]]);
+  }
+
+  err = clGetProgramInfo(program(), CL_PROGRAM_BINARIES,
+                         sizeof(unsigned char *) * device_list_size,
+                         program_binaries.get(), nullptr);
+  MACE_CHECK(err == CL_SUCCESS, "error: ", OpenCLErrorToString(err));
+
+  std::vector<unsigned char> content(
+      reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
+      reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
+          program_binary_sizes[0]);
+
+  return content;
+}
+
 #ifdef MACE_ENABLE_RPCMEM
 IONType ParseIONType(const std::string &device_extensions) {
   constexpr const char *kQualcommIONStr = "cl_qcom_ion_host_ptr";
@@ -438,7 +468,7 @@ OpenCLRuntime::OpenCLRuntime(
 
   std::string cached_binary_platform_info;
   if (cache_storage_ != nullptr) {
-    if (cache_storage_->Load() != 0) {
+    if (cache_storage_->Load() != 0 && !tuner_->IsTuning()) {
       LOG(WARNING) << "Load OpenCL cached compiled kernel file failed. "
                    << "Please make sure the storage directory exist "
                    << "and you have Write&Read permission";
@@ -460,7 +490,7 @@ OpenCLRuntime::OpenCLRuntime(
       VLOG(1) << "There is no precompiled OpenCL binary in"
                  " all OpenCL binary paths.";
     } else {
-      if (precompiled_binary_storage_->Load() != 0) {
+      if (precompiled_binary_storage_->Load() != 0 && !tuner_->IsTuning()) {
         LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
                      << "Please make sure the storage directory exist "
                      << "and you have Write&Read permission";
@@ -585,6 +615,7 @@ bool OpenCLRuntime::BuildProgramFromPrecompiledBinary(
                  << MakeString(ret);
     return false;
   }
+  programs_need_store_.insert(built_program_key);
   VLOG(3) << "Program from precompiled binary: " << built_program_key;
   return true;
 }
@@ -646,46 +677,8 @@ bool OpenCLRuntime::BuildProgramFromSource(
       return false;
     }
 
-    // Keep built program binary
-    size_t device_list_size = 1;
-    std::unique_ptr<size_t[]> program_binary_sizes(
-        new size_t[device_list_size]);
-    cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
-                                  sizeof(size_t) * device_list_size,
-                                  program_binary_sizes.get(), nullptr);
-    if (err != CL_SUCCESS) {
-      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
-      return false;
-    }
-    std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
-        new std::unique_ptr<unsigned char[]>[device_list_size]);
-    for (cl_uint i = 0; i < device_list_size; ++i) {
-      program_binaries[i] = std::unique_ptr<unsigned char[]>(
-          new unsigned char[program_binary_sizes[i]]);
-    }
-
-    err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
-                           sizeof(unsigned char *) * device_list_size,
-                           program_binaries.get(), nullptr);
-    if (err != CL_SUCCESS) {
-      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
-      return false;
-    }
-    std::vector<unsigned char> content(
-        reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
-        reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
-            program_binary_sizes[0]);
-
-    if (this->cache_storage_ != nullptr) {
-      this->cache_storage_->Insert(built_program_key, content);
-      // update platform info
-      this->cache_storage_->Insert(
-          kOpenCLPlatformInfoKey,
-          std::vector<unsigned char>(platform_info_.begin(),
-                                     platform_info_.end()));
-    }
-
     VLOG(3) << "Program from source: " << built_program_key;
+    programs_need_store_.insert(built_program_key);
   }
   return true;
 }
@@ -743,13 +736,32 @@ MaceStatus OpenCLRuntime::BuildKernel(
 }
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
-  if (cache_storage_ != nullptr) {
-    if (cache_storage_->Flush() != 0) {
-      LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
-                 << "Please make sure the storage directory exist "
-                 << "and you have Write&Read permission";
-    }
+  if (programs_need_store_.empty() || cache_storage_ == nullptr) {
+    return;
   }
+
+  for (auto i = programs_need_store_.begin();
+       i != programs_need_store_.end(); ++i) {
+    auto &program_key = *i;
+    MACE_CHECK(built_program_map_.count(program_key) > 0);
+    auto &program = built_program_map_.at(program_key);
+
+    auto content = GetBinaryFromProgram(program);
+    cache_storage_->Insert(program_key, content);
+  }
+
+  // update platform info
+  auto platform_info = std::vector<unsigned char>(platform_info_.begin(),
+                                                  platform_info_.end());
+  cache_storage_->Insert(kOpenCLPlatformInfoKey, platform_info);
+
+  if (cache_storage_->Flush() != 0) {
+    LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
+               << "Please make sure the storage directory exist "
+               << "and you have Write&Read permission";
+  }
+
+  programs_need_store_.clear();
 }
 
 void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
