@@ -131,6 +131,24 @@ class DepthwiseDeconv2dOp<RuntimeType::RT_CPU, T>
           depthwise_deconv2d_delegator_ = delegator::GroupDeconv2d::Create(
               context->workspace(), tag, param);
         }
+      } else {
+        if (is_depthwise) {
+          auto tag = MACE_DELEGATOR_KEY(DepthwiseDeconv2d, DeviceType::CPU, T,
+                                        ImplType::REF);
+          delegator::DepthwiseDeconv2dParam param(strides_, kDepthwiseStrides,
+                                                  paddings_, padding_type_,
+                                                  CAFFE, group_);
+          depthwise_deconv2d_delegator_ = delegator::DepthwiseDeconv2d::Create(
+              context->workspace(), tag, param);
+        } else {
+          auto tag = MACE_DELEGATOR_KEY(GroupDeconv2d, DeviceType::CPU, T,
+                                        ImplType::REF);
+          delegator::GroupDeconv2dParam param(strides_, kDepthwiseStrides,
+                                              paddings_, padding_type_,
+                                              CAFFE, group_);
+          depthwise_deconv2d_delegator_ = delegator::GroupDeconv2d::Create(
+              context->workspace(), tag, param);
+        }
       }
     }
 
