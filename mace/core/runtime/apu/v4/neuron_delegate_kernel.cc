@@ -152,7 +152,7 @@ bool NeuronDelegateKernel::Eval(
       execution, NNFreeExecution(neuronapi_));
 
   MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
-  MACE_ASSERT(output_tensors.size() == output_infos.size(),
+  MACE_ASSERT(output_tensors->size() == output_infos_.size(),
               "Wrong outputs num");
 
   size_t input_offset = 0;
