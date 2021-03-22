@@ -123,6 +123,10 @@ enum CPUAffinityPolicy {
   AFFINITY_POWER_SAVE = 4,
 };
 
+enum class OpenCLCacheReusePolicy {
+  REUSE_NONE = 0,
+  REUSE_SAME_GPU = 1,
+};
 // Voltage corners for clock frequencies, please refer to
 // docs/Hap_power_set_dcvs_2.html in Hexagon SDK for more detailed information.
 enum HexagonNNCornerType {
@@ -266,11 +270,26 @@ class MACE_API GPUContextBuilder {
   GPUContextBuilder &operator=(const GPUContextBuilder &) = delete;
   GPUContextBuilder &operator=(GPUContextBuilder &&) = delete;
 
+  /// \brief Set full path to OpenCL cache file
+  ///
+  /// This function will finally replace SetStoragePath,
+  /// which uses directory instead of full path.
+  ///
+  /// \param path Full path for OpenCL cache file
+  /// \return
+  GPUContextBuilder &SetOpenCLCacheFullPath(const std::string &path);
+  /// \brief Set OpenCL cache reuse policy.
+  /// \param policy one of OpenCLCacheReusePolicy
+  GPUContextBuilder &SetOpenCLCacheReusePolicy(
+      const OpenCLCacheReusePolicy &policy);
+
   /// \brief Set internal storage factory to store internal data.
   ///
   /// Now the path is used to store the built OpenCL binaries to file,
   /// which could speed up the GPU initialization and first run.
   /// If do not call this API, the initialization maybe slow for GPU.
+  /// This function will be deprecated in the future,
+  /// use SetOpenCLCacheFullPath to set full path instead of directory.
   ///
   /// \param path  Make sure your program have Read/Write permission of the path
   /// \return

@@ -26,8 +26,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "mace/core/types.h"
 #include "mace/port/env.h"
 #include "mace/port/file_system.h"
+#include "mace/proto/mace.pb.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/string_util.h"
@@ -60,6 +62,8 @@ class Tuner {
       const unsigned char *param_byte_stream = nullptr,
       const size_t param_byte_stream_size = 0) :
       tuned_param_file_path_(tuned_param_file_path) {
+    MACE_CHECK(DataTypeToEnum<param_type>::value == DT_UINT32,
+               "Only support save uint32_t tuning parameter");
     GetEnv("MACE_RUN_PARAMETER_PATH", &path_);
     is_tuning_ = GetTuningFromEnv();
     if (is_tuning_) {
@@ -68,7 +72,12 @@ class Tuner {
     }
 
     if (param_byte_stream != nullptr && param_byte_stream_size != 0) {
-      ParseData(param_byte_stream, param_byte_stream_size);
+      if (CheckArrayCRC32(param_byte_stream,
+                          static_cast<uint64_t>(param_byte_stream_size))) {
+        ParseData(param_byte_stream, param_byte_stream_size - CRC32SIZE);
+      } else {
+        LOG(WARNING) << "CRC value of provided array is invalid";
+      }
     } else {
       ReadRunParamters();
     }
@@ -89,21 +98,21 @@ class Tuner {
                                   Timer *,
                                   std::vector<param_type> *)> &func,
       Timer *timer) {
-    std::string obfucated_param_key = MACE_OBFUSCATE_SYMBOL(param_key);
+    std::string obfuscated_param_key = MACE_OBFUSCATE_SYMBOL(param_key);
     if (IsTuning() && param_generator != nullptr) {
       // tune
       std::vector<param_type> opt_param = default_param;
       RetType res = Tune<RetType>(param_generator, func, timer, &opt_param);
       VLOG(3) << "Tuning " << param_key
               << " result: " << MakeString(opt_param);
-      param_table_[obfucated_param_key] = opt_param;
+      param_table_[obfuscated_param_key] = opt_param;
       return res;
     } else {
       // run
-      if (param_table_.find(obfucated_param_key) != param_table_.end()) {
+      if (param_table_.find(obfuscated_param_key) != param_table_.end()) {
         VLOG(3) << param_key << ": "
-                << MakeString(param_table_[obfucated_param_key]);
-        return func(param_table_[obfucated_param_key], nullptr, nullptr);
+                << MakeString(param_table_[obfuscated_param_key]);
+        return func(param_table_[obfuscated_param_key], nullptr, nullptr);
       } else {
         return func(default_param, nullptr, nullptr);
       }
@@ -126,27 +135,30 @@ class Tuner {
  private:
   void WriteRunParameters() {
     if (!path_.empty()) {
-      VLOG(3) << "Write tuning result to " << path_;
+      mace::PairContainer container;
+      for (auto &elem : param_table_) {
+        mace::KVPair *kvp = container.add_pairs();
+        kvp->set_key(elem.first);
+        const std::vector<uint32_t> &params = elem.second;
+        for (const uint32_t &param : params) {
+          kvp->add_uint32s_value(param);
+        }
+      }
+      int data_size = container.ByteSize();
+      std::unique_ptr<char[]> buffer = make_unique<char[]>(
+          data_size + CRC32SIZE);
+      char *buffer_ptr = buffer.get();
+      if (!container.SerializeToArray(buffer_ptr, data_size)) {
+        LOG(WARNING) << "Serialize protobuf to array failed.";
+        return;
+      }
+      uint32_t crc_of_content = CalculateCRC32(
+          reinterpret_cast<const unsigned char*>(buffer_ptr),
+          static_cast<uint64_t>(data_size));
+      memcpy(buffer_ptr+data_size, &crc_of_content, CRC32SIZE);
       std::ofstream ofs(path_.c_str(), std::ios::binary | std::ios::out);
       if (ofs.is_open()) {
-        int64_t num_pramas = param_table_.size();
-        ofs.write(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
-        for (auto &kp : param_table_) {
-          int32_t key_size = kp.first.size();
-          ofs.write(reinterpret_cast<char *>(&key_size), sizeof(key_size));
-          ofs.write(kp.first.c_str(), key_size);
-
-          auto &params = kp.second;
-          int32_t params_size = params.size() * sizeof(param_type);
-          ofs.write(reinterpret_cast<char *>(&params_size),
-                    sizeof(params_size));
-
-          VLOG(3) << "Write tuning param: " << kp.first.c_str() << ": "
-                  << MakeString(params);
-          for (auto &param : params) {
-            ofs.write(reinterpret_cast<char *>(&param), sizeof(params_size));
-          }
-        }
+        ofs.write(buffer_ptr, data_size + CRC32SIZE);
         ofs.close();
       } else {
         LOG(WARNING) << "Write run parameter file failed.";
@@ -155,38 +167,14 @@ class Tuner {
   }
 
   void ParseData(const unsigned char *data, size_t data_size) {
-    const size_t int_size = sizeof(int32_t);
-    const size_t param_type_size = sizeof(param_type);
-
-    size_t parsed_offset = 0;
-    int64_t num_params = 0;
-    memcpy(&num_params, data, sizeof(num_params));
-    data += sizeof(num_params);
-    parsed_offset += sizeof(num_params);
-    while (num_params--) {
-      int32_t key_size = 0;
-      memcpy(&key_size, data, int_size);
-      data += int_size;
-      std::string key(key_size, ' ');
-      memcpy(&key[0], data, key_size);
-      data += key_size;
-      parsed_offset += int_size + key_size;
-
-      int32_t params_size = 0;
-      memcpy(&params_size, data, int_size);
-      data += int_size;
-      parsed_offset += int_size;
-      int32_t params_count = params_size / param_type_size;
-      std::vector<param_type> params(params_count);
-      for (int i = 0; i < params_count; ++i) {
-        memcpy(&params[i], data, param_type_size);
-        data += param_type_size;
-        parsed_offset += param_type_size;
-      }
-      MACE_CHECK(parsed_offset <= data_size,
-                 "Parsing tuned data out of range: ",
-                 parsed_offset, " > ", data_size);
-      param_table_.emplace(key, params);
+    mace::PairContainer container;
+    container.ParseFromArray(data, static_cast<int>(data_size));
+    int num_pairs = container.pairs_size();
+    for (int i = 0; i < num_pairs; ++i) {
+      const mace::KVPair &kv = container.pairs(i);
+      const auto &params_field = kv.uint32s_value();
+      param_table_.emplace(kv.key(),
+          std::vector<uint32_t>(params_field.begin(), params_field.end()));
     }
   }
 
@@ -202,8 +190,15 @@ class Tuner {
                      << tuned_param_file_path_;
         return;
       } else {
-        ParseData(static_cast<const unsigned char *>(param_data->data()),
-                  param_data->length());
+        if (CheckArrayCRC32(
+            reinterpret_cast<const unsigned char *>(param_data->data()),
+            static_cast<uint64_t>(param_data->length()))) {
+          ParseData(static_cast<const unsigned char *>(param_data->data()),
+                    param_data->length() - CRC32SIZE);
+        } else {
+          LOG(WARNING) << "CRC value of " << tuned_param_file_path_
+                       << "is invalid";
+        }
       }
     } else {
       VLOG(1) << "There is no tuned parameters.";

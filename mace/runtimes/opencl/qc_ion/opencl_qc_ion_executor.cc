@@ -45,8 +45,9 @@ std::string QcomHostCachePolicyToString(uint32_t policy) {
 OpenclQcIonExecutor::OpenclQcIonExecutor(
     std::shared_ptr<KVStorage> cache_storage,
     std::shared_ptr<KVStorage> precompiled_binary_storage,
-    std::shared_ptr<Tuner<uint32_t>> tuner)
-    : OpenclExecutor(cache_storage, precompiled_binary_storage, tuner) {}
+    std::shared_ptr<Tuner<uint32_t>> tuner, OpenCLCacheReusePolicy policy)
+    : OpenclExecutor(cache_storage, precompiled_binary_storage, tuner,
+                     policy) {}
 
 OpenclQcIonExecutor *OpenclQcIonExecutor::Get(OpenclExecutor *executor) {
   return static_cast<OpenclQcIonExecutor *>(executor);

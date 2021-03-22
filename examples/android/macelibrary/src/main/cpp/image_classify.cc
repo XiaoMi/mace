@@ -77,7 +77,8 @@ MaceContext& GetMaceContext() {
 
 JNIEXPORT jint JNICALL
 Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateGPUContext(
-    JNIEnv *env, jclass thisObj, jstring storage_path) {
+    JNIEnv *env, jclass thisObj, jstring storage_path,
+    jstring opencl_cache_full_path, jint opencl_cache_reuse_policy) {
   MaceContext &mace_context = GetMaceContext();
   // DO NOT USE tmp directory.
   // Please use APP's own directory and make sure the directory exists.
@@ -86,8 +87,19 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateGPUContext(
   const std::string storage_file_path(storage_path_ptr);
   env->ReleaseStringUTFChars(storage_path, storage_path_ptr);
 
+  const char *opencl_cache_full_path_ptr =
+      env->GetStringUTFChars(opencl_cache_full_path, nullptr);
+  if (opencl_cache_full_path_ptr == nullptr) return JNI_ERR;
+  const std::string str_opencl_cache_full_path(opencl_cache_full_path_ptr);
+  env->ReleaseStringUTFChars(opencl_cache_full_path,
+      opencl_cache_full_path_ptr);
+
+  // SetStoragePath will be replaced by SetOpenCLCacheFullPath in the future
   mace_context.gpu_context = mace::GPUContextBuilder()
       .SetStoragePath(storage_file_path)
+      .SetOpenCLCacheFullPath(str_opencl_cache_full_path)
+      .SetOpenCLCacheReusePolicy(
+          static_cast<mace::OpenCLCacheReusePolicy>(opencl_cache_reuse_policy))
       .Finalize();
 
   return JNI_OK;
@@ -210,12 +222,14 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetClassify(
                                           std::default_delete<float[]>());
   std::copy_n(input_data_ptr, input_size, buffer_in.get());
   env->ReleaseFloatArrayElements(input_data, input_data_ptr, 0);
-  inputs[input_name] = mace::MaceTensor(input_shape, buffer_in);
+  inputs[input_name] = mace::MaceTensor(input_shape, buffer_in,
+                                        mace::DataFormat::NHWC);
 
   // construct output
   auto buffer_out = std::shared_ptr<float>(new float[output_size],
                                            std::default_delete<float[]>());
-  outputs[output_name] = mace::MaceTensor(output_shape, buffer_out);
+  outputs[output_name] = mace::MaceTensor(output_shape, buffer_out,
+                                          mace::DataFormat::NHWC);
 
   // run model
   mace_context.engine->Run(inputs, &outputs);

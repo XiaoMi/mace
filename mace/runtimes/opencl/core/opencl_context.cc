@@ -41,19 +41,26 @@ std::string FindFirstExistPath(const std::vector<std::string> &paths) {
 
 OpenclContext::OpenclContext(
     const std::string &storage_path,
+    const std::string &opencl_cache_full_path,
+    const OpenCLCacheReusePolicy &opencl_cache_reuse_policy,
     const std::vector<std::string> &opencl_binary_paths,
     const std::string &opencl_parameter_path,
     const unsigned char *opencl_binary_ptr,
     const size_t opencl_binary_size,
     const unsigned char *opencl_parameter_ptr,
     const size_t opencl_parameter_size)
-    : storage_factory_(new FileStorageFactory(storage_path)),
-      opencl_tuner_(new Tuner<uint32_t>(opencl_parameter_path,
+    : opencl_tuner_(new Tuner<uint32_t>(opencl_parameter_path,
                                         opencl_parameter_ptr,
-                                        opencl_parameter_size)) {
-  if (!storage_path.empty()) {
-    opencl_cache_storage_ =
-        storage_factory_->CreateStorage(kPrecompiledProgramFileName);
+                                        opencl_parameter_size)),
+      opencl_cache_reuse_policy_(opencl_cache_reuse_policy) {
+  if (opencl_cache_full_path.size() > 0) {
+    opencl_cache_storage_.reset(new FileStorage(opencl_cache_full_path));
+  } else {
+    if (!storage_path.empty()) {
+      storage_factory_.reset(new FileStorageFactory(storage_path));
+      opencl_cache_storage_ =
+          storage_factory_->CreateStorage(kPrecompiledProgramFileName);
+    }
   }
 
   if (opencl_binary_ptr != nullptr) {
@@ -77,6 +84,10 @@ std::shared_ptr<KVStorage> OpenclContext::opencl_binary_storage() {
 
 std::shared_ptr<KVStorage> OpenclContext::opencl_cache_storage() {
   return opencl_cache_storage_;
+}
+
+OpenCLCacheReusePolicy OpenclContext::opencl_cache_reuse_policy() {
+  return opencl_cache_reuse_policy_;
 }
 
 std::shared_ptr<Tuner<uint32_t>>

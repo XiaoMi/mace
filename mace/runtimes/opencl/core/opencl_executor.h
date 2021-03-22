@@ -72,7 +72,8 @@ class OpenclExecutor {
   OpenclExecutor(
       std::shared_ptr<KVStorage> cache_storage = nullptr,
       std::shared_ptr<KVStorage> precompiled_binary_storage = nullptr,
-      std::shared_ptr<Tuner<uint32_t>> tuner = nullptr);
+      std::shared_ptr<Tuner<uint32_t>> tuner = nullptr,
+      OpenCLCacheReusePolicy policy = OpenCLCacheReusePolicy::REUSE_SAME_GPU);
   virtual ~OpenclExecutor();
   OpenclExecutor(const OpenclExecutor &) = delete;
   OpenclExecutor &operator=(const OpenclExecutor &) = delete;
@@ -134,6 +135,7 @@ class OpenclExecutor {
       const std::string &build_options_str,
       cl::Program *program);
   OpenCLVersion ParseDeviceVersion(const std::string &device_version);
+  std::string ParseAdrenoDeviceName(const std::string &device_version);
 
  private:
   std::shared_ptr<KVStorage> cache_storage_;
@@ -155,6 +157,9 @@ class OpenclExecutor {
   bool out_of_range_check_;
   uint64_t device_global_mem_cache_size_;
   uint32_t device_compute_units_;
+  std::string program_key_hash_prefix_;
+  std::string device_name_;
+  OpenCLCacheReusePolicy opencl_cache_reuse_policy_;
 };
 
 class OpenCLProfilingTimer : public Timer {

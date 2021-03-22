@@ -1176,6 +1176,12 @@ def parse_args():
         default=1,
         help="The model running round.")
     run.add_argument(
+        "--opencl_cache_reuse_policy",
+        type=int,
+        default=1,
+        help="Policy used to reuse compatible opencl cache"
+             "0:NONE/1:REUSE_SAME_GPU")
+    run.add_argument(
         "--validate",
         action="store_true",
         help="whether to verify the results are consistent with "

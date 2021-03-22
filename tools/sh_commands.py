@@ -15,6 +15,7 @@
 import glob
 import logging
 import numpy as np
+import zlib
 import os
 import random
 import re
@@ -40,10 +41,21 @@ except Exception as e:
     six.print_("Import error:\n%s" % e, file=sys.stderr)
     exit(1)
 
+sys.path.insert(0, "tools/python/")
+try:
+    from python.py_proto import mace_pb2
+except Exception as e:
+    six.print_("Import error:\n%s" % e, file=sys.stderr)
+    sys.exit(1)
 
 ################################
 # common
 ################################
+
+
+class MergeType:
+    binary = 0
+    parameter = 1
 
 
 def strip_invalid_utf8(str):
@@ -384,10 +396,16 @@ def gen_mace_engine_factory_source(model_tags,
     six.print_("Generate mace engine creator source done!\n")
 
 
-def merge_opencl_binaries(binaries_dirs,
-                          cl_compiled_program_file_name,
-                          output_file_path):
-    platform_info_key = 'mace_opencl_precompiled_platform_info_key'
+def merge_opencl_binaries_or_parameters(binaries_dirs,
+                                        cl_compiled_program_file_name,
+                                        output_file_path,
+                                        merge_type):
+    common.mace_check(merge_type in [MergeType.binary, MergeType.parameter],
+                      "",
+                      "Only support merge binaries or parameters, "
+                      "but merge type {} is got".format(merge_type))
+    if merge_type == MergeType.binary:
+        platform_info_key = 'mace_opencl_precompiled_platform_info_key'
     cl_bin_dirs = []
     for d in binaries_dirs:
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
@@ -396,97 +414,57 @@ def merge_opencl_binaries(binaries_dirs,
     if not os.path.exists(opencl_binary_dir):
         sh.mkdir("-p", opencl_binary_dir)
     kvs = {}
+    CRC32SIZE = 4
     for binary_dir in cl_bin_dirs:
         binary_path = os.path.join(binary_dir, cl_compiled_program_file_name)
         if not os.path.exists(binary_path):
             continue
 
-        six.print_('generate opencl code from', binary_path)
-        with open(binary_path, "rb") as f:
-            binary_array = np.fromfile(f, dtype=np.uint8)
-
-        idx = 0
-        size, = struct.unpack("Q", binary_array[idx:idx + 8])
-        idx += 8
-        for _ in six.moves.range(size):
-            key_size, = struct.unpack("i", binary_array[idx:idx + 4])
-            idx += 4
-            key, = struct.unpack(
-                str(key_size) + "s", binary_array[idx:idx + key_size])
-            idx += key_size
-            value_size, = struct.unpack("i", binary_array[idx:idx + 4])
-            idx += 4
-            if key == platform_info_key and key in kvs:
-                common.mace_check(
-                    (kvs[key] == binary_array[idx:idx + value_size]).all(),
-                    "",
-                    "There exists more than one OpenCL version for models:"
-                    " %s vs %s " %
-                    (kvs[key], binary_array[idx:idx + value_size]))
-            else:
-                kvs[key] = binary_array[idx:idx + value_size]
-            idx += value_size
-
-    output_byte_array = bytearray()
-    data_size = len(kvs)
-    output_byte_array.extend(struct.pack("Q", data_size))
-    for key, value in six.iteritems(kvs):
-        key_size = len(key)
-        output_byte_array.extend(struct.pack("i", key_size))
-        output_byte_array.extend(struct.pack(str(key_size) + "s", key))
-        value_size = len(value)
-        output_byte_array.extend(struct.pack("i", value_size))
-        output_byte_array.extend(value)
-
-    np.array(output_byte_array).tofile(output_file_path)
-
-
-def merge_opencl_parameters(binaries_dirs,
-                            cl_parameter_file_name,
-                            output_file_path):
-    cl_bin_dirs = []
-    for d in binaries_dirs:
-        cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
-    # create opencl binary output dir
-    opencl_binary_dir = os.path.dirname(output_file_path)
-    if not os.path.exists(opencl_binary_dir):
-        sh.mkdir("-p", opencl_binary_dir)
-    kvs = {}
-    for binary_dir in cl_bin_dirs:
-        binary_path = os.path.join(binary_dir, cl_parameter_file_name)
-        if not os.path.exists(binary_path):
+        if merge_type == MergeType.binary:
+            six.print_('generate opencl code from', binary_path)
+        elif merge_type == MergeType.parameter:
+            six.print_('generate opencl parameter from', binary_path)
+        all_bytes = open(binary_path, "rb").read()
+        if len(all_bytes) < CRC32SIZE:
+            print("File size of {} is less than CRC bytes".format(binary_path))
             continue
+        saved_crc = struct.unpack("I", all_bytes[-CRC32SIZE:])[0]
+        current_crc = zlib.crc32(all_bytes[:-CRC32SIZE])
+        if saved_crc != current_crc:
+            print("CRC value of {} is invalid".format(binary_path))
+            continue
+        container = mace_pb2.PairContainer()
+        container.ParseFromString(all_bytes[:-CRC32SIZE])
+        size = len(container.pairs)
+        for i in range(size):
+            pair = container.pairs[i]
+            key = pair.key
+            if merge_type == MergeType.binary:
+                if key == platform_info_key and key in kvs:
+                    common.mace_check(
+                        kvs[key] == pair.bytes_value,
+                        "",
+                        "There exists more than one OpenCL version for models:"
+                        " %s vs %s " % (kvs[key], pair.bytes_value))
 
-        six.print_('generate opencl parameter from', binary_path)
-        with open(binary_path, "rb") as f:
-            binary_array = np.fromfile(f, dtype=np.uint8)
+                else:
+                    kvs[pair.key] = pair.bytes_value
+            elif merge_type == MergeType.parameter:
+                kvs[key] = pair.uint32s_value
+    new_container = mace_pb2.PairContainer()
+    for key in kvs:
+        pair = new_container.pairs.add()
+        pair.key = key
+        if merge_type == MergeType.binary:
+            pair.bytes_value = kvs[key]
+        elif merge_type == MergeType.parameter:
+            pair.uint32s_value.extend(kvs[key])
 
-        idx = 0
-        size, = struct.unpack("Q", binary_array[idx:idx + 8])
-        idx += 8
-        for _ in six.moves.range(size):
-            key_size, = struct.unpack("i", binary_array[idx:idx + 4])
-            idx += 4
-            key, = struct.unpack(
-                str(key_size) + "s", binary_array[idx:idx + key_size])
-            idx += key_size
-            value_size, = struct.unpack("i", binary_array[idx:idx + 4])
-            idx += 4
-            kvs[key] = binary_array[idx:idx + value_size]
-            idx += value_size
-
-    output_byte_array = bytearray()
-    data_size = len(kvs)
-    output_byte_array.extend(struct.pack("Q", data_size))
-    for key, value in six.iteritems(kvs):
-        key_size = len(key)
-        output_byte_array.extend(struct.pack("i", key_size))
-        output_byte_array.extend(struct.pack(str(key_size) + "s", key))
-        value_size = len(value)
-        output_byte_array.extend(struct.pack("i", value_size))
-        output_byte_array.extend(value)
-
-    np.array(output_byte_array).tofile(output_file_path)
+    message_str = new_container.SerializeToString()
+    crc_val = zlib.crc32(message_str)
+    crc_bytes = struct.pack("<I", crc_val)
+    with open(output_file_path, "wb") as ofp:
+        ofp.write(message_str + crc_bytes)
 
 
 def gen_input(model_output_dir,

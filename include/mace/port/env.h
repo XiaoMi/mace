@@ -45,6 +45,8 @@ class LogWriter;
 class Env {
  public:
   virtual int64_t NowMicros() = 0;
+  virtual uint32_t CalculateCRC32(const unsigned char *p, uint64_t n);
+  virtual bool CheckArrayCRC32(const unsigned char *data, uint64_t len);
   virtual MaceStatus AdviseFree(void *addr, size_t length);
   virtual MaceStatus GetCPUMaxFreq(std::vector<float> *max_freqs);
   virtual MaceStatus SchedSetAffinity(const std::vector<size_t> &cpu_ids);
@@ -64,6 +66,14 @@ class Env {
 
 inline int64_t NowMicros() {
   return port::Env::Default()->NowMicros();
+}
+
+inline uint32_t CalculateCRC32(const unsigned char *p, uint64_t n) {
+  return port::Env::Default()->CalculateCRC32(p, n);
+}
+
+inline bool CheckArrayCRC32(const unsigned char *data, uint64_t len) {
+  return port::Env::Default()->CheckArrayCRC32(data, len);
 }
 
 inline MaceStatus AdviseFree(void *addr, size_t length) {
@@ -139,6 +149,8 @@ inline MaceStatus GetEnv(const char *name, std::string *value) {
 #if defined(_WIN32) && !defined(S_ISREG)
 #define S_ISREG(m) (((m) & 0170000) == (0100000))
 #endif
+
+#define CRC32SIZE 4
 }  // namespace mace
 
 #endif  // MACE_PORT_ENV_H_

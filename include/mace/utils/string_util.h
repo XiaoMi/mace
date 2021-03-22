@@ -109,6 +109,10 @@ std::string ObfuscateSymbol(const std::string &src);
 #endif
 
 std::vector<std::string> Split(const std::string &str, char delims);
+void StripString(std::string *s);
+// Get the right neighbor after first occurence of pattern in str
+std::string GetStrAfterPattern(const std::string &str,
+                               const std::string &pattern);
 
 }  // namespace mace
 

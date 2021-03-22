@@ -53,7 +53,8 @@ MaceStatus OpenclRuntime::CreateOpenclExecutorAndInit(
     opencl_executor_ = make_unique<OpenclExecutor>(
         engine_config->opencl_context()->opencl_cache_storage(),
         engine_config->opencl_context()->opencl_binary_storage(),
-        engine_config->opencl_context()->opencl_tuner());
+        engine_config->opencl_context()->opencl_tuner(),
+        engine_config->opencl_context()->opencl_cache_reuse_policy());
     MACE_RETURN_IF_ERROR(opencl_executor_->Init(
         engine_config->gpu_priority_hint(), engine_config->gpu_perf_hint()));
   }
