@@ -53,6 +53,8 @@ class RuntimeRegistry {
 
 // this two function is in mace/runtimes/runtime_registry.cc
 void RegisterAllRuntimes(RuntimeRegistry *runtime_registry);
+RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
+                                      RuntimeContext *runtime_context);
 std::unique_ptr<Runtime> SmartCreateRuntime(RuntimeRegistry *runtime_registry,
                                             const RuntimeType runtime_type,
                                             RuntimeContext *runtime_context);

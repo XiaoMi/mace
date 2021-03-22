@@ -80,7 +80,9 @@ cc_library(
         "//include:public_headers",
         "//mace/flows",
         "//mace/ops",
-    ],
+    ] + if_rpcmem_enabled([
+        "//mace/rpcmems",
+    ]),
     alwayslink = 1,
 )
 
@@ -161,6 +163,7 @@ genrule(
         "//mace/flows/apu:apu_flows",
         "//mace/runtimes/apu:apu_runtimes",
     ]) + if_rpcmem_enabled([
+        "//mace/rpcmems",
         "//third_party/rpcmem:rpcmem.a",
     ]) + if_neon_enabled([
         "//mace/ops:arm_neon_kernels",

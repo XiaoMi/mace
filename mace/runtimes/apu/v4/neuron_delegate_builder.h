@@ -19,10 +19,12 @@
 #include <string>
 #include <tuple>
 #include <vector>
+
+#include "mace/core/runtime/runtime.h"
 #include "mace/proto/mace.pb.h"
-#include "mace/core/device.h"
-#include "mace/core/runtime/apu/v4/neuron_implementation.h"
+#include "mace/runtimes/apu/v4/neuron_implementation.h"
 #include "third_party/apu/android_R2/neuron_types.h"
+
 #define APU_TENSOR_MAX_DIMS 4
 
 namespace mace {

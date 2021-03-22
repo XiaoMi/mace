@@ -28,6 +28,8 @@ class CpuIonRuntime : public CpuRuntime {
   explicit CpuIonRuntime(RuntimeContext *runtime_context);
   ~CpuIonRuntime() = default;
 
+  RuntimeSubType GetRuntimeSubType() override;
+
  protected:
   MemoryManager *GetMemoryManager(MemoryType mem_type) override;
 

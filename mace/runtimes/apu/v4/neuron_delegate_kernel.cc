@@ -17,6 +17,10 @@
 #include "mace/runtimes/apu/v4/neuron_delegate_kernel.h"
 #include "third_party/apu/android_R2/neuron_types.h"
 
+#ifdef MACE_ENABLE_RPCMEM
+#include "mace/runtimes/apu/ion/apu_ion_runtime.h"
+#endif  // MACE_ENABLE_RPCMEM
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -40,6 +44,21 @@ NNMemory::~NNMemory() {
   }
 }
 
+NeuronDelegateKernel::NeuronDelegateKernel(const NeuronApi* neuronapi,
+                                           Runtime *runtime)
+    : neuronapi_(neuronapi),
+      nn_model_(nullptr, NNFreeModel(neuronapi_)),
+      nn_compilation_(nullptr, NNFreeCompilation(neuronapi_)),
+      quantize_util_uint8_(&runtime->thread_pool()),
+      quantize_util_int16_(&runtime->thread_pool()) {
+#ifdef MACE_ENABLE_RPCMEM
+  // Get the rpcmem
+  MACE_CHECK(runtime->GetRuntimeType() == RT_APU &&
+      runtime->GetRuntimeSubType() == RT_SUB_ION);
+  auto *apu_ion_runtime = static_cast<ApuIonRuntime *>(runtime);
+  rpcmem_ = apu_ion_runtime->GetRpcmem();
+#endif
+}
 
 bool NeuronDelegateKernel::Init(const NetDef *net_def,
                                 unsigned const char *model_data, bool load) {
@@ -153,7 +172,7 @@ bool NeuronDelegateKernel::Eval(
       execution, NNFreeExecution(neuronapi_));
 
   MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
-  MACE_ASSERT(output_tensors.size() == output_infos.size(),
+  MACE_ASSERT(output_tensors->size() == output_infos.size(),
               "Wrong outputs num");
 
   size_t input_offset = 0;
@@ -168,6 +187,11 @@ bool NeuronDelegateKernel::Eval(
                 "Wrong input size");
     input_infos_[i].buf = nn_input_memory_->get_data_ptr() + input_offset;
     input_offset += byte_size;
+    // TODO(MTK): Get the memory fd
+    int mem_fd =
+        (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
+    LOG(INFO) << "Get the memory fd: " << mem_fd;
+    MACE_UNUSED(mem_fd);
     // quantize
     if (input_infos_[i].data_type == DT_INT16) {
       quantize_util_int16_.QuantizeWithScaleAndZeropoint(

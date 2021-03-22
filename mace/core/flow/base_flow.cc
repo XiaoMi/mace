@@ -64,6 +64,7 @@ MaceStatus BaseFlow::Init(const NetDef *net_def,
 
   MACE_RETURN_IF_ERROR(InitInputTensors());
   MACE_RETURN_IF_ERROR(AllocateBufferForInputTensors());
+
   MACE_UNUSED(model_data);
   MACE_UNUSED(model_data_size);
   MACE_UNUSED(model_data_unused);

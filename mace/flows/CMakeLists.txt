@@ -10,9 +10,9 @@ if(MACE_ENABLE_HEXAGON)
   add_subdirectory(hexagon)
 endif(MACE_ENABLE_HEXAGON)
 
-if(MACE_ENABLE_APU)
+if(MACE_ENABLE_MTK_APU)
   add_subdirectory(apu)
-endif(MACE_ENABLE_APU)
+endif(MACE_ENABLE_MTK_APU)
 
 
 add_library(flows STATIC ${FLOWS_SRCS})

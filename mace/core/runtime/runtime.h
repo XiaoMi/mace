@@ -58,6 +58,7 @@ class Runtime {
       const BufferContentType content_type, const unsigned int content_param);
 
   virtual RuntimeType GetRuntimeType() = 0;
+  virtual RuntimeSubType GetRuntimeSubType();
   virtual MemoryType GetBaseMemoryType();
   virtual MemoryType GetUsedMemoryType();
 

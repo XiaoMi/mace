@@ -20,8 +20,12 @@
 
 #include "mace/core/memory/general_memory_manager.h"
 #include "mace/core/runtime/runtime.h"
-#include "mace/runtimes/apu/apu_wrapper.h"
-#include "mace/runtimes/cpu/cpu_ref_allocator.h"
+
+#if MACE_MTK_APU_VERSION <= 3
+#include "mace/runtimes/apu/v1v2v3/apu_wrapper.h"
+#else
+#include "mace/runtimes/apu/v4/apu_wrapper.h"
+#endif
 
 
 namespace mace {
@@ -29,7 +33,7 @@ namespace mace {
 class ApuRuntime : public Runtime {
  public:
   explicit ApuRuntime(RuntimeContext *runtime_context);
-  ~ApuRuntime();
+  virtual ~ApuRuntime();
   static ApuRuntime *Get(Runtime *runtime);
 
   MaceStatus Init(const MaceEngineCfgImpl *engine_config,
@@ -46,10 +50,11 @@ class ApuRuntime : public Runtime {
   const char *GetCacheLoadPath();
 
  protected:
+  virtual std::unique_ptr<Allocator> CreateAllocator();
   MemoryManager *GetMemoryManager(const MemoryType mem_type) override;
 
  private:
-  std::unique_ptr<CpuRefAllocator> allocator_;
+  std::unique_ptr<Allocator> allocator_;
   std::unique_ptr<GeneralMemoryManager> buffer_manager_;
 
   std::unique_ptr<ApuWrapper> apu_wrapper_;

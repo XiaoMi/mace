@@ -22,6 +22,7 @@
 
 #include "mace/core/flow/base_flow.h"
 #include "mace/core/flow/flow_registry.h"
+#include "mace/core/memory/rpcmem/rpcmem.h"
 #include "mace/core/registry/ops_registry.h"
 #include "mace/core/registry/op_delegator_registry.h"
 #include "mace/core/runtime/runtime_context.h"
@@ -42,10 +43,8 @@ BaseEngine::BaseEngine(const MaceEngineConfig &config)
       op_delegator_registry_(new OpDelegatorRegistry),
       config_impl_(config.impl_) {
 #ifdef MACE_ENABLE_RPCMEM
-  auto rpcmem =
-      Rpcmem::IsRpcmemSupported() ? std::make_shared<Rpcmem>() : nullptr;
-  runtime_context_ = make_unique<QcIonRuntimeContext>(thread_pool_.get(),
-                                                      std::move(rpcmem));
+  runtime_context_ = make_unique<IonRuntimeContext>(
+      thread_pool_.get(), rpcmem_factory::CreateRpcmem());
 #else
   runtime_context_ = make_unique<RuntimeContext>(thread_pool_.get());
 #endif  // MACE_ENABLE_RPCMEM

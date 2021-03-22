@@ -25,13 +25,17 @@ namespace mace {
 
 CpuIonRuntime::CpuIonRuntime(RuntimeContext *runtime_context)
     : CpuRuntime(runtime_context) {
-  MACE_CHECK(runtime_context->context_type == RuntimeContextType::RCT_QC_ION);
-  QcIonRuntimeContext *qc_ion_runtime_context =
-      static_cast<QcIonRuntimeContext *>(runtime_context);
-  rpcmem_ = qc_ion_runtime_context->rpcmem;
+  MACE_CHECK(runtime_context->context_type == RuntimeContextType::RCT_ION);
+  auto *ion_runtime_context =
+      static_cast<IonRuntimeContext *>(runtime_context);
+  rpcmem_ = ion_runtime_context->rpcmem;
   buffer_ion_allocator_ = make_unique<CpuIonAllocator>(rpcmem_),
   buffer_ion_manager_ =
       make_unique<GeneralMemoryManager>(buffer_ion_allocator_.get());
+}
+
+RuntimeSubType CpuIonRuntime::GetRuntimeSubType() {
+    return RuntimeSubType::RT_SUB_ION;
 }
 
 MemoryManager *CpuIonRuntime::GetMemoryManager(MemoryType mem_type) {

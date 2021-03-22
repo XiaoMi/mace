@@ -15,13 +15,12 @@
 #include "mace/runtimes/apu/apu_runtime.h"
 
 #include "mace/core/runtime/runtime_registry.h"
+#include "mace/runtimes/cpu/cpu_ref_allocator.h"
 
 namespace mace {
 
 ApuRuntime::ApuRuntime(RuntimeContext *runtime_context)
     : Runtime(runtime_context),
-      allocator_(make_unique<CpuRefAllocator>()),
-      buffer_manager_(make_unique<GeneralMemoryManager>(allocator_.get())),
       apu_wrapper_(make_unique<ApuWrapper>(this)) {}
 
 ApuRuntime::~ApuRuntime() {
@@ -32,12 +31,19 @@ ApuRuntime *ApuRuntime::Get(Runtime *runtime) {
   return static_cast<ApuRuntime *>(runtime);
 }
 
+std::unique_ptr<Allocator> ApuRuntime::CreateAllocator() {
+  return make_unique<CpuRefAllocator>();
+}
+
 MaceStatus ApuRuntime::Init(const MaceEngineCfgImpl *engine_config,
                             const MemoryType mem_type) {
   MACE_UNUSED(mem_type);
   apu_cache_policy_ = engine_config->apu_cache_policy();
   apu_binary_file_ = engine_config->apu_binary_file();
   apu_storage_file_ = engine_config->apu_storage_file();
+
+  allocator_ = CreateAllocator();
+  buffer_manager_ = make_unique<GeneralMemoryManager>(allocator_.get());
 
   return MaceStatus::MACE_SUCCESS;
 }

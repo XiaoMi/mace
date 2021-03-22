@@ -17,7 +17,6 @@
 #include <memory>
 
 #include "mace/port/port.h"
-#include "third_party/rpcmem/rpcmem.h"
 
 namespace mace {
 
@@ -30,7 +29,8 @@ MemoryType CpuIonAllocator::GetMemType() {
 
 MaceStatus CpuIonAllocator::New(const MemInfo &info, void **result) {
   int nbytes = info.bytes();
-  *result = New(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_FLAG_CACHED, nbytes);
+  auto flag_cached = rpcmem_->GetIonCacheFlag();
+  *result = New(rpcmem_->GetDefaultHeapId(), flag_cached, nbytes);
   MACE_CHECK(*result != nullptr, "info.dims: ", MakeString(info.dims));
 
   return MaceStatus::MACE_SUCCESS;

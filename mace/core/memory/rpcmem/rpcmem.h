@@ -16,27 +16,44 @@
 #define MACE_CORE_MEMORY_RPCMEM_RPCMEM_H_
 
 #include <memory>
-
-#include "mace/utils/memory.h"
-#include "third_party/rpcmem/rpcmem.h"
+#include <cstdint>
 
 namespace mace {
+
+enum RpcmemType {
+  ION_QUALCOMM = 0,
+  ION_MTK,
+
+  ION_TYPE_NUM,  // The number of rpcmem type
+};
+
 class Rpcmem {
  public:
-  static bool IsRpcmemSupported();
   Rpcmem();
-  ~Rpcmem();
+  virtual ~Rpcmem() = default;
 
-  void *New(int heapid, uint32_t flags, int nbytes);
-  void *New(int nbytes);
-  void Delete(void *data);
-  int ToFd(void *data);
-  int SyncCacheStart(void *data);
-  int SyncCacheEnd(void *data);
+  bool IsRpcmemSupported();
 
- private:
-  rpcmem rm;
+  virtual void *New(int heapid, uint32_t flags, int nbytes) = 0;
+  virtual void *New(int nbytes) = 0;
+  virtual void Delete(void *data) = 0;
+  virtual int GetDefaultHeapId() = 0;
+  virtual int ToFd(void *data) = 0;
+  virtual int SyncCacheStart(void *data) = 0;
+  virtual int SyncCacheEnd(void *data) = 0;
+
+  virtual int GetIonCacheFlag() = 0;
+  virtual RpcmemType GetRpcmemType() = 0;
+
+ protected:
+  bool valid_detected_;
+  bool valid_;
 };
+
+namespace rpcmem_factory {
+extern std::shared_ptr<Rpcmem> CreateRpcmem(RpcmemType type);
+extern std::shared_ptr<Rpcmem> CreateRpcmem();
+}  // namespace rpcmem_factory
 
 }  // namespace mace
 #endif  // MACE_CORE_MEMORY_RPCMEM_RPCMEM_H_

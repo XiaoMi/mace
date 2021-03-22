@@ -58,7 +58,8 @@ std::unique_ptr<Runtime> RuntimeRegistry::CreateRuntime(
     const RuntimeType runtime_type, const RuntimeSubType runtime_sub_type,
     RuntimeContext *runtime_context) const {
   const auto runtime_key = RuntimeKey(runtime_type, runtime_sub_type);
-  MACE_CHECK(registry_.count(runtime_key) > 0, "runtime_type: ", runtime_type);
+  MACE_CHECK(registry_.count(runtime_key) > 0, "runtime_type: ", runtime_type,
+             ", runtime_sub_type: ", runtime_sub_type);
 
   const RuntimeCreator &creator = registry_.at(runtime_key);
   return creator(runtime_context);

@@ -81,6 +81,10 @@ MaceStatus Runtime::UnMapBuffer(Buffer *buffer) {
   return MaceStatus::MACE_SUCCESS;
 }
 
+RuntimeSubType Runtime::GetRuntimeSubType() {
+  return RuntimeSubType::RT_SUB_REF;
+}
+
 MemoryType Runtime::GetBaseMemoryType() {
   return MemoryType::CPU_BUFFER;
 }

@@ -34,6 +34,7 @@ class OpenclQcIonRuntime : public OpenclRuntime {
 
   MaceStatus Init(const MaceEngineCfgImpl *engine_config,
                   const MemoryType mem_type) override;
+  RuntimeSubType GetRuntimeSubType() override;
   MaceStatus MapBuffer(Buffer *buffer, bool wait_for_finish) override;
   MaceStatus UnMapBuffer(Buffer *buffer) override;
 

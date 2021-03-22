@@ -18,9 +18,7 @@
 #include "mace/runtimes/opencl/core/opencl_executor.h"
 #endif  // MACE_ENABLE_OPENCL
 
-#ifdef MACE_ENABLE_RPCMEM
 #include "mace/core/memory/rpcmem/rpcmem.h"
-#endif  // MACE_ENABLE_RPCMEM
 
 namespace mace {
 
@@ -48,9 +46,12 @@ extern void RegisterHexagonHtaOpenclRuntime(RuntimeRegistry *runtime_registry);
 #endif  // MACE_ENABLE_OPENCL
 #endif  // MACE_ENABLE_HTA
 
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
 extern void RegisterApuRuntime(RuntimeRegistry *runtime_registry);
-#endif  // MACE_ENABLE_APU
+#ifdef MACE_ENABLE_RPCMEM
+extern void RegisterApuIonRuntime(RuntimeRegistry *runtime_registry);
+#endif  // MACE_ENABLE_RPCMEM
+#endif  // MACE_ENABLE_MTK_APU
 
 void RegisterAllRuntimes(RuntimeRegistry *runtime_registry) {
   RegisterCpuRefRuntime(runtime_registry);
@@ -77,29 +78,50 @@ void RegisterAllRuntimes(RuntimeRegistry *runtime_registry) {
 #endif  // MACE_ENABLE_OPENCL
 #endif  // MACE_ENABLE_HTA
 
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   RegisterApuRuntime(runtime_registry);
-#endif  // MACE_ENABLE_APU
+#ifdef MACE_ENABLE_RPCMEM
+  RegisterApuIonRuntime(runtime_registry);
+#endif  // MACE_ENABLE_RPCMEM
+#endif  // MACE_ENABLE_MTK_APU
+}
+
+RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
+                                      RuntimeContext *runtime_context) {
+  RuntimeSubType sub_type = RuntimeSubType::RT_SUB_REF;
+
+  MACE_UNUSED(runtime_type);
+#ifdef MACE_ENABLE_RPCMEM
+  if (runtime_context->context_type == RCT_ION) {
+    auto ion_rct = static_cast<IonRuntimeContext *>(runtime_context);
+    if (ion_rct->rpcmem->IsRpcmemSupported()) {
+#ifdef MACE_ENABLE_MTK_APU
+      if (runtime_type == RuntimeType::RT_APU) {
+        sub_type = RuntimeSubType::RT_SUB_ION;
+      }
+#endif  // MACE_ENABLE_MTK_APU
+#ifdef MACE_ENABLE_OPENCL
+      if (runtime_type == RuntimeType::RT_OPENCL) {
+        auto ion_type = OpenclExecutor::FindCurDeviceIonType();
+        if (ion_type == IONType::QUALCOMM_ION) {
+          sub_type = RuntimeSubType::RT_SUB_ION;
+        }
+      } else if (runtime_type == RuntimeType::RT_HTA) {
+        sub_type = RuntimeSubType::RT_SUB_WITH_OPENCL;
+      }
+#endif  // MACE_ENABLE_OPENCL
+    }
+  }
+#else
+  MACE_UNUSED(runtime_context);
+#endif  // MACE_ENABLE_RPCMEM
+  return sub_type;
 }
 
 std::unique_ptr<Runtime> SmartCreateRuntime(RuntimeRegistry *runtime_registry,
                                             const RuntimeType runtime_type,
                                             RuntimeContext *runtime_context) {
-  RuntimeSubType sub_type = RuntimeSubType::RT_SUB_REF;
-
-#if defined(MACE_ENABLE_RPCMEM) && defined(MACE_ENABLE_OPENCL)
-  if (Rpcmem::IsRpcmemSupported()) {
-    if (runtime_type == RuntimeType::RT_OPENCL) {
-      auto ion_type = OpenclExecutor::FindCurDeviceIonType();
-      if (ion_type == IONType::QUALCOMM_ION) {
-        sub_type = RuntimeSubType::RT_SUB_QC_ION;
-      }
-    } else if (runtime_type == RuntimeType::RT_HTA) {
-      sub_type = RuntimeSubType::RT_SUB_WITH_OPENCL;
-    }
-  }
-#endif  // MACE_ENABLE_RPCMEM && MACE_ENABLE_OPENCL
-
+  auto sub_type = SmartGetRuntimeSubType(runtime_type, runtime_context);
   return runtime_registry->CreateRuntime(runtime_type, sub_type,
                                          runtime_context);
 }

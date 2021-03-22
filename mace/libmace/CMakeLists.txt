@@ -11,7 +11,7 @@ set(LIBMACE_SRCS
 )
 
 add_library(mace SHARED ${LIBMACE_SRCS})
-target_link_libraries(mace ops flows runtimes generated_version)
+target_link_libraries(mace ops flows runtimes rpcmems generated_version)
 if(NOT APPLE)
   set_target_properties(mace PROPERTIES LINK_FLAGS
     "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/mace_version_script.lds")
@@ -55,12 +55,12 @@ if(MACE_ENABLE_HEXAGON)
   set(RUNTIME_LIBS ${RUNTIME_LIBS}
           "addlib ${CMAKE_BINARY_DIR}/mace/runtimes/hexagon/libhexagon_runtime.a\n")
 endif(MACE_ENABLE_HEXAGON)
-if(MACE_ENABLE_APU)
+if(MACE_ENABLE_MTK_APU)
   set(FLOW_LIBS ${FLOW_LIBS}
           "addlib ${CMAKE_BINARY_DIR}/mace/flows/apu/libapu_flow.a\n")
   set(RUNTIME_LIBS ${RUNTIME_LIBS}
           "addlib ${CMAKE_BINARY_DIR}/mace/runtimes/apu/libapu_runtime.a\n")
-endif(MACE_ENABLE_APU)
+endif(MACE_ENABLE_MTK_APU)
 
 string(CONCAT PORT_LIBS_MRI ${PORT_LIBS} "")
 string(CONCAT FLOW_LIBS_MRI ${FLOW_LIBS} "")

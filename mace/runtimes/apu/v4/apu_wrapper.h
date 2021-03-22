@@ -21,20 +21,20 @@
 #include <map>
 #include <vector>
 
-#include "mace/core/runtime/apu/v4/neuron_delegate_kernel.h"
+#include "mace/runtimes/apu/v4/neuron_delegate_kernel.h"
 
-#include "mace/proto/mace.pb.h"
-#include "mace/core/device.h"
 #include "mace/core/quantize.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/core/tensor.h"
+#include "mace/proto/mace.pb.h"
 
 
 namespace mace {
 
 class ApuWrapper {
  public:
-  explicit ApuWrapper(Device *device)
-      :device_(device) {}
+  explicit ApuWrapper(Runtime *runtime)
+      :runtime_(runtime) {}
   bool Init(const NetDef &net_def, unsigned const char *model_data = nullptr,
             const char *file_name = nullptr,
             bool load = false, bool store = false);
@@ -45,7 +45,7 @@ class ApuWrapper {
  private:
   neuron::NeuronDelegateKernel *frontend;
   bool AddOpsAndTensors(NetDef* net_def);
-  Device *device_;
+  Runtime *runtime_;
 
  private:
   // Access to NNApi.

@@ -11,6 +11,7 @@ set(CORE_SRCS
   flow/common_fp32_flow.cc
   flow/flow_registry.cc
   memory/general_memory_manager.cc
+  memory/rpcmem/rpcmem.cc
   net/allocate_opt_strategy.cc
   net/allocate_ref_strategy.cc
   net/serial_net.cc
@@ -33,8 +34,7 @@ set(CORE_SRCS
 add_library(extra_link_libs_target INTERFACE)
 
 if(MACE_ENABLE_RPCMEM)
-  set(CORE_SRCS ${CORE_SRCS} memory/rpcmem/rpcmem.cc)
-  target_link_libraries(extra_link_libs_target INTERFACE rpcmem)
+  target_link_libraries(extra_link_libs_target INTERFACE rpcmems)
 endif(MACE_ENABLE_RPCMEM)
 
 add_library(core STATIC ${CORE_SRCS})

@@ -147,9 +147,9 @@ MaceStatus MaceEngineCfgImpl::SetAPUCache(
   apu_cache_policy_ = policy;
   apu_binary_file_ = binary_file;
   apu_storage_file_ = storage_file;
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   ret = true;
-#endif
+#endif  // MACE_ENABLE_MTK_APU
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
 

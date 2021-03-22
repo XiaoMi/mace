@@ -34,9 +34,9 @@ extern void RegisterOpenclRefFlow(FlowRegistry *flow_registry);
 extern void RegisterHexagonRefFlow(FlowRegistry *flow_registry);
 #endif  // MACE_ENABLE_HEXAGON || MACE_ENABLE_HTA
 
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
 extern void RegisterApuRefFlow(FlowRegistry *flow_registry);
-#endif  // MACE_ENABLE_APU
+#endif  // MACE_ENABLE_MTK_APU
 
 void RegisterAllFlows(FlowRegistry *flow_registry) {
   RegisterCpuRefFlow(flow_registry);
@@ -57,9 +57,9 @@ void RegisterAllFlows(FlowRegistry *flow_registry) {
   RegisterHexagonRefFlow(flow_registry);
 #endif  // MACE_ENABLE_HEXAGON || MACE_ENABLE_HTA
 
-#ifdef MACE_ENABLE_APU
+#ifdef MACE_ENABLE_MTK_APU
   RegisterApuRefFlow(flow_registry);
-#endif  // MACE_ENABLE_APU
+#endif  // MACE_ENABLE_MTK_APU
 }
 
 }  // namespace mace

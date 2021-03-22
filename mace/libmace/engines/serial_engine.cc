@@ -186,32 +186,39 @@ MaceStatus SerialEngine::CreateAndInitRuntimes(
       continue;
     }
 
-    auto mem_type_i =
-        static_cast<MemoryType>(ProtoArgHelper::GetOptionalArg<NetDef, int>(
-            *net_def, "opencl_mem_type",
-            static_cast<int>(MemoryType::MEMORY_NONE)));
-    MACE_CHECK(mem_type_i != MemoryType::MEMORY_NONE, "no mem type specified");
-    uint32_t key = (runtime_type << 16) | mem_type_i;
+    auto sub_type = SmartGetRuntimeSubType(runtime_type,
+                                           runtime_context_.get());
+    auto key = (runtime_type << 16) | sub_type;
     std::shared_ptr<Runtime> runtime;
-    if (tutor != nullptr &&
-        (runtime_type == RT_CPU || runtime_type == RT_OPENCL)) {
-      // TODO(luxuhui): Only support cpu and gpu runtimes now, we can
-      //  support hexagon/hta/apu runtimes in the future
-      auto &tutor_runtimes = GetRuntimesOfTutor(tutor);
-      if (tutor_runtimes.count(key) > 0) {
-        runtime = tutor_runtimes.at(key);
-        runtime_map->emplace(net_def, runtime);
+    if (runtimes_.count(key) > 0) {
+      runtime = runtimes_.at(key);
+    } else {
+      if (tutor != nullptr &&
+          (runtime_type == RT_CPU || runtime_type == RT_OPENCL)) {
+        // TODO(luxuhui): Only support cpu and gpu runtimes now, we can
+        //  support hexagon/hta/apu runtimes in the future
+        auto &tutor_runtimes = GetRuntimesOfTutor(tutor);
+        if (tutor_runtimes.count(key) > 0) {
+          runtime = tutor_runtimes.at(key);
+        }
       }
+      if (runtime == nullptr) {
+        auto unique_runtime = SmartCreateRuntime(
+            runtime_registry.get(), runtime_type, runtime_context_.get());
+
+        auto mem_type_i =
+            static_cast<MemoryType>(ProtoArgHelper::GetOptionalArg<NetDef, int>(
+                *net_def, "opencl_mem_type",
+                static_cast<int>(MemoryType::MEMORY_NONE)));
+        MACE_CHECK(mem_type_i != MemoryType::MEMORY_NONE,
+                   "no mem type specified");
+        MACE_RETURN_IF_ERROR(unique_runtime->Init(config_impl_.get(),
+                                                  mem_type_i));
+        runtime = std::move(unique_runtime);
+      }
+      runtimes_.emplace(key, runtime);
     }
-    if (runtime == nullptr) {
-      auto unique_runtime = SmartCreateRuntime(
-          runtime_registry.get(), runtime_type, runtime_context_.get());
-      MACE_RETURN_IF_ERROR(unique_runtime->Init(config_impl_.get(),
-                                                mem_type_i));
-      runtime = std::move(unique_runtime);
-      runtime_map->emplace(net_def, runtime);
-    }
-    runtimes_.emplace(key, runtime);
+    runtime_map->emplace(net_def, runtime);
   }
 
   return MaceStatus::MACE_SUCCESS;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/runtime/apu/v1v2v3/apu_wrapper.h"
+#include "mace/runtimes/apu/v1v2v3/apu_wrapper.h"
 
 #include <algorithm>
 
@@ -21,9 +21,9 @@
 
 namespace mace {
 
-ApuWrapper::ApuWrapper(Device *device)
-    : quantize_util_uint8_(&device->cpu_runtime()->thread_pool()),
-      quantize_util_int16_(&device->cpu_runtime()->thread_pool()) {
+ApuWrapper::ApuWrapper(Runtime *runtime)
+    : quantize_util_uint8_(&runtime->thread_pool()),
+      quantize_util_int16_(&runtime->thread_pool()) {
 }
 
 int ApuWrapper::MapToApuDataType(DataType mace_type) {
@@ -277,7 +277,7 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
 bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                      std::map<std::string, Tensor *> *output_tensors) {
   MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
-  MACE_ASSERT(output_tensors.size() == output_infos_.size(),
+  MACE_ASSERT(output_tensors->size() == output_infos_.size(),
               "Wrong outputs num");
   // prepare input
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {

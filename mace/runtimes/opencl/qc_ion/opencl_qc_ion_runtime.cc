@@ -25,10 +25,9 @@ namespace mace {
 
 OpenclQcIonRuntime::OpenclQcIonRuntime(RuntimeContext *runtime_context)
     : OpenclRuntime(runtime_context) {
-  MACE_CHECK(runtime_context->context_type == RuntimeContextType::RCT_QC_ION);
-  QcIonRuntimeContext *qc_ion_runtime_context =
-      static_cast<QcIonRuntimeContext *>(runtime_context);
-  rpcmem_ = qc_ion_runtime_context->rpcmem;
+  MACE_CHECK(runtime_context->context_type == RuntimeContextType::RCT_ION);
+  auto *ion_runtime_context = static_cast<IonRuntimeContext *>(runtime_context);
+  rpcmem_ = ion_runtime_context->rpcmem;
 }
 
 MaceStatus OpenclQcIonRuntime::Init(const MaceEngineCfgImpl *engine_config,
@@ -56,6 +55,10 @@ MaceStatus OpenclQcIonRuntime::CreateOpenclExecutorAndInit(
         engine_config->gpu_perf_hint()));
   }
   return MaceStatus::MACE_SUCCESS;
+}
+
+RuntimeSubType OpenclQcIonRuntime::GetRuntimeSubType() {
+  return RuntimeSubType::RT_SUB_ION;
 }
 
 MaceStatus OpenclQcIonRuntime::MapBuffer(Buffer *buffer, bool wait_for_finish) {
@@ -125,7 +128,7 @@ std::shared_ptr<Rpcmem> OpenclQcIonRuntime::GetRpcmem() {
 
 void RegisterOpenclQcIonRuntime(RuntimeRegistry *runtime_registry) {
   MACE_REGISTER_RUNTIME(runtime_registry, RuntimeType::RT_OPENCL,
-                        RuntimeSubType::RT_SUB_QC_ION, OpenclQcIonRuntime);
+                        RuntimeSubType::RT_SUB_ION, OpenclQcIonRuntime);
 }
 
 }  // namespace mace

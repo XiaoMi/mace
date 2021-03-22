@@ -20,8 +20,8 @@
 #include <map>
 #include <memory>
 
-#include "mace/core/device.h"
 #include "mace/core/quantize.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/proto/mace.pb.h"
 
@@ -40,7 +40,7 @@ class ApuWrapper {
   };
 
  public:
-  explicit ApuWrapper(Device *device);
+  explicit ApuWrapper(Runtime *runtime);
   bool Init(const NetDef &net_def, unsigned const char *model_data = nullptr,
             const char *file_name = nullptr,
             bool load = false, bool store = false);

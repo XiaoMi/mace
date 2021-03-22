@@ -34,7 +34,7 @@ cc_library(
     ]) + if_hta_enabled([
         "-DMACE_ENABLE_HTA",
     ]) + if_apu_enabled([
-        "-DMACE_ENABLE_APU",
+        "-DMACE_ENABLE_MTK_APU",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
     ]) + if_fp16_enabled([

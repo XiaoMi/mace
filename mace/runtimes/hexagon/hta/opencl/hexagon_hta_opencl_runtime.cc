@@ -30,7 +30,7 @@ MaceStatus HexagonHtaOpenclRuntime::Init(const MaceEngineCfgImpl *config_impl,
   MACE_CHECK(GetRuntimeType() == RuntimeType::RT_HTA);
 
   if (opencl_ion_runtime_ == nullptr) {
-    QcIonRuntimeContext runtime_context(thread_pool_, rpcmem_);
+    IonRuntimeContext runtime_context(thread_pool_, rpcmem_);
     opencl_ion_runtime_.reset(new OpenclQcIonRuntime(&runtime_context));
     MACE_RETURN_IF_ERROR(opencl_ion_runtime_->Init(config_impl, mem_type));
   }
@@ -41,6 +41,10 @@ MaceStatus HexagonHtaOpenclRuntime::Init(const MaceEngineCfgImpl *config_impl,
             << hexagon_controller_->GetVersion();
 
   return HexagonBaseRuntime::Init(config_impl, mem_type);
+}
+
+RuntimeSubType HexagonHtaOpenclRuntime::GetRuntimeSubType() {
+    return RuntimeSubType::RT_SUB_WITH_OPENCL;
 }
 
 MemoryType HexagonHtaOpenclRuntime::GetBaseMemoryType() {

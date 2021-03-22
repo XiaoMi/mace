@@ -16,6 +16,7 @@
 
 #include <sys/stat.h>
 
+#include "mace/core/memory/rpcmem/rpcmem.h"
 #include "mace/core/net_def_adapter.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/runtimes/opencl/opencl_runtime.h"
@@ -149,8 +150,8 @@ OpTestContext::OpTestContext(int num_threads,
 #endif
     thread_pool_(make_unique<utils::ThreadPool>(num_threads,
                                                 cpu_affinity_policy)),
-    rpcmem_(Rpcmem::IsRpcmemSupported() ? new Rpcmem() : nullptr),
-    runtime_context_(new QcIonRuntimeContext(thread_pool_.get(), rpcmem_)),
+    rpcmem_(rpcmem_factory::CreateRpcmem()),
+    runtime_context_(new IonRuntimeContext(thread_pool_.get(), rpcmem_)),
     runtime_registry_(new RuntimeRegistry) {
   thread_pool_->Init();
   RegisterAllRuntimes(runtime_registry_.get());

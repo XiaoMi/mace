@@ -21,10 +21,9 @@ namespace mace {
 
 HexagonBaseRuntime::HexagonBaseRuntime(RuntimeContext *runtime_context)
     : Runtime(runtime_context) {
-  MACE_CHECK(runtime_context->context_type == RuntimeContextType::RCT_QC_ION);
-  QcIonRuntimeContext *qc_ion_runtime_context =
-      static_cast<QcIonRuntimeContext *>(runtime_context);
-  rpcmem_ = qc_ion_runtime_context->rpcmem;
+  MACE_CHECK(runtime_context->context_type == RuntimeContextType::RCT_ION);
+  auto *ion_runtime_context = static_cast<IonRuntimeContext *>(runtime_context);
+  rpcmem_ = ion_runtime_context->rpcmem;
   ion_allocator_ = make_unique<CpuIonAllocator>(rpcmem_);
   buffer_manager_ = make_unique<GeneralMemoryManager>(ion_allocator_.get());
 }
