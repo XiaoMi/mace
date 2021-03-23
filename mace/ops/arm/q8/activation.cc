@@ -117,10 +117,29 @@ template<>
 void Activation<uint8_t>::ActivateSigmoid(utils::ThreadPool *thread_pool,
                                           const Tensor *input,
                                           Tensor *output) {
-  MACE_UNUSED(thread_pool);
-  MACE_UNUSED(input);
-  MACE_UNUSED(output);
-  MACE_NOT_IMPLEMENTED;
+  output->SetScale(1.f / 255);
+  output->SetZeroPoint(0);
+  const auto input_data = input->data<uint8_t>();
+  auto output_data = output->mutable_data<uint8_t>();
+  const index_t input_size = input->size();
+  const auto input_zero = input->zero_point();
+  const auto input_scale = input->scale();
+  const auto output_zero = output->zero_point();
+  const auto output_scale = output->scale();
+
+  // TODO(luxuhui) : Can optimize the follow code by searching table
+  //  when input_size >= 255
+  // 1/(1+e^(-x)) = e^(i*s) / (e^(i*s) + e^(z*s))
+  const auto e_zs = std::exp(input_scale * input_zero);
+  thread_pool->Compute1D(
+      [=](index_t start, index_t end, index_t step) {
+        for (index_t i = start; i < end; i += step) {
+          auto e_is = std::exp(input_scale * input_data[i]);
+          auto sigmoid = e_is / (e_is + e_zs);
+          output_data[i] =
+              static_cast<uint8_t>(sigmoid / output_scale + output_zero);
+        }
+      }, 0, input_size, 1);
 }
 
 template<>
