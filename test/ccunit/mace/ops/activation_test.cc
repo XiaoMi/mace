@@ -421,8 +421,10 @@ void TestQuantized(const index_t size, const char *type) {
 TEST_F(ActivationOpTest, Quantized) {
   TestQuantized(64, "RELU");
   TestQuantized(64, "RELUX");
+  TestQuantized(64, "SIGMOID");
   TestQuantized(37, "RELU");
   TestQuantized(37, "RELUX");
+  TestQuantized(37, "SIGMOID");
 }
 
 #ifdef MACE_ENABLE_BFLOAT16
