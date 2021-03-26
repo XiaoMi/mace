@@ -34,7 +34,7 @@ class GeneralMemoryManager : public MemoryManager {
 
   void *ObtainMemory(const MemInfo &info, const BufRentType rent_type) override;
   void ReleaseMemory(void *ptr, const BufRentType rent_type) override;
-
+  std::vector<index_t> GetMemoryRealSize(const void *ptr) override;
   void ReleaseAllMemory(const BufRentType rent_type, bool del_buf) override;
 
 
@@ -47,6 +47,7 @@ class GeneralMemoryManager : public MemoryManager {
 
     void *ObtainMemory(const MemInfo &info);
     void ReleaseMemory(void *ptr);
+    std::vector<index_t> GetMemoryRealSize(const void *ptr);
     void ReleaseAllMemory(bool del_buf);
 
    private:

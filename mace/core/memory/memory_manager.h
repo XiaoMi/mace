@@ -35,6 +35,8 @@ class MemoryManager {
                              const BufRentType rent_type) = 0;
   virtual void ReleaseMemory(void *ptr, const BufRentType rent_type) = 0;
 
+  virtual std::vector<index_t> GetMemoryRealSize(const void *ptr) = 0;
+
   virtual void ReleaseAllMemory(const BufRentType rent_type, bool del_buf) = 0;
 
  protected:

@@ -27,9 +27,9 @@ namespace mace {
 
 namespace {
 enum InterMemState {
-  CREATED,
-  STABLE,
-  RELEASED,
+  CREATED,   // Buffers are created, but the opencl kernels need to create.
+  STABLE,    // Buffers and kernels are created.
+  RELEASED,  // Buffers are released.
 };
 
 }  // namespace
@@ -47,11 +47,33 @@ MaceStatus Runtime::Init(const MaceEngineCfgImpl *engine_config,
   return MaceStatus::MACE_SUCCESS;
 }
 
+MaceStatus Runtime::BeforeRun(MaceEngineCfgImpl *config) {
+  MACE_UNUSED(config);
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus Runtime::AfterRun() {
+  return MaceStatus::MACE_SUCCESS;
+}
+
 MaceStatus Runtime::MapBuffer(Buffer *buffer, bool wait_for_finish) {
   MACE_UNUSED(wait_for_finish);
   buffer->SetHost(buffer->mutable_memory<uint8_t>() + buffer->offset());
 
   return MaceStatus::MACE_SUCCESS;
+}
+
+bool Runtime::CanReuseBuffer(
+    const Buffer *buffer, const std::vector<index_t> &shape,
+    const BufferContentType content_type, const unsigned int content_param) {
+  MACE_UNUSED(content_type);
+  MACE_UNUSED(content_param);
+  auto size_bytes = std::accumulate(shape.begin(), shape.end(),
+                                    1, std::multiplies<index_t>());
+  MemoryManager *memory_manager = GetMemoryManager(buffer->mem_type);
+  auto real_shape = memory_manager->GetMemoryRealSize(buffer->memory<void>());
+  MACE_CHECK(real_shape.size() == 1, "Only support dim 1");
+  return (size_bytes <= real_shape[0]);
 }
 
 MaceStatus Runtime::UnMapBuffer(Buffer *buffer) {

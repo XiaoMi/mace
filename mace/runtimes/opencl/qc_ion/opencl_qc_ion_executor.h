@@ -23,11 +23,7 @@ namespace mace {
 
 class OpenclQcIonExecutor : public OpenclExecutor {
  public:
-  explicit OpenclQcIonExecutor(
-      std::shared_ptr<KVStorage> cache_storage = nullptr,
-      std::shared_ptr<KVStorage> precompiled_binary_storage = nullptr,
-      std::shared_ptr<Tuner<uint32_t>> tuner = nullptr,
-      OpenCLCacheReusePolicy policy = OpenCLCacheReusePolicy::REUSE_SAME_GPU);
+  OpenclQcIonExecutor();
   virtual ~OpenclQcIonExecutor() = default;
 
   static OpenclQcIonExecutor *Get(OpenclExecutor *executor);

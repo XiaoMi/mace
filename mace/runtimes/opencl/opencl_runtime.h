@@ -42,6 +42,11 @@ class OpenclRuntime : public Runtime {
 
   MaceStatus Init(const MaceEngineCfgImpl *engine_config,
                   const MemoryType mem_type) override;
+  MaceStatus BeforeRun(MaceEngineCfgImpl *config) override;
+  bool CanReuseBuffer(
+      const Buffer *buffer, const std::vector<index_t> &shape,
+      const BufferContentType content_type,
+      const unsigned int content_param) override;
 
   MemoryType GetUsedMemoryType() override;
   MemoryType GetBaseMemoryType() override;

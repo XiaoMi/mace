@@ -388,24 +388,16 @@ bool IsCacheCompatible(const GPUType &gpu_type,
   return false;
 }
 
-OpenclExecutor::OpenclExecutor(
-    std::shared_ptr<KVStorage> cache_storage,
-    std::shared_ptr<KVStorage> precompiled_binary_storage,
-    std::shared_ptr<Tuner<uint32_t>> tuner,
-    OpenCLCacheReusePolicy opencl_cache_reuse_policy) :
-    cache_storage_(cache_storage),
-    precompiled_binary_storage_(precompiled_binary_storage),
-    tuner_(tuner),
-    is_opencl_avaliable_(false),
-    is_profiling_enabled_(false),
-    opencl_version_(CL_VER_UNKNOWN),
-    gpu_type_(UNKNOWN),
-    program_key_hash_prefix_("program_hash_ "),
-    opencl_cache_reuse_policy_(opencl_cache_reuse_policy)
-    {}
+OpenclExecutor::OpenclExecutor() : is_opencl_avaliable_(false),
+                                   is_profiling_enabled_(false),
+                                   opencl_version_(CL_VER_UNKNOWN),
+                                   gpu_type_(UNKNOWN),
+                                   program_key_hash_prefix_("program_hash_ ") {}
 
-MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
+MaceStatus OpenclExecutor::Init(std::shared_ptr<OpenclContext> opencl_context,
+                                const GPUPriorityHint priority_hint,
                                 const GPUPerfHint perf_hint) {
+  opencl_context_ = opencl_context;
   auto default_platform = FindGpuPlatform();
   std::stringstream ss;
   std::string platform_version =
@@ -423,7 +415,8 @@ MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
   cl_command_queue_properties properties = 0;
 
   const char *profiling = getenv("MACE_OPENCL_PROFILING");
-  if (tuner_->IsTuning() ||
+  auto tuner = opencl_context_->opencl_tuner();
+  if (tuner->IsTuning() ||
       (profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1')) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
     is_profiling_enabled_ = true;
@@ -478,16 +471,16 @@ MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
 
   std::string cached_binary_platform_info;
   std::string cached_binary_device_name;
-  if (cache_storage_ != nullptr) {
-    if (cache_storage_->Load() != 0) {
+  auto cache_storage = opencl_context_->opencl_cache_storage();
+  if (cache_storage != nullptr) {
+    if (cache_storage->Load() != 0) {
       LOG(WARNING) << "Load OpenCL cached compiled kernel file failed. "
                    << "Please make sure the storage directory exist, "
                    << "the file is not modified illegally, "
                    << "and you have Write&Read permission";
     }
-    auto platform_info_array = cache_storage_->Find(kOpenCLPlatformInfoKey);
-    const std::vector<unsigned char> *device_name_array =
-        this->cache_storage_->Find(kOpenCLDeviceNameKey);
+    auto platform_info_array = cache_storage->Find(kOpenCLPlatformInfoKey);
+    auto *device_name_array = cache_storage->Find(kOpenCLDeviceNameKey);
     if (device_name_array != nullptr) {
       cached_binary_device_name =
           std::string(device_name_array->begin(),
@@ -504,21 +497,23 @@ MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
                                 (cached_binary_platform_info.size() > 0) &&
                                 (platform_info_ == cached_binary_platform_info);
       if (!same_gpu) {
-        cache_storage_->Clear();
+        cache_storage->Clear();
       } else if (!same_platform_info) {
-        switch (opencl_cache_reuse_policy_) {
+        auto opencl_cache_reuse_policy =
+            opencl_context_->opencl_cache_reuse_policy();
+        switch (opencl_cache_reuse_policy) {
           case OpenCLCacheReusePolicy::REUSE_NONE:
-            cache_storage_->Clear();
+            cache_storage->Clear();
             break;
           case OpenCLCacheReusePolicy::REUSE_SAME_GPU:
             if (!IsCacheCompatible(gpu_type_,
                                    platform_version,
                                    cached_binary_platform_info)) {
-              cache_storage_->Clear();
+              cache_storage->Clear();
             }
             break;
           default:
-            cache_storage_->Clear();
+            cache_storage->Clear();
             break;
         }
       }
@@ -526,18 +521,19 @@ MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
   }
 
   if (cached_binary_platform_info != platform_info_) {
-    if (precompiled_binary_storage_ == nullptr) {
+    auto precompiled_binary_storage = opencl_context_->opencl_binary_storage();
+    if (precompiled_binary_storage == nullptr) {
       VLOG(1) << "There is no precompiled OpenCL binary in"
                  " all OpenCL binary paths.";
     } else {
-      if (precompiled_binary_storage_->Load() != 0) {
+      if (precompiled_binary_storage->Load() != 0) {
         LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
                      << "Please make sure the storage directory exist "
                      << "and you have Write&Read permission";
       }
 
       auto platform_info_array =
-          this->precompiled_binary_storage_->Find(kOpenCLPlatformInfoKey);
+          precompiled_binary_storage->Find(kOpenCLPlatformInfoKey);
       if (platform_info_array != nullptr) {
         precompiled_binary_platform_info_ =
             std::string(platform_info_array->begin(),
@@ -562,6 +558,12 @@ MaceStatus OpenclExecutor::Init(const GPUPriorityHint priority_hint,
   is_opencl_avaliable_ = true;
 
   return MaceStatus::MACE_SUCCESS;
+}
+
+void OpenclExecutor::SetOpenclContext(
+    std::shared_ptr<OpenclContext> opencl_context) {
+  MACE_CHECK(opencl_context != nullptr);
+  opencl_context_ = opencl_context;
 }
 
 OpenclExecutor::~OpenclExecutor() {
@@ -607,7 +609,9 @@ cl::Device &OpenclExecutor::device() { return *device_; }
 
 cl::CommandQueue &OpenclExecutor::command_queue() { return *command_queue_; }
 
-Tuner<uint32_t> *OpenclExecutor::tuner() { return tuner_.get(); }
+std::shared_ptr<Tuner<uint32_t>> OpenclExecutor::tuner() {
+  return opencl_context_->opencl_tuner();
+}
 
 uint64_t OpenclExecutor::device_global_mem_cache_size() const {
   return device_global_mem_cache_size_;
@@ -646,7 +650,8 @@ bool OpenclExecutor::BuildProgramFromCache(
     const std::string &build_options_str,
     cl::Program *program) {
   // Find from binary
-  if (this->cache_storage_ == nullptr) return false;
+  auto cache_storage = opencl_context_->opencl_cache_storage();
+  if (cache_storage == nullptr) return false;
   std::string program_name;
   bool hash_match = false;
   std::string cached_program_hash;
@@ -654,7 +659,7 @@ bool OpenclExecutor::BuildProgramFromCache(
   MaceStatus status = ParseProgramNameByKey(built_program_key, &program_name);
   if (status == MaceStatus::MACE_SUCCESS) {
     const std::vector<unsigned char> *hash_vec =
-        cache_storage_->Find(program_key_hash_prefix_ + built_program_key);
+        cache_storage->Find(program_key_hash_prefix_ + built_program_key);
     if (hash_vec != nullptr) {
       cached_program_hash = std::string(hash_vec->begin(), hash_vec->end());
     }
@@ -669,7 +674,7 @@ bool OpenclExecutor::BuildProgramFromCache(
     }
   }
   if (!hash_match) return false;
-  auto content = this->cache_storage_->Find(built_program_key);
+  auto content = cache_storage->Find(built_program_key);
   if (content == nullptr) {
     return false;
   }
@@ -697,14 +702,15 @@ bool OpenclExecutor::BuildProgramFromPrecompiledBinary(
     const std::string &build_options_str,
     cl::Program *program) {
   // Find from binary
-  if (this->precompiled_binary_storage_ == nullptr) return false;
+  auto precompiled_binary_storage = opencl_context_->opencl_binary_storage();
+  if (precompiled_binary_storage == nullptr) return false;
   if (precompiled_binary_platform_info_ != platform_info_) {
     VLOG(3) << "precompiled OpenCL binary version "
             << precompiled_binary_platform_info_
             << " is not same with current version";
     return false;
   }
-  auto content = this->precompiled_binary_storage_->Find(built_program_key);
+  auto content = precompiled_binary_storage->Find(built_program_key);
   if (content == nullptr) {
     return false;
   }
@@ -814,10 +820,11 @@ bool OpenclExecutor::BuildProgramFromSource(
         reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
             program_binary_sizes[0]);
 
-    if (this->cache_storage_ != nullptr) {
-      this->cache_storage_->Insert(built_program_key, content);
+    auto cache_storage = opencl_context_->opencl_cache_storage();
+    if (cache_storage != nullptr) {
+      cache_storage->Insert(built_program_key, content);
       // update platform info
-      this->cache_storage_->Insert(
+      cache_storage->Insert(
           kOpenCLPlatformInfoKey,
           std::vector<unsigned char>(platform_info_.begin(),
                                      platform_info_.end()));
@@ -826,16 +833,15 @@ bool OpenclExecutor::BuildProgramFromSource(
       if (status == MaceStatus::MACE_SUCCESS) {
         std::vector<unsigned char> hash_vec(hash_str.begin(), hash_str.end());
         // update program hash
-        this->cache_storage_->Insert(
-            program_key_hash_prefix_ + built_program_key, hash_vec);
+        cache_storage->Insert(program_key_hash_prefix_ + built_program_key,
+                              hash_vec);
       } else {
         LOG(WARNING) << "Failed to get hash value of program " << program_name;
       }
       // update device name
-      this->cache_storage_->Insert(
-          kOpenCLDeviceNameKey,
-          std::vector<unsigned char>(device_name_.begin(),
-                                     device_name_.end()));
+      cache_storage->Insert(kOpenCLDeviceNameKey,
+                            std::vector<unsigned char>(device_name_.begin(),
+                                                       device_name_.end()));
     }
 
     VLOG(3) << "Program from source: " << built_program_key;
@@ -896,8 +902,9 @@ MaceStatus OpenclExecutor::BuildKernel(
 }
 
 void OpenclExecutor::SaveBuiltCLProgram() {
-  if (cache_storage_ != nullptr) {
-    if (cache_storage_->Flush() != 0) {
+  auto cache_storage = opencl_context_->opencl_cache_storage();
+  if (cache_storage != nullptr) {
+    if (cache_storage->Flush() != 0) {
       LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
                  << "Please make sure the storage directory exist "
                  << "and you have Write&Read permission";

@@ -132,7 +132,6 @@ MaceStatus TransformFilter(
                             input->shape(), false, output_name, content_type);
     output = output_tensor.get();
     output->SetContentType(content_type, wino_blk_size);
-
     runtime->AllocateBufferForTensor(output, RENT_PRIVATE);
     output_tensor->SetIsWeight(true);
     ws->AddTensor(output_name, std::move(output_tensor));

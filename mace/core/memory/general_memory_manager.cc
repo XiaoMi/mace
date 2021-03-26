@@ -43,6 +43,18 @@ void GeneralMemoryManager::ReleaseMemory(void *ptr,
   shared_pools_.at(rent_type)->ReleaseMemory(ptr);
 }
 
+std::vector<index_t> GeneralMemoryManager::GetMemoryRealSize(const void *ptr) {
+  for (auto i = shared_pools_.begin(); i != shared_pools_.end(); ++i) {
+    auto real_shape = i->second->GetMemoryRealSize(ptr);
+    if (real_shape.size() == 0) {
+      continue;
+    }
+    return real_shape;
+  }
+  LOG(FATAL) << "GetMemoryRealSize, can not find ptr: " << ptr;
+  return {};
+}
+
 void GeneralMemoryManager::ReleaseAllMemory(const BufRentType rent_type,
                                             bool del_buf) {
   if (shared_pools_.count(rent_type) > 0) {
@@ -107,6 +119,25 @@ void GeneralMemoryManager::MemoryPool::ReleaseMemory(void *ptr) {
     }
   }
   VLOG(1) << "ReleaseMemory, but find an unknown ptr: " << ptr;
+}
+
+std::vector<index_t>
+    GeneralMemoryManager::MemoryPool::GetMemoryRealSize(const void *ptr) {
+  // TODO(luxuhui): If the blocks become more or GetMemoryRealSize be used more,
+  //  we need to add a `map` to optimize the follow code.
+  for (BlockList::iterator iter = mem_used_blocks_.begin();
+       iter != mem_used_blocks_.end(); ++iter) {
+    if (iter->second == ptr) {
+      return {iter->first};
+    }
+  }
+  for (BlockList::iterator iter = mem_free_blocks_.begin();
+       iter != mem_free_blocks_.end(); ++iter) {
+    if (iter->second == ptr) {
+      return {iter->first};
+    }
+  }
+  return {};
 }
 
 void GeneralMemoryManager::MemoryPool::ReleaseAllMemory(bool del_buf) {

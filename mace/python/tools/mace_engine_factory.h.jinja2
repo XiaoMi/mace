@@ -61,6 +61,12 @@ std::map<std::string, int> model_name_map {
 /// \param output_nodes[in]: the array of output nodes' name
 /// \param config[in]: configurations for MaceEngine.
 /// \param engine[out]: output MaceEngine object
+/// \param model_data_unused[out]: Indicates whether model_weights_data unused
+/// \param tutor[in]: If tutor is not null, the current engine will use the
+///                   tutor's runtimes, so that they will share the intermediate
+///                   memory. You can use this mechanism to reduce the memory
+///                   usage of multiple models in the same process, provided
+///                   that the multiple models are running serially.
 /// \return MaceStatus::MACE_SUCCESS for success, MACE_INVALID_ARGS for wrong arguments,
 ///         MACE_OUT_OF_RESOURCES for resources is out of range.
 __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
@@ -69,7 +75,8 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine) {
+    std::shared_ptr<MaceEngine> *engine,
+    MaceEngine *tutor = nullptr) {
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
@@ -88,11 +95,13 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
 {% if embed_model_data %}
       model_data = mace::{{model_tags[i]}}::LoadModelData();
       const int64_t model_size = mace::{{model_tags[i]}}::GetModelSize();
+      bool model_data_unused = false;
       status = (*engine)->Init(multi_net_def.get(), input_nodes, output_nodes,
-                               model_data, model_size);
+                               model_data, model_size, &model_data_unused,
+                               tutor);
 {% else %}
       status = (*engine)->Init(multi_net_def.get(), input_nodes, output_nodes,
-                               model_data_file);
+                               model_data_file, tutor);
 {% endif %}
       break;
     }
@@ -104,6 +113,28 @@ __attribute__((deprecated)) MaceStatus CreateMaceEngineFromCode(
   return status;
 }
 
+/// \brief Create MaceEngine from code
+///
+/// Create MaceEngine object based on model graph code and model data code
+///
+/// \param model_name[in]: the name of model you want to use.
+/// \param model_weights_data[in]: the content of model weights data, the
+///                                returned engine will refer to this buffer
+///                                if model_data_unused return false.
+/// \param model_weights_data_size[in]: the size of model weights data
+/// \param input_nodes[in]: the array of input nodes' name
+/// \param output_nodes[in]: the array of output nodes' name
+/// \param config[in]: configurations for MaceEngine.
+/// \param engine[out]: output MaceEngine object
+/// \param model_data_unused[out]: Indicates whether model_weights_data unused
+/// \param tutor[in]: If tutor is not null, the current engine will use the
+///                   tutor's runtimes, so that they will share the intermediate
+///                   memory. You can use this mechanism to reduce the memory
+///                   usage of multiple models in the same process, provided
+///                   that the multiple models are running serially.
+/// \return MaceStatus::MACE_SUCCESS for success,
+///         MaceStatus::MACE_INVALID_ARGS for wrong arguments,
+///         MaceStatus::MACE_OUT_OF_RESOURCES for resources is out of range.
 MaceStatus CreateMaceEngineFromCode(
     const std::string &model_name,
     const unsigned char *model_weights_data,
@@ -111,7 +142,9 @@ MaceStatus CreateMaceEngineFromCode(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine) {
+    std::shared_ptr<MaceEngine> *engine,
+    bool *model_data_unused = nullptr,
+    MaceEngine *tutor = nullptr) {
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
@@ -132,11 +165,13 @@ MaceStatus CreateMaceEngineFromCode(
 {% if embed_model_data %}
       model_data = mace::{{model_tags[i]}}::LoadModelData();
       const int64_t model_size = mace::{{model_tags[i]}}::GetModelSize();
-      status = (*engine)->Init(multi_net_def.get(), input_nodes, output_nodes,
-                               model_data, model_size);
+      status = (*engine)->Init(
+            multi_net_def.get(), input_nodes, output_nodes,
+            model_data, model_size, model_data_unused, tutor);
 {% else %}
-      status = (*engine)->Init(multi_net_def.get(), input_nodes, output_nodes,
-                               model_weights_data, model_weights_data_size);
+      status = (*engine)->Init(
+      multi_net_def.get(), input_nodes, output_nodes, model_weights_data,
+      model_weights_data_size, model_data_unused, tutor);
 {% endif %}
       break;
     }

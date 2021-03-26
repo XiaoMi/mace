@@ -29,6 +29,7 @@ void *OpenclImageManager::ObtainMemory(const MemInfo &info,
   if (shared_pools_.count(rent_type) == 0) {
     shared_pools_.emplace(rent_type, make_unique<ImagePool>(allocator_));
   }
+
   return shared_pools_.at(rent_type)->ObtainMemory(info);
 }
 
@@ -39,6 +40,18 @@ void OpenclImageManager::ReleaseMemory(void *ptr, const BufRentType rent_type) {
     return;
   }
   shared_pools_.at(rent_type)->ReleaseMemory(ptr);
+}
+
+std::vector<index_t> OpenclImageManager::GetMemoryRealSize(const void *ptr) {
+  for (auto i = shared_pools_.begin(); i != shared_pools_.end(); ++i) {
+    auto real_shape = i->second->GetMemoryRealSize(ptr);
+    if (real_shape.size() == 0) {
+      continue;
+    }
+    return real_shape;
+  }
+  LOG(FATAL) << "GetMemoryRealSize, can not find ptr: " << ptr;
+  return {};
 }
 
 void OpenclImageManager::ReleaseAllMemory(const BufRentType rent_type,
@@ -59,7 +72,7 @@ OpenclImageManager::ImagePool::~ImagePool() {
 void OpenclImageManager::ImagePool::ClearMemory() {
   for (BlockList::iterator iter = mem_used_blocks_.begin();
        iter != mem_used_blocks_.end(); ++iter) {
-    VLOG(2) << "Finally release image, size: " << iter->first
+    VLOG(2) << "Finally release used image, size: " << iter->first
             << ", width: " << iter->second->dims[0]
             << ", height: " << iter->second->dims[1];
     allocator_->Delete(iter->second->mutable_memory<void>());
@@ -68,6 +81,9 @@ void OpenclImageManager::ImagePool::ClearMemory() {
 
   for (BlockList::iterator iter = mem_free_blocks_.begin();
        iter != mem_free_blocks_.end(); ++iter) {
+    VLOG(2) << "Finally release free image, size: " << iter->first
+            << ", width: " << iter->second->dims[0]
+            << ", height: " << iter->second->dims[1];
     allocator_->Delete(iter->second->mutable_memory<void>());
   }
   mem_free_blocks_.clear();
@@ -112,8 +128,27 @@ void OpenclImageManager::ImagePool::ReleaseMemory(void *ptr) {
       return;
     }
   }
-  LOG(FATAL) << "OpenclImageManager::ReleaseMemory,"
+  LOG(FATAL) << "OpenclImageManager::ImagePool::ReleaseMemory,"
              << " but find an unknown ptr: " << ptr;
+}
+
+// TODO(luxuhui): If the blocks become more or GetMemoryRealSize be used more,
+//  we need to add a `map` to optimize the follow code.
+std::vector<index_t>
+OpenclImageManager::ImagePool::GetMemoryRealSize(const void *ptr) {
+  for (BlockList::iterator iter = mem_used_blocks_.begin();
+       iter != mem_used_blocks_.end(); ++iter) {
+    if (iter->second->memory<void>() == ptr) {
+      return iter->second->dims;
+    }
+  }
+  for (BlockList::iterator iter = mem_free_blocks_.begin();
+       iter != mem_free_blocks_.end(); ++iter) {
+    if (iter->second->memory<void>() == ptr) {
+      return iter->second->dims;
+    }
+  }
+  return {};
 }
 
 void OpenclImageManager::ImagePool::ReleaseAllMemory(bool del_buf) {

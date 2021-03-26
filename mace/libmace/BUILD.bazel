@@ -17,6 +17,7 @@ load(
     "if_darwin",
     "if_fp16_enabled",
     "if_hexagon_enabled",
+    "if_hexagon_or_hta_enabled",
     "if_hta_enabled",
     "if_linux",
     "if_linux_base",
@@ -120,7 +121,10 @@ genrule(
         "//include:public_headers",
         "//mace/codegen:generated_version",
         "//mace/core",
+        "//mace/flows/cpu:cpu_flows",
         "//mace/flows",
+        "//mace/runtimes/cpu:cpu_runtimes",
+        "//mace/runtimes",
         "//mace/ops:common",
         "//mace/ops:ref_kernels",
         "//mace/ops:internal_ops",
@@ -130,7 +134,6 @@ genrule(
         "//mace/port/posix:port_posix",
         "//mace/utils",
         "//mace/proto:mace_cc",
-        "//mace/runtimes",
         "@com_google_protobuf//:protobuf_lite",
     ] + if_linux_base([
         "//mace/port/linux_base:port_linux_base",
@@ -143,7 +146,20 @@ genrule(
         "//mace/port/darwin:darwin_ar_merge",
     ]) + if_opencl_enabled([
         "//mace/ops:opencl_kernels",
+        "//mace/runtimes/opencl:opencl_runtimes",
         "//mace/codegen:generated_opencl",
+        "//mace/flows/opencl:opencl_flows",
+    ]) + if_hexagon_enabled([
+        "//mace/runtimes/hexagon:dsp",
+    ]) + if_hta_enabled([
+        "//mace/runtimes/hexagon:hta",
+    ]) + if_hexagon_or_hta_enabled([
+        "//mace/runtimes/hexagon:base",
+        "//mace/flows/hexagon:hexagon_flows",
+        "//mace/runtimes/hexagon:hexagon_runtimes",
+    ]) + if_apu_enabled([
+        "//mace/flows/apu:apu_flows",
+        "//mace/runtimes/apu:apu_runtimes",
     ]) + if_rpcmem_enabled([
         "//third_party/rpcmem:rpcmem.a",
     ]) + if_neon_enabled([
@@ -154,6 +170,10 @@ genrule(
           "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
           "$(locations //mace/codegen:generated_version) " +
           "$(locations //mace/core:core) " +
+          "$(locations //mace/flows/cpu:cpu_flows) " +
+          "$(locations //mace/flows) " +
+          "$(locations //mace/runtimes/cpu:cpu_runtimes) " +
+          "$(locations //mace/runtimes) " +
           "$(locations //mace/ops:common) " +
           "$(locations //mace/ops:ref_kernels) " +
           if_neon_enabled(
@@ -161,7 +181,25 @@ genrule(
               default_value = "",
           ) +
           if_opencl_enabled(
-              "$(locations //mace/ops:opencl_kernels) ",
+              "$(locations //mace/ops:opencl_kernels) " +
+              "$(locations //mace/flows/opencl:opencl_flows) " +
+              "$(locations //mace/runtimes/opencl:opencl_runtimes) ",
+              default_value = "",
+          ) + if_hexagon_or_hta_enabled(
+              "$(locations //mace/runtimes/hexagon:base) " +
+              "$(locations //mace/flows/hexagon:hexagon_flows) " +
+              "$(locations //mace/runtimes/hexagon:hexagon_runtimes) ",
+              default_value = "",
+          ) +
+          if_hexagon_enabled(
+              "$(locations //mace/runtimes/hexagon:dsp) ",
+              default_value = "",
+          ) + if_hta_enabled(
+              "$(locations //mace/runtimes/hexagon:hta) ",
+              default_value = "",
+          ) + if_apu_enabled(
+              "$(locations //mace/flows/apu:apu_flows) " +
+              "$(locations //mace/runtimes/apu:apu_runtimes) ",
               default_value = "",
           ) +
           "$(locations //mace/ops:internal_ops) " +

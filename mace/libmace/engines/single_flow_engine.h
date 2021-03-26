@@ -35,8 +35,10 @@ class SingleFlowEngine : public BaseEngine {
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data,
                   const int64_t model_data_size,
-                  bool *model_data_unused = nullptr) override;
+                  bool *model_data_unused = nullptr,
+                  BaseEngine *tutor = nullptr) override;
 
+  // @Deprecated, will be removed in future version
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
@@ -49,8 +51,15 @@ class SingleFlowEngine : public BaseEngine {
                  std::map<std::string, MaceTensor> *outputs,
                  RunMetadata *run_metadata) override;
 
+  MaceStatus DoInit(const NetDef *net_def,
+                    const std::vector<std::string> &input_nodes,
+                    const std::vector<std::string> &output_nodes,
+                    const unsigned char *model_data,
+                    const int64_t model_data_size,
+                    bool *model_data_unused, BaseEngine *tutor);
+
  private:
-  MaceStatus InitRuntime(const NetDef *net_def);
+  MaceStatus CreateAndInitRuntimes(const NetDef *net_def, BaseEngine *tutor);
 
  private:
   std::shared_ptr<Runtime> runtime_;

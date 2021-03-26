@@ -35,13 +35,16 @@ class MaceEngine::Impl {
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data,
                   const int64_t model_data_size,
-                  bool *model_data_unused = nullptr);
+                  bool *model_data_unused = nullptr,
+                  MaceEngine::Impl *tutor = nullptr);
 
   MaceStatus Init(const MultiNetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
-                  const std::string &model_data_file);
+                  const std::string &model_data_file,
+                  MaceEngine::Impl *tutor = nullptr);
 
+  // Deprecated, will be removed in future version.
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
@@ -49,6 +52,7 @@ class MaceEngine::Impl {
                   const int64_t model_data_size,
                   bool *model_data_unused = nullptr);
 
+  // Deprecated, will be removed in future version.
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
@@ -71,34 +75,50 @@ MaceStatus MaceEngine::Impl::Init(const MultiNetDef *multi_net_def,
                                   const std::vector<std::string> &output_nodes,
                                   const unsigned char *model_data,
                                   const int64_t model_data_size,
-                                  bool *model_data_unused) {
-  return engine_->Init(multi_net_def, input_nodes, output_nodes, model_data,
-                       model_data_size, model_data_unused);
+                                  bool *model_data_unused,
+                                  MaceEngine::Impl *tutor) {
+  MACE_RETURN_IF_ERROR(engine_->BeforeInit());
+  MACE_RETURN_IF_ERROR(engine_->Init(
+      multi_net_def, input_nodes, output_nodes, model_data, model_data_size,
+      model_data_unused, tutor == nullptr ? nullptr : tutor->engine_.get()));
+  return engine_->AfterInit();
 }
 
 MaceStatus MaceEngine::Impl::Init(const MultiNetDef *multi_net_def,
                                   const std::vector<std::string> &input_nodes,
                                   const std::vector<std::string> &output_nodes,
-                                  const std::string &model_data_file) {
-  return engine_->Init(multi_net_def, input_nodes,
-                       output_nodes, model_data_file);
+                                  const std::string &model_data_file,
+                                  MaceEngine::Impl *tutor) {
+  MACE_RETURN_IF_ERROR(engine_->BeforeInit());
+  MACE_RETURN_IF_ERROR(engine_->Init(
+      multi_net_def, input_nodes, output_nodes, model_data_file,
+      tutor == nullptr ? nullptr : tutor->engine_.get()));
+  return engine_->AfterInit();
 }
 
+// Deprecated, will be removed in future version.
 MaceStatus MaceEngine::Impl::Init(
     const NetDef *net_def, const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const unsigned char *model_data,
     const int64_t model_data_size, bool *model_data_unused) {
-  return engine_->Init(net_def, input_nodes, output_nodes, model_data,
-                       model_data_size, model_data_unused);
+  MACE_RETURN_IF_ERROR(engine_->BeforeInit());
+  MACE_RETURN_IF_ERROR(engine_->Init(
+      net_def, input_nodes, output_nodes, model_data, model_data_size,
+      model_data_unused));
+  return engine_->AfterInit();
 }
 
+// Deprecated, will be removed in future version.
 MaceStatus MaceEngine::Impl::Init(
     const NetDef *net_def,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const std::string &model_data_file) {
-  return engine_->Init(net_def, input_nodes, output_nodes, model_data_file);
+  MACE_RETURN_IF_ERROR(engine_->BeforeInit());
+  MACE_RETURN_IF_ERROR(engine_->Init(net_def, input_nodes, output_nodes,
+                                     model_data_file));
+  return engine_->AfterInit();
 }
 
 MaceStatus MaceEngine::Impl::Run(
@@ -122,18 +142,24 @@ MaceStatus MaceEngine::Init(const MultiNetDef *multi_net_def,
                             const std::vector<std::string> &output_nodes,
                             const unsigned char *model_data,
                             const int64_t model_data_size,
-                            bool *model_data_unused) {
+                            bool *model_data_unused, MaceEngine *tutor) {
+  MACE_CHECK(tutor != this, "Can not use yourself as tutor.");
   return impl_->Init(multi_net_def, input_nodes, output_nodes,
-                     model_data, model_data_size, model_data_unused);
+                     model_data, model_data_size, model_data_unused,
+                     tutor == nullptr ? nullptr : tutor->impl_.get());
 }
 
 MaceStatus MaceEngine::Init(const MultiNetDef *multi_net_def,
                             const std::vector<std::string> &input_nodes,
                             const std::vector<std::string> &output_nodes,
-                            const std::string &model_data_file) {
-  return impl_->Init(multi_net_def, input_nodes, output_nodes, model_data_file);
+                            const std::string &model_data_file,
+                            MaceEngine *tutor) {
+  MACE_CHECK(tutor != this, "Can not use yourself as tutor.");
+  return impl_->Init(multi_net_def, input_nodes, output_nodes, model_data_file,
+                     tutor == nullptr ? nullptr : tutor->impl_.get());
 }
 
+// Deprecated, will be removed in future version.
 MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const std::vector<std::string> &input_nodes,
                             const std::vector<std::string> &output_nodes,
@@ -144,6 +170,7 @@ MaceStatus MaceEngine::Init(const NetDef *net_def,
                      model_data, model_data_size, model_data_unused);
 }
 
+// Deprecated, will be removed in future version.
 MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const std::vector<std::string> &input_nodes,
                             const std::vector<std::string> &output_nodes,
@@ -162,6 +189,7 @@ MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
   return impl_->Run(inputs, outputs, nullptr);
 }
 
+// Deprecated, will be removed in future version.
 MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const std::vector<std::string> &input_nodes,
                             const std::vector<std::string> &output_nodes,
@@ -184,7 +212,8 @@ MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine) {
+    std::shared_ptr<MaceEngine> *engine,
+    bool *model_data_unused, MaceEngine *tutor) {
   VLOG(1) << "Create MaceEngine from model graph proto and weights data";
 
   if (engine == nullptr) {
@@ -200,8 +229,8 @@ MaceStatus CreateMaceEngineFromProto(
   if (succ) {
     VLOG(1) << "It is a multi_net_def.";
     status = (*engine)->Init(
-        multi_net_def.get(), input_nodes, output_nodes,
-        model_weights_data, model_weights_data_size);
+        multi_net_def.get(), input_nodes, output_nodes, model_weights_data,
+        model_weights_data_size, model_data_unused, tutor);
   } else {
     VLOG(1) << "It is a net_def.";
     auto net_def = std::make_shared<NetDef>();
@@ -222,7 +251,7 @@ MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
-    std::shared_ptr<MaceEngine> *engine) {
+    std::shared_ptr<MaceEngine> *engine, MaceEngine *tutor) {
   VLOG(1) << "Create MaceEngine from model pb";
   LOG(WARNING) << "Function deprecated, please change to the new API";
   // load model
@@ -230,12 +259,23 @@ MaceStatus CreateMaceEngineFromProto(
     return MaceStatus::MACE_INVALID_ARGS;
   }
 
-  std::shared_ptr<NetDef> net_def(new NetDef());
-  net_def->ParseFromArray(&model_pb[0], model_pb.size());
+  auto multi_net_def = std::make_shared<MultiNetDef>();
+  bool succ = multi_net_def->ParseFromArray(&model_pb[0], model_pb.size());
 
   engine->reset(new mace::MaceEngine(config));
-  MaceStatus status = (*engine)->Init(
-      net_def.get(), input_nodes, output_nodes, model_data_file);
+  MaceStatus status = MaceStatus::MACE_RUNTIME_ERROR;
+  if (succ) {
+    VLOG(1) << "It is a multi_net_def.";
+    status = (*engine)->Init(
+        multi_net_def.get(), input_nodes, output_nodes, model_data_file, tutor);
+  } else {
+    VLOG(1) << "It is a net_def.";
+    auto net_def = std::make_shared<NetDef>();
+    succ = net_def->ParseFromArray(&model_pb[0], model_pb.size());
+    MACE_CHECK(succ, "load NetDef failed.");
+    status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
+                             model_data_file);
+  }
 
   return status;
 }

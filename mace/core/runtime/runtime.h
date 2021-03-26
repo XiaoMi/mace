@@ -47,8 +47,15 @@ class Runtime {
   // TODO(luxuhui): should be changed to RuntimeConfig
   virtual MaceStatus Init(const MaceEngineCfgImpl *engine_config,
                           const MemoryType mem_type);
+
+  virtual MaceStatus BeforeRun(MaceEngineCfgImpl *config);
+  virtual MaceStatus AfterRun();
+
   virtual MaceStatus MapBuffer(Buffer *buffer, bool wait_for_finish);
   virtual MaceStatus UnMapBuffer(Buffer *buffer);
+  virtual bool CanReuseBuffer(
+      const Buffer *buffer, const std::vector<index_t> &shape,
+      const BufferContentType content_type, const unsigned int content_param);
 
   virtual RuntimeType GetRuntimeType() = 0;
   virtual MemoryType GetBaseMemoryType();

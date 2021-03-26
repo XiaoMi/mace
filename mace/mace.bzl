@@ -54,40 +54,40 @@ def if_neon_enabled(a, default_value = []):
         "//conditions:default": default_value,
     })
 
-def if_hexagon_enabled(a):
+def if_hexagon_enabled(a, default_value = []):
     return select({
         "//mace:hexagon_enabled": a,
-        "//conditions:default": [],
+        "//conditions:default": default_value,
     })
 
-def if_not_hexagon_enabled(a):
+def if_not_hexagon_enabled(a, default_value = []):
     return select({
-        "//mace:hexagon_enabled": [],
+        "//mace:hexagon_enabled": default_value,
         "//conditions:default": a,
     })
 
-def if_hta_enabled(a):
+def if_hta_enabled(a, default_value = []):
     return select({
         "//mace:hta_enabled": a,
-        "//conditions:default": [],
+        "//conditions:default": default_value,
     })
 
-def if_hexagon_or_hta_enabled(a):
+def if_hexagon_or_hta_enabled(a, default_value = []):
     return select({
         "//mace:hexagon_enabled": a,
         "//mace:hta_enabled": a,
-        "//conditions:default": [],
+        "//conditions:default": default_value,
     })
 
-def if_apu_enabled(a):
+def if_apu_enabled(a, default_value = []):
     return select({
         "//mace:apu_enabled": a,
-        "//conditions:default": [],
+        "//conditions:default": default_value,
     })
 
-def if_not_apu_enabled(a):
+def if_not_apu_enabled(a, default_value = []):
     return select({
-        "//mace:apu_enabled": [],
+        "//mace:apu_enabled": default_value,
         "//conditions:default": a,
     })
 

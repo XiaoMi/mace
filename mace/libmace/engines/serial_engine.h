@@ -37,8 +37,10 @@ class SerialEngine : public BaseEngine {
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data,
                   const int64_t model_data_size,
-                  bool *model_data_unused = nullptr) override;
+                  bool *model_data_unused = nullptr,
+                  BaseEngine *tutor = nullptr) override;
 
+  // @Deprecated, will be removed in future version
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
@@ -69,10 +71,11 @@ class SerialEngine : public BaseEngine {
                     const std::vector<std::string> &output_nodes,
                     const unsigned char *model_data,
                     const int64_t model_data_size,
-                    bool *model_data_unused);
+                    bool *model_data_unused, BaseEngine *tutor);
 
   MaceStatus CreateAndInitRuntimes(const NetDefMap &net_defs,
-                                   NetRuntimeMap *runtime_map);
+                                   NetRuntimeMap *runtime_map,
+                                   BaseEngine *tutor);
 
   MaceStatus CreateAndInitFlows(
       const NetDefMap &net_defs, const NetRuntimeMap &runtime_map,
@@ -87,7 +90,6 @@ class SerialEngine : public BaseEngine {
       const std::vector<std::string> &output_nodes);
 
  private:
-  std::vector<std::shared_ptr<Runtime>> runtimes_;
   std::shared_ptr<Runtime> cpu_runtime_;
   FlowArray flows_;
 

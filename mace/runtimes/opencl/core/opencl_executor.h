@@ -25,6 +25,7 @@
 #include "mace/core/kv_storage.h"
 #include "mace/core/future.h"
 #include "mace/runtimes/opencl/core/cl2_header.h"
+#include "mace/runtimes/opencl/core/opencl_context.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
@@ -69,11 +70,7 @@ const std::string OpenCLErrorToString(cl_int error);
 
 class OpenclExecutor {
  public:
-  OpenclExecutor(
-      std::shared_ptr<KVStorage> cache_storage = nullptr,
-      std::shared_ptr<KVStorage> precompiled_binary_storage = nullptr,
-      std::shared_ptr<Tuner<uint32_t>> tuner = nullptr,
-      OpenCLCacheReusePolicy policy = OpenCLCacheReusePolicy::REUSE_SAME_GPU);
+  OpenclExecutor();
   virtual ~OpenclExecutor();
   OpenclExecutor(const OpenclExecutor &) = delete;
   OpenclExecutor &operator=(const OpenclExecutor &) = delete;
@@ -81,8 +78,10 @@ class OpenclExecutor {
   static IONType FindCurDeviceIonType();
 
   MaceStatus Init(
+      std::shared_ptr<OpenclContext> opencl_context,
       const GPUPriorityHint priority_hint = GPUPriorityHint::PRIORITY_NORMAL,
       const GPUPerfHint perf_hint = GPUPerfHint::PERF_NORMAL);
+  void SetOpenclContext(std::shared_ptr<OpenclContext> opencl_context);
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();
@@ -90,7 +89,7 @@ class OpenclExecutor {
   const std::string platform_info() const;
   uint64_t device_global_mem_cache_size() const;
   uint32_t device_compute_units() const;
-  Tuner<uint32_t> *tuner();
+  std::shared_ptr<Tuner<uint32_t>> tuner();
   bool is_opencl_avaliable();
 
   virtual IONType ion_type() const;
@@ -138,9 +137,7 @@ class OpenclExecutor {
   std::string ParseAdrenoDeviceName(const std::string &device_version);
 
  private:
-  std::shared_ptr<KVStorage> cache_storage_;
-  std::shared_ptr<KVStorage> precompiled_binary_storage_;
-  std::shared_ptr<Tuner<uint32_t>> tuner_;
+  std::shared_ptr<OpenclContext> opencl_context_;
   bool is_opencl_avaliable_;
   bool is_profiling_enabled_;
   OpenCLVersion opencl_version_;
@@ -159,7 +156,6 @@ class OpenclExecutor {
   uint32_t device_compute_units_;
   std::string program_key_hash_prefix_;
   std::string device_name_;
-  OpenCLCacheReusePolicy opencl_cache_reuse_policy_;
 };
 
 class OpenCLProfilingTimer : public Timer {

@@ -34,6 +34,7 @@ SerialEngine::SerialEngine(const MaceEngineConfig &config)
 
 SerialEngine::~SerialEngine() {}
 
+// @Deprecated, will be removed in future version
 MaceStatus SerialEngine::Init(
     const NetDef *net_def, const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
@@ -47,7 +48,7 @@ MaceStatus SerialEngine::Init(
   mace::NetDef *tmp_net_def = multi_net_def.add_net_def();
   *tmp_net_def = *net_def;
   ret = DoInit(&multi_net_def, input_nodes, output_nodes, model_data,
-               model_data_size, model_data_unused);
+               model_data_size, model_data_unused, nullptr);
   MACE_RETURN_IF_ERROR(ret);
 
   return MaceStatus::MACE_SUCCESS;
@@ -58,13 +59,15 @@ MaceStatus SerialEngine::Init(const MultiNetDef *multi_net_def,
                               const std::vector<std::string> &output_nodes,
                               const unsigned char *model_data,
                               const int64_t model_data_size,
-                              bool *model_data_unused) {
+                              bool *model_data_unused,
+                              BaseEngine* tutor) {
   auto ret = BaseEngine::Init(multi_net_def, input_nodes, output_nodes,
-                              model_data, model_data_size, model_data_unused);
+                              model_data, model_data_size, model_data_unused,
+                              tutor);
   MACE_RETURN_IF_ERROR(ret);
 
-  ret = DoInit(multi_net_def, input_nodes, output_nodes,
-               model_data, model_data_size, model_data_unused);
+  ret = DoInit(multi_net_def, input_nodes, output_nodes, model_data,
+               model_data_size, model_data_unused, tutor);
   MACE_RETURN_IF_ERROR(ret);
 
   return MaceStatus::MACE_SUCCESS;
@@ -110,9 +113,8 @@ MaceStatus SerialEngine::Run(
 }
 
 MaceStatus SerialEngine::AfterRun() {
-  cpu_runtime_->OnIntermediateBufferUsed(this);
-  for (auto runtime : runtimes_) {
-    runtime->OnIntermediateBufferUsed(this);
+  for (auto iter = runtimes_.begin(); iter != runtimes_.end(); ++iter) {
+    iter->second->OnIntermediateBufferUsed(this);
   }
   return BaseEngine::AfterRun();
 }
@@ -121,9 +123,8 @@ MaceStatus SerialEngine::ReleaseIntermediateBuffer() {
   if (inter_mem_released_) {
     return MaceStatus::MACE_SUCCESS;
   }
-  cpu_runtime_->ReleaseIntermediateBuffer(this);
-  for (auto runtime : runtimes_) {
-    runtime->ReleaseIntermediateBuffer(this);
+  for (auto iter = runtimes_.begin(); iter != runtimes_.end(); ++iter) {
+    iter->second->ReleaseIntermediateBuffer(this);
   }
   inter_mem_released_ = true;
 
@@ -137,28 +138,36 @@ MaceStatus SerialEngine::AllocateIntermediateBuffer() {
   for (auto &flow : flows_) {
     MACE_RETURN_IF_ERROR(flow->AllocateIntermediateBuffer());
   }
-  cpu_runtime_->OnAllocateIntermediateBuffer(this);
-  for (auto runtime : runtimes_) {
-    runtime->OnAllocateIntermediateBuffer(this);
+  for (auto iter = runtimes_.begin(); iter != runtimes_.end(); ++iter) {
+    iter->second->OnAllocateIntermediateBuffer(this);
   }
   inter_mem_released_ = false;
   return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus SerialEngine::CreateAndInitRuntimes(
-    const NetDefMap &net_defs, NetRuntimeMap *runtime_map) {
+    const NetDefMap &net_defs, NetRuntimeMap *runtime_map, BaseEngine *tutor) {
   // create runtime
   auto runtime_registry = make_unique<RuntimeRegistry>();
   RegisterAllRuntimes(runtime_registry.get());
 
   // create cpu runtime
-  auto cpu_runtime = SmartCreateRuntime(
-      runtime_registry.get(), RuntimeType::RT_CPU, runtime_context_.get());
-  MACE_RETURN_IF_ERROR(cpu_runtime->Init(config_impl_, MemoryType::CPU_BUFFER));
-  cpu_runtime_ = std::move(cpu_runtime);
+  auto cpu_rt_key = (RuntimeType::RT_CPU << 16) | CPU_BUFFER;
+  if (tutor != nullptr) {
+    auto &tutor_runtimes = GetRuntimesOfTutor(tutor);
+    MACE_CHECK(tutor_runtimes.count(cpu_rt_key) > 0,
+               "The tutor engine should be initialized first.");
+    cpu_runtime_ = tutor_runtimes.at(cpu_rt_key);
+  }
+  if (cpu_runtime_ == nullptr) {
+    auto cpu_runtime = SmartCreateRuntime(
+        runtime_registry.get(), RuntimeType::RT_CPU, runtime_context_.get());
+    MACE_RETURN_IF_ERROR(cpu_runtime->Init(config_impl_.get(), CPU_BUFFER));
+    cpu_runtime_ = std::move(cpu_runtime);
+  }
+  runtimes_.emplace(cpu_rt_key, cpu_runtime_);
 
   // Create other runtimes
-  std::unordered_map<uint32_t, std::shared_ptr<Runtime>> runtimes;
   for (auto i = net_defs.begin(); i != net_defs.end(); ++i) {
     auto *net_def = i->second;
     auto runtime_type = config_impl_->runtime_type(net_def->name());
@@ -182,20 +191,27 @@ MaceStatus SerialEngine::CreateAndInitRuntimes(
             *net_def, "opencl_mem_type",
             static_cast<int>(MemoryType::MEMORY_NONE)));
     MACE_CHECK(mem_type_i != MemoryType::MEMORY_NONE, "no mem type specified");
-
     uint32_t key = (runtime_type << 16) | mem_type_i;
-    if (runtimes.count(key) > 0) {
-      auto runtime = runtimes.at(key);
-      runtime_map->emplace(net_def, runtime);
-    } else {
+    std::shared_ptr<Runtime> runtime;
+    if (tutor != nullptr &&
+        (runtime_type == RT_CPU || runtime_type == RT_OPENCL)) {
+      // TODO(luxuhui): Only support cpu and gpu runtimes now, we can
+      //  support hexagon/hta/apu runtimes in the future
+      auto &tutor_runtimes = GetRuntimesOfTutor(tutor);
+      if (tutor_runtimes.count(key) > 0) {
+        runtime = tutor_runtimes.at(key);
+        runtime_map->emplace(net_def, runtime);
+      }
+    }
+    if (runtime == nullptr) {
       auto unique_runtime = SmartCreateRuntime(
           runtime_registry.get(), runtime_type, runtime_context_.get());
-      MACE_RETURN_IF_ERROR(unique_runtime->Init(config_impl_, mem_type_i));
-      std::shared_ptr<Runtime> runtime = std::move(unique_runtime);
-      runtimes.emplace(key, runtime);
+      MACE_RETURN_IF_ERROR(unique_runtime->Init(config_impl_.get(),
+                                                mem_type_i));
+      runtime = std::move(unique_runtime);
       runtime_map->emplace(net_def, runtime);
-      runtimes_.emplace_back(runtime);
     }
+    runtimes_.emplace(key, runtime);
   }
 
   return MaceStatus::MACE_SUCCESS;
@@ -219,7 +235,7 @@ MaceStatus SerialEngine::CreateAndInitFlows(
             << ", runtime: " << runtime->GetRuntimeType();
 
     auto flow_context = make_unique<FlowContext>(
-        config_impl_, op_registry_.get(), op_delegator_registry_.get(),
+        config_impl_.get(), op_registry_.get(), op_delegator_registry_.get(),
         cpu_runtime_.get(), runtime.get(), thread_pool_.get(), this);
     DataType data_type = static_cast<DataType>(net_def->data_type());
     FlowSubType sub_type = (data_type == DataType::DT_BFLOAT16) ?
@@ -236,8 +252,13 @@ MaceStatus SerialEngine::CreateAndInitFlows(
     MACE_CHECK(data_offset + data_size <= model_data_size);
     MACE_RETURN_IF_ERROR(flow->Init(
         net_def, model_data + data_offset, data_size, &data_unused));
-    flows_data_unused &= data_unused;
+    // In serial engine, we can reuse buffers between flows
+    runtime->ReleaseAllBuffer(RENT_SHARE, false);
+    if (runtime != cpu_runtime_) {
+      cpu_runtime_->ReleaseAllBuffer(RENT_SHARE, false);
+    }
 
+    flows_data_unused &= data_unused;
     flows_.push_back(std::move(flow));
   }
 
@@ -376,8 +397,8 @@ MaceStatus SerialEngine::DoInit(
     const MultiNetDef *multi_net_def,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const unsigned char *model_data,
-    const int64_t model_data_size, bool *model_data_unused) {
+    const unsigned char *model_data, const int64_t model_data_size,
+    bool *model_data_unused, BaseEngine *tutor) {
   VLOG(1) << "Initializing SerialEngine";
 
   // sort the net_def
@@ -390,7 +411,7 @@ MaceStatus SerialEngine::DoInit(
 
   // create and init runtimes
   std::unordered_map<const NetDef *, std::shared_ptr<Runtime>> runtime_map;
-  MaceStatus ret = CreateAndInitRuntimes(net_defs, &runtime_map);
+  MaceStatus ret = CreateAndInitRuntimes(net_defs, &runtime_map, tutor);
   MACE_RETURN_IF_ERROR(ret);
 
   // create and init flows
