@@ -430,6 +430,9 @@ def merge_opencl_binaries_or_parameters(binaries_dirs,
             continue
         saved_crc = struct.unpack("I", all_bytes[-CRC32SIZE:])[0]
         current_crc = zlib.crc32(all_bytes[:-CRC32SIZE])
+        # In Python2, zlib.crc32 may return negative value,
+        # so casting is needed for Python2.
+        current_crc = np.array([current_crc]).astype(np.uint32)[0]
         if saved_crc != current_crc:
             print("CRC value of {} is invalid".format(binary_path))
             continue
@@ -462,6 +465,7 @@ def merge_opencl_binaries_or_parameters(binaries_dirs,
 
     message_str = new_container.SerializeToString()
     crc_val = zlib.crc32(message_str)
+    crc_val = np.array([crc_val]).astype(np.uint32)[0]
     crc_bytes = struct.pack("<I", crc_val)
     with open(output_file_path, "wb") as ofp:
         ofp.write(message_str + crc_bytes)

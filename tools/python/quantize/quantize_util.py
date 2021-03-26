@@ -184,6 +184,22 @@ def quantize_int8(data):
     return quantized_data
 
 
+def quantize_with_min_and_max(data, device, non_zero, in_min, in_max):
+    np_data = np.array(data).astype(float)
+    scale, zero, out_min, out_max = adjust_range(in_min, in_max, device,
+                                                 non_zero=non_zero)
+    output = np.clip((np.round(zero + np_data / scale).astype(np.int32)),
+                     0, 255)
+
+    quantized_data = QuantizedData()
+    quantized_data.data = output
+    quantized_data.scale = scale
+    quantized_data.zero = zero
+    quantized_data.minval = out_min
+    quantized_data.maxval = out_max
+    return quantized_data
+
+
 def quantize(data, device, non_zero):
     np_data = np.array(data).astype(float)
     in_min = np_data.min()
