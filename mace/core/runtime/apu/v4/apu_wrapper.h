@@ -46,6 +46,7 @@ class ApuWrapper {
   neuron::NeuronDelegateKernel *frontend;
   bool AddOpsAndTensors(NetDef* net_def);
   Device *device_;
+  bool initialised_ = false;
 
  private:
   // Access to NNApi.
