@@ -37,6 +37,7 @@ ApuSupportedOps = [
     'Concat',
     'Conv2D',
     'DepthwiseConv2d',
+    'DepthToSpace',
     'Deconv2D',
     'Eltwise',
     'FullyConnected',
@@ -47,6 +48,7 @@ ApuSupportedOps = [
     'ResizeBilinear',
     'Reshape',
     'Softmax',
+    'SpaceToDepth',
 ]
 
 ApuOp = Enum('ApuOp', [(op, op) for op in ApuSupportedOps], type=str)
@@ -58,6 +60,7 @@ class ApuOps(object):
             MaceOp.Activation.name: ApuOp.Activation.name,
             MaceOp.Concat.name: ApuOp.Concat.name,
             MaceOp.Conv2D.name: ApuOp.Conv2D.name,
+            MaceOp.DepthToSpace: ApuOp.DepthToSpace.name,
             MaceOp.DepthwiseConv2d.name: ApuOp.DepthwiseConv2d.name,
             MaceOp.Deconv2D.name: ApuOp.Deconv2D.name,
             MaceOp.Eltwise.name: ApuOp.Eltwise.name,
@@ -68,6 +71,7 @@ class ApuOps(object):
             MaceOp.ResizeBilinear.name: ApuOp.ResizeBilinear.name,
             MaceOp.Reshape.name: ApuOp.Reshape.name,
             MaceOp.Softmax.name: ApuOp.Softmax.name,
+            MaceOp.SpaceToDepth.name: ApuOp.SpaceToDepth.name,
             MaceOp.Squeeze.name: ApuOp.Reshape.name,
         }
 
@@ -291,6 +295,14 @@ class ApuConverter(base_converter.ConverterInterface):
                            op.name + ': apu only support squeeze op with 1'
                            ' input')
                 self.add_shape_tensor_from_axis_arg(op)
+            elif op.type == MaceOp.DepthToSpace.name:
+                mace_check(len(op.input) == 1,
+                           op.name + ': apu only support DepthToSpace op with'
+                           ' 1 input')
+            elif op.type == MaceOp.SpaceToDepth.name:
+                mace_check(len(op.input) == 1,
+                           op.name + ': apu only support SpaceToDepth op with'
+                           ' 1 input')
             op.type = self._apu_ops.map_nn_op(op.type)
         self.change_activation_to_prelu()
 

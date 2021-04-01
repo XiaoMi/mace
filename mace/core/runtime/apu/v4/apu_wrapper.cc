@@ -37,6 +37,10 @@ namespace mace {
 
 bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
                       const char *file_name, bool load, bool store) {
+  if (initialised_) {
+    LOG(ERROR) << "ApuWrapper has been initialized.";
+    return false;
+  }
   frontend = new neuron::NeuronDelegateKernel(neuron_, device_);
   MACE_CHECK(!(load & store),
             "Should not load and store the model simultaneously.");
@@ -47,11 +51,16 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
   } else {
     LOG(INFO) << "ApuWrapper init successfully.";
   }
+  initialised_ = true;
   return ret;
 }
 
 bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
                      std::map<std::string, Tensor *> *output_tensors) {
+  if (!initialised_) {
+    LOG(ERROR) << "ApuWrapper should be initialized before running inference.";
+    return false;
+  }
   bool ret = frontend->Eval(input_tensors, output_tensors);
   if (!ret) {
     LOG(ERROR) << "ApuWrapper Run failed.";
@@ -64,6 +73,7 @@ bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 bool ApuWrapper::Uninit() {
   delete frontend;
   frontend = nullptr;
+  initialised_ = false;
   return true;
 }
 
