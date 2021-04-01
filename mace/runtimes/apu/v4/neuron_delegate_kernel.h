@@ -76,14 +76,12 @@ class NNMemory {
 
   ~NNMemory();
 
-  // NeuronMemory* get_handle() { return nn_memory_handle_; }
   uint8_t* get_data_ptr() { return data_ptr_; }
 
  private:
   // NeuronApi instance to use. Not owned by this object.
   size_t byte_size_ = 0;
   uint8_t* data_ptr_ = nullptr;
-  [[maybe_unused]] NeuronMemory* nn_memory_handle_ = nullptr;
 };
 
 

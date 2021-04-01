@@ -111,7 +111,7 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
     NeuronCompilation *restoredCompilation = nullptr;
     std::ifstream input(file_name, std::ios::binary);
 
-    // copies all data into buffer
+    // copy all data into buffer
     std::vector<unsigned char>
         buffer(std::istreambuf_iterator<char>(input), {});
     int err = neuronapi_->NeuronModel_restoreFromCompiledNetwork(
