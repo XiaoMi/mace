@@ -16,23 +16,20 @@
 #ifndef MACE_CORE_RUNTIME_RUNTIME_CONTEXT_H_
 #define MACE_CORE_RUNTIME_RUNTIME_CONTEXT_H_
 
-#ifdef MACE_ENABLE_RPCMEM
 #include "mace/core/memory/rpcmem/rpcmem.h"
-#endif  // MACE_ENABLE_RPCMEM
-
 #include "mace/utils/thread_pool.h"
 
 namespace mace {
 
 enum RuntimeContextType {
-  RCT_NORMAL,
-  RCT_QC_ION,
+  RCT_REF,
+  RCT_ION,
 };
 
 class RuntimeContext {
  public:
   RuntimeContext(utils::ThreadPool *thrd_pool)
-      : context_type(RCT_NORMAL), thread_pool(thrd_pool) {}
+      : context_type(RCT_REF), thread_pool(thrd_pool) {}
 
   virtual ~RuntimeContext() = default;
 
@@ -42,14 +39,14 @@ class RuntimeContext {
 };
 
 #ifdef MACE_ENABLE_RPCMEM
-class QcIonRuntimeContext : public RuntimeContext {
+class IonRuntimeContext : public RuntimeContext {
  public:
-  QcIonRuntimeContext(utils::ThreadPool *thrd_pool, std::shared_ptr<Rpcmem> rm)
+  IonRuntimeContext(utils::ThreadPool *thrd_pool, std::shared_ptr<Rpcmem> rm)
       : RuntimeContext(thrd_pool), rpcmem(rm) {
-    context_type = RCT_QC_ION;
+    context_type = RCT_ION;
   }
 
-  ~QcIonRuntimeContext() = default;
+  ~IonRuntimeContext() = default;
 
  public:
   std::shared_ptr<Rpcmem> rpcmem;

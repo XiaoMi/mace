@@ -7,39 +7,43 @@ licenses(["notice"])  # Apache 2.0
 load(
     "//mace:mace.bzl",
     "apu_version_select",
+    "if_rpcmem_enabled",
 )
 
 cc_library(
     name = "apu_runtimes",
-    srcs = apu_version_select(
-        glob(["runtime/apu/v1v2v3/v1/*.cc"]),
-        glob(["runtime/apu/v1v2v3/v2v3/*.cc"]),
-        glob(["runtime/apu/v1v2v3/v2v3/*.cc"]),
-        glob(["runtime/apu/v4/*.cc"]),
+    srcs = glob([
+        "*.cc",
+    ]) + if_rpcmem_enabled(
+        glob(["ion/*.cc"]),
+    ) + apu_version_select(
+        glob(["v1v2v3/v1/*.cc"]),
+        glob(["v1v2v3/v2v3/*.cc"]),
+        glob(["v1v2v3/v2v3/*.cc"]),
+        glob(["v4/*.cc"]),
     ),
-    hdrs = apu_version_select(
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v1v2v3/*.h",
-        ]),
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v1v2v3/*.h",
-        ]),
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v1v2v3/*.h",
-        ]),
-        glob([
-            "runtime/apu/*.h",
-            "runtime/apu/v4/*.h",
-        ]),
+    hdrs = glob([
+        "*.h",
+    ]) + if_rpcmem_enabled(
+        glob(["ion/*.h"]),
+    ) + apu_version_select(
+        glob(["v1v2v3/*.h"]),
+        glob(["v1v2v3/*.h"]),
+        glob(["v1v2v3/*.h"]),
+        glob(["v4/*.h"]),
     ),
     copts = [
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ],
+    ] + if_rpcmem_enabled([
+        "-DMACE_ENABLE_RPCMEM",
+    ]) + apu_version_select(
+        ["-DMACE_MTK_APU_VERSION=1"],
+        ["-DMACE_MTK_APU_VERSION=2"],
+        ["-DMACE_MTK_APU_VERSION=3"],
+        ["-DMACE_MTK_APU_VERSION=4"],
+    ),
     linkopts = ["-ldl"],
     deps = [
         "//mace/core",

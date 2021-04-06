@@ -1,4 +1,4 @@
-// Copyright 2020 The MACE Authors. All Rights Reserved.
+// Copyright 2021 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,56 +18,33 @@
 
 namespace mace {
 
-Rpcmem::Rpcmem() {
-  rpcmem_init(&rm);
-  MACE_CHECK(rm.flag == 0, "rpcmem_init failed!");
-}
-
-Rpcmem::~Rpcmem() {
-  rpcmem_deinit(&rm);
-}
-
-void *Rpcmem::New(int heapid, uint32_t flags, int nbytes) {
-  return rpcmem_alloc(&rm, heapid, flags, nbytes);
-}
-
-void *Rpcmem::New(int nbytes) {
-  return New(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_FLAG_CACHED, nbytes);
-}
-
-void Rpcmem::Delete(void *data) {
-  rpcmem_free(&rm, data);
-}
-
-int Rpcmem::ToFd(void *data) {
-  return rpcmem_to_fd(&rm, data);
-}
-
-int Rpcmem::SyncCacheStart(void *data) {
-  return rpcmem_sync_cache(&rm, data, RPCMEM_SYNC_START);
-}
-
-int Rpcmem::SyncCacheEnd(void *data) {
-  return rpcmem_sync_cache(&rm, data, RPCMEM_SYNC_END);
-}
+Rpcmem::Rpcmem() : valid_detected_(false), valid_(false) {}
 
 bool Rpcmem::IsRpcmemSupported() {
-  static bool detected = false;
-  static bool valid = false;
-  if (!detected) {
-    Rpcmem rpcmem;
-    auto *ptr = rpcmem.New(1);
-    valid = (ptr != nullptr);
-    rpcmem.Delete(ptr);
-    detected = true;
-    if (!valid) {
-      LOG(WARNING) << "Rpcmem is unsupported.";
+  if (!valid_detected_) {
+    auto *ptr = New(1);
+    valid_ = (ptr != nullptr);
+    Delete(ptr);
+    valid_detected_ = true;
+    if (!valid_) {
+      LOG(WARNING) << "Rpcmem is unsupported. type: " << GetRpcmemType();
     } else {
-      VLOG(1) << "Rpcmem is supported.";
+      LOG(INFO) << "Rpcmem is supported. type: " << GetRpcmemType();
     }
   }
 
-  return valid;
+  return valid_;
 }
+
+// If rpcmem is disabled, define empty functions.
+#ifndef MACE_ENABLE_RPCMEM
+std::shared_ptr<Rpcmem> CreateRpcmem(RpcmemType type) {
+  MACE_UNUSED(type);
+  return nullptr;
+}
+std::shared_ptr<Rpcmem> CreateRpcmem() {
+  return nullptr;
+}
+#endif  // MACE_ENABLE_RPCMEM
 
 }  // namespace mace

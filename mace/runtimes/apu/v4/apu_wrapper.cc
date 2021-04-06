@@ -30,14 +30,14 @@
 #include <utility>
 #include <vector>
 
-#include "mace/core/runtime/apu/v4/neuron_delegate_builder.h"
+#include "mace/runtimes/apu/v4/neuron_delegate_builder.h"
 #include "mace/core/quantize.h"
 
 namespace mace {
 
 bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
                       const char *file_name, bool load, bool store) {
-  frontend = new neuron::NeuronDelegateKernel(neuron_, device_);
+  frontend = new neuron::NeuronDelegateKernel(neuron_, runtime_);
   MACE_CHECK(!(load & store),
             "Should not load and store the model simultaneously.");
   bool ret = frontend->Init(&net_def, model_data, load)

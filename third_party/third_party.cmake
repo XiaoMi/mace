@@ -54,6 +54,9 @@ include(${PROJECT_SOURCE_DIR}/third_party/caffe/caffe.cmake)
 
 if(MACE_ENABLE_RPCMEM)
   include(${PROJECT_SOURCE_DIR}/third_party/rpcmem/rpcmem.cmake)
+  if(ANDROID_ABI STREQUAL "arm64-v8a")
+    include(${PROJECT_SOURCE_DIR}/third_party/mtk_rpcmem/mtk_rpcmem.cmake)
+  endif(ANDROID_ABI STREQUAL "arm64-v8a")
 endif(MACE_ENABLE_RPCMEM)
 
 if(MACE_ENABLE_HEXAGON_DSP)

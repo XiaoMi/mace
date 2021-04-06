@@ -30,6 +30,7 @@ class HexagonHtaOpenclRuntime : public HexagonHtaRuntime {
   MaceStatus Init(const MaceEngineCfgImpl *engine_config,
                   const MemoryType mem_type) override;
 
+  RuntimeSubType GetRuntimeSubType() override;
   MemoryType GetBaseMemoryType() override;
   MaceStatus MapBuffer(Buffer *buffer, bool wait_for_finish) override;
   MaceStatus UnMapBuffer(Buffer *buffer) override;

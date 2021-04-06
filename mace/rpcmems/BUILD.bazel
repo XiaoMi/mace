@@ -1,0 +1,39 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+load(
+    "//mace:mace.bzl",
+    "if_android_arm64",
+)
+
+cc_library(
+    name = "rpcmems",
+    srcs = glob([
+        "*.cc",
+        "qualcomm/*.cc",
+    ]) + if_android_arm64([
+        "mtk/mtk_rpcmem.cc",
+        "mtk/mtk_ion_wrapper.cc",
+    ]),
+    hdrs = [
+        "qualcomm/qualcomm_rpcmem.h",
+    ] + if_android_arm64([
+        "mtk/mtk_rpcmem.h",
+        "mtk/mtk_ion_wrapper.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/core",
+        "//third_party/rpcmem",
+    ] + if_android_arm64([
+        "//third_party/mtk_rpcmem",
+    ]),
+)

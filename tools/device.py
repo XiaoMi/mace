@@ -709,6 +709,9 @@ class DeviceWrapper:
                 graph_runtime = self.get_graph_runtime(
                     graph_config, model_config, target_abi)
                 runtime_list.append(graph_runtime)
+                mace_check(graph_runtime != RuntimeType.apu or
+                           target_abi == ABIType.arm64_v8a, "Device",
+                           "APU runtime does only support arm64-v8a")
 
             model_output_base_dir, model_output_dir, mace_model_dir = \
                 get_build_model_dirs(

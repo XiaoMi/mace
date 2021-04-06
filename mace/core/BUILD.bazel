@@ -28,12 +28,11 @@ cc_library(
             "runtime/*.cc",
             "buffer/*.cc",
             "memory/*.cc",
+            "memory/rpcmem/*.cc",
             "proto/*.cc",
             "net/*.cc",
         ],
-    ) + if_rpcmem_enabled([
-        "memory/rpcmem/rpcmem.cc",
-    ]),
+    ),
     hdrs = glob(
         [
             "*.h",
@@ -42,12 +41,11 @@ cc_library(
             "registry/*.h",
             "runtime/*.h",
             "memory/*.h",
+            "memory/rpcmem/*.h",
             "proto/*.h",
             "net/*.h",
         ],
-    ) + if_rpcmem_enabled([
-        "memory/rpcmem/rpcmem.h",
-    ]),
+    ),
     copts = [
         "-Werror",
         "-Wextra",
@@ -78,7 +76,5 @@ cc_library(
         "@half//:half",
     ] + if_quantize_enabled([
         "@gemmlowp",
-    ]) + if_rpcmem_enabled([
-        "//third_party/rpcmem",
     ]),
 )

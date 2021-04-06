@@ -82,8 +82,7 @@ enum FrameworkType {  // should not > FRAMEWORK_MAX
 enum RuntimeSubType {  // should not > RT_SUB_MAX
   RT_SUB_REF = 0,
   RT_SUB_ION = 1,
-  RT_SUB_QC_ION = 2,
-  RT_SUB_WITH_OPENCL = 3,
+  RT_SUB_WITH_OPENCL = 2,
 
   RT_SUB_MAX = 65535,
 };

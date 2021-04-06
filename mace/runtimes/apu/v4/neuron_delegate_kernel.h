@@ -20,11 +20,12 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/runtime/apu/v4/neuron_implementation.h"
-#include "mace/core/runtime/apu/v4/neuron_delegate_builder.h"
+#include "mace/core/memory/rpcmem/rpcmem.h"
+#include "mace/core/runtime/runtime.h"
 #include "mace/core/tensor.h"
-#include "mace/core/device.h"
 #include "mace/core/quantize.h"
+#include "mace/runtimes/apu/v4/neuron_implementation.h"
+#include "mace/runtimes/apu/v4/neuron_delegate_builder.h"
 
 namespace mace {
 namespace neuron {
@@ -90,14 +91,9 @@ class NNMemory {
 // API.
 class NeuronDelegateKernel {
  public:
-  explicit NeuronDelegateKernel(const NeuronApi* neuronapi, Device *device)
-      : neuronapi_(neuronapi),
-        nn_model_(nullptr, NNFreeModel(neuronapi_)),
-        nn_compilation_(nullptr, NNFreeCompilation(neuronapi_)),
-        quantize_util_uint8_(&device->cpu_runtime()->thread_pool()),
-        quantize_util_int16_(&device->cpu_runtime()->thread_pool()) {}
-  explicit NeuronDelegateKernel(Device *device) :
-      NeuronDelegateKernel(NeuronApiImplementation(), device) {}
+  explicit NeuronDelegateKernel(const NeuronApi* neuronapi, Runtime *runtime);
+  explicit NeuronDelegateKernel(Runtime *runtime) :
+      NeuronDelegateKernel(NeuronApiImplementation(), runtime) {}
   ~NeuronDelegateKernel() {
     // Release memory
     for (auto int32_buffer : int32_buffers_) {
@@ -133,6 +129,8 @@ class NeuronDelegateKernel {
                          unsigned const char *model_data);
   bool AddOpsAndTensors(const NetDef* net_def, unsigned const char *model_data);
   bool BuildGraph(const NetDef* net_def, unsigned const char *model_data);
+
+  std::shared_ptr<Rpcmem> rpcmem_;
 };
 
 }  // namespace neuron

@@ -1,0 +1,4 @@
+set(MTK_RPCMEM_INSTALL_DIR  "${PROJECT_SOURCE_DIR}/third_party/mtk_rpcmem")
+set(MTK_RPCMEM_INCLUDE_DIR  "${MTK_RPCMEM_INSTALL_DIR}")
+
+include_directories(SYSTEM "${MTK_RPCMEM_INCLUDE_DIR}")
