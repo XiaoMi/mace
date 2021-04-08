@@ -415,6 +415,7 @@ bool RunModel(const std::string &model_name,
 
     inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], input_data,
         input_data_formats[i], input_data_types[i]);
+    inputs_size[input_names[i]] = input_tensor_size;
   }
 
   for (size_t i = 0; i < output_count; ++i) {

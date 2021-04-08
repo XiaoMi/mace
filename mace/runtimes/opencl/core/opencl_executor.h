@@ -84,7 +84,8 @@ class OpenclExecutor {
   void SetOpenclContext(std::shared_ptr<OpenclContext> opencl_context);
   cl::Context &context();
   cl::Device &device();
-  cl::CommandQueue &command_queue();
+  // Warning: don't use cl::CommandQueue&, will lead to lower perf on MTK GPU.
+  cl::CommandQueue command_queue();
   GPUType gpu_type() const;
   const std::string platform_info() const;
   uint64_t device_global_mem_cache_size() const;

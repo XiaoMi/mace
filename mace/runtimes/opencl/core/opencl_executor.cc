@@ -637,7 +637,7 @@ cl::Context &OpenclExecutor::context() { return *context_; }
 
 cl::Device &OpenclExecutor::device() { return *device_; }
 
-cl::CommandQueue &OpenclExecutor::command_queue() { return *command_queue_; }
+cl::CommandQueue OpenclExecutor::command_queue() { return *command_queue_; }
 
 std::shared_ptr<Tuner<uint32_t>> OpenclExecutor::tuner() {
   return opencl_context_->opencl_tuner();
