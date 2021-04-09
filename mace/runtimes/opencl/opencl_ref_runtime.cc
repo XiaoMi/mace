@@ -42,7 +42,7 @@ MaceStatus OpenclRefRuntime::MapBuffer(Buffer *buffer, bool wait_for_finish) {
   cl_int error = CL_INVALID_VALUE;
   if (buffer->mem_type == MemoryType::GPU_BUFFER) {
     auto cl_buffer = buffer->mutable_memory<cl::Buffer>();
-    auto &queue = opencl_executor_->command_queue();
+    auto queue = opencl_executor_->command_queue();
     // TODO(heliangliang) Non-blocking call
     mapped_ptr = queue.enqueueMapBuffer(
         *cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
@@ -81,7 +81,7 @@ MaceStatus OpenclRefRuntime::UnMapBuffer(Buffer *buffer) {
       buffer->mem_type == MemoryType::GPU_IMAGE);
 
   auto cl_buffer = buffer->mutable_memory<cl::Buffer>();
-  auto &queue = opencl_executor_->command_queue();
+  auto queue = opencl_executor_->command_queue();
   cl_int error = queue.enqueueUnmapMemObject(
       *cl_buffer, buffer->mutable_data<void>(), nullptr, nullptr);
   if (error != CL_SUCCESS) {
