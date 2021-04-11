@@ -40,6 +40,10 @@ def generate_data(name, shape, input_file, tensor_range, input_data_type):
         np_data_type = np.float32
     elif input_data_type == 'int32':
         np_data_type = np.int32
+    elif input_data_type == 'int16':
+        np_data_type = np.int16
+    elif input_data_type == 'uint8':
+        np_data_type = np.uint8
     data.astype(np_data_type).tofile(input_file_name)
 
 

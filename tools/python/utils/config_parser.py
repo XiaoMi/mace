@@ -188,6 +188,10 @@ def parse_data_type(str):
         return mace_pb2.DT_FLOAT16
     elif str == "int32":
         return mace_pb2.DT_INT32
+    elif str == "int16":
+        return mace_pb2.DT_INT16
+    elif str == "uint8":
+        return mace_pb2.DT_UINT8
     else:
         mace_check(False, "data type %s not supported" % str)
 

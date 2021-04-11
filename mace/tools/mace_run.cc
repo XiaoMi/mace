@@ -79,6 +79,10 @@ IDataType ParseDataType(const std::string &data_type_str) {
     return IDataType::IDT_FLOAT16;
   } else if (data_type_str == "bfloat16") {
     return IDataType::IDT_BFLOAT16;
+  } else if (data_type_str == "int16") {
+    return IDataType::IDT_INT16;
+  } else if (data_type_str == "uint8") {
+    return IDataType::IDT_UINT8;
   } else {
     return IDataType::IDT_FLOAT;
   }
@@ -212,6 +216,12 @@ std::shared_ptr<char> ReadInputDataFromFile(
         nullptr, reinterpret_cast<const float *>(buffer_in.get()),
         reinterpret_cast<BFloat16 *>(input_data.get()), tensor_size);
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_MTK_APU
+  } else if (input_data_type == IDT_INT16 || input_data_type == IDT_UINT8) {
+    // TODO(luxuhui): Quantize it
+    mace::ops::CopyDataBetweenSameType(
+        nullptr, buffer_in.get(), input_data.get(), input_size);
+#endif  // MACE_ENABLE_MTK_APU
   } else {
     LOG(FATAL) << "Input data type " << input_data_type << " is not supported.";
   }
@@ -247,6 +257,12 @@ int64_t WriteOutputDataToFile(const std::string &file_path,
         nullptr, reinterpret_cast<const BFloat16 *>(output_data.get()),
         reinterpret_cast<float *>(tmp_output.data()), output_size);
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_MTK_APU
+    } else if (output_data_type == IDT_UINT8 || output_data_type == IDT_INT16) {
+    // TODO(luxuhui): Dequantize it
+    mace::ops::CopyDataBetweenSameType(
+        nullptr, output_data.get(), tmp_output.data(), output_bytes);
+#endif  // MACE_ENABLE_MTK_APU
   } else {
     LOG(FATAL) << "Output data type " << output_data_type <<
                " is not supported.";
@@ -694,6 +710,7 @@ int Main(int argc, char **argv) {
   std::vector<IDataType> output_data_types(output_count);
   for (size_t i = 0; i < output_count; ++i) {
     output_data_types[i] = ParseDataType(raw_output_data_types[i]);
+    LOG(INFO) << "raw_output_data_types[" << i << "] is " << raw_output_data_types[i];
   }
 
   std::vector<std::string> raw_input_data_formats =

@@ -64,6 +64,8 @@ size_t GetEnumTypeSize(const DataType dt) {
       return sizeof(uint8_t);
     case DT_INT32:
       return sizeof(int32_t);
+    case DT_INT16:
+      return sizeof(int16_t);
     default:
       LOG(FATAL) << "Unsupported data type: " << dt;
       return 0;

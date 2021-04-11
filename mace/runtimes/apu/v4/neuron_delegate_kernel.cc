@@ -21,6 +21,7 @@
 #include "mace/runtimes/apu/ion/apu_ion_runtime.h"
 #endif  // MACE_ENABLE_RPCMEM
 
+#include <sys/mman.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -165,7 +166,6 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
 bool NeuronDelegateKernel::Eval(
     const std::map<std::string, Tensor *> &input_tensors,
     std::map<std::string, Tensor *> *output_tensors) {
-
   NeuronExecution* execution = nullptr;
   neuronapi_->NeuronExecution_create(nn_compilation_.get(), &execution);
   std::unique_ptr<NeuronExecution, NNFreeExecution> execution_unique_ptr(
@@ -177,6 +177,7 @@ bool NeuronDelegateKernel::Eval(
 
   size_t input_offset = 0;
   // prepare input
+  std::vector<NeuronMemory*> nn_input_memory_buffers_;
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
     Tensor* tensor = input_tensors.at(input_infos_[i].name);
     // check size
@@ -187,86 +188,131 @@ bool NeuronDelegateKernel::Eval(
                 "Wrong input size");
     input_infos_[i].buf = nn_input_memory_->get_data_ptr() + input_offset;
     input_offset += byte_size;
-    // TODO(MTK): Get the memory fd
-    int mem_fd =
+    // TODO(MTK): Get the input memory fd
+    int input_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
-    LOG(INFO) << "Get the memory fd: " << mem_fd;
-    MACE_UNUSED(mem_fd);
-    // quantize
-    if (input_infos_[i].data_type == DT_INT16) {
+    LOG(INFO) << "Input memory fd: " << input_mem_fd;
+    LOG(INFO) << "Input tensor data type: " << tensor -> dtype();
+    LOG(INFO) << "Model input data type: " << input_infos_[i].data_type;
+    NeuronMemory* nn_memory_handle_ = nullptr;
+    if (input_mem_fd > 0 && tensor -> dtype() == input_infos_[i].data_type) {
+      const clock_t begin_time = clock();
+      neuronapi_->NeuronMemory_createFromFd(byte_size, PROT_READ | PROT_WRITE,
+                                            input_mem_fd, 0,
+                                            &nn_memory_handle_);
+      nn_input_memory_buffers_.push_back(nn_memory_handle_);
+      LOG(INFO) << "Input neuron memory creation time: "
+                << float(clock() - begin_time) /  CLOCKS_PER_SEC;
+      neuronapi_->NeuronExecution_setInputFromMemory(execution,
+          i, nullptr, nn_memory_handle_,
+          input_offset, byte_size);
+    } else if (tensor -> dtype() == input_infos_[i].data_type) {
+      std::memcpy(input_infos_[i].buf,
+                    (const float*)tensor->raw_data(),
+                    byte_size);
+      // Set the input tensor buffers.
+      neuronapi_->NeuronExecution_setInput(execution,
+          i, nullptr, input_infos_[i].buf, byte_size);
+    } else if (tensor -> dtype() == DT_FLOAT &&
+               input_infos_[i].data_type == DT_INT16) {
       quantize_util_int16_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
           input_infos_[i].scale,
           input_infos_[i].zero_point,
           reinterpret_cast<int16_t*>(input_infos_[i].buf));
-    } else if (input_infos_[i].data_type == DT_FLOAT) {
-      std::memcpy(input_infos_[i].buf,
-                    (const float*)tensor->raw_data(),
-                    byte_size);
-    } else {
+      neuronapi_->NeuronExecution_setInput(execution,
+          i, nullptr, input_infos_[i].buf, byte_size);
+    } else if (tensor -> dtype() == DT_FLOAT &&
+               input_infos_[i].data_type == DT_UINT8) {
       quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
           (const float*)tensor->raw_data(),
           element_size,
           input_infos_[i].scale,
           input_infos_[i].zero_point,
           input_infos_[i].buf);
+      neuronapi_->NeuronExecution_setInput(execution,
+          i, nullptr, input_infos_[i].buf, byte_size);
+    } else {
+      LOG(ERROR) << "A mismatch between input tensor and model input data type";
     }
-    // Set the input tensor buffers.
-    neuronapi_->NeuronExecution_setInput(execution,
-        i, nullptr, input_infos_[i].buf, byte_size);
   }
-
   // prepare output
   size_t output_offset = 0;
+  std::vector<NeuronMemory*> nn_output_memory_buffers_;
   for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
+    Tensor* tensor = output_tensors->at(output_infos_[i].name);
+
     int element_size = output_infos_[i].size;
     int byte_per_element = output_infos_[i].byte_per_element;
     int byte_size = element_size * byte_per_element;
     output_infos_[i].buf = nn_output_memory_->get_data_ptr() + output_offset;
     output_offset += byte_size;
-
-    // Set the output tensor buffers.
-    neuronapi_->NeuronExecution_setOutput(execution, i,
-        nullptr, output_infos_[i].buf, byte_size);
+    int output_mem_fd =
+    (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
+    NeuronMemory* nn_memory_handle_ = nullptr;
+    if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
+      const clock_t begin_time = clock();
+      neuronapi_->NeuronMemory_createFromFd(byte_size, PROT_READ | PROT_WRITE,
+                                            output_mem_fd, 0,
+                                            &nn_memory_handle_);
+      nn_output_memory_buffers_.push_back(nn_memory_handle_);
+      LOG(INFO) << "Output neuron memory creation time: "
+                << float(clock() - begin_time) /  CLOCKS_PER_SEC;
+      neuronapi_->NeuronExecution_setOutputFromMemory(execution,
+          i, nullptr, nn_memory_handle_,
+          output_offset, byte_size);
+    } else {
+      // Set the output tensor buffers.
+      neuronapi_->NeuronExecution_setOutput(execution, i,
+          nullptr, output_infos_[i].buf, byte_size);
+    }
   }
-
   // running computation
   neuronapi_->NeuronExecution_compute(execution);
 
-
-  // process output
   for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
     Tensor* tensor = output_tensors->at(output_infos_[i].name);
-
-    // prepare out buffer
-    tensor->SetDtype(DT_FLOAT);
-    tensor->Resize(output_infos_[i].shape);
     int element_size = output_infos_[i].size;
     int byte_per_element = output_infos_[i].byte_per_element;
     MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
                 "Wrong output size");
-
-    // dequantize
-    if (output_infos_[i].data_type == DT_INT16) {
+    int byte_size = element_size * byte_per_element;
+    // prepare out buffer
+    tensor->SetDtype(output_infos_[i].data_type);
+    tensor->Resize(output_infos_[i].shape);
+    int output_mem_fd =
+    (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
+    if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
+    } else if (tensor -> dtype() == output_infos_[i].data_type) {
+      std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
+                  output_infos_[i].buf, byte_size);
+    } else if (tensor -> dtype() == DT_FLOAT &&
+               output_infos_[i].data_type == DT_INT16) {
       quantize_util_int16_.Dequantize(
           reinterpret_cast<int16_t*>(output_infos_[i].buf),
           element_size,
           output_infos_[i].scale,
           output_infos_[i].zero_point,
           reinterpret_cast<float*>(tensor->raw_mutable_data()));
-    } else if (output_infos_[i].data_type == DT_FLOAT) {
-        std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
-                    output_infos_[i].buf,
-                    element_size * byte_per_element);
-    } else {
+    } else if (tensor -> dtype() == DT_FLOAT &&
+               output_infos_[i].data_type == DT_UINT8) {
       quantize_util_uint8_.Dequantize(
           output_infos_[i].buf,
           element_size,
           output_infos_[i].scale,
           output_infos_[i].zero_point,
           reinterpret_cast<float*>(tensor->raw_mutable_data()));
+    } else {
+      LOG(ERROR) << "A mismatch between input tensor and model input data type";
     }
+  }
+
+  for (int i = 0; i < static_cast<int>(nn_input_memory_buffers_.size()); i++) {
+    neuronapi_->NeuronMemory_free(nn_input_memory_buffers_[i]);
+  }
+  for (int i = 0; i < static_cast<int>(nn_output_memory_buffers_.size()); i++) {
+    neuronapi_->NeuronMemory_free(nn_output_memory_buffers_[i]);
   }
   return true;
 }
