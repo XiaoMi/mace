@@ -191,21 +191,14 @@ bool NeuronDelegateKernel::Eval(
     // TODO(MTK): Get the input memory fd
     int input_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
-    LOG(INFO) << "Input memory fd: " << input_mem_fd;
-    LOG(INFO) << "Input tensor data type: " << tensor -> dtype();
-    LOG(INFO) << "Model input data type: " << input_infos_[i].data_type;
     NeuronMemory* nn_memory_handle_ = nullptr;
     if (input_mem_fd > 0 && tensor -> dtype() == input_infos_[i].data_type) {
-      const clock_t begin_time = clock();
       neuronapi_->NeuronMemory_createFromFd(byte_size, PROT_READ | PROT_WRITE,
                                             input_mem_fd, 0,
                                             &nn_memory_handle_);
       nn_input_memory_buffers_.push_back(nn_memory_handle_);
-      LOG(INFO) << "Input neuron memory creation time: "
-                << float(clock() - begin_time) /  CLOCKS_PER_SEC;
       neuronapi_->NeuronExecution_setInputFromMemory(execution,
-          i, nullptr, nn_memory_handle_,
-          input_offset, byte_size);
+          i, nullptr, nn_memory_handle_, 0, byte_size);
     } else if (tensor -> dtype() == input_infos_[i].data_type) {
       std::memcpy(input_infos_[i].buf,
                     (const float*)tensor->raw_data(),
@@ -249,19 +242,15 @@ bool NeuronDelegateKernel::Eval(
     output_infos_[i].buf = nn_output_memory_->get_data_ptr() + output_offset;
     output_offset += byte_size;
     int output_mem_fd =
-    (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
+        (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
     NeuronMemory* nn_memory_handle_ = nullptr;
     if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
-      const clock_t begin_time = clock();
       neuronapi_->NeuronMemory_createFromFd(byte_size, PROT_READ | PROT_WRITE,
                                             output_mem_fd, 0,
                                             &nn_memory_handle_);
       nn_output_memory_buffers_.push_back(nn_memory_handle_);
-      LOG(INFO) << "Output neuron memory creation time: "
-                << float(clock() - begin_time) /  CLOCKS_PER_SEC;
       neuronapi_->NeuronExecution_setOutputFromMemory(execution,
-          i, nullptr, nn_memory_handle_,
-          output_offset, byte_size);
+          i, nullptr, nn_memory_handle_, 0, byte_size);
     } else {
       // Set the output tensor buffers.
       neuronapi_->NeuronExecution_setOutput(execution, i,
@@ -282,7 +271,7 @@ bool NeuronDelegateKernel::Eval(
     tensor->SetDtype(output_infos_[i].data_type);
     tensor->Resize(output_infos_[i].shape);
     int output_mem_fd =
-    (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
+        (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
     if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
     } else if (tensor -> dtype() == output_infos_[i].data_type) {
       std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
