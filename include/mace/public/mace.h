@@ -193,6 +193,10 @@ MACE_API Capability GetCapability(DeviceType device_type,
 
 MACE_API const char *MaceVersion();
 
+/// Warning: The API will load libOpenCL.so, If you don't use GPU or the device
+/// you deploy the app is sure to support OpenCL, you shouldn't invoke this API.
+MACE_API bool IsOpenCLAvailable();
+
 class MACE_API MaceStatus {
  public:
   enum Code {
