@@ -217,10 +217,15 @@ std::shared_ptr<char> ReadInputDataFromFile(
         reinterpret_cast<BFloat16 *>(input_data.get()), tensor_size);
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_MTK_APU
-  } else if (input_data_type == IDT_INT16 || input_data_type == IDT_UINT8) {
-    // TODO(luxuhui): Quantize it
-    mace::ops::CopyDataBetweenSameType(
-        nullptr, buffer_in.get(), input_data.get(), input_size);
+  } else if (input_data_type == IDT_INT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const float *>(buffer_in.get()),
+        reinterpret_cast<int16_t *>(input_data.get()), tensor_size);
+  } else if (input_data_type == IDT_UINT8) {
+    LOG(INFO) << "read uint8 data from file";
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const float *>(buffer_in.get()),
+        reinterpret_cast<uint8_t *>(input_data.get()), tensor_size);
 #endif  // MACE_ENABLE_MTK_APU
   } else {
     LOG(FATAL) << "Input data type " << input_data_type << " is not supported.";
@@ -258,10 +263,15 @@ int64_t WriteOutputDataToFile(const std::string &file_path,
         reinterpret_cast<float *>(tmp_output.data()), output_size);
 #endif  // MACE_ENABLE_BFLOAT16
 #ifdef MACE_ENABLE_MTK_APU
-    } else if (output_data_type == IDT_UINT8 || output_data_type == IDT_INT16) {
-    // TODO(luxuhui): Dequantize it
-    mace::ops::CopyDataBetweenSameType(
-        nullptr, output_data.get(), tmp_output.data(), output_bytes);
+  } else if (file_data_type == IDT_FLOAT && output_data_type == IDT_UINT8) {
+    LOG(INFO) << "write uint8 data to file";
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const uint8_t *>(output_data.get()),
+        reinterpret_cast<float *>(tmp_output.data()), output_size);
+  } else if (file_data_type == IDT_FLOAT && output_data_type == IDT_INT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const int16_t *>(output_data.get()),
+        reinterpret_cast<float *>(tmp_output.data()), output_size);
 #endif  // MACE_ENABLE_MTK_APU
   } else {
     LOG(FATAL) << "Output data type " << output_data_type <<
