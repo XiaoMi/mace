@@ -80,6 +80,8 @@ InOutDataTypeStrs = [
     "float32",
     "float16",
     "bfloat16",
+    "int16",
+    "uint8",
 ]
 
 InOutDataType = Enum('InputDataType',

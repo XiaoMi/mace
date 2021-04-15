@@ -9,6 +9,7 @@ load(
     "apu_version_select",
     "if_android",
     "if_android_armv7",
+    "if_apu_enabled",
     "if_bfloat16_enabled",
     "if_fp16_enabled",
     "if_neon_enabled",
@@ -61,6 +62,8 @@ cc_library(
         "-DMACE_ENABLE_NEON",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_apu_enabled([
+        "-DMACE_ENABLE_MTK_APU",
     ]) + if_android_armv7([
         "-mfpu=neon-fp16",
         "-mfloat-abi=softfp",

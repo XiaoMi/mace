@@ -17,6 +17,7 @@
 
 #include "mace/core/flow/flow_registry.h"
 #include "mace/runtimes/apu/apu_runtime.h"
+#include "mace/utils/transpose.h"
 
 namespace mace {
 
@@ -86,6 +87,112 @@ MaceStatus ApuRefFlow::GetInputTransposeDims(
 
   return MaceStatus::MACE_SUCCESS;
 }
+
+MaceStatus ApuRefFlow::TransposeInputByDims(
+    const MaceTensor &mace_tensor,
+    Tensor *input_tensor, const std::vector<int> &dst_dims) {
+  DataType input_dt = input_tensor->dtype();
+  bool transposed = false;
+  if (!dst_dims.empty()) {
+    if (input_dt == DataType::DT_UINT8) {
+      auto user_dt = mace_tensor.data_type();
+      MACE_CHECK(user_dt == IDT_UINT8, "user_dt is not uint8 but: ", user_dt);
+      Tensor::MappingGuard input_guard(input_tensor);
+      auto input_data = input_tensor->mutable_data<uint8_t>();
+      MACE_RETURN_IF_ERROR(ops::Transpose(
+          thread_pool_, mace_tensor.data<uint8_t>().get(),
+          mace_tensor.shape(), dst_dims, input_data));
+      transposed = true;
+    } else if (input_dt == DataType::DT_INT16) {
+      auto user_dt = mace_tensor.data_type();
+      MACE_CHECK(user_dt == IDT_INT16, "user_dt is not int16 but: ", user_dt);
+      Tensor::MappingGuard input_guard(input_tensor);
+      auto input_data = input_tensor->mutable_data<int16_t>();
+      MACE_RETURN_IF_ERROR(ops::Transpose(
+          thread_pool_, mace_tensor.data<int16_t>().get(),
+          mace_tensor.shape(), dst_dims, input_data));
+      transposed = true;
+    }
+  } else {
+    if (input_dt == DataType::DT_UINT8) {
+      auto user_dt = mace_tensor.data_type();
+      MACE_CHECK(user_dt == IDT_UINT8, "user_dt is not uint8 but: ", user_dt);
+      Tensor::MappingGuard input_guard(input_tensor);
+      ops::CopyDataBetweenSameType(
+          thread_pool_, mace_tensor.data<uint8_t>().get(),
+          input_tensor->mutable_data<uint8_t>(), input_tensor->raw_size());
+      transposed = true;
+    } else if (input_dt == DataType::DT_INT16) {
+      auto user_dt = mace_tensor.data_type();
+      MACE_CHECK(user_dt == IDT_INT16, "user_dt is not int16 but: ", user_dt);
+      Tensor::MappingGuard input_guard(input_tensor);
+      ops::CopyDataBetweenSameType(
+          thread_pool_, mace_tensor.data<int16_t>().get(),
+          input_tensor->mutable_data<int16_t>(), input_tensor->raw_size());
+      transposed = true;
+    }
+  }
+
+  if (!transposed) {
+    return CommonFp32Flow::TransposeInputByDims(mace_tensor, input_tensor,
+                                                dst_dims);
+  } else {
+    return MaceStatus::MACE_SUCCESS;
+  }
+}
+
+MaceStatus ApuRefFlow::TransposeOutputByDims(
+    const mace::Tensor &output_tensor,
+    MaceTensor *mace_tensor, const std::vector<int> &dst_dims) {
+  bool transposed = false;
+  auto output_dt = output_tensor.dtype();
+  if (!dst_dims.empty()) {
+    if (output_dt == DataType::DT_UINT8) {
+      auto user_dt = mace_tensor->data_type();
+      MACE_CHECK(user_dt == IDT_UINT8, "user_dt is not uint8 but: ", user_dt);
+      Tensor::MappingGuard output_guard(&output_tensor);
+      auto output_data = output_tensor.data<uint8_t>();
+      MACE_RETURN_IF_ERROR(ops::Transpose(
+          thread_pool_, output_data, output_tensor.shape(),
+          dst_dims, mace_tensor->data<uint8_t>().get()));
+      transposed = true;
+    } else if (output_dt == DataType::DT_INT16) {
+      auto user_dt = mace_tensor->data_type();
+      MACE_CHECK(user_dt == IDT_INT16, "user_dt is not int16 but: ", user_dt);
+      Tensor::MappingGuard output_guard(&output_tensor);
+      auto output_data = output_tensor.data<int16_t>();
+      MACE_RETURN_IF_ERROR(ops::Transpose(
+          thread_pool_, output_data, output_tensor.shape(),
+          dst_dims, mace_tensor->data<int16_t>().get()));
+      transposed = true;
+    }
+  } else {
+    if (output_dt == DataType::DT_UINT8) {
+      auto user_dt = mace_tensor->data_type();
+      MACE_CHECK(user_dt == IDT_UINT8, "user_dt is not uint8 but: ", user_dt);
+      Tensor::MappingGuard output_guard(&output_tensor);
+      ops::CopyDataBetweenSameType(
+          thread_pool_, output_tensor.data<uint8_t>(),
+          mace_tensor->data<uint8_t>().get(), output_tensor.raw_size());
+      transposed = true;
+    } else if (output_dt == DataType::DT_INT16) {
+      auto user_dt = mace_tensor->data_type();
+      MACE_CHECK(user_dt == IDT_INT16, "user_dt is not int16 but: ", user_dt);
+      Tensor::MappingGuard output_guard(&output_tensor);
+      ops::CopyDataBetweenSameType(
+          thread_pool_, output_tensor.data<int16_t>(),
+          mace_tensor->data<int16_t>().get(), output_tensor.raw_size());
+      transposed = true;
+    }
+  }
+
+  if (!transposed) {
+    return CommonFp32Flow::TransposeOutputByDims(output_tensor, mace_tensor,
+                                                 dst_dims);
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
+
 
 void RegisterApuRefFlow(FlowRegistry *flow_registry) {
   MACE_REGISTER_FLOW(flow_registry, RuntimeType::RT_APU,

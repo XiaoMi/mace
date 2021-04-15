@@ -79,6 +79,10 @@ IDataType ParseDataType(const std::string &data_type_str) {
     return IDataType::IDT_FLOAT16;
   } else if (data_type_str == "bfloat16") {
     return IDataType::IDT_BFLOAT16;
+  } else if (data_type_str == "int16") {
+    return IDataType::IDT_INT16;
+  } else if (data_type_str == "uint8") {
+    return IDataType::IDT_UINT8;
   } else {
     return IDataType::IDT_FLOAT;
   }
@@ -212,6 +216,17 @@ std::shared_ptr<char> ReadInputDataFromFile(
         nullptr, reinterpret_cast<const float *>(buffer_in.get()),
         reinterpret_cast<BFloat16 *>(input_data.get()), tensor_size);
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_MTK_APU
+  } else if (input_data_type == IDT_INT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const float *>(buffer_in.get()),
+        reinterpret_cast<int16_t *>(input_data.get()), tensor_size);
+  } else if (input_data_type == IDT_UINT8) {
+    LOG(INFO) << "read uint8 data from file";
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const float *>(buffer_in.get()),
+        reinterpret_cast<uint8_t *>(input_data.get()), tensor_size);
+#endif  // MACE_ENABLE_MTK_APU
   } else {
     LOG(FATAL) << "Input data type " << input_data_type << " is not supported.";
   }
@@ -247,6 +262,17 @@ int64_t WriteOutputDataToFile(const std::string &file_path,
         nullptr, reinterpret_cast<const BFloat16 *>(output_data.get()),
         reinterpret_cast<float *>(tmp_output.data()), output_size);
 #endif  // MACE_ENABLE_BFLOAT16
+#ifdef MACE_ENABLE_MTK_APU
+  } else if (file_data_type == IDT_FLOAT && output_data_type == IDT_UINT8) {
+    LOG(INFO) << "write uint8 data to file";
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const uint8_t *>(output_data.get()),
+        reinterpret_cast<float *>(tmp_output.data()), output_size);
+  } else if (file_data_type == IDT_FLOAT && output_data_type == IDT_INT16) {
+    mace::ops::CopyDataBetweenDiffType(
+        nullptr, reinterpret_cast<const int16_t *>(output_data.get()),
+        reinterpret_cast<float *>(tmp_output.data()), output_size);
+#endif  // MACE_ENABLE_MTK_APU
   } else {
     LOG(FATAL) << "Output data type " << output_data_type <<
                " is not supported.";
@@ -695,6 +721,7 @@ int Main(int argc, char **argv) {
   std::vector<IDataType> output_data_types(output_count);
   for (size_t i = 0; i < output_count; ++i) {
     output_data_types[i] = ParseDataType(raw_output_data_types[i]);
+    LOG(INFO) << "raw_output_data_types[" << i << "] is " << raw_output_data_types[i];
   }
 
   std::vector<std::string> raw_input_data_formats =

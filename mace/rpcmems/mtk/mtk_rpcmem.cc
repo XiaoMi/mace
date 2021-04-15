@@ -134,9 +134,11 @@ int MtkRpcmem::GetDefaultHeapId() {
 }
 
 int MtkRpcmem::ToFd(void *data) {
-  MACE_CHECK(addr_handle_map_.count(data) > 0);
+  if (addr_handle_map_.count(data) > 0) {
+    return addr_handle_map_.at(data);
+  }
 
-  return addr_handle_map_.at(data);
+  return -1;
 }
 
 int MtkRpcmem::SyncCacheStart(void *data) {

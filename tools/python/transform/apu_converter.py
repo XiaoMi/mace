@@ -97,7 +97,7 @@ class ApuConverter(base_converter.ConverterInterface):
         self.ensure_bias_vector()
         self.ensure_binary_input()
         self.common_check()
-        if ConverterUtil.get_arg(self._model.op[0],
+        if ConverterUtil.get_arg(self._model,
                                  MaceKeyword.mace_framework_type_str).i == \
            FrameworkType.TENSORFLOW.value:
             self.add_tensorflow_padding_value()
@@ -157,8 +157,11 @@ class ApuConverter(base_converter.ConverterInterface):
         for input_info in self._model.input_info:
             mace_check(len(input_info.dims) <= 4,
                        input_info.name + ': apu only support 1D~4D tensor')
-            mace_check(input_info.data_type == mace_pb2.DT_FLOAT,
-                       input_info.name + ': apu only support float input')
+            mace_check(input_info.data_type == mace_pb2.DT_FLOAT or
+                       input_info.data_type == mace_pb2.DT_INT16 or
+                       input_info.data_type == mace_pb2.DT_UINT8,
+                       input_info.name + ': apu only support '
+                                         'float/uint8/int16 input')
             if len(input_info.dims) == 4:
                 mace_check(input_info.data_format == DataFormat.NHWC.value,
                            input_info.name + ': apu only support 4D tensor'
@@ -596,7 +599,7 @@ class ApuConverter(base_converter.ConverterInterface):
     def use_quant_in_out(self):
         replace_dict = {}
         for input_info in self._model.input_info:
-            if input_info.data_type == mace_pb2.DT_FLOAT:
+            if self._option.quantize:
                 for op in self._model.op:
                     if op.input[0] == input_info.name \
                            and op.type == MaceOp.Quantize.name:
@@ -606,7 +609,7 @@ class ApuConverter(base_converter.ConverterInterface):
                         break
                 self._model.op.remove(op)
         for output_info in self._model.output_info:
-            if output_info.data_type == mace_pb2.DT_FLOAT:
+            if self._option.quantize:
                 for op in self._model.op:
                     if op.output[0] == output_info.name \
                            and op.type == MaceOp.Dequantize.name:

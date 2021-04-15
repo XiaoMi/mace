@@ -79,7 +79,6 @@ class NNMemory {
   uint8_t* get_data_ptr() { return data_ptr_; }
 
  private:
-  // NeuronApi instance to use. Not owned by this object.
   size_t byte_size_ = 0;
   uint8_t* data_ptr_ = nullptr;
 };

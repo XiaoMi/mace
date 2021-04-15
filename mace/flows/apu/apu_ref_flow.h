@@ -42,6 +42,12 @@ class ApuRefFlow : public CommonFp32Flow {
       const std::pair<const std::string, MaceTensor> &input,
       const Tensor *input_tensor, std::vector<int> *dst_dims,
       DataFormat *data_format) override;
+  MaceStatus TransposeInputByDims(const MaceTensor &mace_tensor,
+                                  Tensor *input_tensor,
+                                  const std::vector<int> &dst_dims) override;
+  MaceStatus TransposeOutputByDims(const mace::Tensor &output_tensor,
+                                   MaceTensor *mace_tensor,
+                                   const std::vector<int> &dst_dims) override;
 
  private:
   MACE_DISABLE_COPY_AND_ASSIGN(ApuRefFlow);

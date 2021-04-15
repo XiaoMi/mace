@@ -180,6 +180,7 @@ class DeviceWrapper:
                    output_nodes,
                    input_shapes,
                    input_data_types,
+                   output_data_types,
                    input_data_formats,
                    output_shapes,
                    output_data_formats,
@@ -252,6 +253,7 @@ class DeviceWrapper:
                     "--input_shape=%s" % ":".join(input_shapes),
                     "--output_shape=%s" % ":".join(output_shapes),
                     "--input_data_type=%s" % ",".join(input_data_types),
+                    "--output_data_type=%s" % ",".join(output_data_types),
                     "--input_data_format=%s" % ",".join(input_data_formats),
                     "--output_data_format=%s" % ",".join(output_data_formats),
                     "--input_file=%s/%s" % (model_output_dir,
@@ -367,6 +369,7 @@ class DeviceWrapper:
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
                 "--input_data_type=%s" % ",".join(input_data_types),
+                "--output_data_type=%s" % ",".join(output_data_types),
                 "--input_data_format=%s" % ",".join(input_data_formats),
                 "--output_data_format=%s" % ",".join(output_data_formats),
                 "--input_file=%s/%s" % (self.data_dir, input_file_name),
@@ -474,6 +477,8 @@ class DeviceWrapper:
             input_shapes=input_tensors_info[YAMLKeyword.input_shapes],
             output_shapes=output_tensors_info[YAMLKeyword.output_shapes],
             input_data_types=input_tensors_info[YAMLKeyword.input_data_types],
+            output_data_types=output_tensors_info[
+                YAMLKeyword.output_data_types],
             input_data_formats=input_tensors_info[
                 YAMLKeyword.input_data_formats],
             output_data_formats=output_tensors_info[
@@ -607,6 +612,7 @@ class DeviceWrapper:
             input_shapes=input_infos[YAMLKeyword.input_shapes],
             output_shapes=output_config[YAMLKeyword.output_shapes],
             input_data_types=input_infos[YAMLKeyword.input_data_types],
+            output_data_types=output_infos[YAMLKeyword.output_data_types],
             input_data_formats=input_infos[YAMLKeyword.input_data_formats],
             output_data_formats=output_infos[YAMLKeyword.output_data_formats],
             mace_model_dir=mace_model_dir,
