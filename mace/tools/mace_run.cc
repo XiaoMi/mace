@@ -721,7 +721,8 @@ int Main(int argc, char **argv) {
   std::vector<IDataType> output_data_types(output_count);
   for (size_t i = 0; i < output_count; ++i) {
     output_data_types[i] = ParseDataType(raw_output_data_types[i]);
-    LOG(INFO) << "raw_output_data_types[" << i << "] is " << raw_output_data_types[i];
+    LOG(INFO) << "raw_output_data_types[" << i << "] is "
+              << raw_output_data_types[i];
   }
 
   std::vector<std::string> raw_input_data_formats =

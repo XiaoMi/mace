@@ -268,7 +268,6 @@ bool NeuronDelegateKernel::Eval(
                 "Wrong output size");
     int byte_size = element_size * byte_per_element;
     // prepare out buffer
-    tensor->SetDtype(output_infos_[i].data_type);
     tensor->Resize(output_infos_[i].shape);
     int output_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
