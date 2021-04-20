@@ -234,6 +234,7 @@ genrule(
               default_value = "",
           ) +
           if_rpcmem_enabled(
+              "$(locations //mace/rpcmems) " +
               "$(locations //third_party/rpcmem:rpcmem.a) ",
               default_value = "",
           ) +
