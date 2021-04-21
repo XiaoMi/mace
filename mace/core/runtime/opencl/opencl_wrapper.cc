@@ -46,6 +46,7 @@ class OpenCLLibrary final {
 
  public:
   static OpenCLLibrary *Get();
+  bool IsOpenCLAvailable();
 
   using clGetPlatformIDsFunc = cl_int (*)(cl_uint, cl_platform_id *, cl_uint *);
   using clGetPlatformInfoFunc =
@@ -295,6 +296,10 @@ OpenCLLibrary::OpenCLLibrary() {
   // Besides, the library will not be load repeatedly even dlopen many times.
 }
 
+bool OpenCLLibrary::IsOpenCLAvailable() {
+  return (handle_ != nullptr);
+}
+
 bool OpenCLLibrary::Load() {
   if (handle_ != nullptr) {
     return true;
@@ -303,6 +308,9 @@ bool OpenCLLibrary::Load() {
   // Add customized OpenCL search path here
   const std::vector<std::string> paths = {
     "libOpenCL.so",
+    "libGLES_mali.so",
+    "libmali.so",
+
 #if defined(__aarch64__)
     // Qualcomm Adreno with Android
     "/system/vendor/lib64/libOpenCL.so",
@@ -319,6 +327,9 @@ bool OpenCLLibrary::Load() {
     // Mali with Android
     "/system/vendor/lib/egl/libGLES_mali.so",
     "/system/lib/egl/libGLES_mali.so",
+    // Other
+    "/system/vendor/lib/libPVROCL.so",
+    "/data/data/org.pocl.libs/files/lib/libpocl.so",
     // Typical Linux board
     "/usr/lib/arm-linux-gnueabihf/libOpenCL.so",
 #endif
@@ -334,7 +345,7 @@ bool OpenCLLibrary::Load() {
   }
 
   if (handle_ == nullptr) {
-    LOG(ERROR) << "Failed to load OpenCL library, "
+    LOG(WARNING) << "Failed to load OpenCL library, "
         "please make sure there exists OpenCL library on your device, "
         "and your APP have right to access the library.";
     return false;
@@ -418,6 +429,11 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
 }
 
 }  // namespace runtime
+
+bool IsOpenCLAvailable() {
+  return runtime::OpenCLLibrary::Get()->IsOpenCLAvailable();
+}
+
 }  // namespace mace
 
 // Platform APIs

@@ -25,6 +25,8 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
   input_names.push_back(MakeString("input", 0));
   output_names.push_back(MakeString("output", 0));
 
+  MACE_CHECK(mace::IsOpenCLAvailable());
+
   MaceEngineConfig config(DeviceType::GPU);
   config.SetGPUContext(
       ops::test::OpTestContext::Get()->gpu_context());
