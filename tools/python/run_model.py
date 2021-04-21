@@ -249,6 +249,8 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
 
         dev.pull(Target(target_output_dir), tmpdirname + "/validate_out")
         output_file_prefix = tmpdirname + "/validate_out/" + model_name
+        validation_outputs_data = \
+            model_conf.get(ModelKeys.validation_outputs_data, [])
         validate.validate(model_conf[ModelKeys.platform],
                           validate_model_file,
                           validate_weight_file,
@@ -263,7 +265,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                           flags.validate_threshold,
                           input_tensors_info[ModelKeys.input_data_types],
                           flags.backend,
-                          "",
+                          validation_outputs_data,
                           "")
     if should_generate_data:
         shutil.rmtree(tmpdirname)

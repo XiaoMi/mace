@@ -702,12 +702,22 @@ class OnnxConverter(base_converter.ConverterInterface):
                    FrameworkType.PYTORCH.name.lower(),
                    'Only support QuantizeLinear exported by PyTorch, '
                    'this is exported by {}'.format(self._source_framework))
+        scale = self._scale_zeros[node.inputs[1]]
+        zero_point = self._scale_zeros[node.inputs[2]]
         if len(node.outputs) == 1 and \
                 node.outputs[0] in self._skip_quant_dequants:
+            symmetric = zero_point.dtype == np.int8
+            if symmetric:
+                mace_check(zero_point == 0,
+                           "Zero point must be zero for int8 quantization")
+                self._consts[node.inputs[0]].zero_point = -1
+            self._consts[node.inputs[0]].scale = scale
+            # Transformer will use (zero_point == -1) to determine
+            # whether it's symmetric or not
+            if not symmetric:
+                self._consts[node.inputs[0]].zero_point = zero_point
             return
         op = self.convert_general_op(node)
-        scale = self._scale_zeros[op.input[1]]
-        zero_point = self._scale_zeros[op.input[2]]
         minval, maxval = quantize_util.scale_zero_to_min_max(scale, zero_point)
         if op.input[0] in self._option.input_nodes:
             self._option.input_nodes[op.input[0]].range = [minval, maxval]

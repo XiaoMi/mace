@@ -102,6 +102,13 @@ std::vector<std::string> Workspace::Tensors() const {
 MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, Runtime *runtime,
                                       const unsigned char *model_data,
                                       const index_t model_data_size) {
+  // When model has no weight, return immediately. Otherwise,
+  // `MakeSliceBuffer` will try to map nullptr when running on GPU.
+  if (model_data == nullptr && model_data_size == 0) {
+    LOG(WARNING) << "Model has no weight, ignoring loading model tensor";
+    return MaceStatus::MACE_SUCCESS;
+  }
+  MACE_CHECK(model_data != nullptr && model_data_size > 0);
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   index_t valid_data_size = NetDefHelper::GetModelValidSize(net_def);
   VLOG(3) << "Model valid data size: " << valid_data_size;

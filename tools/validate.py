@@ -77,7 +77,13 @@ def calculate_similarity(u, v, data_type=np.float64):
         return np.dot(u, v) / norm
 
 
-def calculate_pixel_accuracy(out_value, mace_out_value):
+def calculate_pixel_accuracy(out_value, mace_out_value,
+                             output_shape, output_data_format):
+    out_value = out_value.reshape(output_shape)
+    mace_out_value = mace_out_value.reshape(output_shape)
+    if len(output_shape) == 4 and output_data_format == common.DataFormat.NCHW:
+        out_value = out_value.transpose([0, 2, 3, 1])
+        mace_out_value = mace_out_value.transpose([0, 2, 3, 1])
     if len(out_value.shape) < 2:
         return 1.0
     out_value = out_value.reshape((-1, out_value.shape[-1]))
@@ -92,9 +98,12 @@ def calculate_pixel_accuracy(out_value, mace_out_value):
 
 
 def compare_output(platform, device_type, output_name, mace_out_value,
-                   out_value, validation_threshold, log_file):
+                   out_value, validation_threshold, log_file,
+                   output_shape, output_data_format):
     if mace_out_value.size != 0:
-        pixel_accuracy = calculate_pixel_accuracy(out_value, mace_out_value)
+        pixel_accuracy = calculate_pixel_accuracy(out_value, mace_out_value,
+                                                  output_shape,
+                                                  output_data_format)
         out_value = out_value.reshape(-1)
         mace_out_value = mace_out_value.reshape(-1)
         assert len(out_value) == len(mace_out_value)
@@ -134,10 +143,36 @@ def normalize_tf_tensor_name(name):
         return name
 
 
+def get_real_out_value_shape_df(platform, mace_out_value, output_shape,
+                                output_data_format):
+    real_output_shape = output_shape
+    real_output_data_format = output_data_format
+    if len(output_shape) == 4:
+        # These platforms use NHWC, if MACE's output is NCHW,
+        # transpose the output of MACE from NCHW to NHWC.
+        if output_data_format == common.DataFormat.NCHW and \
+                platform.lower() in ["tensorflow", "keras"]:
+            mace_out_value = mace_out_value.reshape(output_shape)\
+                .transpose((0, 2, 3, 1))
+            real_output_shape = list(mace_out_value.shape)
+            real_output_data_format = common.DataFormat.NHWC
+        # These platforms use NCHW, if MACE's output is NHWC,
+        # transpose the output of MACE from NHWC to NCHW.
+        elif output_data_format == common.DataFormat.NHWC and \
+                platform.lower() in ["pytorch", "caffe", "onnx",
+                                     "megengine"]:
+            mace_out_value = mace_out_value.reshape(output_shape)\
+                .transpose((0, 3, 1, 2))
+            real_output_shape = list(mace_out_value.shape)
+            real_output_data_format = common.DataFormat.NCHW
+    return mace_out_value, real_output_shape, real_output_data_format
+
+
 def validate_with_file(platform, device_type,
                        output_names, output_shapes,
                        mace_out_file, validation_outputs_data,
-                       validation_threshold, log_file):
+                       validation_threshold, log_file,
+                       output_data_formats):
     for i in range(len(output_names)):
         if validation_outputs_data[i].startswith("http://") or \
                 validation_outputs_data[i].startswith("https://"):
@@ -149,15 +184,17 @@ def validate_with_file(platform, device_type,
             validation_file_name = validation_outputs_data[i]
         value = load_data(validation_file_name)
         out_shape = output_shapes[i]
-        if len(out_shape) == 4:
-            out_shape[1], out_shape[2], out_shape[3] = \
-                out_shape[3], out_shape[1], out_shape[2]
-            value = value.reshape(out_shape).transpose((0, 2, 3, 1))
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
+        mace_out_value, real_output_shape, real_output_data_format = \
+            get_real_out_value_shape_df(platform,
+                                        mace_out_value,
+                                        output_shapes[i],
+                                        output_data_formats[i])
         compare_output(platform, device_type, output_names[i], mace_out_value,
-                       value, validation_threshold, log_file)
+                       value, validation_threshold, log_file,
+                       real_output_shape, real_output_data_format)
 
 
 def validate_tf_model(platform, device_type, model_file,
@@ -208,13 +245,15 @@ def validate_tf_model(platform, device_type, model_file,
                     output_file_name = common.formatted_file_name(
                         mace_out_file, output_names[i])
                     mace_out_value = load_data(output_file_name)
-                    if output_data_formats[i] == common.DataFormat.NCHW and\
-                            len(output_shapes[i]) == 4:
-                        mace_out_value = mace_out_value.\
-                            reshape(output_shapes[i]).transpose((0, 2, 3, 1))
+                    mace_out_value, real_out_shape, real_out_data_format = \
+                        get_real_out_value_shape_df(platform,
+                                                    mace_out_value,
+                                                    output_shapes[i],
+                                                    output_data_formats[i])
                     compare_output(platform, device_type, output_names[i],
                                    mace_out_value, output_values[i],
-                                   validation_threshold, log_file)
+                                   validation_threshold, log_file,
+                                   real_out_shape, real_out_data_format)
 
 
 def validate_pytorch_model(platform, device_type, model_file,
@@ -250,13 +289,14 @@ def validate_pytorch_model(platform, device_type, model_file,
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
-        # MACE: NHWC, pytorch: NCHW, conversion is needed
-        if output_data_formats[i] == common.DataFormat.NHWC and \
-                len(output_shapes[i]) == 4:
-            mace_out_value = mace_out_value.reshape(output_shapes[i])\
-                .transpose((0, 3, 1, 2))
+        mace_out_value, real_output_shape, real_output_data_format = \
+            get_real_out_value_shape_df(platform,
+                                        mace_out_value,
+                                        output_shapes[i],
+                                        output_data_formats[i])
         compare_output(platform, device_type, output_names[i], mace_out_value,
-                       value, validation_threshold, log_file)
+                       value, validation_threshold, log_file,
+                       real_output_shape, real_output_data_format)
 
 
 def validate_caffe_model(platform, device_type, model_file, input_file,
@@ -304,12 +344,14 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
-        if output_data_formats[i] == common.DataFormat.NHWC and \
-                len(output_shapes[i]) == 4:
-            mace_out_value = mace_out_value.reshape(output_shapes[i])\
-                .transpose((0, 3, 1, 2))
+        mace_out_value, real_output_shape, real_output_data_format = \
+            get_real_out_value_shape_df(platform,
+                                        mace_out_value,
+                                        output_shapes[i],
+                                        output_data_formats[i])
         compare_output(platform, device_type, output_names[i], mace_out_value,
-                       value, validation_threshold, log_file)
+                       value, validation_threshold, log_file,
+                       real_output_shape, real_output_data_format)
 
 
 def validate_onnx_model(platform, device_type, model_file,
@@ -356,13 +398,15 @@ def validate_onnx_model(platform, device_type, model_file,
         output_file_name = common.formatted_file_name(mace_out_file,
                                                       output_names[i])
         mace_out_value = load_data(output_file_name)
-        if output_data_formats[i] == common.DataFormat.NHWC and \
-                len(output_shapes[i]) == 4:
-            mace_out_value = mace_out_value.reshape(output_shapes[i]) \
-                .transpose((0, 3, 1, 2))
+        mace_out_value, real_output_shape, real_output_data_format = \
+            get_real_out_value_shape_df(platform,
+                                        mace_out_value,
+                                        output_shapes[i],
+                                        output_data_formats[i])
         compare_output(platform, device_type, output_names[i],
                        mace_out_value, value,
-                       validation_threshold, log_file)
+                       validation_threshold, log_file,
+                       real_output_shape, real_output_data_format)
 
 
 def validate_megengine_model(platform, device_type, model_file, input_file,
@@ -403,12 +447,14 @@ def validate_megengine_model(platform, device_type, model_file, input_file,
         output_file_name = \
             common.formatted_file_name(mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
-        if (output_data_formats[i] == common.DataFormat.NHWC and
-                len(output_shapes[i]) == 4):
-            mace_out_value = mace_out_value.reshape(
-                output_shapes[i]).transpose((0, 3, 1, 2))
+        mace_out_value, real_output_shape, real_output_data_format = \
+            get_real_out_value_shape_df(platform,
+                                        mace_out_value,
+                                        output_shapes[i],
+                                        output_data_formats[i])
         compare_output(platform, device_type, output_names[i], mace_out_value,
-                       mge_output_value, validation_threshold, log_file)
+                       mge_output_value, validation_threshold, log_file,
+                       real_output_shape, real_output_data_format)
 
 
 def validate_keras_model(platform, device_type, model_file,
@@ -448,13 +494,15 @@ def validate_keras_model(platform, device_type, model_file,
             output_file_name = common.formatted_file_name(
                 mace_out_file, output_names[i])
             mace_out_value = load_data(output_file_name)
-            if output_data_formats[i] == common.DataFormat.NCHW and \
-                    len(output_shapes[i]) == 4:
-                mace_out_value = mace_out_value. \
-                    reshape(output_shapes[i]).transpose((0, 2, 3, 1))
+            mace_out_value, real_output_shape, real_output_data_format = \
+                get_real_out_value_shape_df(platform,
+                                            mace_out_value,
+                                            output_shapes[i],
+                                            output_data_formats[i])
             compare_output(platform, device_type, output_names[i],
                            mace_out_value, output_values[i],
-                           validation_threshold, log_file)
+                           validation_threshold, log_file,
+                           real_output_shape, real_output_data_format)
 
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
@@ -490,7 +538,8 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
     if validation_outputs:
         validate_with_file(platform, device_type, output_names, output_shapes,
                            mace_out_file, validation_outputs,
-                           validation_threshold, log_file)
+                           validation_threshold, log_file,
+                           output_data_formats)
     elif platform == 'tensorflow':
         validate_tf_model(platform, device_type,
                           model_file, input_file, mace_out_file,

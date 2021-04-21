@@ -20,8 +20,6 @@
 #include <unistd.h>
 
 #include <memory>
-#include <string>
-#include <iostream>
 
 #include "mace/utils/memory.h"
 
@@ -72,7 +70,6 @@ MaceStatus PosixFileSystem::NewReadOnlyMemoryRegionFromFile(
     } else {
       // Empty file: mmap returns EINVAL (since Linux 2.6.12) length was 0
       *result = make_unique<PosixReadOnlyMemoryRegion>(nullptr, 0);
-      s = MaceStatus::MACE_RUNTIME_ERROR;
     }
   }
   return s;

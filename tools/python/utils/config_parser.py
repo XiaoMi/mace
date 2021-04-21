@@ -106,6 +106,7 @@ class ModelKeys(object):
     default_graph = 'default_graph'
     order = 'order'
     validation_inputs_data = "validation_inputs_data"
+    validation_outputs_data = 'validation_outputs_data'
 
 
 class DataFormat(Enum):
@@ -391,6 +392,12 @@ def normalize_model_config(conf, model_output=None, org_model_dir=None):
                 nor_subgraph[ModelKeys.input_tensors]
             conf[ModelKeys.output_tensors] = \
                 nor_subgraph[ModelKeys.output_tensors]
+            if ModelKeys.validation_inputs_data in nor_subgraph:
+                conf[ModelKeys.validation_inputs_data] = \
+                    nor_subgraph[ModelKeys.validation_inputs_data]
+            if ModelKeys.validation_outputs_data in nor_subgraph:
+                conf[ModelKeys.validation_outputs_data] = \
+                    nor_subgraph[ModelKeys.validation_outputs_data]
             set_default_config_value(nor_subgraph, conf)
             nor_subgraphs[ModelKeys.default_graph] = nor_subgraph
         else:

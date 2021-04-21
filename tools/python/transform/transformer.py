@@ -1875,9 +1875,28 @@ class Transformer(base_converter.ConverterInterface):
                 tensor.data_type = mace_pb2.DT_INT8
             else:
                 non_zero = self._option.device == DeviceType.CPU.value
-                quantized_tensor = quantize_util.quantize(tensor.float_data,
-                                                          self._option.device,
-                                                          non_zero)
+                if self._option.platform.name == "ONNX":
+                    func = quantize_util.quantize_with_min_and_max
+                    # `convert_quantize_linear` of ONNX converter passes
+                    # `zero_point = -1` to indicate symmetrict quantization.
+                    symmetric = (tensor.zero_point == -1)
+                    if symmetric:
+                        maxval = 128. * tensor.scale
+                        minval = -maxval
+                    else:
+                        minval, maxval = quantize_util.scale_zero_to_min_max(
+                            tensor.scale,
+                            tensor.zero_point)
+                    quantized_tensor = func(tensor.float_data,
+                                            self._option.device,
+                                            non_zero,
+                                            minval,
+                                            maxval)
+                else:
+                    func = quantize_util.quantize
+                    quantized_tensor = func(tensor.float_data,
+                                            self._option.device,
+                                            non_zero)
                 tensor.data_type = mace_pb2.DT_UINT8
 
             del tensor.float_data[:]
