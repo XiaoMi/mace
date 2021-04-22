@@ -117,6 +117,19 @@ void BuildTransposeOpDef(
   }
 }
 
+#ifdef MACE_ENABLE_OPENCL
+RuntimeType GetRuntimeTypeByMemType(OpConditionContext *context,
+                                    MemoryType mem_type) {
+  if (mem_type == GPU_IMAGE || mem_type == GPU_BUFFER) {
+    return RT_OPENCL;
+  } else if (mem_type == CPU_BUFFER) {
+    return RT_CPU;
+  } else {
+    return context->runtime()->GetRuntimeType();
+  }
+}
+#endif  // MACE_ENABLE_OPENCL
+
 }  // namespace
 
 NetDefAdapter::NetDefAdapter(const OpRegistry *op_registry,
@@ -482,7 +495,6 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
   // (only support one kind of memory type for multiple outputs)
   op_registry_->GetInOutMemoryTypes(op_def->type(), context);
 
-  auto runtime_type = context->runtime()->GetRuntimeType();
 #ifdef MACE_ENABLE_OPENCL
   int input_size = op_def->input_size();
   for (int i = 0; i < input_size; ++i) {
@@ -504,12 +516,12 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
                 || dst_mem_type != MemoryType::CPU_BUFFER))) {
       // GPU_IMAGE => CPU_BUFFER change to GPU_IMAGE =>GPU_BUFFER
       if (src_mem_type == GPU_IMAGE) {
-        runtime_type = RT_OPENCL;
         if (dst_mem_type == CPU_BUFFER) {
           dst_mem_type = GPU_BUFFER;
           context->SetInputInfo(i, dst_mem_type, wanted_input_dtype);
         }
       }
+      auto runtime_type = GetRuntimeTypeByMemType(context, dst_mem_type);
 
       auto transformed_name = TransformedName(op_def->input(i),
                                               "mem_type",
@@ -563,7 +575,6 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
     }
   }
 #else
-  MACE_UNUSED(runtime_type);
   MACE_UNUSED(output_map);
   MACE_UNUSED(tensor_shape_map);
   MACE_UNUSED(transformed_set);
