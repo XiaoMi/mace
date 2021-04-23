@@ -486,9 +486,12 @@ bool RunModel(const std::string &model_name,
             auto output_data_type = outputs[output_names[i]].data_type();
             auto file_data_type =
                 (output_data_type == IDT_INT32) ? IDT_INT32 : IDT_FLOAT;
-            WriteOutputDataToFile(output_name, file_data_type,
-                                  outputs[output_names[i]].data<void>(),
-                                  output_data_type, output_shapes[i]);
+            auto output_size = WriteOutputDataToFile(
+                output_name, file_data_type,
+                outputs[output_names[i]].data<void>(),
+                output_data_type, output_shapes[i]);
+            LOG(INFO) << "Write output file " << output_name << " with size "
+                      << output_size << " done.";
           }
         }
       }

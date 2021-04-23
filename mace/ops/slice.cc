@@ -49,9 +49,6 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
       const Tensor *starts = this->Input(1);
       const Tensor *ends = this->Input(2);
       const Tensor *axes = this->Input(3);
-      Tensor::MappingGuard starts_guard(starts);
-      Tensor::MappingGuard ends_guard(ends);
-      Tensor::MappingGuard axes_guard(axes);
       const int32_t *starts_data = starts->data<int32_t>();
       const int32_t *ends_data = ends->data<int32_t>();
       const int32_t *axes_data = axes->data<int32_t>();
@@ -62,9 +59,10 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
       axis = axes_data[0];
       if (this->InputSize() == 5) {
         const Tensor *steps = this->Input(4);
-        Tensor::MappingGuard steps_guard(steps);
         MACE_CHECK(steps->size() == 1 && steps->data<int32_t>()[0] == 1,
-                   "Only support slicing with steps 1.");
+                   "Only support slicing with steps 1. op is: ",
+                   operator_def_->name(), ", ", steps->size(), ", ",
+                   steps->data<int32_t>()[0]);
       }
     } else {
       MACE_CHECK(starts_.size() == 1 && ends_.size() == 1 && axes_.size() == 1,
@@ -81,7 +79,7 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
     if (end < 0) end += input_dim;
     MACE_CHECK(
         start < input_dim && start >= 0 && end > start && end <= input_dim,
-        "The starts and ends are out of bounds.");
+        "The starts and ends are out of bounds: ", operator_def_->name());
     index_t output_dim = end - start;
     MACE_CHECK(output_dim > 0, "output_dim should > 0");
     std::vector<index_t> output_shape = input->shape();

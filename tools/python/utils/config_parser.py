@@ -436,7 +436,7 @@ def find_input_tensors_info(subgraphs, tensor_names):
         if ModelKeys.input_ranges in subgraph:
             all_ranges.extend(subgraph[ModelKeys.input_ranges])
         else:
-            all_ranges.extend([None] * len(subgraph[ModelKeys.input_tensors]))
+            all_ranges.extend([""] * len(subgraph[ModelKeys.input_tensors]))
     name_id = {}
     for i in range(len(all_tensor_names)):
         name_id[all_tensor_names[i]] = i

@@ -188,7 +188,7 @@ bool NeuronDelegateKernel::Eval(
                 "Wrong input size");
     input_infos_[i].buf = nn_input_memory_->get_data_ptr() + input_offset;
     input_offset += byte_size;
-    // TODO(MTK): Get the input memory fd
+    // Get the input memory fd
     int input_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
     NeuronMemory* nn_memory_handle_ = nullptr;
@@ -227,7 +227,7 @@ bool NeuronDelegateKernel::Eval(
       neuronapi_->NeuronExecution_setInput(execution,
           i, nullptr, input_infos_[i].buf, byte_size);
     } else {
-      LOG(ERROR) << "A mismatch between input tensor and model input data type";
+      LOG(FATAL) << "A mismatch between input tensor and model input data type";
     }
   }
   // prepare output
@@ -235,7 +235,8 @@ bool NeuronDelegateKernel::Eval(
   std::vector<NeuronMemory*> nn_output_memory_buffers_;
   for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
     Tensor* tensor = output_tensors->at(output_infos_[i].name);
-
+    // prepare out buffer
+    tensor->Resize(output_infos_[i].shape);
     int element_size = output_infos_[i].size;
     int byte_per_element = output_infos_[i].byte_per_element;
     int byte_size = element_size * byte_per_element;
@@ -267,8 +268,6 @@ bool NeuronDelegateKernel::Eval(
     MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
                 "Wrong output size");
     int byte_size = element_size * byte_per_element;
-    // prepare out buffer
-    tensor->Resize(output_infos_[i].shape);
     int output_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
     if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
@@ -292,7 +291,7 @@ bool NeuronDelegateKernel::Eval(
           output_infos_[i].zero_point,
           reinterpret_cast<float*>(tensor->raw_mutable_data()));
     } else {
-      LOG(ERROR) << "A mismatch between input tensor and model input data type";
+      LOG(FATAL) << "A mismatch between input tensor and model input data type";
     }
   }
 

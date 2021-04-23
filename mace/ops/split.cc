@@ -81,7 +81,6 @@ class SplitOp<RuntimeType::RT_CPU, T> : public Operation {
     MACE_UNUSED(context);
     if (!checked_) Validate();
     const Tensor *input = this->Input(0);
-    Tensor::MappingGuard input_guard(input);
     const Tensor *split_tensor =
         this->InputSize() == 2 ? this->Input(1) : nullptr;
     const std::vector<Tensor *> output_list = this->Outputs();
@@ -92,7 +91,6 @@ class SplitOp<RuntimeType::RT_CPU, T> : public Operation {
     std::vector<std::vector<index_t>> output_shape_list;
     const std::vector<index_t> &input_shape = input->shape();
     if (split_tensor != nullptr) {
-      Tensor::MappingGuard split_guard(split_tensor);
       const int32_t *split_data = split_tensor->data<int32_t>();
       output_shape_list = std::vector<std::vector<index_t>>(
           outputs_count, input_shape);

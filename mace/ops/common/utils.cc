@@ -23,7 +23,6 @@ namespace utils {
 
 void GetSizeParamFromTensor(const Tensor *size_tensor, index_t *out_height,
                             index_t *out_width) {
-  Tensor::MappingGuard size_guard(size_tensor);
   const int *size = size_tensor->data<int>();
   *out_height = size[0];
   *out_width = size[1];

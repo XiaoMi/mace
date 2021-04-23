@@ -800,6 +800,7 @@ class DeviceWrapper:
                         model_output_dir,
                         input_infos[YAMLKeyword.input_tensors],
                         input_infos[YAMLKeyword.input_shapes],
+                        input_ranges=input_infos[YAMLKeyword.input_ranges],
                         input_data_types=input_infos[
                             YAMLKeyword.input_data_types],
                         input_data_map=inputs)
@@ -820,7 +821,7 @@ class DeviceWrapper:
                     input_infos[YAMLKeyword.input_tensors],
                     input_infos[YAMLKeyword.input_shapes],
                     model_config[YAMLKeyword.validation_inputs_data],
-                    input_ranges=model_config[YAMLKeyword.input_ranges],
+                    input_ranges=input_infos[YAMLKeyword.input_ranges],
                     input_data_types=input_infos[YAMLKeyword.input_data_types]
                 )
 

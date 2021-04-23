@@ -558,13 +558,15 @@ def format_model_config(flags):
         if isinstance(subgraphs, list):
             graphs_dict = {}
             model_config[YAMLKeyword.input_tensors] = \
-                subgraphs[0][YAMLKeyword.input_tensors]
+                config_parser.to_list(subgraphs[0][YAMLKeyword.input_tensors])
             model_config[YAMLKeyword.output_tensors] = \
-                subgraphs[0][YAMLKeyword.output_tensors]
+                config_parser.to_list(subgraphs[0][YAMLKeyword.output_tensors])
             model_config[YAMLKeyword.validation_inputs_data] = \
-                subgraphs[0].get(YAMLKeyword.validation_inputs_data, [])
+                config_parser.to_list(
+                    subgraphs[0].get(YAMLKeyword.validation_inputs_data, []))
             model_config[YAMLKeyword.validation_outputs_data] = \
-                subgraphs[0].get(YAMLKeyword.validation_outputs_data, [])
+                config_parser.to_list(
+                    subgraphs[0].get(YAMLKeyword.validation_outputs_data, []))
             graphs_dict[YAMLKeyword.default_graph] = subgraphs[0]
             subgraphs = graphs_dict
             model_config[YAMLKeyword.subgraphs] = subgraphs
@@ -666,7 +668,11 @@ def format_model_config(flags):
                 if key in [YAMLKeyword.input_shapes,
                            YAMLKeyword.output_shapes]:
                     subgraph[key] = [e.replace(' ', '') for e in subgraph[key]]
+            subgraph[YAMLKeyword.input_tensors] = \
+                config_parser.to_list(subgraph[YAMLKeyword.input_tensors])
             input_size = len(subgraph[YAMLKeyword.input_tensors])
+            subgraph[YAMLKeyword.output_tensors] = \
+                config_parser.to_list(subgraph[YAMLKeyword.output_tensors])
             output_size = len(subgraph[YAMLKeyword.output_tensors])
 
             mace_check(len(subgraph[YAMLKeyword.input_shapes]) == input_size,
