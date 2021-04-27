@@ -225,8 +225,10 @@ def convert_net(net_name, conf):
     else:
         mace_check(False, "Mace do not support platorm %s yet." % platform)
 
-    output_graph_def = converter.run()
-    mace_transformer = transformer.Transformer(option, output_graph_def)
+    # Converter needs to pass some info to transformer by converter_info.
+    output_graph_def, converter_info = converter.run()
+    mace_transformer = transformer.Transformer(option, output_graph_def,
+                                               converter_info)
     output_graph_def, quantize_activation_info = mace_transformer.run()
 
     runtime = conf[ModelKeys.runtime]

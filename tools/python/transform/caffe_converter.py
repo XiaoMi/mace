@@ -208,6 +208,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'MatMul': self.convert_matmul,
         }
         self._option = option
+        self._converter_info = dict()
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NCHW)
@@ -241,7 +242,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             self._option.input_nodes.values())
         shape_inferer.run()
         self.replace_output_tensor_name()
-        return self._mace_net_def
+        return self._mace_net_def, self._converter_info
 
     @staticmethod
     def replace_input_name(ops, src_name, dst_name):

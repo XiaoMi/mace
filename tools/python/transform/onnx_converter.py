@@ -25,11 +25,13 @@ from transform.base_converter import CoordinateTransformationMode
 from transform.base_converter import DataFormat
 from transform.base_converter import EltwiseType
 from transform.base_converter import FrameworkType
+from transform.base_converter import InfoKey
 from transform.base_converter import MaceOp
 from transform.base_converter import MaceKeyword
 from transform.base_converter import PoolingType
 from transform.base_converter import PaddingMode
 from transform.base_converter import PadType
+from transform.base_converter import QatType
 from transform.base_converter import ReduceType
 from transform.base_converter import RoundMode
 
@@ -419,6 +421,9 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Resize.name: self.convert_resize
         }
         self._option = option
+        self._converter_info = dict()
+        self._converter_info[InfoKey.qat_type] = dict()
+        self._converter_info[InfoKey.has_qat] = set()
         self._mace_net_def = mace_pb2.NetDef()
         self._data_format = DataFormat.NCHW
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
@@ -512,7 +517,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         self.extract_shape_info(graph_def)
         self.convert_tensors(graph_def)
         self.convert_ops(graph_def)
-        return self._mace_net_def
+        return self._mace_net_def, self._converter_info
 
     def add_stride_pad_kernel_arg(self, attrs, op_def):
         if 'strides' in attrs:
@@ -706,16 +711,20 @@ class OnnxConverter(base_converter.ConverterInterface):
         zero_point = self._scale_zeros[node.inputs[2]]
         if len(node.outputs) == 1 and \
                 node.outputs[0] in self._skip_quant_dequants:
-            symmetric = zero_point.dtype == np.int8
+            tensor_name = node.inputs[0]
+            symmetric = (zero_point.dtype == np.int8)
             if symmetric:
                 mace_check(zero_point == 0,
                            "Zero point must be zero for int8 quantization")
-                self._consts[node.inputs[0]].zero_point = -1
-            self._consts[node.inputs[0]].scale = scale
-            # Transformer will use (zero_point == -1) to determine
-            # whether it's symmetric or not
+                self._converter_info[InfoKey.qat_type][tensor_name] = \
+                    QatType.SYMMETRIC.value
+            else:
+                self._converter_info[InfoKey.qat_type][tensor_name] = \
+                    QatType.ASYMMETRIC.value
+            self._consts[tensor_name].scale = scale
             if not symmetric:
-                self._consts[node.inputs[0]].zero_point = zero_point
+                self._consts[tensor_name].zero_point = zero_point
+            self._converter_info[InfoKey.has_qat].add(tensor_name)
             return
         op = self.convert_general_op(node)
         minval, maxval = quantize_util.scale_zero_to_min_max(scale, zero_point)

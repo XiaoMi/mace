@@ -201,6 +201,7 @@ class PytorchConverter(base_converter.ConverterInterface):
         )
 
         self._option = option
+        self._converter_info = dict()
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.OIHW)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NCHW)
@@ -240,7 +241,7 @@ class PytorchConverter(base_converter.ConverterInterface):
 
     def run(self):
         self.convert_ops()
-        return self._mace_net_def
+        return self._mace_net_def, self._converter_info
 
     def init_ignore_t(self, all_nodes):
         # ignore_t saves aten::t() which is ignored
