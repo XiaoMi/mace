@@ -85,7 +85,7 @@ def get_output_max(keras_op):
                 ["post_activation_max", "output_max", "pre_activation_max"]):
             return weight.numpy()
 
-    mace_check(False, "No output_max info in %s" % keras_op.name)
+    return None
 
 
 def get_output_min(keras_op):
@@ -95,7 +95,7 @@ def get_output_min(keras_op):
                 ["post_activation_min", "output_min", "pre_activation_min"]):
             return weight.numpy()
 
-    mace_check(False, "No output_min info in %s" % keras_op.name)
+    return None
 
 
 def get_quant_wrapper_kernel(quant_wrapper):
@@ -120,6 +120,16 @@ def get_quant_wrapper_depthwise_kernel(quant_wrapper):
             return weight
 
     return None
+
+
+def get_activation(activation):
+    if "class_name" in activation:
+        if activation["class_name"] == "NoOpActivation":
+            return "linear"
+        else:
+            return get_activation(activation["config"]["activation"])
+    else:
+        return activation
 
 
 def conv_output_length(input_length,
@@ -161,7 +171,8 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.Flatten: self.convert_flatten,
             keras.layers.Dense: self.convert_dense,
             keras.layers.Conv2D: self.convert_conv2d,
-            keras.layers.MaxPooling2D: self.convert_maxpooling2d,
+            keras.layers.MaxPooling2D: self.convert_max_pooling2d,
+            keras.layers.AveragePooling2D: self.convert_average_pooling2d,
             keras.layers.Dropout: self.convert_dropout,
             keras.layers.DepthwiseConv2D: self.convert_depthwise_conv2d,
             keras.layers.Softmax: self.convert_softmax,
@@ -170,6 +181,7 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.UpSampling2D: self.convert_upsampling2d,
             keras.layers.Activation: self.convert_activation,
             keras.layers.ReLU: self.convert_relu,
+            keras.layers.Reshape: self.convert_reshape,
             keras.layers.Concatenate: self.convert_concatenate,
             keras.layers.GlobalAveragePooling2D:
                 self.convert_global_average_pooling2d,
@@ -329,7 +341,7 @@ class KerasConverter(base_converter.ConverterInterface):
         act_op = self.split_activation_op(keras_op, op)
         return [op, act_op]
 
-    def convert_maxpooling2d(self, keras_op):
+    def convert_max_pooling2d(self, keras_op):
         op = self.convert_general_op_with_input_output(keras_op)
         op.type = MaceOp.Pooling.name
 
@@ -378,6 +390,28 @@ class KerasConverter(base_converter.ConverterInterface):
         self.add_numpy_tensor(scale_name, scale)
         self.add_numpy_tensor(offset_name, offset)
         op.input.extend([scale_name, offset_name])
+
+        return op
+
+    def convert_average_pooling2d(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Pooling.name
+
+        pooling_type_arg = op.arg.add()
+        pooling_type_arg.name = MaceKeyword.mace_pooling_type_str
+        pooling_type_arg.i = PoolingType.AVG.value
+
+        padding_arg = op.arg.add()
+        padding_arg.name = MaceKeyword.mace_padding_str
+        padding_arg.i = padding_mode[keras_op.padding].value
+
+        strides_arg = op.arg.add()
+        strides_arg.name = MaceKeyword.mace_strides_str
+        strides_arg.ints.extend(keras_op.strides)
+
+        kernels_arg = op.arg.add()
+        kernels_arg.name = MaceKeyword.mace_kernel_str
+        kernels_arg.ints.extend(keras_op.pool_size)
 
         return op
 
@@ -515,13 +549,12 @@ class KerasConverter(base_converter.ConverterInterface):
 
         op = self._op_converters[type(inside_layer)](inside_layer)
 
-        if isinstance(
-                inside_layer,
-                (convolutional.Conv, keras.layers.Dense,
-                 keras.layers.Activation)):
-            output_min = get_output_min(keras_op_wrapper)
-            output_max = get_output_max(keras_op_wrapper)
+        output_min = get_output_min(keras_op_wrapper)
+        output_max = get_output_max(keras_op_wrapper)
 
+        if output_max is None or output_min is None:
+            return op
+        else:
             if not isinstance(op, list):
                 self.add_quantize_info(op, output_min, output_max)
             else:
@@ -556,7 +589,7 @@ class KerasConverter(base_converter.ConverterInterface):
     def add_tensor(self, name, shape, data_type, value):
         tensor = self._mace_net_def.tensors.add()
         tensor.name = name
-        tensor.dims.extend(list(shape))
+        tensor.dims.extend(shape)
         tensor.data_type = data_type
         if data_type == mace_pb2.DT_INT32:
             tensor.int32_data.extend(value)
@@ -564,10 +597,7 @@ class KerasConverter(base_converter.ConverterInterface):
             tensor.float_data.extend(value)
 
     def split_activation_op(self, keras_op, op):
-        activation = keras_op.get_config()["activation"]
-        if "class_name" in activation:
-            assert activation["class_name"] == "QuantizeAwareActivation"
-            activation = activation["config"]["activation"]
+        activation = get_activation(keras_op.get_config()["activation"])
 
         if activation == "linear":
             op.output.append(get_output(keras_op).name)
@@ -732,3 +762,14 @@ class KerasConverter(base_converter.ConverterInterface):
             self.add_keras_tensor(keras_op.bias)
 
         self.split_activation_op(keras_op, pw_conv2d_op)
+
+    def convert_reshape(self, keras_op):
+        op = self.convert_general_op_with_input_output(keras_op)
+        op.type = MaceOp.Reshape.name
+
+        shape = keras_shape2list(get_output(keras_op).shape)
+        shape_tensor_name = keras_op.name + "_shape"
+        self.add_tensor(
+            shape_tensor_name, [len(shape)],
+            mace_pb2.DT_INT32, shape)
+        op.input.append(shape_tensor_name)

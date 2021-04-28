@@ -278,6 +278,9 @@ class DeviceWrapper:
             out, err = p.communicate()
             self.stdout = err + out
             six.print_(self.stdout)
+            mace_check(p.returncode == 0,
+                       ModuleName.RUN,
+                       "Failed to run the model")
             six.print_("Running finished!\n")
         elif self.system in [SystemType.android, SystemType.arm_linux]:
             self.rm(self.data_dir)
