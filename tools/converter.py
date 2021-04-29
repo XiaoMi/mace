@@ -1269,6 +1269,11 @@ def parse_args():
         type=str,
         default="",
         help="apu cache store dir.")
+    run.add_argument(
+        "--use_system_libhexagon_nn",
+        action="store_true",
+        help="use system libhexagon_nn_lib.so "
+    )
     return parser.parse_known_args()
 
 
