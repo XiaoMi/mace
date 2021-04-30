@@ -43,6 +43,8 @@ import onnx
 import onnx.utils
 from onnx import mapping, numpy_helper, shape_inference, TensorProto
 from numbers import Number
+from functools import reduce
+import operator
 
 IS_PYTHON3 = sys.version_info > (3,)
 
@@ -696,6 +698,16 @@ class OnnxConverter(base_converter.ConverterInterface):
         alpha_arg = op.arg.add()
         alpha_arg.name = MaceKeyword.mace_activation_coefficient_str
         alpha_arg.f = alpha_value
+
+        if node.op_type == OnnxOpType.PRelu.name:
+            input_shape = self._graph_shapes_dict[node.inputs[0]]
+            slope_tensor = self._consts[node.inputs[1]]
+            mace_check(
+                input_shape[1] == slope_tensor.dims[0] and
+                input_shape[1] == reduce(operator.mul, slope_tensor.dims, 1),
+                "Mismatch dims: {} vs {}.".format(
+                    input_shape, slope_tensor.dims))
+            del slope_tensor.dims[1:]
 
     def convert_quantize_linear(self, node):
         mace_check(self._source_framework ==
@@ -1378,6 +1390,10 @@ class OnnxConverter(base_converter.ConverterInterface):
             paddings_value = np.asarray(paddings_value).reshape(
                 (2, -1)).transpose().reshape(-1).tolist()
             paddings_arg.ints.extend(paddings_value)
+        elif len(node.inputs) > 1:
+            paddings_arg = op.arg.add()
+            paddings_arg.name = MaceKeyword.mace_paddings_str
+            paddings_arg.ints.extend(self._consts[node.inputs[1]].int32_data)
         if 'value' in node.attrs:
             constant_value_arg = op.arg.add()
             constant_value_arg.name = MaceKeyword.mace_constant_value_str
