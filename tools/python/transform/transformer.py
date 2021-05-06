@@ -2109,7 +2109,7 @@ class Transformer(base_converter.ConverterInterface):
                                               str(input_node.range)))
                 if quantize_schema == MaceKeyword.mace_apu_16bit_per_tensor:
                     maxval = max(abs(input_node.range[0]),
-                                 abs(input_node.range[0]))
+                                 abs(input_node.range[1]))
                     minval = -maxval
                     scale = maxval / 2**15
                     zero = 0

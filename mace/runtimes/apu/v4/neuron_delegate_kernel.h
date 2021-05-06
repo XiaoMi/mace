@@ -103,6 +103,20 @@ class NeuronDelegateKernel {
             std::map<std::string, Tensor *> *output_tensors);
 
  private:
+  bool SetInputAndOutput(const NetDef* net_def,
+                         unsigned const char *model_data);
+  bool AddOpsAndTensors(const NetDef* net_def, unsigned const char *model_data);
+  bool BuildGraph(const NetDef* net_def, unsigned const char *model_data);
+
+  std::vector<NeuronMemory*> PrepareInputTensors(
+      const std::map<std::string, Tensor *> &input_tensors,
+      NeuronExecution* execution);
+  std::vector<NeuronMemory*> PrepareOutputTensors(
+      std::map<std::string, Tensor *> *output_tensors,
+      NeuronExecution* execution);
+  void TransposeOutputTensors(std::map<std::string, Tensor *> *output_tensors);
+
+ private:
   // Access to NNApi.
   const NeuronApi* neuronapi_;
   // Neuron state.
@@ -122,11 +136,7 @@ class NeuronDelegateKernel {
   size_t total_input_byte_size;
   size_t total_output_byte_size;
 
-  bool SetInputAndOutput(const NetDef* net_def,
-                         unsigned const char *model_data);
-  bool AddOpsAndTensors(const NetDef* net_def, unsigned const char *model_data);
-  bool BuildGraph(const NetDef* net_def, unsigned const char *model_data);
-
+  Runtime *apu_ion_runtime_;
   std::shared_ptr<Rpcmem> rpcmem_;
 };
 
