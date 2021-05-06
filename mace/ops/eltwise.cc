@@ -1046,7 +1046,8 @@ class EltwiseOp : public Operation {
                 (input1->dim_size() == 1 && input1->dim(0) == input0->dim(1)),
             "Only support broadcast channel dimension",
             ", input0 shape: ", MakeString(input0->shape()),
-            ", input1 shape: ", MakeString(input1->shape()));
+            ", input1 shape: ", MakeString(input1->shape()),
+            ", op name: ", operator_def_->name());
       }
     } else {
       for (uint32_t i = 0; i < input1->dim_size(); ++i) {

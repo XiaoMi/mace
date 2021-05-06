@@ -138,6 +138,9 @@ std::vector<index_t> Runtime::ComputeBufDimFromTensorDim(
   MACE_UNUSED(content_param);
   auto size = std::accumulate(dims.begin(), dims.end(),
                               1, std::multiplies<index_t>());
+  if (size == 0) {
+    size = 1;  // For tensor whose shape is {0}
+  }
   return {size};
 }
 

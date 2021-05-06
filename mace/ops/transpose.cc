@@ -106,6 +106,9 @@ void RegisterTranspose(OpRegistry *op_registry) {
             if (runtime->GetRuntimeType() == RuntimeType::RT_OPENCL) {
               auto &output_shape = op->output_shape(0);
               auto &output_dims = output_shape.dims();
+              if (output_shape.dims_size() != 4) {
+                return {RuntimeType::RT_CPU};
+              }
               auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
               auto max_2d_size = executor->GetMaxImage2DSize();
               auto image_width = output_dims[2] * output_dims[3] / 4;
