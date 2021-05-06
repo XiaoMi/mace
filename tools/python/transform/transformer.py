@@ -1417,9 +1417,13 @@ class Transformer(base_converter.ConverterInterface):
                                     input_op)
                                 # OI+NCHW[2:]=OIHW
                                 if in_data_format == DataFormat.NCHW:
+                                    size = input_shape[2] * input_shape[3]
+                                    weight.dims[1] = weight.dims[1] // size
                                     weight.dims.extend(input_shape[2:])
                                 # OI+NHWC[1:3]=OIHW
                                 else:
+                                    size = input_shape[1] * input_shape[2]
+                                    weight.dims[1] = weight.dims[1] // size
                                     weight.dims.extend(input_shape[1:3])
                         return True
 

@@ -97,7 +97,10 @@ def compare_output(platform, device_type, output_name, mace_out_value,
         pixel_accuracy = calculate_pixel_accuracy(out_value, mace_out_value)
         out_value = out_value.reshape(-1)
         mace_out_value = mace_out_value.reshape(-1)
-        assert len(out_value) == len(mace_out_value)
+        common.mace_check(
+            len(out_value) == len(mace_out_value), "",
+            "Output len: {} {} VS MACE {}".format(
+                platform.upper(), len(out_value), len(mace_out_value)))
         sqnr = calculate_sqnr(out_value, mace_out_value)
         similarity = calculate_similarity(out_value, mace_out_value)
         common.MaceLogger.summary(
