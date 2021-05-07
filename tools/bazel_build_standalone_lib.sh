@@ -34,9 +34,9 @@ runtimes are:\n\t\tcpu, gpu, dsp, apu, hta. By default, the library is built to\
 
 # default configuration variables
 abi=arm64-v8a
-enable_neon=true
+enable_neon=false
 enable_hta=false
-enable_cpu=true
+enable_cpu=false
 enable_gpu=false
 enable_dsp=false
 enable_apu=false
@@ -45,7 +45,7 @@ enable_bfloat16=false
 enable_rpcmem=true
 static_lib=false
 symbol_hidden=
-runtime_label="cpu"
+runtime_label=""
 lib_type=dynamic
 lib_label=shared
 lib_suffix=.so
@@ -69,8 +69,13 @@ for opt in "${@}";do
       for runtime in $(echo $arg | sed s/,/\ /g);do
         case $runtime in
           cpu|CPU)
+            enable_cpu=true
+            enable_neon=true
+            runtime_label=""${runtime_label}" cpu"
             ;;
           gpu|GPU)
+            enable_cpu=true
+            enable_neon=true
             enable_gpu=true
             runtime_label=""${runtime_label}" gpu"
             ;;
@@ -144,6 +149,7 @@ case "${abi}" in
   arm_linux_gnueabihf|aarch64_linux_gnu)
     bazel build --config "${abi}" \
     --config optimization mace/libmace:libmace_"${lib_type}"\
+    --define cpu_enabled="${enable_cpu}" \
     --define neon="${enable_neon}" \
     --define opencl="${enable_gpu}" \
     --define quantize="${enable_quantize}" \
@@ -165,6 +171,7 @@ case "${abi}" in
     fi
     bazel build --config android --config optimization \
     mace/libmace:libmace_"${lib_type}" ${symbol_hidden} \
+    --define cpu_enabled="${enable_cpu}" \
     --define neon="${enable_neon}" --define hta="${enable_hta}" \
     --define opencl="${enable_gpu}" --define apu="${enable_apu}" \
     --define hexagon="${enable_dsp}" --define quantize="${enable_quantize}" \

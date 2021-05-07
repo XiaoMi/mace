@@ -32,9 +32,11 @@ file(GLOB OPS_INTERNAL_OPS_SRCS *.cc)
 
 set(OPS_SRCS registry/ops_registry.cc registry/op_delegators_registry.cc)
 set(OPS_SRCS ${OPS_SRCS} ${OPS_COMMON_SRCS})
-set(OPS_SRCS ${OPS_SRCS} ${OPS_INTERNAL_OPS_SRCS})
-# TODO we need to remove this in production build
-set(OPS_SRCS ${OPS_SRCS} ${OPS_REF_KERNELS_SRCS}) 
+if(MACE_ENABLE_CPU OR MACE_ENABLE_OPENCL)
+  set(OPS_SRCS ${OPS_SRCS} ${OPS_INTERNAL_OPS_SRCS})
+  # TODO we need to remove this in production build
+  set(OPS_SRCS ${OPS_SRCS} ${OPS_REF_KERNELS_SRCS})
+endif(MACE_ENABLE_CPU OR MACE_ENABLE_OPENCL)
 
 if(MACE_ENABLE_QUANTIZE)
   set(OPS_SRCS ${OPS_SRCS} ${OPS_REF_Q8_KERNELS_SRCS})

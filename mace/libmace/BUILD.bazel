@@ -18,6 +18,7 @@ load(
     "if_fp16_enabled",
     "if_hexagon_enabled",
     "if_hexagon_or_hta_enabled",
+    "if_cpu_enabled",
     "if_hta_enabled",
     "if_linux",
     "if_linux_base",
@@ -127,16 +128,13 @@ genrule(
         "//mace/flows",
         "//mace/runtimes/cpu:cpu_runtimes",
         "//mace/runtimes",
-        "//mace/ops:common",
-        "//mace/ops:ref_kernels",
-        "//mace/ops:internal_ops",
-        "//mace/ops",
         "//mace/libmace",
         "//mace/port:port_base",
         "//mace/port/posix:port_posix",
         "//mace/utils",
         "//mace/proto:mace_cc",
         "@com_google_protobuf//:protobuf_lite",
+        "//mace/ops:common",
     ] + if_linux_base([
         "//mace/port/linux_base:port_linux_base",
     ]) + if_android([
@@ -146,6 +144,10 @@ genrule(
     ]) + if_darwin([
         "//mace/port/darwin:port_darwin",
         "//mace/port/darwin:darwin_ar_merge",
+    ]) + if_cpu_enabled([
+        "//mace/ops:ref_kernels",
+        "//mace/ops:internal_ops",
+        "//mace/ops",
     ]) + if_opencl_enabled([
         "//mace/ops:opencl_kernels",
         "//mace/runtimes/opencl:opencl_runtimes",
@@ -178,7 +180,12 @@ genrule(
           "$(locations //mace/runtimes/cpu:cpu_runtimes) " +
           "$(locations //mace/runtimes) " +
           "$(locations //mace/ops:common) " +
-          "$(locations //mace/ops:ref_kernels) " +
+          if_cpu_enabled(
+            "$(locations //mace/ops:ref_kernels) " +
+            "$(locations //mace/ops:internal_ops) " +
+            "$(locations //mace/ops:ops) ",
+            default_value = "",
+          ) +
           if_neon_enabled(
               "$(locations //mace/ops:arm_neon_kernels) ",
               default_value = "",
@@ -205,8 +212,6 @@ genrule(
               "$(locations //mace/runtimes/apu:apu_runtimes) ",
               default_value = "",
           ) +
-          "$(locations //mace/ops:internal_ops) " +
-          "$(locations //mace/ops:ops) " +
           "$(locations //mace/libmace:libmace) " +
           "$(locations //mace/port:port_base) " +
           "$(locations //mace/port/posix:port_posix) " +

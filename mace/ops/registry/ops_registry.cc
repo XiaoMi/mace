@@ -17,6 +17,7 @@
 namespace mace {
 
 namespace ops {
+#ifdef MACE_ENABLE_CPU
 // Keep in lexicographical order
 extern void RegisterActivation(OpRegistry *op_registry);
 extern void RegisterAddN(OpRegistry *op_registry);
@@ -96,9 +97,10 @@ extern void RegisterQuantize(OpRegistry *op_registry);
 extern void RegisterBufferTransform(OpRegistry *op_registry);
 extern void RegisterLSTMCell(OpRegistry *op_registry);
 #endif  // MACE_ENABLE_OPENCL
-
+#endif  // MACE_ENABLE_CPU
 
 void RegisterAllOps(OpRegistry *registry) {
+#ifdef MACE_ENABLE_CPU
   // Keep in lexicographical order
   ops::RegisterActivation(registry);
   ops::RegisterAddN(registry);
@@ -178,6 +180,9 @@ void RegisterAllOps(OpRegistry *registry) {
   ops::RegisterBufferTransform(registry);
   ops::RegisterLSTMCell(registry);
 #endif  // MACE_ENABLE_OPENCL
+#else
+  MACE_UNUSED(registry);
+#endif  // MACE_ENABLE_CPU
 }
 
 }  // namespace ops

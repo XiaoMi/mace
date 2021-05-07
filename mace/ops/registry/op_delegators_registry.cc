@@ -85,6 +85,7 @@ extern void RegisterGemvDelegator(OpDelegatorRegistry *registry);
 #endif  // MACE_ENABLE_NEON
 
 void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
+#ifdef MACE_ENABLE_CPU
   ref::RegisterActivationDelegator(registry);
   ref::RegisterBiasAddDelegator(registry);
   ref::RegisterConv2dDelegator(registry);
@@ -136,6 +137,9 @@ void RegisterAllOpDelegators(OpDelegatorRegistry *registry) {
 #endif  // MACE_ENABLE_QUANTIZE
 
 #endif  // MACE_ENABLE_NEON
+#else
+  MACE_UNUSED(registry);
+#endif  // MACE_ENABLE_CPU
 }
 
 }  // namespace ops

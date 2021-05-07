@@ -48,6 +48,12 @@ def if_arm_linux_armhf(a):
         "//conditions:default": [],
     })
 
+def if_cpu_enabled(a, default_value = []):
+    return select({
+        "//mace:cpu_enabled": a,
+        "//conditions:default": default_value,
+    })
+
 def if_neon_enabled(a, default_value = []):
     return select({
         "//mace:neon_enabled": a,
