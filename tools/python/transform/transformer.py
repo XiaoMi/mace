@@ -26,11 +26,13 @@ from transform.base_converter import DataFormat
 from transform.base_converter import DeviceType
 from transform.base_converter import EltwiseType
 from transform.base_converter import FrameworkType
+from transform.base_converter import InfoKey
 from transform.base_converter import MaceKeyword
 from transform.base_converter import MaceOp
 from transform.base_converter import MaceFixedDataFormatOps
 from transform.base_converter import MaceTransposableDataFormatOps
 from transform.base_converter import PaddingMode
+from transform.base_converter import QatType
 from transform.base_converter import ReduceType
 from transform.base_converter import TransformerRule
 from utils.config_parser import MemoryType
@@ -46,7 +48,7 @@ class Transformer(base_converter.ConverterInterface):
     tensor name has suffix like ':0".
     """
 
-    def __init__(self, option, model):
+    def __init__(self, option, model, converter_info):
         # Dependencies
         # (TRANSFORM_MATMUL_TO_FC, TRANSFORM_GLOBAL_CONV_TO_FC) -> RESHAPE_FC_WEIGHT  # noqa
         self._registered_transformers = {
@@ -147,6 +149,7 @@ class Transformer(base_converter.ConverterInterface):
         self.input_name_map = {}
         self.output_name_map = {}
         self.initialize_name_map()
+        self._converter_info = converter_info
 
     def run(self):
         for key in self._option.transformer_option:
@@ -1875,18 +1878,30 @@ class Transformer(base_converter.ConverterInterface):
                 tensor.data_type = mace_pb2.DT_INT8
             else:
                 non_zero = self._option.device == DeviceType.CPU.value
-                if self._option.platform.name == "ONNX":
-                    func = quantize_util.quantize_with_min_and_max
-                    # `convert_quantize_linear` of ONNX converter passes
-                    # `zero_point = -1` to indicate symmetrict quantization.
-                    symmetric = (tensor.zero_point == -1)
+                has_qat = False
+                if InfoKey.has_qat in self._converter_info:
+                    if tensor.name in self._converter_info[InfoKey.has_qat]:
+                        has_qat = True
+                if has_qat and self._option.platform.name == "ONNX":
+                    mace_check(
+                        tensor.name in self._converter_info[InfoKey.qat_type],
+                        "ONNX model tensor {} has QAT info,"
+                        " but QAT type info is missing.".format(tensor.name))
+                    tensor_qat_type = self._converter_info[
+                        InfoKey.qat_type][tensor.name]
+                    mace_check((tensor_qat_type == QatType.SYMMETRIC.value or
+                               tensor_qat_type == QatType.ASYMMETRIC.value),
+                               "QAT type can only be SYMMETRIC or ASYMMETRIC,"
+                               " but {} is got.".format(tensor_qat_type))
+                    symmetric = (tensor_qat_type == QatType.SYMMETRIC.value)
                     if symmetric:
-                        maxval = 128. * tensor.scale
+                        maxval = 127.5 * tensor.scale
                         minval = -maxval
                     else:
                         minval, maxval = quantize_util.scale_zero_to_min_max(
                             tensor.scale,
                             tensor.zero_point)
+                    func = quantize_util.quantize_with_min_and_max
                     quantized_tensor = func(tensor.float_data,
                                             self._option.device,
                                             non_zero,

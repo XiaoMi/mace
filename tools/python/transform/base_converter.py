@@ -311,6 +311,16 @@ class MaceKeyword(object):
     mace_int8 = 'int8'
 
 
+class QatType(Enum):
+    ASYMMETRIC = 0
+    SYMMETRIC = 1
+
+
+class InfoKey(object):
+    has_qat = 'tensors_has_qat'
+    qat_type = 'tensors_qat_type_map'
+
+
 class TransformerRule(Enum):
     REMOVE_USELESS_OP = 1
     TRANSFORM_GLOBAL_POOLING = 2

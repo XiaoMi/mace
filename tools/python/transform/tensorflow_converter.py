@@ -307,6 +307,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         }
         self._option = option
+        self._converter_info = dict()
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.HWIO)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NHWC)
@@ -364,7 +365,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             self.convert_ops(session)
 
         self.replace_input_output_tensor_name()
-        return self._mace_net_def
+        return self._mace_net_def, self._converter_info
 
     def replace_input_output_tensor_name(self):
         for op in self._mace_net_def.op:

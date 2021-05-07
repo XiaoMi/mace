@@ -192,6 +192,7 @@ class KerasConverter(base_converter.ConverterInterface):
         }
 
         self._option = option
+        self._converter_info = dict()
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.HWIO)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NHWC)
@@ -208,7 +209,7 @@ class KerasConverter(base_converter.ConverterInterface):
                 "Mace does not support keras op type %s yet" % type(op))
             self._op_converters[type(op)](op)
 
-        return self._mace_net_def
+        return self._mace_net_def, self._converter_info
 
     def convert_general_op(self, keras_op):
         op = self._mace_net_def.op.add()
