@@ -132,7 +132,9 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.TRANSFORM_KERAS_QUANTIZE_INFO:
                 self.transform_keras_quantize_info,
             TransformerRule.ADD_GENERRAL_INFO:
-                self.add_general_info
+                self.add_general_info,
+            TransformerRule.REMOVE_UNUSED_TENSOR:
+                self.remove_unused_tensor
         }
 
         self._option = option
@@ -2800,3 +2802,25 @@ class Transformer(base_converter.ConverterInterface):
         self._model.name = self._option.name
         self._model.infer_order = self._option.order
         return False
+
+    def tensor_is_used(self, tensor):
+        for output in self._model.output_info:
+            if tensor.name == output.name:
+                return True
+
+        for op in self._model.op:
+            for input in op.input:
+                if tensor.name == input:
+                    return True
+
+        return False
+
+    def remove_unused_tensor(self):
+        unused_tensors = []
+        for tensor in self._model.tensors:
+            if not self.tensor_is_used(tensor):
+                unused_tensors.append(tensor)
+        for ts in unused_tensors:
+            self._model.tensors.remove(ts)
+
+        return len(unused_tensors) != 0

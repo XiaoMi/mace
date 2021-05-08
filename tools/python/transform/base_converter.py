@@ -373,6 +373,7 @@ class TransformerRule(Enum):
     TRANSFORM_KERAS_QUANTIZE_INFO = 49
     ADD_GENERRAL_INFO = 50
     FOLD_DIV_BN = 51
+    REMOVE_UNUSED_TENSOR = 52
 
 
 class ConverterInterface(object):
@@ -676,7 +677,8 @@ class ConverterOption(object):
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
-                TransformerRule.ADD_GENERRAL_INFO
+                TransformerRule.ADD_GENERRAL_INFO,
+                TransformerRule.REMOVE_UNUSED_TENSOR
             ]
             if self._device == DeviceType.APU.value:
                 self._transformer_option = self._transformer_option + [
