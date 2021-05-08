@@ -452,7 +452,7 @@ class OnnxConverter(base_converter.ConverterInterface):
                 polish_available = False
                 self._data_format = DataFormat.NONE
                 self._isKaldi = True
-        if polish_available:
+        if polish_available and hasattr(onnx.utils, "polish_model"):
             onnx_model = onnx.utils.polish_model(onnx_model)
 
         self._onnx_model = onnx_model
@@ -1699,6 +1699,13 @@ class OnnxConverter(base_converter.ConverterInterface):
 
     def convert_resize(self, node):
         op = self.convert_general_op(node)
+
+        if len(op.input) >= 3:
+            roi_tensor = self._consts[op.input[1]]
+            mace_check(len(roi_tensor.dims) == 0 or roi_tensor.dims[0] == 0,
+                       "Unsupport resize roi")
+
+        del op.input[1:]
 
         scale_tensor = self._consts[node.inputs[2]]
         if scale_tensor.dims[0] == 0:
