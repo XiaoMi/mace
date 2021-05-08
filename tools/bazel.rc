@@ -101,6 +101,7 @@ build:symbol_hidden --copt=-fvisibility-inlines-hidden
 
 # Usage example: bazel build --config debug
 build:debug -c dbg
+build:debug --linkopt=-Wl,--export-dynamic
 
 # Address sanitizer
 build:asan --strip=never
