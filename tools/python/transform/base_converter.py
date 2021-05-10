@@ -467,6 +467,7 @@ class ConverterOption(object):
         self._cl_mem_type = "image"
         self._quantize_stat = False
         self._platform = None
+        self._enable_micro = False
 
     @property
     def name(self):
@@ -535,6 +536,10 @@ class ConverterOption(object):
     @property
     def platform(self):
         return self._platform
+
+    @property
+    def enable_micro(self):
+        return self._enable_micro
 
     @name.setter
     def name(self, name):
@@ -616,6 +621,10 @@ class ConverterOption(object):
     def platform(self, platform):
         self._platform = platform
 
+    @enable_micro.setter
+    def enable_micro(self, enable_micro):
+        self._enable_micro = enable_micro
+
     def disable_transpose_filters(self):
         if TransformerRule.TRANSPOSE_FILTERS in self._transformer_option:
             self._transformer_option.remove(TransformerRule.TRANSPOSE_FILTERS)
@@ -680,16 +689,19 @@ class ConverterOption(object):
                 TransformerRule.ADD_GENERRAL_INFO,
                 TransformerRule.REMOVE_UNUSED_TENSOR
             ]
+
             if self._device == DeviceType.APU.value:
                 self._transformer_option = self._transformer_option + [
                     TransformerRule.TRANSFORM_SINGLE_BN_TO_DEPTHWISE_CONV,
                     TransformerRule.TRANSFORM_MUL_MAX_TO_PRELU,
                     TransformerRule.TRANSFORM_EXPAND_DIMS_TO_RESHAPE,
                 ]
+
             if self.quantize_large_weights:
                 self._transformer_option = self._transformer_option + [
                     TransformerRule.QUANTIZE_LARGE_WEIGHTS
                 ]
+
             if self._quantize:
                 self._transformer_option = self._transformer_option + [
                     # need to be put after ADD_QUANTIZE_TENSOR_RANGE
@@ -699,11 +711,25 @@ class ConverterOption(object):
                     TransformerRule.SORT_BY_EXECUTION,
                     TransformerRule.CHECK_QUANTIZE_INFO,
                 ]
+                if TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC in \
+                        self._transformer_option:
+                    self._transformer_option.remove(
+                        TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC)
 
                 if self._platform == Platform.KERAS:
                     self._transformer_option = [
                         TransformerRule.TRANSFORM_KERAS_QUANTIZE_INFO
                     ] + self._transformer_option
+
+            if self._enable_micro:
+                if TransformerRule.TRANSFORM_MATMUL_TO_FC in \
+                        self._transformer_option:
+                    self._transformer_option.remove(
+                        TransformerRule.TRANSFORM_MATMUL_TO_FC)
+                if TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC in \
+                        self._transformer_option:
+                    self._transformer_option.remove(
+                        TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC)
 
 
 class ConverterUtil(object):

@@ -84,7 +84,7 @@ def convert(conf, output, enable_micro=False):
 
         model_params = []
         for net_name, net_conf in net_confs.items():
-            net_def_with_Data = convert_net(net_name, net_conf)
+            net_def_with_Data = convert_net(net_name, net_conf, enable_micro)
             try:
                 visualizer = visualize_model.ModelVisualizer(
                     net_name, net_def_with_Data, model_output)
@@ -112,7 +112,7 @@ def convert(conf, output, enable_micro=False):
             f.write(str(model))
 
 
-def convert_net(net_name, conf):
+def convert_net(net_name, conf, enable_micro):
     option = cvt.ConverterOption()
     option.name = net_name
     option.order = conf.get(ModelKeys.order, 0)
@@ -148,6 +148,7 @@ def convert_net(net_name, conf):
         # used by `base_converter`
         option.device = option.device.value
 
+    option.enable_micro = enable_micro
     option.data_type = conf[ModelKeys.data_type]
 
     for i in range(len(conf[ModelKeys.input_tensors])):

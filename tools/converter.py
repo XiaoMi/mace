@@ -918,11 +918,9 @@ def convert_func(flags):
     for model_name, model_config in configs[YAMLKeyword.models].items():
         if flags.enable_micro:
             data_type = model_config.get(YAMLKeyword.data_type, "")
-            mace_check(data_type == FPDataType.fp32_fp32.value or
-                       data_type == FPDataType.bf16_fp32.value,
-                       ModuleName.YAML_CONFIG,
-                       "You should specify fp32_fp32 or bf16_fp32 data type "
-                       "to convert micro model.")
+            if data_type != FPDataType.bf16_fp32.value:
+                data_type = FPDataType.fp32_fp32.value
+
         model_codegen_dir = "%s/%s" % (MODEL_CODEGEN_DIR, model_name)
         encrypt.encrypt(model_name,
                         "%s/model/%s.pb" % (model_codegen_dir, model_name),
