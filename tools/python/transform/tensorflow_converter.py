@@ -382,8 +382,9 @@ class TensorflowConverter(base_converter.ConverterInterface):
                         op.output[i] = op_name
 
     def add_shape_info(self, tf_graph_def):
-        for node in tf_graph_def.node:
-            for input_node in self._option.input_nodes.values():
+        for input_node in self._option.input_nodes.values():
+            matched = False
+            for node in tf_graph_def.node:
                 if node.name == input_node.name \
                         or node.name + ':0' == input_node.name:
                     input_shape = input_node.shape
@@ -399,6 +400,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
                     ])
                     self._placeholders[node.name + ':0'] = \
                         np.zeros(shape=input_shape, dtype=float)
+                    matched = True
+                    break
+
+            mace_check(matched, "%s is invalid input" % input_node.name)
 
     @staticmethod
     def get_scope(tensor_name):
