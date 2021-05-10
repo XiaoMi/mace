@@ -1033,9 +1033,6 @@ class Transformer(base_converter.ConverterInterface):
         """Transform global conv to fc should be placed after transposing
         input/output and filter"""
 
-        if self._option.quantize or self._option.platform == Platform.KERAS:
-            return
-
         net = self._model
         for op in net.op:
             if op.type == MaceOp.Conv2D.name \
@@ -1352,9 +1349,6 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def transform_matmul_to_fc(self):
-        if self._option.platform == Platform.KERAS:
-            return
-
         net = self._model
         filter_format = self.filter_format()
         for op in net.op:
