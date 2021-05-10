@@ -54,10 +54,12 @@ NeuronDelegateKernel::NeuronDelegateKernel(const NeuronApi* neuronapi,
       quantize_util_int16_(&runtime->thread_pool()) {
 #ifdef MACE_ENABLE_RPCMEM
   // Get the rpcmem
-  MACE_CHECK(runtime->GetRuntimeType() == RT_APU &&
-      runtime->GetRuntimeSubType() == RT_SUB_ION);
-  auto *apu_ion_runtime = static_cast<ApuIonRuntime *>(runtime);
-  rpcmem_ = apu_ion_runtime->GetRpcmem();
+  if (runtime->GetRuntimeType() == RT_APU &&
+      runtime->GetRuntimeSubType() == RT_SUB_ION) {
+    auto apu_ion_runtime = static_cast<ApuIonRuntime *>(runtime);
+    rpcmem_ = apu_ion_runtime->GetRpcmem();
+    apu_ion_runtime_ = apu_ion_runtime;
+  }
 #endif
 }
 
@@ -162,22 +164,11 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
   return true;
 }
 
-
-bool NeuronDelegateKernel::Eval(
+std::vector<NeuronMemory*> NeuronDelegateKernel::PrepareInputTensors(
     const std::map<std::string, Tensor *> &input_tensors,
-    std::map<std::string, Tensor *> *output_tensors) {
-  NeuronExecution* execution = nullptr;
-  neuronapi_->NeuronExecution_create(nn_compilation_.get(), &execution);
-  std::unique_ptr<NeuronExecution, NNFreeExecution> execution_unique_ptr(
-      execution, NNFreeExecution(neuronapi_));
-
-  MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
-  MACE_ASSERT(output_tensors->size() == output_infos_.size(),
-              "Wrong outputs num");
-
+    NeuronExecution* execution) {
+  std::vector<NeuronMemory*> nn_input_memory_buffers;
   size_t input_offset = 0;
-  // prepare input
-  std::vector<NeuronMemory*> nn_input_memory_buffers_;
   for (int i = 0 ; i < static_cast<int>(input_tensors.size()) ; i++) {
     Tensor* tensor = input_tensors.at(input_infos_[i].name);
     // check size
@@ -191,48 +182,84 @@ bool NeuronDelegateKernel::Eval(
     // Get the input memory fd
     int input_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
-    NeuronMemory* nn_memory_handle_ = nullptr;
-    if (input_mem_fd > 0 && tensor -> dtype() == input_infos_[i].data_type) {
+    if (input_mem_fd > 0) {
+      if (tensor->dtype() == input_infos_[i].data_type) {
+        // Do Nothing
+      } else if (tensor->dtype() == DT_FLOAT &&
+          input_infos_[i].data_type == DT_INT16) {
+        quantize_util_int16_.QuantizeWithScaleAndZeropoint(
+            (const float*)tensor->raw_data(),
+            element_size,
+            input_infos_[i].scale,
+            input_infos_[i].zero_point,
+            reinterpret_cast<int16_t*>(input_infos_[i].buf));
+        MemInfo mem_info(CPU_BUFFER, DT_INT16, {element_size});
+        auto buffer = apu_ion_runtime_->ObtainBuffer(mem_info, RENT_SCRATCH);
+        std::memcpy(buffer->mutable_data<void>(), input_infos_[i].buf,
+                    byte_size);
+        input_mem_fd = rpcmem_->ToFd(buffer->mutable_data<void>());
+      } else if (tensor->dtype() == DT_FLOAT &&
+          input_infos_[i].data_type == DT_UINT8) {
+        quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
+            (const float*)tensor->raw_data(),
+            element_size,
+            input_infos_[i].scale,
+            input_infos_[i].zero_point,
+            input_infos_[i].buf);
+        MemInfo mem_info(CPU_BUFFER, DT_UINT8, {element_size});
+        auto buffer = apu_ion_runtime_->ObtainBuffer(mem_info, RENT_SCRATCH);
+        std::memcpy(buffer->mutable_data<void>(), input_infos_[i].buf,
+                    byte_size);
+        input_mem_fd = rpcmem_->ToFd(buffer->mutable_data<void>());
+      } else {
+        LOG(FATAL) << "Mismatch between input tensor and model input data type";
+      }
+
+      NeuronMemory* nn_memory_handle = nullptr;
       neuronapi_->NeuronMemory_createFromFd(byte_size, PROT_READ | PROT_WRITE,
                                             input_mem_fd, 0,
-                                            &nn_memory_handle_);
-      nn_input_memory_buffers_.push_back(nn_memory_handle_);
-      neuronapi_->NeuronExecution_setInputFromMemory(execution,
-          i, nullptr, nn_memory_handle_, 0, byte_size);
-    } else if (tensor -> dtype() == input_infos_[i].data_type) {
-      std::memcpy(input_infos_[i].buf,
+                                            &nn_memory_handle);
+      nn_input_memory_buffers.push_back(nn_memory_handle);
+      neuronapi_->NeuronExecution_setInputFromMemory(
+          execution, i, nullptr, nn_memory_handle, 0, byte_size);
+    } else {
+      if (tensor->dtype() == input_infos_[i].data_type) {
+        std::memcpy(input_infos_[i].buf,
                     (const float*)tensor->raw_data(),
                     byte_size);
+      } else if (tensor->dtype() == DT_FLOAT &&
+          input_infos_[i].data_type == DT_INT16) {
+        quantize_util_int16_.QuantizeWithScaleAndZeropoint(
+            (const float*)tensor->raw_data(),
+            element_size,
+            input_infos_[i].scale,
+            input_infos_[i].zero_point,
+            reinterpret_cast<int16_t*>(input_infos_[i].buf));
+      } else if (tensor->dtype() == DT_FLOAT &&
+          input_infos_[i].data_type == DT_UINT8) {
+        quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
+            (const float*)tensor->raw_data(),
+            element_size,
+            input_infos_[i].scale,
+            input_infos_[i].zero_point,
+            input_infos_[i].buf);
+      } else {
+        LOG(FATAL) << "Mismatch between input tensor and model input data type";
+      }
       // Set the input tensor buffers.
-      neuronapi_->NeuronExecution_setInput(execution,
-          i, nullptr, input_infos_[i].buf, byte_size);
-    } else if (tensor -> dtype() == DT_FLOAT &&
-               input_infos_[i].data_type == DT_INT16) {
-      quantize_util_int16_.QuantizeWithScaleAndZeropoint(
-          (const float*)tensor->raw_data(),
-          element_size,
-          input_infos_[i].scale,
-          input_infos_[i].zero_point,
-          reinterpret_cast<int16_t*>(input_infos_[i].buf));
-      neuronapi_->NeuronExecution_setInput(execution,
-          i, nullptr, input_infos_[i].buf, byte_size);
-    } else if (tensor -> dtype() == DT_FLOAT &&
-               input_infos_[i].data_type == DT_UINT8) {
-      quantize_util_uint8_.QuantizeWithScaleAndZeropoint(
-          (const float*)tensor->raw_data(),
-          element_size,
-          input_infos_[i].scale,
-          input_infos_[i].zero_point,
-          input_infos_[i].buf);
-      neuronapi_->NeuronExecution_setInput(execution,
-          i, nullptr, input_infos_[i].buf, byte_size);
-    } else {
-      LOG(FATAL) << "A mismatch between input tensor and model input data type";
+      neuronapi_->NeuronExecution_setInput(execution, i, nullptr,
+                                           input_infos_[i].buf, byte_size);
     }
   }
-  // prepare output
+
+  return nn_input_memory_buffers;
+}
+
+std::vector<NeuronMemory*>  NeuronDelegateKernel::PrepareOutputTensors(
+    std::map<std::string, Tensor *> *output_tensors,
+    NeuronExecution* execution) {
   size_t output_offset = 0;
-  std::vector<NeuronMemory*> nn_output_memory_buffers_;
+  std::vector<NeuronMemory*> nn_output_memory_buffers;
   for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
     Tensor* tensor = output_tensors->at(output_infos_[i].name);
     // prepare out buffer
@@ -245,22 +272,25 @@ bool NeuronDelegateKernel::Eval(
     int output_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
     NeuronMemory* nn_memory_handle_ = nullptr;
-    if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
+    if (output_mem_fd > 0) {
       neuronapi_->NeuronMemory_createFromFd(byte_size, PROT_READ | PROT_WRITE,
                                             output_mem_fd, 0,
                                             &nn_memory_handle_);
-      nn_output_memory_buffers_.push_back(nn_memory_handle_);
-      neuronapi_->NeuronExecution_setOutputFromMemory(execution,
-          i, nullptr, nn_memory_handle_, 0, byte_size);
+      nn_output_memory_buffers.push_back(nn_memory_handle_);
+      neuronapi_->NeuronExecution_setOutputFromMemory(
+          execution, i, nullptr, nn_memory_handle_, 0, byte_size);
     } else {
       // Set the output tensor buffers.
-      neuronapi_->NeuronExecution_setOutput(execution, i,
-          nullptr, output_infos_[i].buf, byte_size);
+      neuronapi_->NeuronExecution_setOutput(execution, i, nullptr,
+                                            output_infos_[i].buf, byte_size);
     }
   }
-  // running computation
-  neuronapi_->NeuronExecution_compute(execution);
 
+  return nn_output_memory_buffers;
+}
+
+void NeuronDelegateKernel::TransposeOutputTensors(
+    std::map<std::string, Tensor *> *output_tensors) {
   for (int i = 0 ; i < static_cast<int>(output_tensors->size()) ; i++) {
     Tensor* tensor = output_tensors->at(output_infos_[i].name);
     int element_size = output_infos_[i].size;
@@ -268,39 +298,91 @@ bool NeuronDelegateKernel::Eval(
     MACE_ASSERT(element_size == static_cast<int>(tensor->size()),
                 "Wrong output size");
     int byte_size = element_size * byte_per_element;
+
     int output_mem_fd =
         (rpcmem_ == nullptr) ? -1 : rpcmem_->ToFd(tensor->raw_mutable_data());
-    if (output_mem_fd > 0 && tensor -> dtype() == output_infos_[i].data_type) {
-    } else if (tensor -> dtype() == output_infos_[i].data_type) {
-      std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
-                  output_infos_[i].buf, byte_size);
-    } else if (tensor -> dtype() == DT_FLOAT &&
-               output_infos_[i].data_type == DT_INT16) {
-      quantize_util_int16_.Dequantize(
-          reinterpret_cast<int16_t*>(output_infos_[i].buf),
-          element_size,
-          output_infos_[i].scale,
-          output_infos_[i].zero_point,
-          reinterpret_cast<float*>(tensor->raw_mutable_data()));
-    } else if (tensor -> dtype() == DT_FLOAT &&
-               output_infos_[i].data_type == DT_UINT8) {
-      quantize_util_uint8_.Dequantize(
-          output_infos_[i].buf,
-          element_size,
-          output_infos_[i].scale,
-          output_infos_[i].zero_point,
-          reinterpret_cast<float*>(tensor->raw_mutable_data()));
+    if (output_mem_fd > 0) {
+      if (tensor->dtype() == output_infos_[i].data_type) {
+        // Do nothing
+      } else if (tensor->dtype() == DT_FLOAT &&
+          output_infos_[i].data_type == DT_INT16) {
+        std::memcpy(output_infos_[i].buf, tensor->raw_mutable_data(),
+                    byte_size);
+        quantize_util_int16_.Dequantize(
+            reinterpret_cast<int16_t*>(output_infos_[i].buf),
+            element_size,
+            output_infos_[i].scale,
+            output_infos_[i].zero_point,
+            reinterpret_cast<float*>(tensor->raw_mutable_data()));
+      } else if (tensor->dtype() == DT_FLOAT &&
+          output_infos_[i].data_type == DT_UINT8) {
+        std::memcpy(output_infos_[i].buf, tensor->raw_mutable_data(),
+                    byte_size);
+        quantize_util_uint8_.Dequantize(
+            output_infos_[i].buf,
+            element_size,
+            output_infos_[i].scale,
+            output_infos_[i].zero_point,
+            reinterpret_cast<float*>(tensor->raw_mutable_data()));
+      } else {
+        LOG(FATAL) << "Mismatch between output tensor"
+                      " and model output data type";
+      }
     } else {
-      LOG(FATAL) << "A mismatch between input tensor and model input data type";
+      if (tensor->dtype() == output_infos_[i].data_type) {
+        std::memcpy(reinterpret_cast<float*>(tensor->raw_mutable_data()),
+                    output_infos_[i].buf, byte_size);
+      } else if (tensor->dtype() == DT_FLOAT &&
+          output_infos_[i].data_type == DT_INT16) {
+        quantize_util_int16_.Dequantize(
+            reinterpret_cast<int16_t*>(output_infos_[i].buf),
+            element_size,
+            output_infos_[i].scale,
+            output_infos_[i].zero_point,
+            reinterpret_cast<float*>(tensor->raw_mutable_data()));
+      } else if (tensor->dtype() == DT_FLOAT &&
+          output_infos_[i].data_type == DT_UINT8) {
+        quantize_util_uint8_.Dequantize(
+            output_infos_[i].buf,
+            element_size,
+            output_infos_[i].scale,
+            output_infos_[i].zero_point,
+            reinterpret_cast<float*>(tensor->raw_mutable_data()));
+      } else {
+        LOG(FATAL) << "Mismatch between output tensor"
+                      " and model output data type";
+      }
     }
   }
+}
 
-  for (int i = 0; i < static_cast<int>(nn_input_memory_buffers_.size()); i++) {
-    neuronapi_->NeuronMemory_free(nn_input_memory_buffers_[i]);
+
+bool NeuronDelegateKernel::Eval(
+    const std::map<std::string, Tensor *> &input_tensors,
+    std::map<std::string, Tensor *> *output_tensors) {
+  NeuronExecution* execution = nullptr;
+  neuronapi_->NeuronExecution_create(nn_compilation_.get(), &execution);
+  std::unique_ptr<NeuronExecution, NNFreeExecution> execution_unique_ptr(
+      execution, NNFreeExecution(neuronapi_));
+
+  MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
+  auto nn_input_memory_buffers = PrepareInputTensors(input_tensors, execution);
+
+  MACE_ASSERT(output_tensors->size() == output_infos_.size(),
+              "Wrong outputs num");
+  auto nn_output_memory_buffers = PrepareOutputTensors(output_tensors,
+                                                       execution);
+
+  neuronapi_->NeuronExecution_compute(execution);
+  TransposeOutputTensors(output_tensors);
+
+  for (int i = 0; i < static_cast<int>(nn_input_memory_buffers.size()); i++) {
+    neuronapi_->NeuronMemory_free(nn_input_memory_buffers[i]);
   }
-  for (int i = 0; i < static_cast<int>(nn_output_memory_buffers_.size()); i++) {
-    neuronapi_->NeuronMemory_free(nn_output_memory_buffers_[i]);
+  for (int i = 0; i < static_cast<int>(nn_output_memory_buffers.size()); i++) {
+    neuronapi_->NeuronMemory_free(nn_output_memory_buffers[i]);
   }
+
   return true;
 }
 

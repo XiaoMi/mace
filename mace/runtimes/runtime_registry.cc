@@ -94,7 +94,7 @@ RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
 #ifdef MACE_ENABLE_RPCMEM
   if (runtime_context->context_type == RCT_ION) {
     auto ion_rct = static_cast<IonRuntimeContext *>(runtime_context);
-    if (ion_rct->rpcmem->IsRpcmemSupported()) {
+    if (ion_rct->rpcmem && ion_rct->rpcmem->IsRpcmemSupported()) {
 #ifdef MACE_ENABLE_MTK_APU
       if (runtime_type == RuntimeType::RT_APU) {
         sub_type = RuntimeSubType::RT_SUB_ION;
