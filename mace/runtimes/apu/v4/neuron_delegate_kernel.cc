@@ -129,7 +129,11 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
   }
   NeuronCompilation* compilation = nullptr;
   neuronapi_->NeuronCompilation_create(nn_model_.get(), &compilation);
-  neuronapi_->NeuronCompilation_setSWDilatedConv(compilation, true);
+  if (neuronapi_->NeuronCompilation_setSWDilatedConv != nullptr) {
+    neuronapi_->NeuronCompilation_setSWDilatedConv(compilation, true);
+  } else {
+    LOG(INFO) << "NeuronCompilation_setSWDilatedConv is not supported";
+  }
   const int compilation_result =
       neuronapi_->NeuronCompilation_finish(compilation);
   if (compilation_result != NEURON_NO_ERROR) {
