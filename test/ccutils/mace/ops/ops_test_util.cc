@@ -346,10 +346,12 @@ OpsTestNet::~OpsTestNet() {
     auto *cpu_runtime = OpTestContext::Get()->GetRuntime(RT_CPU);
     cpu_runtime->ReleaseAllBuffer(RENT_SHARE, true);
     cpu_runtime->ReleaseAllBuffer(RENT_PRIVATE, true);
+    cpu_runtime->ReleaseAllBuffer(RENT_SCRATCH, true);
 #ifdef MACE_ENABLE_OPENCL
     auto *target_runtime = OpTestContext::Get()->GetRuntime(RT_OPENCL);
     target_runtime->ReleaseAllBuffer(RENT_SHARE, true);
     target_runtime->ReleaseAllBuffer(RENT_PRIVATE, true);
+    target_runtime->ReleaseAllBuffer(RENT_SCRATCH, true);
 #endif  // MACE_ENABLE_OPENCL
   }
 }

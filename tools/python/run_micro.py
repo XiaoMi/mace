@@ -40,13 +40,14 @@ def join_2d_array(xs):
     return ":".join([",".join([str(y) for y in x]) for x in xs])
 
 
-def build_engine(model_name, data_type):
+def build_engine(model_name, data_type, debug_mode=False):
     mace_check(flags.model_name is not None and len(model_name) > 0,
                "you should specify model name for build.")
+    debug_option = "Debug" if debug_mode else "Release"
     command = ("micro/tools/cmake/cmake-build-host.sh"
                " -DMICRO_MODEL_NAME=%s -DMACE_MICRO_ENABLE_CMSIS=ON"
                " -DMACE_MICRO_ENABLE_TOOLS=ON"
-               " -DCMAKE_BUILD_TYPE=Release" % model_name)
+               " -DCMAKE_BUILD_TYPE=%s" % (model_name, debug_option))
     if data_type == mace_pb2.DT_BFLOAT16:
         command += " -DMACE_MICRO_ENABLE_BFLOAT16=ON"
         print("The current engine's data type is bfloat16.")
@@ -295,6 +296,10 @@ def parse_args():
         type=int,
         default="0",
         help="vlog level")
+    parser.add_argument(
+        '--debug_mode',
+        action="store_true",
+        help="debug mode")
 
     return parser.parse_known_args()
 
@@ -305,7 +310,8 @@ if __name__ == "__main__":
     if flags.build or flags.validate:
         micro_conf = config_parser.normalize_model_config(
             conf[ModelKeys.models][flags.model_name])
-        build_engine(flags.model_name, micro_conf[ModelKeys.data_type])
+        build_engine(flags.model_name, micro_conf[ModelKeys.data_type],
+                     flags.debug_mode)
     if flags.validate and flags.layers != "-1":
         run_layers_validate(flags, args, conf)
     else:

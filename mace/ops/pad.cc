@@ -212,8 +212,6 @@ class PadOp<RuntimeType::RT_CPU, uint8_t> : public Operation {
                                          input_shape[3] + this->paddings_[6]
                                              + this->paddings_[7]}));
 
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
     const auto input_ptr = input->data<uint8_t>();
     auto output_ptr = output->mutable_data<uint8_t>();
 

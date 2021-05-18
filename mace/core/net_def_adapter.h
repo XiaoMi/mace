@@ -128,8 +128,8 @@ class NetDefAdapter {
   MaceStatus AddTranposeOpForDataFormat(
       TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
       std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
-      RuntimeType runtime_type, MemoryType target_mem_type, OperatorDef *op_def,
-      const int i, const DataFormat dst_df, const std::vector<int> &dst_dims);
+      OperatorDef *op_def, const int i, const DataFormat dst_df,
+      const std::vector<int> &dst_dims);
 
   std::string DebugString(const NetDef *net_def);
 

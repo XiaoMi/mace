@@ -1,5 +1,6 @@
 #! /bin/bash
 
+set +x
 CONF_FILE=micro/pretrained_models/har-cnn/har-cnn.yml
 python tools/python/convert.py --config=${CONF_FILE} --enable_micro || exit -1
 python tools/python/run_micro.py --config $CONF_FILE --build --validate --model_name har_cnn || exit -1
