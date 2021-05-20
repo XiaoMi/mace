@@ -155,13 +155,10 @@ quantization_tests:
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
         DEVICE_CONF_FILE=generic-mobile-devices/devices.yml
       fi
-    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - >
-      for CONF_FILE in mace-models/mobilenet-v1/mobilenet-v1-quantize-friendly.yml mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-for-check-only.yml mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-dsp.yml;
-      do
+      CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-dsp.yml;
       python tools/converter.py convert --config=${CONF_FILE} --target_socs=$TARGET_SOCS --model_graph_format=file --model_data_format=file || exit 1;
-      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-      done
+      python tools/converter.py run --config=${CONF_FILE} --target_socs=$TARGET_SOCS --device_yml=${DEVICE_CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file --use_system_libhexagon_nn || exit 1;
     - >
       CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain-hta.yml;
       GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone --single-branch --branch hta git@v9.git.n.xiaomi.com:deep-computing/mace.git mace_hta --depth 1;
