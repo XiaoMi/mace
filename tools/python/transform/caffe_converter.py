@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import math
 
 import numpy as np
@@ -146,7 +145,6 @@ class CaffeNet(object):
             op = self._ops[weight.name]
             op.blobs = list(weight.blobs)
 
-
 class CaffeConverter(base_converter.ConverterInterface):
     """A class for convert caffe model to mace model."""
 
@@ -206,6 +204,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'ResizeNearest': self.convert_resize_nearest,
             'NonlocalReshape': self.convert_nonlocal_reshape,
             'MatMul': self.convert_matmul,
+            'DetectionOutput': self.convert_detection_output,
         }
         self._option = option
         self._converter_info = dict()
@@ -634,6 +633,41 @@ class CaffeConverter(base_converter.ConverterInterface):
             axis_arg.i = param.axis
         elif param.HasField('concat_dim'):
             axis_arg.i = param.concat_dim
+
+    def convert_detection_output(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.detection_output_param
+        op.type = MaceOp.DetectionOutput.name
+
+        num_classes = op.arg.add()
+        num_classes.name = MaceKeyword.mace_num_classes
+        num_classes.i = param.num_classes
+
+        if not param.share_location:
+            raise Exception('detection output only supports share location')
+
+        if param.background_label_id != 0:
+            raise Exception('detection output only supports background_label_id == 0')
+
+        nms_threshold = op.arg.add()
+        nms_threshold.f = param.nms_param.nms_threshold
+        nms_threshold.name = MaceKeyword.mace_nms_threshold
+
+        top_k = op.arg.add()
+        top_k.i = param.nms_param.top_k
+        top_k.name = MaceKeyword.mace_nms_top_k
+
+        if param.code_type != 2:
+            raise Exception('detection output only supports code_type CENTER_SIZE')
+
+        keep_top_k = op.arg.add()
+        keep_top_k.name = MaceKeyword.mace_keep_top_k
+        keep_top_k.i = param.keep_top_k
+
+        confidence_threshold = op.arg.add()
+        confidence_threshold.name = MaceKeyword.mace_confidence_threshold
+        confidence_threshold.f = param.confidence_threshold
+
 
     def convert_slice(self, caffe_op):
         op = self.convert_general_op(caffe_op)

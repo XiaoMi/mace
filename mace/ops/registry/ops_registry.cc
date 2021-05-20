@@ -86,6 +86,7 @@ extern void RegisterTile(OpRegistry *op_registry);
 extern void RegisterTranspose(OpRegistry *op_registry);
 extern void RegisterUnstack(OpRegistry *op_registry);
 extern void RegisterUnsqueeze(OpRegistry *op_registry);
+extern void RegisterDetectionOutput(OpRegistry *op_registry);
 
 #ifdef MACE_ENABLE_QUANTIZE
 extern void RegisterDequantize(OpRegistry *op_registry);
@@ -168,6 +169,7 @@ void RegisterAllOps(OpRegistry *registry) {
   ops::RegisterTranspose(registry);
   ops::RegisterUnstack(registry);
   ops::RegisterUnsqueeze(registry);
+  ops::RegisterDetectionOutput(registry);
 
 #ifdef MACE_ENABLE_QUANTIZE
   ops::RegisterDequantize(registry);

@@ -11,7 +11,12 @@ set(LIBMACE_SRCS
 )
 
 add_library(mace SHARED ${LIBMACE_SRCS})
-target_link_libraries(mace ops flows runtimes rpcmems generated_version)
+target_link_libraries(mace ops flows runtimes generated_version)
+
+if(MACE_ENABLE_RPCMEM)
+  target_link_libraries(mace rpcmems)
+endif()
+
 if(NOT APPLE)
   set_target_properties(mace PROPERTIES LINK_FLAGS
     "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/mace_version_script.lds")

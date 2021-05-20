@@ -60,6 +60,7 @@ class ShapeInference(object):
                 self.infer_shape_nearest_neighbor,
             MaceOp.ArgMax.name: self.infer_shape_argmax,
             MaceOp.MatMul.name: self.infer_shape_matmul,
+            MaceOp.DetectionOutput.name: self.infer_shape_detection_output
         }
 
         self._net = net
@@ -210,7 +211,14 @@ class ShapeInference(object):
             input_shape = list(self._output_shape_cache[input_node])
             output_shape[axis] = output_shape[axis] + input_shape[axis]
         self.add_output_shape(op, [output_shape])
-
+    def infer_shape_detection_output(self,op):
+        keep_top = 0
+        for arg in op.arg:
+            if arg.name == MaceKeyword.mace_keep_top_k:
+                keep_top = arg.i
+                break
+        outshape = [1,1,keep_top,7]
+        self.add_output_shape(op,[outshape])
     def infer_shape_slice(self, op):
         output_shape = self._output_shape_cache[op.input[0]]
         axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
@@ -247,7 +255,7 @@ class ShapeInference(object):
     def infer_shape_permute(self, op):
         output_shape = list(self._output_shape_cache[op.input[0]])
         dims = ConverterUtil.get_arg(op, MaceKeyword.mace_dims_str).ints
-        for i in xrange(len(dims)):
+        for i in range(len(dims)):
             output_shape[i] = self._output_shape_cache[op.input[0]][dims[i]]
         self.add_output_shape(op, [output_shape])
 
