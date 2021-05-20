@@ -160,7 +160,7 @@ OnnxSupportedOps = [
     'ReduceMean',
     'ReduceMin',
     'ReduceProd',
-    # 'ReduceSum',
+    'ReduceSum',
     # 'ReduceSumSquare',
     'Relu',
     'ReplaceIndex',
@@ -325,6 +325,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         OnnxOpType.ReduceMean.name: ReduceType.MEAN,
         OnnxOpType.ReduceMin.name: ReduceType.MIN,
         OnnxOpType.ReduceProd.name: ReduceType.PROD,
+        OnnxOpType.ReduceSum.name: ReduceType.SUM,
     }
 
     activation_type = {
@@ -397,6 +398,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.ReduceMean.name: self.convert_reduce,
             OnnxOpType.ReduceMin.name: self.convert_reduce,
             OnnxOpType.ReduceProd.name: self.convert_reduce,
+            OnnxOpType.ReduceSum.name: self.convert_reduce,
             OnnxOpType.ReplaceIndex.name: self.convert_replaceindex,
             OnnxOpType.Round.name: self.convert_replaceindex,
             OnnxOpType.Scale.name: self.convert_eltwise,
