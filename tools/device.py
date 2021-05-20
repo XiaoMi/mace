@@ -23,6 +23,7 @@ import common
 from common import *
 from dana.dana_cli import DanaTrend
 from dana.dana_util import DanaUtil
+from six.moves import urllib
 
 sys.path.insert(0, "tools/python")  # noqa
 from utils import config_parser
@@ -31,6 +32,7 @@ import sh_commands
 
 sys.path.insert(0, "tools/python")  # noqa
 import apu_utils
+from hexagon_soc_defines import get_soc_skel_info
 
 
 class DeviceWrapper:
@@ -215,6 +217,7 @@ class DeviceWrapper:
                    quantize_stat=False,
                    layers_validate_file="",
                    benchmark=False,
+                   use_system_libhexagon_nn=False,
                    ):
         six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
                    "out_of_range_check=%s, num_threads=%s, "
@@ -315,6 +318,19 @@ class DeviceWrapper:
                     "third_party/nnlib/%s/libhexagon_controller.so" % abi,
                     self.data_dir)
 
+            cmd = [
+                "LD_LIBRARY_PATH=%s" % self.data_dir,
+                "MACE_TUNING=%s" % int(tuning),
+                "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
+                "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
+                "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % self.data_dir,
+                "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
+                "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
+                "MACE_OPENCL_QUEUE_WINDOW_SIZE=%s" % opencl_queue_window_size,
+                "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
+                "MACE_LOG_TENSOR_RANGE=%d" % (1 if quantize_stat else 0),
+            ]
+
             apu_storage_cpy = False
             if device_type == common.DeviceType.APU:
                 if apu_cache_policy == 1:
@@ -331,6 +347,36 @@ class DeviceWrapper:
                 for so_path in self.get_apu_so_paths():
                     self.push(so_path, self.data_dir)
 
+            if (device_type == common.DeviceType.HEXAGON and
+                    not use_system_libhexagon_nn):
+                cmd.append("ADSP_LIBRARY_PATH=%s" % self.data_dir)
+                ret = sh.adb(
+                    "-s", self.address, "shell",
+                    "if [ -f '/sys/devices/soc0/soc_id' ];"
+                    "then cat /sys/devices/soc0/soc_id;"
+                    "elif [ -f '/sys/devices/system/soc/soc0/id' ];"
+                    "then cat /sys/devices/system/soc/soc0/id;"
+                    "else echo -1; fi")
+                soc_id = ret.stdout
+                if len(soc_id) > 1 and soc_id[:-1].isdigit():
+                    soc_id = int(soc_id[:-1])
+                else:
+                    mace_check(
+                        False, ModuleName.RUN,
+                        "The device do not have a valid hexagon dsp")
+                skel_info = get_soc_skel_info(soc_id)
+                hexagon_skel = skel_info.skel.value
+                print("The hexagon dsp skel : " + str(hexagon_skel))
+                libhexgon_nn_skel_shared_lib = os.path.join(
+                    "/tmp",
+                    "libhexagon_nn_skel.so")
+                ret = urllib.request.urlretrieve(
+                    "https://cnbj1-fds.api.xiaomi.net/mace/third-party/nnlib/"
+                    "%s/libhexagon_nn_skel.so" % hexagon_skel.lower(),
+                    libhexgon_nn_skel_shared_lib)
+                self.push(libhexgon_nn_skel_shared_lib, self.data_dir)
+                sh.rm(libhexgon_nn_skel_shared_lib)
+
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:
                 mace_model_phone_path = "%s/%s.pb" % (self.data_dir,
@@ -346,18 +392,7 @@ class DeviceWrapper:
 
             stdout_buff = []
             process_output = sh_commands.make_output_processor(stdout_buff)
-            cmd = [
-                "LD_LIBRARY_PATH=%s" % self.data_dir,
-                "MACE_TUNING=%s" % int(tuning),
-                "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
-                "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-                "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % self.data_dir,
-                "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
-                "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
-                "MACE_OPENCL_QUEUE_WINDOW_SIZE=%s" % opencl_queue_window_size,
-                "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-                "MACE_LOG_TENSOR_RANGE=%d" % (1 if quantize_stat else 0),
-            ]
+
             if self.system == SystemType.android and address_sanitizer:
                 cmd.extend([
                     "LD_PRELOAD=%s/%s" %
@@ -502,6 +537,7 @@ class DeviceWrapper:
             opencl_parameter_file='',
             libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
             link_dynamic=link_dynamic,
+            use_system_libhexagon_nn=flags.use_system_libhexagon_nn
         )
 
         # pull opencl library
@@ -651,6 +687,7 @@ class DeviceWrapper:
             layers_validate_file=output_config[
                 YAMLKeyword.model_file_path],
             benchmark=flags.benchmark,
+            use_system_libhexagon_nn=flags.use_system_libhexagon_nn
         )
 
     def get_output_map(self,
