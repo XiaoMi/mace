@@ -1238,7 +1238,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         scale_name = node.name + 'scale'
         offset_name = node.name + 'offset'
         scale_value = ((1.0 / np.sqrt(
-                    var_value + epsilon_value)) * gamma_value)
+            var_value + epsilon_value)) * gamma_value)
         offset_value = (-mean_value * scale_value) + beta_value
         self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
                         scale_value)
@@ -1403,6 +1403,12 @@ class OnnxConverter(base_converter.ConverterInterface):
             constant_value_arg = op.arg.add()
             constant_value_arg.name = MaceKeyword.mace_constant_value_str
             constant_value_arg.f = node.attrs['value']
+        if len(op.input) == 2:
+            constant_value_arg = op.arg.add()
+            constant_value_arg.name = MaceKeyword.mace_paddings_str
+            paddings_value = self._consts[node.inputs[1]].int32_data
+            constant_value_arg.ints.extend(paddings_value)
+            del op.input[1]
 
     def convert_pad_context(self, node):
         op = self.convert_general_op(node)
