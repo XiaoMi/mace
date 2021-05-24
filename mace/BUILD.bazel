@@ -67,6 +67,14 @@ config_setting(
 )
 
 config_setting(
+    name = "cpu_enabled",
+    define_values = {
+        "cpu_enabled": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "neon_enabled",
     define_values = {
         "neon": "true",

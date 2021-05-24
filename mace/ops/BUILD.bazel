@@ -16,6 +16,7 @@ load(
     "if_neon_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
+    "if_cpu_enabled",
 )
 
 cc_library(
@@ -292,9 +293,13 @@ cc_library(
         "-march=armv8.2-a+fp16",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
+    ]) + if_cpu_enabled([
+        "-DMACE_ENABLE_CPU",
     ]),
     linkopts = if_android(["-lm"]),
     deps = [
+        ":common",
+    ] + if_cpu_enabled([
         "internal_ops",
-    ],
+    ]),
 )

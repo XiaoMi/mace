@@ -7,6 +7,7 @@ if [[ -z "$BUILD_DIR" ]]; then
     BUILD_DIR=build/cmake-build/host
 fi
 
+MACE_ENABLE_CPU=ON
 
 MACE_ENABLE_CODE_MODE=OFF
 if [[ "$RUNMODE" == "code" ]]; then
