@@ -247,7 +247,7 @@ class ShapeInference(object):
     def infer_shape_permute(self, op):
         output_shape = list(self._output_shape_cache[op.input[0]])
         dims = ConverterUtil.get_arg(op, MaceKeyword.mace_dims_str).ints
-        for i in xrange(len(dims)):
+        for i in range(len(dims)):
             output_shape[i] = self._output_shape_cache[op.input[0]][dims[i]]
         self.add_output_shape(op, [output_shape])
 

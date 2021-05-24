@@ -101,7 +101,8 @@ RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
       }
 #endif  // MACE_ENABLE_MTK_APU
 #ifdef MACE_ENABLE_OPENCL
-      if (runtime_type == RuntimeType::RT_OPENCL) {
+      if (runtime_type == RuntimeType::RT_OPENCL ||
+          runtime_type == RuntimeType::RT_CPU) {
         auto ion_type = OpenclExecutor::FindCurDeviceIonType();
         if (ion_type == IONType::QUALCOMM_ION) {
           sub_type = RuntimeSubType::RT_SUB_ION;

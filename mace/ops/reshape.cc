@@ -78,27 +78,41 @@ class ReshapeOp : public Operation {
       : Operation(context), dim_(Operation::GetRepeatedArgs<int>("dim")),
         has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)) {}
 
+  // We reuse tensors, so not need to Map input/output.
+  MaceStatus Forward(OpContext *context) override {
+    if (dim_.size() == 0 && InputSize() > 1) {
+      const Tensor *shape = this->Input(SHAPE);
+      Tensor::MappingGuard shape_guard(shape);
+      return Run(context);
+    } else {
+      // Use dim_, not need to map shape tensor.
+      return Run(context);
+    }
+  }
+
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(INPUT);
-    const Tensor *shape = this->Input(SHAPE);
-    const int32_t *shape_data = shape->data<int32_t>();
-    const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
-    std::vector<index_t> out_shape;
+    std::vector<int32_t> trans_shape_data;
+    if (dim_.size() == 0) {
+      const Tensor *shape = this->Input(SHAPE);
+      auto shape_data = shape->data<int32_t>();
+      trans_shape_data.assign(shape_data, shape_data + shape->size());
+    } else {
+      trans_shape_data = dim_;
+    }
 
     // NHWC -> NCHW
-    std::vector<int32_t> trans_shape_data(shape_data,
-                                          shape_data + shape->size());
-    if (has_df_ && D == RuntimeType::RT_CPU && shape->dim_size() == 4 &&
-        out_shape.size() == 4 && dim_.size() == 4) {
+    if (has_df_ && D == RuntimeType::RT_CPU && trans_shape_data.size() == 4) {
       std::vector<int> dst_dims = {0, 3, 1, 2};
       std::vector<int32_t> tmp_shape =
           TransposeShape<int32_t, int32_t>(trans_shape_data, dst_dims);
       trans_shape_data = tmp_shape;
     }
 
-    MACE_RETURN_IF_ERROR(
-        GetOutputShape(input, trans_shape_data.data(), num_dims, &out_shape));
+    std::vector<index_t> out_shape;
+    MACE_RETURN_IF_ERROR(GetOutputShape(input, trans_shape_data.data(),
+                                        trans_shape_data.size(), &out_shape));
 
     Tensor *output = this->Output(OUTPUT);
     output->ReuseTensorBuffer(*input);

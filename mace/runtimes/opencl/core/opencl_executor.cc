@@ -763,7 +763,7 @@ bool OpenclExecutor::BuildProgramFromPrecompiledBinary(
                  << MakeString(ret);
     return false;
   }
-  programs_need_store_.insert(built_program_key);
+
   VLOG(3) << "Program from precompiled binary: " << built_program_key;
   return true;
 }

@@ -55,6 +55,13 @@ std::unique_ptr<Tensor> CreateFloatTensor(const std::vector<int64_t> &shape,
   return tmp_tensor;
 }
 
+void SafeCpuMemDelete(void *data) {
+  auto op_context = ops::test::OpTestContext::Get();
+  Runtime *runtime = op_context->GetRuntime(RuntimeType::RT_CPU);
+  Allocator *allocator = runtime->GetMemoryManager(CPU_BUFFER)->GetAllocator();
+  allocator->Delete(data);
+}
+
 std::shared_ptr<void> TensorToBuffer(std::unique_ptr<Tensor> tmp_tensor) {
 #ifdef MACE_ENABLE_OPENCL
   auto mem_type = tmp_tensor->memory_type();
@@ -67,7 +74,7 @@ std::shared_ptr<void> TensorToBuffer(std::unique_ptr<Tensor> tmp_tensor) {
 #endif  // MACE_ENABLE_OPENCL
 
   return std::shared_ptr<float>(tmp_tensor->mutable_memory<float>(),
-                                std::default_delete<float[]>());
+                                SafeCpuMemDelete);
 }
 
 }  // namespace

@@ -551,7 +551,10 @@ def gen_input(model_output_dir,
         # generate random input files
         input_nodes_str = ",".join(input_nodes)
         input_shapes_str = ":".join(input_shapes)
-        input_ranges_str = ":".join(input_ranges)
+        if len(input_ranges[0]) > 0:
+            input_ranges_str = ":".join(input_ranges)
+        else:
+            input_ranges_str = None
         input_data_types_str = ",".join(input_data_types)
         generate_input_data("%s/%s" % (model_output_dir, input_file_name),
                             input_nodes_str,

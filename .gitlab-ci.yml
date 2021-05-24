@@ -24,6 +24,8 @@ pylint:
 build_docs:
   stage: build
   script:
+    - pwd
+    - set +x
     - cd docs
     - pyenv local 3.6.3 && make html
     - CI_LATEST_OUTPUT_PATH=/mace-build-output/$CI_PROJECT_NAME/latest
@@ -42,6 +44,8 @@ build_docs:
 cmake_build_android-armeabi-v7a:
   stage: build
   script:
+    - pwd
+    - set +x
     - RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
     - LIBMACE32_FULL_SIZE=`stat -c%s build/cmake-build/armeabi-v7a/install/lib/libmace.so`
     - if (( LIBMACE32_FULL_SIZE > 1500000 )) ; then echo "The libmace.so size too large($LIBMACE32_FULL_SIZE)"; exit 1; fi
@@ -49,6 +53,8 @@ cmake_build_android-armeabi-v7a:
 cmake_build_android-arm64-v8:
   stage: build
   script:
+    - pwd
+    - set +x
     - RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-arm64-v8a.sh
     - LIBMACE64_FULL_SIZE=`stat -c%s build/cmake-build/arm64-v8a/install/lib/libmace.so`
     - if (( LIBMACE64_FULL_SIZE > 2300000 )) ; then echo "The libmace.so size too large($LIBMACE64_FULL_SIZE)"; exit 1; fi
@@ -56,6 +62,8 @@ cmake_build_android-arm64-v8:
 bazel_build:
   stage: build
   script:
+    - pwd
+    - set +x
     - bash tools/bazel_build_standalone_lib.sh
     - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu
     - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu
@@ -94,6 +102,8 @@ bazel_build:
 build_android_demo:
   stage: build
   script:
+    - pwd
+    - set +x
     - ANDROID_NDK_HOME_SAVED=${ANDROID_NDK_HOME}
     - export ANDROID_NDK_HOME=/opt/android-ndk-r17b
     - pushd examples/android/ && bash build.sh static && bash build.sh dynamic && popd
@@ -104,6 +114,8 @@ build_android_demo:
 mace_cc_test:
   stage: test
   script:
+    - pwd
+    - set +x
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - >
       if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
@@ -115,6 +127,8 @@ mace_cc_test:
 mace_cc_benchmark:
   stage: test
   script:
+    - pwd
+    - set +x
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - python tools/bazel_adb_run.py --target="//test/ccbenchmark:mace_cc_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS --args="--filter=.*SIGMOID.*"
   only:
@@ -124,6 +138,7 @@ model_tests:
   stage: test
   script:
     - pwd
+    - set +x
     - rm -rf mace-models
     - rm -rf generic-mobile-devices
     - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
@@ -148,6 +163,7 @@ quantization_tests:
   stage: test
   script:
     - pwd
+    - set +x
     - rm -rf mace-models
     - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
     - >
@@ -171,6 +187,8 @@ quantization_tests:
 dynamic_linking_test:
   stage: extra
   script:
+    - pwd
+    - set +x
     - export ANDROID_NDK_HOME=/opt/android-ndk-r17b
     - rm -rf mace-models
     - rm -rf generic-mobile-devices
@@ -198,6 +216,8 @@ micro:
     - git submodule sync
     - git submodule update --init .
   script:
+    - pwd
+    - set +x
     - bash micro/tools/ci/model_convert.sh
     - bash micro/tools/ci/cross_build.sh
     - bash micro/tools/ci/host_build_and_run_examples.sh
