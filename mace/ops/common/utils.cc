@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+#include <string>
+
 #include "mace/ops/common/utils.h"
 
 #include "mace/core/tensor.h"
 #include "mace/ops/common/transpose.h"
+#include "mace/utils/memory.h"
 #include "mace/utils/thread_pool.h"
 
 namespace mace {
@@ -134,6 +138,137 @@ MaceStatus Transpose(mace::utils::ThreadPool *thread_pool, const void *input,
   return status;
 }
 
+MaceStatus DoTransposeConstForCPU(
+    OpConstructContext *context,
+    OperatorDef *op_def,
+    const int input_idx) {
+  Workspace *ws = context->workspace();
+
+  std::string input_name = op_def->input(input_idx);
+  Tensor *input = ws->GetTensor(input_name);
+
+  MemoryType src_mem_type = input->memory_type();
+  DataType src_dt = input->dtype();
+  MACE_CHECK(src_mem_type == CPU_BUFFER || src_mem_type == GPU_BUFFER,
+             "Only support transform CPU_BUFFER or GPU_BUFFER,",
+             " but ", input_name, " has ", static_cast<int>(src_mem_type));
+  DataType dst_dt = static_cast<DataType>(
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+                *op_def, "T", static_cast<int>(DataType::DT_FLOAT)));
+  MACE_CHECK((src_dt == DT_FLOAT || src_dt == DT_HALF) &&
+             (dst_dt == DT_FLOAT || dst_dt == DT_HALF),
+             "Only support transform DT_FLOAT or DT_HALF,",
+             " but ", input_name, " has ", static_cast<int>(src_dt));
+  // Only support: half/float -> float, half -> half.
+  // Float -> half is not supported.
+  if (dst_dt == DT_HALF) {
+    MACE_CHECK(src_dt == DT_HALF, "When dst_dt is DT_HALF, "
+               "src_dt must be DT_HALF, but ", input_name,
+               " has data type of ", static_cast<int>(src_dt));
+  }
+  MemoryType dst_mem_type = CPU_BUFFER;
+  std::vector<index_t> input_shape = input->shape();
+  std::vector<index_t> output_shape = input_shape;
+  if (src_mem_type == dst_mem_type &&
+      src_dt == dst_dt && input_shape.size() != 4) {
+    return MaceStatus::MACE_SUCCESS;
+  }
+  std::vector<int> dims = {0, 3, 1, 2};
+  if (input_shape.size() == 4) {
+    for (size_t i = 0; i < dims.size(); ++i) {
+      output_shape[i] = input_shape[dims[i]];
+    }
+  }
+  std::string output_name = input_name + std::string("_const_used_by_cpu");
+  Tensor *output = ws->GetTensor(output_name);
+  MACE_CHECK(output == nullptr || output->shape() == output_shape,
+             output_name, " should not exist, ",
+             "or it must be of shape ", MakeString(output_shape));
+  bool already_transposed = (output != nullptr &&
+                             output->shape() == output_shape);
+  if (output == nullptr) {
+    output = ws->CreateTensor(output_name, context->device()->allocator(),
+                              dst_dt, true);
+    output->Resize(output_shape);
+  }
+  op_def->set_input(input_idx, output_name);
+  if (already_transposed) {
+    return MaceStatus::MACE_SUCCESS;
+  }
+  Tensor::MappingGuard guard(input);
+  const float *input_data = input->data<float>();
+  float *output_data = output->mutable_data<float>();
+  size_t num_elem = input->size();
+  size_t dst_bytes = output->raw_size();
+
+  if (input_shape.size() != 4) {
+    if (src_dt == dst_dt) {
+      memcpy(reinterpret_cast<void*>(output_data),
+             reinterpret_cast<const void*>(input_data), dst_bytes);
+    } else if (src_dt == DT_HALF && dst_dt == DT_FLOAT) {  // half->float
+      // can only be cpu/gpu half to cpu float, no matter 4D or non-4D
+      const half *half_input = reinterpret_cast<const half*>(input_data);
+      for (size_t i = 0; i < num_elem; ++i) {
+        output_data[i] = half_float::half_cast<float>(half_input[i]);
+      }
+    }
+    return MaceStatus::MACE_SUCCESS;
+  }
+  MaceStatus status;
+  status = Transpose(&context->device()->cpu_runtime()->thread_pool(),
+                     input_data,
+                     src_dt,
+                     input_shape,
+                     dims,
+                     output_data,
+                     dst_dt);
+  if (status != MaceStatus::MACE_SUCCESS) {
+    return status;
+  }
+  input->MarkUnused();
+  return MaceStatus::MACE_SUCCESS;
+}
+
+MaceStatus TransposeConstForCPU(
+    NetDef *net_def,
+    Workspace *ws,
+    Device *target_device) {
+  // Must be same types in transformer.py,
+  // and more types may be added in the future.
+  std::unordered_set<std::string> equal_types = {"Eltwise", "Concat"};
+  int num_ops = net_def->op_size();
+  std::unique_ptr<CPUDevice> cpu_device(
+        make_unique<CPUDevice>(
+            target_device->cpu_runtime()->num_threads(),
+            target_device->cpu_runtime()->policy(),
+            &target_device->cpu_runtime()->thread_pool()));
+
+  OpConstructContext construct_context(ws);
+  construct_context.set_device(cpu_device.get());
+  for (int idx = 0; idx < num_ops; ++idx) {
+    OperatorDef *op_def = net_def->mutable_op(idx);
+    int end_idx = 1;
+    if (equal_types.find(op_def->type()) != equal_types.end()) {
+      end_idx =  op_def->input_size();
+    }
+    DeviceType op_device_type = static_cast<DeviceType>(op_def->device_type());
+    if (DeviceType::CPU != op_device_type) {
+      continue;
+    }
+    for (int input_idx = 0; input_idx < end_idx; ++input_idx) {
+      Tensor *tensor = ws->GetTensor(op_def->input(input_idx));
+      if (!(tensor != nullptr && tensor->is_weight())) {
+        continue;
+      }
+      MaceStatus status = DoTransposeConstForCPU(&construct_context, op_def,
+                                                 input_idx);
+      if (status != MaceStatus::MACE_SUCCESS) {
+        return status;
+      }
+    }
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
 }  // namespace utils
 }  // namespace common
 }  // namespace ops

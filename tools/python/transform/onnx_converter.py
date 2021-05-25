@@ -432,6 +432,7 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         ir_version = onnx_model.ir_version
         opset_imp = onnx_model.opset_import
+        self._opset_version = opset_imp[0].version
 
         onnx.checker.check_model(onnx_model)
 
@@ -508,6 +509,24 @@ class OnnxConverter(base_converter.ConverterInterface):
             tensor.float_data.extend(value.astype(np.float32).flat)
         else:
             mace_check(False, "Not supported tensor type: %s" % name)
+
+    # Only works for Clip node.
+    def get_min_max_from_clip_node(self, node):
+        if 'min' in node.attrs:
+            min_value = node.attrs['min']
+        elif self._opset_version >= 11 and len(node.inputs) >= 2 and \
+                node.inputs[1] in self._consts:
+            min_value = self._consts[node.inputs[1]].float_data[0]
+        else:
+            min_value = np.finfo(np.float32).min
+        if 'max' in node.attrs:
+            max_value = node.attrs['max']
+        elif self._opset_version >= 11 and len(node.inputs) >= 3 and \
+                node.inputs[2] in self._consts:
+            max_value = self._consts[node.inputs[2]].float_data[0]
+        else:
+            max_value = np.finfo(np.float32).max
+        return min_value, max_value
 
     def run(self):
         graph_def = self._onnx_model.graph
@@ -862,18 +881,17 @@ class OnnxConverter(base_converter.ConverterInterface):
             mace_check(group_val == filter_shape[0] and
                        filter_shape[1] == 1,
                        "Mace does not support group convolution yet")
-            filter_tensor = self._consts[node.inputs[1]]
-            new_shape = [filter_shape[1], filter_shape[0],
-                         filter_shape[2], filter_shape[3]]
-            del filter_tensor.dims[:]
-            filter_tensor.dims.extend(new_shape)
+            if node.inputs[1] in self._consts:
+                filter_tensor = self._consts[node.inputs[1]]
+                new_shape = [filter_shape[1], filter_shape[0],
+                             filter_shape[2], filter_shape[3]]
+                del filter_tensor.dims[:]
+                filter_tensor.dims.extend(new_shape)
             is_depthwise = True
         if is_depthwise:
             op.type = MaceOp.DepthwiseConv2d.name
         else:
             op.type = MaceOp.Conv2D.name
-            mace_check(op.input[1] in self._consts,
-                       "Mace does not support non-const filter convolution.")
 
         dilation_arg = op.arg.add()
         dilation_arg.name = MaceKeyword.mace_dilations_str
@@ -1018,24 +1036,16 @@ class OnnxConverter(base_converter.ConverterInterface):
         #  so it can be fused into convolution.
         is_relux = False
         inputs_num = len(node.inputs)
-        if 'min' in node.attrs or inputs_num > 1:
-            if inputs_num > 1:
-                min_value = self._consts[node.inputs[1]].float_data[0]
-            else:
-                min_value = node.attrs['min']
-            if min_value == 0:
-                is_relux = True
+        min_value, max_value = self.get_min_max_from_clip_node(node)
+        if min_value == 0:
+            is_relux = True
         if is_relux:
             op = self.convert_general_op(node)
             op.type = MaceOp.Activation.name
 
             type_arg = op.arg.add()
             type_arg.name = MaceKeyword.mace_activation_type_str
-            if "max" in node.attrs or inputs_num > 2:
-                if inputs_num > 2:
-                    max_value = self._consts[node.inputs[2]].float_data[0]
-                else:
-                    max_value = node.attrs["max"]
+            if max_value != np.finfo(np.float32).max:
                 type_arg.s = six.b(ActivationType.RELUX.name)
                 alpha_arg = op.arg.add()
                 alpha_arg.name = MaceKeyword.mace_activation_max_limit_str
@@ -1044,6 +1054,7 @@ class OnnxConverter(base_converter.ConverterInterface):
                 type_arg.s = six.b(ActivationType.RELU.name)
         else:
             self.convert_eltwise(node)
+            return
         if inputs_num > 1:
             del op.input[1:]
 
@@ -1068,17 +1079,12 @@ class OnnxConverter(base_converter.ConverterInterface):
             value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = value
         elif node.op_type == OnnxOpType.Clip.name:
-            if 'min' in node.attrs:
-                min_value = node.attrs['min']
-            else:
-                min_value = np.finfo(np.float32).min
-            if 'max' in node.attrs:
-                max_value = node.attrs['max']
-            else:
-                max_value = np.finfo(np.float32).max
+            min_value, max_value = self.get_min_max_from_clip_node(node)
             coeff_arg = op.arg.add()
             coeff_arg.name = MaceKeyword.mace_coeff_str
             coeff_arg.floats.extend([min_value, max_value])
+            if len(op.input) >= 2:
+                del op.input[1:]
         elif len(node.inputs) == 2:
             if node.inputs[1] in self._consts and \
                     node.inputs[0] not in self._consts:
@@ -1695,6 +1701,9 @@ class OnnxConverter(base_converter.ConverterInterface):
         align_corners_arg.i = node.attrs.get('align_corners', 0)
 
     def convert_resize(self, node):
+        mace_check(self._opset_version >= 11,
+                   "Only support Resize Op with opset version >= 11"
+                   ", but version {} is got.".format(self._opset_version))
         op = self.convert_general_op(node)
 
         scale_tensor = self._consts[node.inputs[2]]
@@ -1743,3 +1752,10 @@ class OnnxConverter(base_converter.ConverterInterface):
                 MaceKeyword.mace_coordinate_transformation_mode_str
             coordinate_transformation_mode_arg.i = \
                 CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value
+
+        roi_tensor = self._consts[node.inputs[1]]
+        mace_check(len(roi_tensor.dims) == 0 or roi_tensor.dims[0] == 0,
+                   "MACE does not support roi for Resize")
+        # Remove useless input.
+        if len(op.input) >= 2:
+            del op.input[1:]

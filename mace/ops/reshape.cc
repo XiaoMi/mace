@@ -169,7 +169,16 @@ void RegisterReshape(OpRegistry *op_registry) {
                          int has_data_format =
                              ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                                  *op, "has_data_format", 0);
-                         if (has_data_format && op->input_size() == 1) {
+                         const Tensor *dim_tensor = nullptr;
+                         bool has_const_dim = false;
+                         if (op->input_size() >= 2) {
+                           dim_tensor =
+                               context->workspace()->GetTensor(op->input(1));
+                         }
+                         if (dim_tensor != nullptr && dim_tensor->is_weight()) {
+                           has_const_dim = true;
+                         }
+                         if (has_data_format && has_const_dim) {
                            return {DeviceType::CPU, DeviceType::GPU};
                          }
 

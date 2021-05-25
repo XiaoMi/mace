@@ -16,8 +16,6 @@
 #include <arm_neon.h>
 #endif
 
-#include <algorithm>
-#include <cmath>
 #include <vector>
 
 #include "mace/core/ops/operator.h"
@@ -55,6 +53,14 @@ class TransposeOp : public Operation {
     Tensor::MappingGuard output_guard(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
+    std::vector<int> dims_equal_to_reshape = {1, 0, 2, 3};
+    if (input->dtype() == output->dtype() && dims_ == dims_equal_to_reshape &&
+        (input_shape[0] == 1 || input_shape[1] == 1)) {
+      memcpy(reinterpret_cast<void*>(output_data),
+             reinterpret_cast<const void*>(input_data),
+             output->raw_size());
+      return MaceStatus::MACE_SUCCESS;
+    }
 
     return Transpose(&context->device()->cpu_runtime()->thread_pool(),
                      input_data, input->shape(), dims_, output_data);

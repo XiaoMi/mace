@@ -757,6 +757,8 @@ MaceStatus MaceEngine::Impl::Init(
     NetDef adapted_net_def;
     NetDefAdapter net_def_adapter(op_registry_.get(), ws_.get());
     net_def_adapter.AdaptNetDef(net_def, device_.get(), &adapted_net_def);
+    ops::common::utils::TransposeConstForCPU(&adapted_net_def,
+                                             ws_.get(), device_.get());
 
     MemoryOptimizer mem_optimizer;
     // Init model
