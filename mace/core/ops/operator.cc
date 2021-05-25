@@ -58,8 +58,9 @@ MaceStatus Operation::Init(OpInitContext *context) {
               *operator_def_, OutputMemoryTypeTagName(),
               static_cast<int>(cur_mem_type)));
 
+      auto tensor_runtime = context->GetRuntimeByMemType(mem_type);
       outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
-          output_str, runtime, output_type, false, mem_type)));
+          output_str, tensor_runtime, output_type, false, mem_type)));
     }
     if (i < operator_def_->output_shape_size()) {
       std::vector<index_t>

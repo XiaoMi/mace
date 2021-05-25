@@ -116,19 +116,6 @@ void BuildTransposeOpDef(
   }
 }
 
-#ifdef MACE_ENABLE_OPENCL
-RuntimeType GetRuntimeTypeByMemType(OpConditionContext *context,
-                                    MemoryType mem_type) {
-  if (mem_type == GPU_IMAGE || mem_type == GPU_BUFFER) {
-    return RT_OPENCL;
-  } else if (mem_type == CPU_BUFFER) {
-    return RT_CPU;
-  } else {
-    return context->runtime()->GetRuntimeType();
-  }
-}
-#endif  // MACE_ENABLE_OPENCL
-
 }  // namespace
 
 NetDefAdapter::NetDefAdapter(const OpRegistry *op_registry,
@@ -331,7 +318,6 @@ MaceStatus NetDefAdapter::AdaptNetDef(const NetDef *net_def,
             t_output_name,
             internal_output_info.shape,
             output_info.name(),
-            target_runtime_type,
             output_data_type,
             BufferContentType::IN_OUT_CHANNEL,
             target_mem_type,
@@ -513,7 +499,6 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
           context->SetInputInfo(i, dst_mem_type, wanted_input_dtype);
         }
       }
-      auto runtime_type = GetRuntimeTypeByMemType(context, dst_mem_type);
 
       auto transformed_name = TransformedName(op_def->input(i),
                                               "mem_type",
@@ -529,7 +514,6 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
             op_def->input(i),
             input_info.shape,
             transformed_name,
-            runtime_type,
             wanted_input_dtype,
             context->GetInputBufferContentType(i),
             dst_mem_type,

@@ -22,7 +22,6 @@ void OpsUtils::BuildTransformOpDef(
     const std::string &input_name,
     const std::vector<index_t> &input_shape,
     const std::string &output_name,
-    const RuntimeType runtime_type,
     const DataType dt,
     const BufferContentType content_type,
     const MemoryType mem_type,
@@ -33,7 +32,7 @@ void OpsUtils::BuildTransformOpDef(
   op_def->set_type("BufferTransform");
   op_def->add_input(input_name);
   op_def->add_output(output_name);
-  op_def->set_device_type(static_cast<DeviceType>(runtime_type));
+  op_def->set_device_type(static_cast<DeviceType>(RT_OPENCL));
   Argument *arg = op_def->add_arg();
   arg->set_name("content_type");
   arg->set_i(static_cast<int32_t>(content_type));
