@@ -44,7 +44,6 @@ class OpsUtils {
       const std::string &input_name,
       const std::vector<index_t> &input_shape,
       const std::string &output_name,
-      const RuntimeType runtime_type,
       const DataType dt,
       const BufferContentType buffer_type,
       const MemoryType mem_type,
