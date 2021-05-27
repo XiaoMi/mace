@@ -2708,7 +2708,6 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if op.type == MaceOp.ExpandDims.name:
                 op.type = MaceOp.Reshape.name
-                del op.arg[:]
                 return True
         return False
 

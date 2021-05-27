@@ -75,14 +75,15 @@ class BaseEngine {
   virtual MaceStatus ReleaseIntermediateBuffer();
   virtual MaceStatus AllocateIntermediateBuffer();
 
+  RuntimesMap &GetRuntimesOfTutor(BaseEngine *tutor);
+  std::vector<RuntimeType> GetRuntimeTypes();
+
  protected:
   virtual MaceStatus BeforeRun();
   virtual MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                          std::map<std::string, MaceTensor> *outputs,
                          RunMetadata *run_metadata) = 0;
   virtual MaceStatus AfterRun();
-
-  RuntimesMap &GetRuntimesOfTutor(BaseEngine *tutor);
 
  protected:
   std::unique_ptr<utils::ThreadPool> thread_pool_;

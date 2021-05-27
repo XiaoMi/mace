@@ -64,6 +64,8 @@ class MaceEngine::Impl {
 
   MaceStatus ReleaseIntermediateBuffer();
 
+  std::vector<RuntimeType> GetRuntimeTypes();
+
  private:
   std::unique_ptr<BaseEngine> engine_;
 
@@ -130,6 +132,10 @@ MaceStatus MaceEngine::Impl::Run(
 
 MaceStatus MaceEngine::Impl::ReleaseIntermediateBuffer() {
   return engine_->ReleaseIntermediateBuffer();
+}
+
+std::vector<RuntimeType> MaceEngine::Impl::GetRuntimeTypes() {
+  return engine_->GetRuntimeTypes();
 }
 
 MaceEngine::MaceEngine(const MaceEngineConfig &config) :
@@ -201,6 +207,11 @@ MaceStatus MaceEngine::Init(const NetDef *net_def,
 
 MaceStatus MaceEngine::ReleaseIntermediateBuffer() {
   return impl_->ReleaseIntermediateBuffer();
+}
+
+
+std::vector<RuntimeType> MaceEngine::GetRuntimeTypes() {
+  return impl_->GetRuntimeTypes();
 }
 
 

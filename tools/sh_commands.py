@@ -551,7 +551,7 @@ def gen_input(model_output_dir,
         # generate random input files
         input_nodes_str = ",".join(input_nodes)
         input_shapes_str = ":".join(input_shapes)
-        if len(input_ranges[0]) > 0:
+        if len(input_ranges) > 0 and len(input_ranges[0]) > 0:
             input_ranges_str = ":".join(input_ranges)
         else:
             input_ranges_str = None
