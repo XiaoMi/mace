@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <numeric>
 #include <memory>
+#include <set>
 #include <utility>
 
 #include "mace/core/flow/base_flow.h"
@@ -171,6 +172,14 @@ RuntimesMap &BaseEngine::GetRuntimesOfTutor(BaseEngine *tutor) {
              "Before using the tutor engine, you must init it.");
 
   return tutor->runtimes_;
+}
+
+std::vector<RuntimeType> BaseEngine::GetRuntimeTypes() {
+  std::set<RuntimeType> runtime_types;
+  for (auto &runtime : runtimes_) {
+    runtime_types.insert(static_cast<RuntimeType>(runtime.first >> 16));
+  }
+  return std::vector<RuntimeType>(runtime_types.begin(), runtime_types.end());
 }
 
 MaceStatus BaseEngine::Forward(const std::map<std::string, MaceTensor> &inputs,

@@ -151,7 +151,7 @@ DEVICE_MAP = {
     "dsp": DeviceType.HEXAGON,
     "hta": DeviceType.HTA,
     "apu": DeviceType.APU,
-    "cpu+gpu": DeviceType.CPU_GPU
+    "cpu+gpu": DeviceType.GPU
 }
 
 

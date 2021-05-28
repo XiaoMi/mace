@@ -537,7 +537,6 @@ class DeviceWrapper:
             opencl_parameter_file='',
             libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
             link_dynamic=link_dynamic,
-            use_system_libhexagon_nn=flags.use_system_libhexagon_nn
         )
 
         # pull opencl library
@@ -715,13 +714,16 @@ class DeviceWrapper:
                 output_file_path, dtype=np.float32).reshape(output_shape)
         return output_map
 
-    def get_graph_runtime(self, graph_config, model_config, target_abi):
+    @staticmethod
+    def get_graph_runtime(graph_config, model_config, target_abi):
         if target_abi == ABIType.host:
             graph_runtime = RuntimeType.cpu
         elif YAMLKeyword.runtime in graph_config:
             graph_runtime = graph_config[YAMLKeyword.runtime]
         else:
             graph_runtime = model_config[YAMLKeyword.runtime]
+        if graph_runtime == RuntimeType.cpu_gpu:
+            graph_runtime = RuntimeType.gpu
         return graph_runtime
 
     def run_specify_abi(self, flags, configs, target_abi):

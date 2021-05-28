@@ -286,6 +286,22 @@ int64_t WriteOutputDataToFile(const std::string &file_path,
 
   return output_size;
 }
+
+void PrintRuntimes(const std::vector<RuntimeType> &runtime_types) {
+  static std::unordered_map<int, std::string> runtime_names = {
+      {RT_CPU, "CPU"},
+      {RT_OPENCL, "GPU"},
+      {RT_HEXAGON, "DSP"},
+      {RT_HTA, "HTA"},
+      {RT_APU, "APU"},
+  };
+  std::vector<std::string> runtime_strings(runtime_types.size());
+  for (size_t i = 0; i < runtime_types.size(); ++i) {
+    runtime_strings[i] = runtime_names[runtime_types[i]];
+  }
+
+  LOG(INFO) << "runtimes: " << MakeString(runtime_strings);
+}
 }  // namespace
 
 
@@ -421,6 +437,7 @@ bool RunModel(const std::string &model_name,
   int64_t t1 = NowMicros();
   double init_millis = (t1 - t0) / 1000.0;
   LOG(INFO) << "Total init latency: " << init_millis << " ms";
+  PrintRuntimes(engine->GetRuntimeTypes());
 
   const size_t input_count = input_names.size();
   const size_t output_count = output_names.size();
