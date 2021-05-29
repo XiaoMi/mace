@@ -185,7 +185,7 @@ MaceStatus Tensor::Resize(const std::vector<index_t> &shape) {
 // This tensor has the same dtype, shape and image_shape.
 // It could be reshaped later (with image shape unchanged).
 void Tensor::ReuseTensorBuffer(const Tensor &other) {
-  MACE_CHECK(runtime_ == other.runtime_);
+  runtime_ = other.runtime_;
   buffer_ = other.buffer_;
 }
 
