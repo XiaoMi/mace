@@ -331,6 +331,7 @@ bool OpenCLLibrary::Load() {
     "/system/vendor/lib/egl/libGLES_mali.so",
     "/system/lib/egl/libGLES_mali.so",
     // Other
+    "/vendor/lib/libPVROCL.so",
     "/system/vendor/lib/libPVROCL.so",
     "/data/data/org.pocl.libs/files/lib/libpocl.so",
       // Pixel Phone

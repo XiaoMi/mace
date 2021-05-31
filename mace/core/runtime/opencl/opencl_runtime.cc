@@ -275,7 +275,9 @@ uint32_t ParseQcomHostCachePolicy(const std::string &device_extensions) {
   constexpr const char *kQualcommIocoherentStr =
       "cl_qcom_ext_host_ptr_iocoherent";
 
-  if (device_extensions.find(kQualcommIocoherentStr) != std::string::npos) {
+  if (false &&
+      device_extensions.find(kQualcommIocoherentStr) != std::string::npos) {
+    // Will lead to computing mistake on some Qualcomm platform.
     return CL_MEM_HOST_IOCOHERENT_QCOM;
   } else {
     return CL_MEM_HOST_WRITEBACK_QCOM;
