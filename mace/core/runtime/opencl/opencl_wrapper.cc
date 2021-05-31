@@ -318,6 +318,9 @@ bool OpenCLLibrary::Load() {
     // Mali with Android
     "/system/vendor/lib64/egl/libGLES_mali.so",
     "/system/lib64/egl/libGLES_mali.so",
+    "/vendor/lib64/libPVROCL.so",
+    // Pixel Phone
+    "libOpenCL-pixel.so",
     // Typical Linux board
     "/usr/lib/aarch64-linux-gnu/libOpenCL.so",
 #else
@@ -330,6 +333,8 @@ bool OpenCLLibrary::Load() {
     // Other
     "/system/vendor/lib/libPVROCL.so",
     "/data/data/org.pocl.libs/files/lib/libpocl.so",
+      // Pixel Phone
+    "libOpenCL-pixel.so",
     // Typical Linux board
     "/usr/lib/arm-linux-gnueabihf/libOpenCL.so",
 #endif
