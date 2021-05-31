@@ -16,13 +16,16 @@
 #define MACE_OPS_COMMON_UTILS_H_
 
 #include <vector>
+#include <unordered_set>
 
+#include "mace/core/ops/op_construct_context.h"
 #include "mace/core/types.h"
 #include "mace/port/port.h"
 
 namespace mace {
 
 class Tensor;
+class Workspace;
 
 namespace utils {
 class ThreadPool;
@@ -55,6 +58,10 @@ MaceStatus Transpose(mace::utils::ThreadPool *thread_pool, const void *input,
                      const std::vector<int> &dst_dims,
                      void *output, DataType output_data_type);
 
+MaceStatus TransposeConstForCPU(
+    NetDef *net_def,
+    Workspace *ws,
+    Device *target_device);
 }  // namespace utils
 }  // namespace common
 }  // namespace ops

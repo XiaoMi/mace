@@ -362,6 +362,9 @@ class TransformerRule(Enum):
     QUANTIZE_FOLD_RELU = 48
     TRANSFORM_KERAS_QUANTIZE_INFO = 49
     FOLD_DIV_BN = 51
+    REMOVE_UNUSED_TENSOR = 52
+    TRANSPOSE_CONST_OP_INPUT = 53
+    UPDATE_FC_OUTPUT_SHAPE = 54
 
 
 class ConverterInterface(object):
@@ -603,6 +606,9 @@ class ConverterOption(object):
                 TransformerRule.TRANSPOSE_SHAPE_TENSOR_TO_PARAM,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
+                # Must be put after TRANSFORM_MATMUL_TO_FC and
+                # before UPDATE_DATA_FORMAT
+                TransformerRule.UPDATE_FC_OUTPUT_SHAPE,
                 # For StoB -> conv -> BtoS -> BN pattern
                 # Insert flatten_atrous_conv before fold_xxx_and_bn
                 TransformerRule.FLATTEN_ATROUS_CONV,
@@ -637,7 +643,9 @@ class ConverterOption(object):
                 TransformerRule.UPDATE_DATA_FORMAT,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
                 # Need to be put after SORT_BY_EXECUTION
-                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE
+                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
+                TransformerRule.TRANSPOSE_CONST_OP_INPUT,
+                TransformerRule.REMOVE_UNUSED_TENSOR,
             ]
             if self._device == DeviceType.APU.value:
                 self._transformer_option = self._transformer_option + [

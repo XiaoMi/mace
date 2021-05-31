@@ -53,6 +53,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_fake_quantize,
             TransformerRule.REMOVE_USELESS_OP: self.remove_useless_op,
             TransformerRule.FOLD_DIV_BN: self.fold_div_bn,
+            TransformerRule.TRANSPOSE_CONST_OP_INPUT:
+                self.transpose_const_op_input,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
             TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE:
@@ -62,6 +64,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_RESHAPE: self.fold_reshape,
             TransformerRule.TRANSFORM_MATMUL_TO_FC:
                 self.transform_matmul_to_fc,
+            TransformerRule.UPDATE_FC_OUTPUT_SHAPE:
+                self.update_fc_output_shape,
             TransformerRule.FOLD_BATCHNORM: self.fold_batchnorm,
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FOLD_CONV_AND_BN:
@@ -127,7 +131,9 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.QUANTIZE_FOLD_RELU:
                 self.quantize_fold_relu,
             TransformerRule.TRANSFORM_KERAS_QUANTIZE_INFO:
-                self.transform_keras_quantize_info
+                self.transform_keras_quantize_info,
+            TransformerRule.REMOVE_UNUSED_TENSOR:
+                self.remove_unused_tensor
         }
 
         self._option = option
@@ -140,6 +146,8 @@ class Transformer(base_converter.ConverterInterface):
         self._producer = {}
         self._quantize_activation_info = {}
         self._quantized_tensor = set()
+        self._dealt_variable_filter_deconv = set()
+        self._transposed_deconv_filter = set()
 
         self.input_name_map = {}
         self.output_name_map = {}
@@ -1024,7 +1032,8 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if op.type == MaceOp.Conv2D.name \
                     and len(op.input) >= 2 \
-                    and op.input[1] in self._consts:
+                    and op.input[1] in self._consts and \
+                    op.input[0] in self._producer:
                 producer = self._producer[op.input[0]]
                 input_shape = producer.output_shape[0].dims
                 batch, height, width, channels = self.sort_feature_map_shape(
@@ -1124,7 +1133,6 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         filter_format = self.filter_format()
         transposed_filter = set()
-        transposed_deconv_filter = set()
 
         if (((self._option.quantize and
                 self._option.device == DeviceType.CPU.value) or
@@ -1168,14 +1176,14 @@ class Transformer(base_converter.ConverterInterface):
             # deconv's filter's output channel and input channel is reversed
             for op in net.op:
                 if op.type == MaceOp.Deconv2D.name and \
-                        op.input[1] not in transposed_deconv_filter:
+                        op.input[1] not in self._transposed_deconv_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
                         filter.dims)
                     filter_data = filter_data.transpose(3, 1, 2, 0)
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
-                    transposed_deconv_filter.add(op.input[1])
+                    self._transposed_deconv_filter.add(op.input[1])
 
             self.set_filter_format(DataFormat.OHWI)
         elif self._option.quantize and \
@@ -1200,7 +1208,7 @@ class Transformer(base_converter.ConverterInterface):
 
                 if op.type == MaceOp.Deconv2D.name \
                         and op.input[1] in self._consts \
-                        and op.input[1] not in transposed_deconv_filter:
+                        and op.input[1] not in self._transposed_deconv_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
                         filter.dims)
@@ -1214,7 +1222,7 @@ class Transformer(base_converter.ConverterInterface):
                         mace_check(False, "Unsupported filter format.")
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
-                    transposed_deconv_filter.add(op.input[1])
+                    self._transposed_deconv_filter.add(op.input[1])
         else:
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
             if filter_format == DataFormat.HWIO:
@@ -1265,14 +1273,14 @@ class Transformer(base_converter.ConverterInterface):
                 if op.type in [MaceOp.Deconv2D.name,
                                MaceOp.DepthwiseDeconv2d] \
                         and op.input[1] in self._consts \
-                        and op.input[1] not in transposed_deconv_filter:
+                        and op.input[1] not in self._transposed_deconv_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
                         filter.dims)
                     filter_data = filter_data.transpose(1, 0, 2, 3)
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
-                    transposed_deconv_filter.add(op.input[1])
+                    self._transposed_deconv_filter.add(op.input[1])
 
         return False
 
@@ -1415,12 +1423,12 @@ class Transformer(base_converter.ConverterInterface):
                             if is_torch or is_onnx:
                                 in_data_format = ConverterUtil.data_format(
                                     input_op)
-                                # OI+NCHW[2:]=OIHW
+                                # OI[0]+NCHW[1:]=OIHW
                                 if in_data_format == DataFormat.NCHW:
                                     size = input_shape[2] * input_shape[3]
                                     weight.dims[1] = weight.dims[1] // size
                                     weight.dims.extend(input_shape[2:])
-                                # OI+NHWC[1:3]=OIHW
+                                # OI[0]+NHWC[3]+NHWC[1:3]=OIHW
                                 else:
                                     size = input_shape[1] * input_shape[2]
                                     weight.dims[1] = weight.dims[1] // size
@@ -1448,6 +1456,31 @@ class Transformer(base_converter.ConverterInterface):
                     if is_torch or is_onnx:
                         weight.dims.extend([1, 1])
                     return True
+        return False
+
+    # When FC is producer of Reshape, updating output shape of FC makes
+    # Reshape transposable.
+    def update_fc_output_shape(self):
+        net = self._model
+        framework = ConverterUtil.framework_type(net)
+        is_torch = framework == FrameworkType.PYTORCH.value
+        is_onnx = framework == FrameworkType.ONNX.value
+        dev = self._option.device
+        if not ((is_torch or is_onnx) and
+                (dev == DeviceType.GPU.value or dev == DeviceType.CPU.value)):
+            return False
+        for op in net.op:
+            if op.type != MaceOp.FullyConnected.name:
+                continue
+            out_data_format = ConverterUtil.data_format(op)
+            if len(op.output_shape[0].dims) != 2:
+                continue
+            if out_data_format == DataFormat.NCHW:
+                op.output_shape[0].dims.extend([1, 1])
+            else:
+                dim1 = op.output_shape[0].dims[1]
+                del op.output_shape[0].dims[1:]
+                op.output_shape[0].dims.extend([1, 1, dim1])
         return False
 
     def update_float_op_data_type(self):
@@ -1516,6 +1549,9 @@ class Transformer(base_converter.ConverterInterface):
 
     def is_transposable_data_format_ops(self, op):
         transposable = op.type in MaceTransposableDataFormatOps
+        framework = ConverterUtil.framework_type(self._model)
+        is_torch = framework == FrameworkType.PYTORCH.value
+        is_onnx = framework == FrameworkType.ONNX.value
 
         if op.type == MaceOp.Reshape:
             input_op = self._producer[op.input[0]]
@@ -1528,11 +1564,14 @@ class Transformer(base_converter.ConverterInterface):
                         len(input_dims) != 4 or len(output_dims) != 4:
                     transposable = False
                 else:
-                    in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
-                        input_dims, ConverterUtil.data_format(input_op))
-                    ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
-                        output_dims, ConverterUtil.data_format(op))
-                    transposable = (in_b == ou_b and in_c == ou_c)
+                    if is_torch or is_onnx:
+                        transposable = True
+                    else:
+                        in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
+                            input_dims, ConverterUtil.data_format(input_op))
+                        ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
+                            output_dims, ConverterUtil.data_format(op))
+                        transposable = (in_b == ou_b and in_c == ou_c)
         elif op.type == MaceOp.Squeeze:
             input_op = self._producer[op.input[0]]
             if len(input_op.output_shape) == 0 or len(op.output_shape) == 0:
@@ -2749,3 +2788,64 @@ class Transformer(base_converter.ConverterInterface):
                 self._model.tensors.remove(scale)
                 op.type = MaceOp.BiasAdd.name
         return False
+
+    # Some frameworks use `NCHW` dataformat, transpose and store const Tensor
+    # of 4D in `NHWC` dataformat in disk. Thus, we have uniform
+    # const Tensor dataform in disk.
+    # For GPU, `NHWC` just works;
+    # for CPU, `NHWC` -> `NCHW` is done in init stage.
+    def do_single_transpose(self, input_name, already_dealt):
+        tensor = self._consts[input_name]
+        shape = list(tensor.dims)
+        array = np.array(tensor.float_data).reshape(shape)
+        if len(shape) == 4:
+            array = array.transpose(0, 2, 3, 1)
+            tensor.dims[:] = array.shape
+            tensor.float_data[:] = array.flat
+        already_dealt.add(input_name)
+
+    def transpose_const_op_input(self):
+        net = self._model
+        framework = ConverterUtil.framework_type(net)
+        is_onnx = (framework == FrameworkType.ONNX.value)
+        is_torch = (framework == FrameworkType.PYTORCH.value)
+        is_megengine = (framework == FrameworkType.MEGENGINE.value)
+        already_dealt = set()
+        equal_types = set([MaceOp.Eltwise.name, MaceOp.Concat.name])
+        for op in net.op:
+            if (is_onnx or is_torch or is_megengine) and \
+                    not self._option.quantize and \
+                    (self._option.device == DeviceType.GPU.value or
+                     self._option.device == DeviceType.CPU.value):
+                num_input = 1
+                if op.type in equal_types:
+                    num_input = len(op.input)
+                for idx in range(num_input):
+                    input_name = op.input[idx]
+                    if (input_name in self._consts) and \
+                            (input_name not in self._option.input_nodes) and \
+                            (input_name not in already_dealt):
+                        self.do_single_transpose(input_name, already_dealt)
+        return False
+
+    def tensor_is_used(self, tensor):
+        for output in self._model.output_info:
+            if tensor.name == output.name:
+                return True
+
+        for op in self._model.op:
+            for input in op.input:
+                if tensor.name == input:
+                    return True
+
+        return False
+
+    def remove_unused_tensor(self):
+        unused_tensors = []
+        for tensor in self._model.tensors:
+            if not self.tensor_is_used(tensor):
+                unused_tensors.append(tensor)
+        for ts in unused_tensors:
+            self._model.tensors.remove(ts)
+
+        return len(unused_tensors) != 0
