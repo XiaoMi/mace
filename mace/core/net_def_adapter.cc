@@ -93,14 +93,13 @@ void BuildTransposeOpDef(
     const std::vector<index_t> &output_shape,
     const std::vector<int> dst_dims,
     const DataType dt,
-    RuntimeType runtime_type,
     OperatorDef *op_def) {
   std::string op_name = "mace_node_" + output_name;
   op_def->set_name(op_name);
   op_def->set_type("Transpose");
   op_def->add_input(input_name);
   op_def->add_output(output_name);
-  op_def->set_device_type(runtime_type);
+  op_def->set_device_type(RT_CPU);
   Argument *arg = op_def->add_arg();
   arg->set_name("dims");
   for (auto dim : dst_dims) {
@@ -116,19 +115,6 @@ void BuildTransposeOpDef(
     }
   }
 }
-
-#ifdef MACE_ENABLE_OPENCL
-RuntimeType GetRuntimeTypeByMemType(OpConditionContext *context,
-                                    MemoryType mem_type) {
-  if (mem_type == GPU_IMAGE || mem_type == GPU_BUFFER) {
-    return RT_OPENCL;
-  } else if (mem_type == CPU_BUFFER) {
-    return RT_CPU;
-  } else {
-    return context->runtime()->GetRuntimeType();
-  }
-}
-#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace
 
@@ -332,7 +318,6 @@ MaceStatus NetDefAdapter::AdaptNetDef(const NetDef *net_def,
             t_output_name,
             internal_output_info.shape,
             output_info.name(),
-            target_runtime_type,
             output_data_type,
             BufferContentType::IN_OUT_CHANNEL,
             target_mem_type,
@@ -448,12 +433,6 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
   }
   *op_output_df = op_data_format;
 
-  // The output memory type of transpose op is based
-  // on the consumer op's runtime
-  MemoryType target_mem_type = MemoryType::CPU_BUFFER;
-  if (runtime_type == RuntimeType::RT_OPENCL) {
-    target_mem_type = MemoryType::GPU_BUFFER;
-  }
   auto inputs_data_format = op_registry_->InputsDataFormat(op_def->type(),
                                                            context);
   DataFormat src_df, dst_df;
@@ -475,8 +454,7 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
         GetDstDimsFromTransposeRuler(output_map, op_def, i, src_df, dst_df);
     if (dst_dims.size() > 0) {
       AddTranposeOpForDataFormat(output_map, tensor_shape_map, transformed_set,
-                                 target_net_def, runtime_type, target_mem_type,
-                                 op_def, i, dst_df, dst_dims);
+                                 target_net_def, op_def, i, dst_df, dst_dims);
     }
   }
   return MaceStatus::MACE_SUCCESS;
@@ -521,7 +499,6 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
           context->SetInputInfo(i, dst_mem_type, wanted_input_dtype);
         }
       }
-      auto runtime_type = GetRuntimeTypeByMemType(context, dst_mem_type);
 
       auto transformed_name = TransformedName(op_def->input(i),
                                               "mem_type",
@@ -537,7 +514,6 @@ MaceStatus NetDefAdapter::AdaptMemoryType(
             op_def->input(i),
             input_info.shape,
             transformed_name,
-            runtime_type,
             wanted_input_dtype,
             context->GetInputBufferContentType(i),
             dst_mem_type,
@@ -631,8 +607,8 @@ std::vector<int> NetDefAdapter::GetDstDimsFromTransposeRuler(
 MaceStatus NetDefAdapter::AddTranposeOpForDataFormat(
     TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
     std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
-    RuntimeType runtime_type, MemoryType target_mem_type, OperatorDef *op_def,
-    const int i, const DataFormat dst_df, const std::vector<int> &dst_dims) {
+    OperatorDef *op_def, const int i,
+    const DataFormat dst_df, const std::vector<int> &dst_dims) {
   std::string transformed_name = TransformedName(
       op_def->input(i), "data_format", MakeString(dst_dims));
   if (transformed_set->count(transformed_name) == 0) {
@@ -643,20 +619,18 @@ MaceStatus NetDefAdapter::AddTranposeOpForDataFormat(
                                                          dst_dims);
     OperatorDef *transpose_op_def = target_net_def->add_op();
     BuildTransposeOpDef(op_def->input(i), transformed_name, output_shape,
-                        dst_dims, input_info.dtype, runtime_type,
-                        transpose_op_def);
+                        dst_dims, input_info.dtype, transpose_op_def);
     // Set data format arg
     SetProtoArg<int>(transpose_op_def, "data_format", static_cast<int>(dst_df));
     // Set output memory type argument
-    SetProtoArg<int>(transpose_op_def,
-                     OutputMemoryTypeTagName(), target_mem_type);
+    SetProtoArg<int>(transpose_op_def, OutputMemoryTypeTagName(), CPU_BUFFER);
     // Update tensor consumer information
     output_map->at(op_def->input(i)).consumer_op_indices.push_back(
         target_net_def->op_size() - 1);
 
     // Update output information map
     output_map->emplace(transformed_name, InternalOutputInfo(
-        target_mem_type, input_info.dtype, dst_df, output_shape,
+        CPU_BUFFER, input_info.dtype, dst_df, output_shape,
         target_net_def->op_size() - 1));
     // Update tensor shape map
     tensor_shape_map->emplace(transformed_name, output_shape);

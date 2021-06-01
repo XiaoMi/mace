@@ -12,6 +12,13 @@ if [[ $RUNMODE == "code" ]]; then
     MACE_ENABLE_CODE_MODE=ON
 fi
 
+MACE_ENABLE_NEON=OFF
+MACE_ENABLE_CPU=OFF
+if [[ "$RUNTIME" == "CPU" ]]; then
+    MACE_ENABLE_NEON=ON
+    MACE_ENABLE_CPU=ON
+fi
+
 MACE_ENABLE_OPENCL=OFF
 if [[ "$RUNTIME" == "GPU" ]]; then
     MACE_ENABLE_OPENCL=ON
@@ -31,7 +38,7 @@ mkdir -p ${BUILD_DIR} && cd ${BUILD_DIR}
 cmake -DCROSSTOOL_ROOT=${LINARO_ARM_LINUX_GNUEABIHF} \
       -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchains/arm-linux-gnueabihf.cmake \
       -DCMAKE_BUILD_TYPE=Release          \
-      -DMACE_ENABLE_NEON=ON               \
+      -DMACE_ENABLE_NEON=${MACE_ENABLE_NEON}                 \
       -DMACE_ENABLE_QUANTIZE=${MACE_ENABLE_QUANTIZE}         \
       -DMACE_ENABLE_OPENCL=${MACE_ENABLE_OPENCL}             \
       -DMACE_ENABLE_BFLOAT16=${DMACE_ENABLE_BFLOAT16}        \

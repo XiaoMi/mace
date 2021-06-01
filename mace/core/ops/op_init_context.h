@@ -15,6 +15,8 @@
 #ifndef MACE_CORE_OPS_OP_INIT_CONTEXT_H_
 #define MACE_CORE_OPS_OP_INIT_CONTEXT_H_
 
+#include "mace/public/mace.h"
+
 namespace mace {
 class Workspace;
 class Runtime;
@@ -22,24 +24,24 @@ class Runtime;
 // memory_optimizer, device
 class OpInitContext {
  public:
-  explicit OpInitContext(Workspace *ws, Runtime *runtime = nullptr);
+  explicit OpInitContext(Workspace *ws, Runtime *runtime = nullptr,
+                         Runtime *cpu_runtime = nullptr);
   ~OpInitContext() = default;
 
-  Workspace *workspace() const {
-    return ws_;
-  }
+  Workspace *workspace() const;
 
-  void set_runtime(Runtime *runtime) {
-    runtime_ = runtime;
-  }
+  void SetRuntime(Runtime *runtime);
 
-  Runtime *runtime() const {
-    return runtime_;
-  }
+  void SetCpuRuntime(Runtime *cpu_runtime);
+
+  Runtime *runtime() const;
+
+  Runtime *GetRuntimeByMemType(MemoryType mem_type) const;
 
  private:
   Workspace *ws_;
   Runtime *runtime_;
+  Runtime *cpu_runtime_;
 };
 
 }  // namespace mace

@@ -15,6 +15,8 @@
 #ifndef MACE_OPS_REGISTRY_REGISTRY_H_
 #define MACE_OPS_REGISTRY_REGISTRY_H_
 
+#include "mace/utils/macros.h"
+
 namespace mace {
 class OpRegistry;
 class OpDelegatorRegistry;

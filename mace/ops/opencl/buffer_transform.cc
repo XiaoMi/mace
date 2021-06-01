@@ -59,10 +59,6 @@ class BufferTransformOp<D, float> : public Operation {
 
 void RegisterBufferTransform(OpRegistry *op_registry) {
   MACE_REGISTER_GPU_OP(op_registry, "BufferTransform", BufferTransformOp);
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OP(op_registry, "BufferTransform", BufferTransformOp,
-                   RuntimeType::RT_CPU, float);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

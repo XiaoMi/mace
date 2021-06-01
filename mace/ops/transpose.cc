@@ -85,41 +85,6 @@ void RegisterTranspose(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
                    RuntimeType::RT_CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
-
-  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
-                   RuntimeType::RT_OPENCL, float);
-  MACE_REGISTER_OP(op_registry, "Transpose", TransposeOp,
-                   RuntimeType::RT_OPENCL, half);
-  MACE_REGISTER_BF16_OP(op_registry, "Transpose", TransposeOp,
-                        RuntimeType::RT_OPENCL);
-
-  MACE_REGISTER_OP_CONDITION(
-      op_registry,
-      OpConditionBuilder("Transpose").SetDevicePlacerFunc(
-          [](OpConditionContext *context) -> std::set<RuntimeType> {
-            auto op = context->operator_def();
-            if (op->output_shape_size() != op->output_size()) {
-              return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
-            }
-#ifdef MACE_ENABLE_OPENCL
-            auto runtime = context->runtime();
-            if (runtime->GetRuntimeType() == RuntimeType::RT_OPENCL) {
-              auto &output_shape = op->output_shape(0);
-              auto &output_dims = output_shape.dims();
-              if (output_shape.dims_size() != 4) {
-                return {RuntimeType::RT_CPU};
-              }
-              auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
-              auto max_2d_size = executor->GetMaxImage2DSize();
-              auto image_width = output_dims[2] * output_dims[3] / 4;
-              if (image_width > static_cast<index_t>(max_2d_size[0])) {
-                return {RuntimeType::RT_CPU};
-              }
-            }
-#endif  // MACE_ENABLE_OPENCL
-
-            return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
-          }));
 }
 
 }  // namespace ops

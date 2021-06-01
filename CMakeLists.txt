@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 message("CMAKE_VERSION: ${CMAKE_VERSION}")
 project(mace C CXX)
 
+option(MACE_ENABLE_CPU         "whether to enable CPU support"              OFF)
 option(MACE_ENABLE_NEON        "whether to enable NEON support"             OFF)
 option(MACE_ENABLE_QUANTIZE    "whether to enable NEON int8 support"        OFF)
 option(MACE_ENABLE_OPENCL      "whether to enable OpenCL support"           OFF)
@@ -78,6 +79,10 @@ if(MACE_ENABLE_QUANTIZE)
   add_definitions(-DGEMMLOWP_USE_MACE_THREAD_POOL)
   add_definitions(-DMACE_DEPTHWISE_U8_USE_MULTI_THREAD)
 endif(MACE_ENABLE_QUANTIZE)
+
+if(MACE_ENABLE_CPU OR MACE_ENABLE_OPENCL)
+  add_definitions(-DMACE_ENABLE_CPU)
+endif(MACE_ENABLE_CPU OR MACE_ENABLE_OPENCL)
 
 if(MACE_ENABLE_OPENCL)
   if(IOS)

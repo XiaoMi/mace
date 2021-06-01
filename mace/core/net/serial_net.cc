@@ -78,12 +78,9 @@ MaceStatus SerialNet::Init() {
   OpInitContext init_context(ws_);
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
-    RuntimeType runtime_type = op->runtime_type();
-    if (runtime_type == target_runtime_->GetRuntimeType()) {
-      init_context.set_runtime(target_runtime_);
-    } else {
-      init_context.set_runtime(cpu_runtime_);
-    }
+    init_context.SetRuntime(target_runtime_);
+    init_context.SetCpuRuntime(cpu_runtime_);
+
     // Initialize the operation
     MACE_RETURN_IF_ERROR(op->Init(&init_context));
   }

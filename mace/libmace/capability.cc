@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "mace/core/proto/arg_helper.h"
-#include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/core/tensor.h"
 #include "mace/public/mace.h"
 
 namespace mace {
