@@ -1,4 +1,4 @@
-# Copyright 2018 The MACE Authors. All Rights Reserved.
+# Copyright 2021 The MACE Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 
 import math
 
@@ -144,6 +145,7 @@ class CaffeNet(object):
         if weight.name in self._ops:
             op = self._ops[weight.name]
             op.blobs = list(weight.blobs)
+
 
 class CaffeConverter(base_converter.ConverterInterface):
     """A class for convert caffe model to mace model."""
@@ -643,11 +645,8 @@ class CaffeConverter(base_converter.ConverterInterface):
         num_classes.name = MaceKeyword.mace_num_classes
         num_classes.i = param.num_classes
 
-        if not param.share_location:
-            raise Exception('detection output only supports share location')
-
-        if param.background_label_id != 0:
-            raise Exception('detection output only supports background_label_id == 0')
+        mace_check(not param.share_location, 'detection output only supports share location')
+        mace_check(param.background_label_id != 0, 'detection output only supports background_label_id == 0')
 
         nms_threshold = op.arg.add()
         nms_threshold.f = param.nms_param.nms_threshold
@@ -657,8 +656,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         top_k.i = param.nms_param.top_k
         top_k.name = MaceKeyword.mace_nms_top_k
 
-        if param.code_type != 2:
-            raise Exception('detection output only supports code_type CENTER_SIZE')
+        mace_check(param.code_type != 2, 'detection output only supports code_type CENTER_SIZE')
 
         keep_top_k = op.arg.add()
         keep_top_k.name = MaceKeyword.mace_keep_top_k

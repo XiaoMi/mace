@@ -124,10 +124,10 @@ int DetectionOutput_CLA(const float *loc_ptr,
     bboxes[2 + index] = bbox_cx + bbox_w * 0.5f;
     bboxes[3 + index] = bbox_cy + bbox_h * 0.5f;
   }
-  // start from 1 to ignore background class
+  // Start from 1 to ignore background class
 
   for (int i = 1; i < num_classes; ++i) {
-    // filter by confidence threshold
+    // Filter by confidence threshold
     std::vector<BBox> class_bbox_rects;
     for (int j = 0; j < num_prior; ++j) {
       float confidence = conf_ptr[j * num_classes + i];
@@ -143,19 +143,19 @@ int DetectionOutput_CLA(const float *loc_ptr,
     }
     std::sort(class_bbox_rects.begin(), class_bbox_rects.end(), cmp);
 
-    // apply nms
+    // Apply nms
     std::vector<BBox> sorted_boxes;
     NmsSortedBboxes(class_bbox_rects, nms_threshold,
                     std::min(top_k, static_cast<int>(class_bbox_rects.size())),
                     &sorted_boxes);
-    // gather
+    // Gather
     bbox_rects->insert(bbox_rects->end(), sorted_boxes.begin(),
                        sorted_boxes.end());
   }
 
   std::sort(bbox_rects->begin(), bbox_rects->end(), cmp);
 
-  // output
+  // Output
   int num_detected = keep_top_k < static_cast<int>(bbox_rects->size())
                          ? keep_top_k
                          : static_cast<int>(bbox_rects->size());
@@ -197,7 +197,6 @@ class DetectionOutputOp<RuntimeType::RT_CPU, T> : public DetectionOutput {
     auto *loc_t = this->Input(0);
     auto *conf_t = this->Input(1);
     auto *pbox_t = this->Input(2);
-
 
     auto num_prior = loc_t->shape()[1] / 4;
 
@@ -248,14 +247,6 @@ class DetectionOutputOp<RuntimeType::RT_CPU, T> : public DetectionOutput {
 void RegisterDetectionOutput(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "DetectionOutput", DetectionOutputOp,
                    RuntimeType::RT_CPU, float);
-
-  MACE_REGISTER_OP_CONDITION(
-      op_registry,
-      OpConditionBuilder("DetectionOutput")
-          .SetDevicePlacerFunc(
-              [](OpConditionContext *context) -> std::set<RuntimeType> {
-                return {RuntimeType::RT_CPU};
-              }));
 }
 
 }  // namespace ops

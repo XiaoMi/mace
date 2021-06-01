@@ -211,6 +211,7 @@ class ShapeInference(object):
             input_shape = list(self._output_shape_cache[input_node])
             output_shape[axis] = output_shape[axis] + input_shape[axis]
         self.add_output_shape(op, [output_shape])
+
     def infer_shape_detection_output(self,op):
         keep_top = 0
         for arg in op.arg:
@@ -219,6 +220,7 @@ class ShapeInference(object):
                 break
         outshape = [1,1,keep_top,7]
         self.add_output_shape(op,[outshape])
+
     def infer_shape_slice(self, op):
         output_shape = self._output_shape_cache[op.input[0]]
         axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
