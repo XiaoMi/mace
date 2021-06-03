@@ -164,3 +164,49 @@ __kernel void depth_to_space(OUT_OF_RANGE_PARAMS
   int out_x = mad24(out_depth_blk_idx, output_width, out_width_idx);
   WRITE_IMAGET(output, (int2)(out_x, out_hb_idx), out_data);
 }
+
+__kernel void depth_to_space_crd_2x2(OUT_OF_RANGE_PARAMS
+                             GLOBAL_WORK_GROUP_SIZE_DIM3
+                             __read_only image2d_t input,
+                             __private const int input_height,
+                             __private const int input_width,
+                             __private const int block_size,
+                             __private const int output_height,
+                             __private const int output_width,
+                             __private const int output_depth,
+                             __write_only image2d_t output) {
+  const int in_depth_blk_idx4 = get_global_id(0);
+  const int in_depth_blk_idx = in_depth_blk_idx4 * 4;
+  const int in_width_idx = get_global_id(1);
+  const int in_hb_idx = get_global_id(2);
+
+  const int batch_idx = in_hb_idx / input_height;
+  const int in_height_idx = in_hb_idx - mul24(batch_idx, input_height);
+
+  const int out_height_idx = in_height_idx * block_size;
+  const int out_width_idx = in_width_idx * block_size;
+
+  const int in_x0 = mad24(in_depth_blk_idx4 * 4 + 0, input_width, in_width_idx);
+  const int in_x1 = mad24(in_depth_blk_idx4 * 4 + 1, input_width, in_width_idx);
+  const int in_x2 = mad24(in_depth_blk_idx4 * 4 + 2, input_width, in_width_idx);
+  const int in_x3 = mad24(in_depth_blk_idx4 * 4 + 3, input_width, in_width_idx);
+
+  DATA_TYPE4 in_data0 = READ_IMAGET(input, SAMPLER, (int2)(in_x0, in_hb_idx));
+  DATA_TYPE4 in_data1 = READ_IMAGET(input, SAMPLER, (int2)(in_x1, in_hb_idx));
+  DATA_TYPE4 in_data2 = READ_IMAGET(input, SAMPLER, (int2)(in_x2, in_hb_idx));
+  DATA_TYPE4 in_data3 = READ_IMAGET(input, SAMPLER, (int2)(in_x3, in_hb_idx));
+
+  DATA_TYPE4 out_data00 = {in_data0.x, in_data1.x, in_data2.x, in_data3.x};
+  DATA_TYPE4 out_data10 = {in_data0.y, in_data1.y, in_data2.y, in_data3.y};
+  DATA_TYPE4 out_data01 = {in_data0.z, in_data1.z, in_data2.z, in_data3.z};
+  DATA_TYPE4 out_data11 = {in_data0.w, in_data1.w, in_data2.w, in_data3.w};
+
+  const int out_depth_blk_idx = in_depth_blk_idx4;
+  int out_y = mad24(batch_idx, output_height, out_height_idx);
+  int out_x = mad24(out_depth_blk_idx, output_width, out_width_idx);
+
+  WRITE_IMAGET(output, (int2)(out_x + 0, out_y + 0),out_data00);
+  WRITE_IMAGET(output, (int2)(out_x + 1, out_y + 0),out_data10);
+  WRITE_IMAGET(output, (int2)(out_x + 0, out_y + 1),out_data01);
+  WRITE_IMAGET(output, (int2)(out_x + 1, out_y + 1),out_data11);
+}

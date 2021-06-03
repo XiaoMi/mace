@@ -33,7 +33,8 @@ class DepthToSpaceOp<RT_CPU, T> : public Operation {
  public:
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context),
-        block_size_(Operation::GetOptionalArg<int>("block_size", 1)) {}
+        block_size_(Operation::GetOptionalArg<int>("block_size", 1)),
+        mode_(Operation::GetOptionalArg<std::string>("mode", "DCR")) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -59,25 +60,53 @@ class DepthToSpaceOp<RT_CPU, T> : public Operation {
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-    for (index_t b = 0; b < batch_size; ++b) {
-      for (index_t d = 0; d < output_depth; ++d) {
-        for (index_t h = 0; h < output_height; ++h) {
-          const index_t in_h = h / block_size_;
-          const index_t offset_h = (h % block_size_);
-          for (int w = 0; w < output_width; ++w) {
-            const index_t in_w = w / block_size_;
-            const index_t offset_w = w % block_size_;
-            const index_t offset_d =
-                (offset_h * block_size_ + offset_w) * output_depth;
+    if (mode_ == "DCR") {
+      for (index_t b = 0; b < batch_size; ++b) {
+        for (index_t d = 0; d < output_depth; ++d) {
+          for (index_t h = 0; h < output_height; ++h) {
+            const index_t in_h = h / block_size_;
+            const index_t offset_h = (h % block_size_);
+            for (int w = 0; w < output_width; ++w) {
+              const index_t in_w = w / block_size_;
+              const index_t offset_w = w % block_size_;
+              const index_t offset_d =
+                  (offset_h * block_size_ + offset_w) * output_depth;
 
-            const index_t in_d = d + offset_d;
-            const index_t o_index =
-                ((b * output_depth + d) * output_height + h) * output_width
-                    + w;
-            const index_t i_index =
-                ((b * input_depth + in_d) * input_height + in_h) * input_width
-                    + in_w;
-            output_ptr[o_index] = input_ptr[i_index];
+              const index_t in_d = d + offset_d;
+              const index_t o_index =
+                  ((b * output_depth + d) * output_height + h) * output_width +
+                  w;
+              const index_t i_index =
+                  ((b * input_depth + in_d) * input_height + in_h) *
+                      input_width +
+                  in_w;
+              output_ptr[o_index] = input_ptr[i_index];
+            }
+          }
+        }
+      }
+    } else {  // CRD
+      for (index_t b = 0; b < batch_size; ++b) {
+        for (index_t d = 0; d < output_depth; ++d) {
+          for (index_t h = 0; h < output_height; ++h) {
+            const index_t in_h = h / block_size_;
+            const index_t offset_h = (h % block_size_);
+            for (int w = 0; w < output_width; ++w) {
+              const index_t in_w = w / block_size_;
+              const index_t offset_w = w % block_size_;
+              const index_t block_offset_d = offset_h * block_size_ + offset_w;
+              const index_t in_d =
+                  d * (block_size_ * block_size_) + block_offset_d;
+
+              const index_t o_index =
+                  ((b * output_depth + d) * output_height + h) * output_width +
+                  w;
+              const index_t i_index =
+                  ((b * input_depth + in_d) * input_height + in_h) *
+                      input_width +
+                  in_w;
+              output_ptr[o_index] = input_ptr[i_index];
+            }
           }
         }
       }
@@ -88,6 +117,7 @@ class DepthToSpaceOp<RT_CPU, T> : public Operation {
 
  private:
   const int block_size_;
+  const std::string mode_;
 };
 
 #ifdef MACE_ENABLE_QUANTIZE
@@ -96,7 +126,8 @@ class DepthToSpaceOp<RT_CPU, uint8_t> : public Operation {
  public:
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context),
-        block_size_(Operation::GetOptionalArg<int>("block_size", 1)) {}
+        block_size_(Operation::GetOptionalArg<int>("block_size", 1)),
+        mode_(Operation::GetOptionalArg<std::string>("mode", "DCR")) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -122,25 +153,53 @@ class DepthToSpaceOp<RT_CPU, uint8_t> : public Operation {
     const uint8_t *input_ptr = input->data<uint8_t>();
     uint8_t *output_ptr = output->mutable_data<uint8_t>();
 
-    for (index_t b = 0; b < batch_size; ++b) {
-      for (index_t h = 0; h < output_height; ++h) {
-        const index_t in_h = h / block_size_;
-        const index_t offset_h = (h % block_size_);
-        for (int w = 0; w < output_width; ++w) {
-          const index_t in_w = w / block_size_;
-          const index_t offset_w = w % block_size_;
-          const index_t offset_d =
-              (offset_h * block_size_ + offset_w) * output_depth;
+    if (mode_ == "DCR") {
+      for (index_t b = 0; b < batch_size; ++b) {
+        for (index_t h = 0; h < output_height; ++h) {
+          const index_t in_h = h / block_size_;
+          const index_t offset_h = (h % block_size_);
+          for (int w = 0; w < output_width; ++w) {
+            const index_t in_w = w / block_size_;
+            const index_t offset_w = w % block_size_;
+            const index_t offset_d =
+                (offset_h * block_size_ + offset_w) * output_depth;
 
-          for (index_t d = 0; d < output_depth; ++d) {
-            const index_t in_d = d + offset_d;
-            const index_t o_index =
-                ((b * output_height + h) * output_width + w) * output_depth
-                    + d;
-            const index_t i_index =
-                ((b * input_height + in_h) * input_width + in_w) * input_depth
-                    + in_d;
-            output_ptr[o_index] = input_ptr[i_index];
+            for (index_t d = 0; d < output_depth; ++d) {
+              const index_t in_d = d + offset_d;
+              const index_t o_index =
+                  ((b * output_height + h) * output_width + w) * output_depth +
+                  d;
+              const index_t i_index =
+                  ((b * input_height + in_h) * input_width + in_w) *
+                      input_depth +
+                  in_d;
+              output_ptr[o_index] = input_ptr[i_index];
+            }
+          }
+        }
+      }
+    } else {  // "CRD"
+       for (index_t b = 0; b < batch_size; ++b) {
+        for (index_t h = 0; h < output_height; ++h) {
+          const index_t in_h = h / block_size_;
+          const index_t offset_h = (h % block_size_);
+          for (int w = 0; w < output_width; ++w) {
+            const index_t in_w = w / block_size_;
+            const index_t offset_w = w % block_size_;
+            const index_t block_offset_d = (offset_h * block_size_ + offset_w);
+
+            for (index_t d = 0; d < output_depth; ++d) {
+              const index_t in_d =
+                  d * (block_size_ * block_size_) + block_offset_d;
+              const index_t o_index =
+                  ((b * output_height + h) * output_width + w) * output_depth +
+                  d;
+              const index_t i_index =
+                  ((b * input_height + in_h) * input_width + in_w) *
+                      input_depth +
+                  in_d;
+              output_ptr[o_index] = input_ptr[i_index];
+            }
           }
         }
       }
@@ -151,6 +210,7 @@ class DepthToSpaceOp<RT_CPU, uint8_t> : public Operation {
 
  private:
   const int block_size_;
+  const std::string mode_;
 };
 #endif  // MACE_ENABLE_QUANTIZE
 
@@ -161,8 +221,10 @@ class DepthToSpaceOp<RuntimeType::RT_OPENCL, float> : public Operation {
   explicit DepthToSpaceOp(OpConstructContext *context)
       : Operation(context) {
     int block_size = Operation::GetOptionalArg<int>("block_size", 1);
+    auto mode = Operation::GetOptionalArg<std::string>("mode", "DCR");
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::DepthToSpaceKernel>(block_size);
+      kernel_ =
+          make_unique<opencl::image::DepthToSpaceKernel>(block_size, mode);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
