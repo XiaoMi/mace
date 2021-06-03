@@ -22,10 +22,9 @@ namespace opencl {
 namespace image {
 
 
-MaceStatus DepthToSpaceKernel::Compute(
-    OpContext *context,
-    const Tensor *input,
-    Tensor *output) {
+MaceStatus DepthToSpaceKernel::Compute(OpContext *context,
+                                       const Tensor *input,
+                                       Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t input_height = input->dim(1);
   const index_t input_width = input->dim(2);
@@ -39,24 +38,31 @@ MaceStatus DepthToSpaceKernel::Compute(
   const index_t output_width = input_width * block_size_;
   const index_t output_depth = input_depth / (block_size_ * block_size_);
   MACE_CHECK(output_depth % 4 == 0 || output_depth < 4,
-             "output channel not support:") << output_depth;
+             "output channel not support:")
+      << output_depth;
 
-  std::vector<index_t> output_shape = {batch,
-                                       output_height,
-                                       output_width,
+  std::vector<index_t> output_shape = {batch, output_height, output_width,
                                        output_depth};
   MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-  uint32_t gws[3];
-  if (output_depth < 3) {
-    gws[0] = static_cast<uint32_t>(RoundUpDiv4(input_depth));
+  uint32_t gws[3] = {0};
+  if (mode_ == "DCR") {
+    if (output_depth < 3) {
+      gws[0] = static_cast<uint32_t>(RoundUpDiv4(input_depth));
+      gws[1] = static_cast<uint32_t>(input_width);
+      gws[2] = static_cast<uint32_t>(input_height * batch);
+    } else {
+      gws[0] = static_cast<uint32_t>(RoundUpDiv4(output_depth));
+      gws[1] = static_cast<uint32_t>(output_width);
+      gws[2] = static_cast<uint32_t>(output_height * batch);
+    }
+  } else {
+    gws[0] = static_cast<uint32_t>(RoundUpDiv4(RoundUpDiv4(input_depth)));
     gws[1] = static_cast<uint32_t>(input_width);
     gws[2] = static_cast<uint32_t>(input_height * batch);
-  } else {
-    gws[0] = static_cast<uint32_t>(RoundUpDiv4(output_depth));
-    gws[1] = static_cast<uint32_t>(output_width);
-    gws[2] = static_cast<uint32_t>(output_height * batch);
   }
+
+
   auto executor = OpenclRuntime::Get(context)->GetOpenclExecutor();
   MACE_OUT_OF_RANGE_DEFINITION;
 
@@ -64,11 +70,18 @@ MaceStatus DepthToSpaceKernel::Compute(
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
+
     const char *kernel_name = "depth_to_space";
-    if (output_depth < 4) {
-      built_options.emplace(MakeString("-DDEPTH", output_depth));
-      if (output_depth != 3) kernel_name = "depth_to_space_d1_d2";
+    if (mode_ == "DCR") {
+      if (output_depth < 4) {
+        built_options.emplace(MakeString("-DDEPTH", output_depth));
+        if (output_depth != 3) kernel_name = "depth_to_space_d1_d2";
+      }
+    } else {  // CRD
+      MACE_CHECK(block_size_ == 2, "only blocksize_ == 2 is supported");
+      kernel_name = "depth_to_space_crd_2x2";
     }
+
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
@@ -76,10 +89,8 @@ MaceStatus DepthToSpaceKernel::Compute(
     auto dt = input->dtype();
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-    MACE_RETURN_IF_ERROR(executor->BuildKernel("depth_to_space",
-                                               obfuscated_kernel_name,
-                                               built_options,
-                                               &kernel_));
+    MACE_RETURN_IF_ERROR(executor->BuildKernel(
+        "depth_to_space", obfuscated_kernel_name, built_options, &kernel_));
     kwg_size_ =
         static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel_));
   }
@@ -101,12 +112,11 @@ MaceStatus DepthToSpaceKernel::Compute(
     input_shape_ = input->shape();
   }
 
-  std::string tuning_key = Concat("depth_to_space",
-                                  batch, output_height,
+  std::string tuning_key = Concat("depth_to_space", batch, output_height,
                                   output_width, output_depth);
   const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key, gws,
+                                           lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

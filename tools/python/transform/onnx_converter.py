@@ -19,6 +19,7 @@ import six
 
 from py_proto import mace_pb2
 from transform import base_converter
+from transform import shape_inference
 from transform.base_converter import ActivationType
 from transform.base_converter import ConverterUtil
 from transform.base_converter import CoordinateTransformationMode
@@ -440,8 +441,6 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         onnx.checker.check_model(onnx_model)
 
-        onnx_model = shape_inference.infer_shapes(onnx_model)
-
         self._isKaldi = False
 
         polish_available = True
@@ -514,7 +513,34 @@ class OnnxConverter(base_converter.ConverterInterface):
         else:
             mace_check(False, "Not supported tensor type: %s" % name)
 
+    def infer_shapes(self):
+        graph_def = self._onnx_model.graph
+        input_all = [node.name for node in graph_def.input]
+        input_initializer = [node.name for node in graph_def.initializer]
+        net_feed_input = list(set(input_all) - set(input_initializer))
+        for input in graph_def.input:
+            if input.name not in net_feed_input:
+                continue
+
+            mace_check(
+                input.name in self._option.input_nodes,
+                "input node info is invalide")
+            mace_input_node = self._option.input_nodes[input.name]
+            input_shape = mace_input_node.shape
+            if mace_input_node.data_format == DataFormat.NHWC and len(
+                    input_shape) == 4:
+                input_shape = [
+                    input_shape[0],
+                    input_shape[3],
+                    input_shape[1],
+                    input_shape[2]]
+
+            for i, dim in enumerate(input.type.tensor_type.shape.dim):
+                dim.dim_value = input_shape[i]
+        self._onnx_model = onnx.shape_inference.infer_shapes(self._onnx_model)
+
     def run(self):
+        self.infer_shapes()
         graph_def = self._onnx_model.graph
         self.extract_shape_info(graph_def)
         self.convert_tensors(graph_def)
@@ -952,7 +978,14 @@ class OnnxConverter(base_converter.ConverterInterface):
         size_arg.i = block_size
 
         if 'mode' in node.attrs:
-            mace_check(node.attrs['mode'] == 'DCR', "Only supports DCR mode.")
+            if node.attrs['mode'] == 'CRD':
+                mode_arg = op.arg.add()
+                mode_arg.name = 'mode'
+                mode_arg.s = bytes('CRD', 'utf-8')
+            else:
+                mode_arg = op.arg.add()
+                mode_arg.name = 'mode'
+                mode_arg.s = bytes('DCR', 'utf-8')
 
     def convert_dequantize_linear(self, node):
         mace_check(self._source_framework ==

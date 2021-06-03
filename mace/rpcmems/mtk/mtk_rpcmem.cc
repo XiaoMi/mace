@@ -57,7 +57,7 @@ void *MtkRpcmem::New(int heapid, uint32_t flags, int nbytes) {
   MACE_UNUSED(heapid);
 
   ion_user_handle_t buf_handle;
-  if (mtk_ion_wrapper_->ion_alloc_mm(ion_handle_, (size_t) nbytes,
+  if (mtk_ion_wrapper_->ion_alloc_mm(ion_handle_, static_cast<size_t>(nbytes),
                                      0, flags, &buf_handle)) {
     LOG(WARNING) << "Fail to get ion buffer handle, ion_handle_ = "
                  << ion_handle_ << ", nbytes = " << nbytes;
@@ -74,8 +74,8 @@ void *MtkRpcmem::New(int heapid, uint32_t flags, int nbytes) {
   }
 
   void *buf_addr = mtk_ion_wrapper_->ion_mmap(
-      ion_handle_, nullptr, (size_t) nbytes,
-      PROT_READ | PROT_WRITE, MAP_SHARED, buf_share_fd, 0);
+      ion_handle_, nullptr, static_cast<size_t>(nbytes), PROT_READ | PROT_WRITE,
+      MAP_SHARED, buf_share_fd, 0);
   if (buf_addr == nullptr) {
     LOG(WARNING) << "Fail to map fd, ion_handle_ = "
                  << ion_handle_ << ", nbytes = " << nbytes;
@@ -96,7 +96,7 @@ void MtkRpcmem::Delete(void *data) {
   MACE_CHECK(addr_handle_map_.count(data) > 0);
   MACE_CHECK(addr_length_map_.count(data) > 0);
   int buf_share_fd = addr_handle_map_.at(data);
-  auto size = (size_t) addr_length_map_.at(data);
+  auto size = static_cast<size_t>(addr_length_map_.at(data));
 
   handle_addr_map_.erase(buf_share_fd);
   addr_handle_map_.erase(data);
@@ -144,7 +144,7 @@ int MtkRpcmem::SyncCacheStart(void *data) {
   MACE_CHECK(addr_handle_map_.count(data) > 0);
   MACE_CHECK(addr_length_map_.count(data) > 0);
   int buf_share_fd = addr_handle_map_.at(data);
-  auto size = (size_t) addr_length_map_.at(data);
+  auto size = static_cast<size_t>(addr_length_map_.at(data));
 
   struct ion_sys_data sys_data;
   ion_user_handle_t ion_user_handle;
@@ -167,7 +167,7 @@ int MtkRpcmem::SyncCacheEnd(void *data) {
   MACE_CHECK(addr_handle_map_.count(data) > 0);
   MACE_CHECK(addr_length_map_.count(data) > 0);
   int buf_share_fd = addr_handle_map_.at(data);
-  auto size = (size_t) addr_length_map_.at(data);
+  auto size = static_cast<size_t>(addr_length_map_.at(data));
 
   struct ion_sys_data sys_data;
   ion_user_handle_t ion_user_handle;
