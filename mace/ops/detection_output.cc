@@ -216,11 +216,13 @@ class DetectionOutputOp<RuntimeType::RT_CPU, T> : public DetectionOutput {
                         confidence_threshold_, &bbox_rects);
 
     output->Clear();
-    std::vector<index_t> output_shape = {1, 1, (int)bbox_rects.size(), 7};
+    std::vector<index_t> output_shape = {1, 1,
+                                        static_cast<int>(bbox_rects.size()),
+                                        7};
     MACE_RETURN_IF_ERROR(output->Resize(output_shape))
 
     float *output_ptr = output->mutable_data<float>();
-    auto output_len = (int)bbox_rects.size();
+    auto output_len = static_cast<int>(bbox_rects.size());
     for (int i = 0; i < output_len; ++i) {
       auto *row = output_ptr + i * 7;
       auto &b = bbox_rects[i];

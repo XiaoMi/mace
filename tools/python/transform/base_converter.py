@@ -319,7 +319,6 @@ class MaceKeyword(object):
     mace_keep_top_k = 'keep_top_k'
 
 
-
 class QatType(Enum):
     ASYMMETRIC = 0
     SYMMETRIC = 1

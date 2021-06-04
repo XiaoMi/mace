@@ -645,8 +645,10 @@ class CaffeConverter(base_converter.ConverterInterface):
         num_classes.name = MaceKeyword.mace_num_classes
         num_classes.i = param.num_classes
 
-        mace_check(not param.share_location, 'detection output only supports share location')
-        mace_check(param.background_label_id != 0, 'detection output only supports background_label_id == 0')
+        mace_check(not param.share_location,
+                   'detection output only supports share location')
+        mace_check(param.background_label_id != 0,
+                   'detection output only supports background_label_id == 0')
 
         nms_threshold = op.arg.add()
         nms_threshold.f = param.nms_param.nms_threshold
@@ -656,7 +658,8 @@ class CaffeConverter(base_converter.ConverterInterface):
         top_k.i = param.nms_param.top_k
         top_k.name = MaceKeyword.mace_nms_top_k
 
-        mace_check(param.code_type != 2, 'detection output only supports code_type CENTER_SIZE')
+        mace_check(param.code_type != 2,
+                   'detection output only supports code_type CENTER_SIZE')
 
         keep_top_k = op.arg.add()
         keep_top_k.name = MaceKeyword.mace_keep_top_k
@@ -665,7 +668,6 @@ class CaffeConverter(base_converter.ConverterInterface):
         confidence_threshold = op.arg.add()
         confidence_threshold.name = MaceKeyword.mace_confidence_threshold
         confidence_threshold.f = param.confidence_threshold
-
 
     def convert_slice(self, caffe_op):
         op = self.convert_general_op(caffe_op)

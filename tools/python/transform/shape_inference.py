@@ -212,14 +212,14 @@ class ShapeInference(object):
             output_shape[axis] = output_shape[axis] + input_shape[axis]
         self.add_output_shape(op, [output_shape])
 
-    def infer_shape_detection_output(self,op):
+    def infer_shape_detection_output(self, op):
         keep_top = 0
         for arg in op.arg:
             if arg.name == MaceKeyword.mace_keep_top_k:
                 keep_top = arg.i
                 break
-        outshape = [1,1,keep_top,7]
-        self.add_output_shape(op,[outshape])
+        outshape = [1, 1, keep_top, 7]
+        self.add_output_shape(op, [outshape])
 
     def infer_shape_slice(self, op):
         output_shape = self._output_shape_cache[op.input[0]]
