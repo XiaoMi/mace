@@ -186,7 +186,7 @@ void *OpenCLAllocator::Map(void *buffer,
   if (opencl_runtime_->ion_type() == IONType::QUALCOMM_ION) {
     auto it = cl_to_host_map_.find(buffer);
     MACE_CHECK(it != cl_to_host_map_.end(), "Try to map unallocated Buffer!");
-    mapped_ptr = it->second;
+    mapped_ptr = static_cast<char *>(it->second) + offset;
 
     if (finish_cmd_queue) {
       opencl_runtime_->command_queue().finish();

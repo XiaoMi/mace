@@ -169,12 +169,21 @@ MaceStatus DoTransposeConstForCPU(
   MemoryType dst_mem_type = CPU_BUFFER;
   std::vector<index_t> input_shape = input->shape();
   std::vector<index_t> output_shape = input_shape;
+  DataFormat op_data_format =
+      static_cast<DataFormat>(ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          *op_def, "data_format",
+          static_cast<int>(DataFormat::NONE)));
+  bool cpu_nhwc = (op_data_format == DataFormat::NHWC &&
+                   input_shape.size() == 4);
+  bool cpu_nchw = (op_data_format == DataFormat::NCHW &&
+                   input_shape.size() == 4);
   if (src_mem_type == dst_mem_type &&
-      src_dt == dst_dt && input_shape.size() != 4) {
+      src_dt == dst_dt &&
+      (input_shape.size() != 4 || cpu_nhwc)) {
     return MaceStatus::MACE_SUCCESS;
   }
   std::vector<int> dims = {0, 3, 1, 2};
-  if (input_shape.size() == 4) {
+  if (cpu_nchw) {
     for (size_t i = 0; i < dims.size(); ++i) {
       output_shape[i] = input_shape[dims[i]];
     }
@@ -201,12 +210,12 @@ MaceStatus DoTransposeConstForCPU(
   size_t num_elem = input->size();
   size_t dst_bytes = output->raw_size();
 
-  if (input_shape.size() != 4) {
+  if (input_shape.size() != 4 || cpu_nhwc) {
     if (src_dt == dst_dt) {
       memcpy(reinterpret_cast<void*>(output_data),
              reinterpret_cast<const void*>(input_data), dst_bytes);
     } else if (src_dt == DT_HALF && dst_dt == DT_FLOAT) {  // half->float
-      // can only be cpu/gpu half to cpu float, no matter 4D or non-4D
+      // Can only be cpu/gpu half to cpu float, no matter 4D or non-4D
       const half *half_input = reinterpret_cast<const half*>(input_data);
       for (size_t i = 0; i < num_elem; ++i) {
         output_data[i] = half_float::half_cast<float>(half_input[i]);
