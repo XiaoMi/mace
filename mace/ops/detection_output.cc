@@ -205,9 +205,9 @@ class DetectionOutputOp<RuntimeType::RT_CPU, T> : public DetectionOutput {
     MACE_CHECK(num_prior == pbox_t->shape()[2] / 4,
                "prior box tensor shape miss match");
 
-    const float *loc_ptr = loc_t->data<float>();
-    const float *conf_ptr = conf_t->data<float>();
-    const float *pbox_ptr = pbox_t->data<float>();
+    const float *loc_ptr = loc_t->template data<float>();
+    const float *conf_ptr = conf_t->template data<float>();
+    const float *pbox_ptr = pbox_t->template data<float>();
 
     std::vector<BBox> bbox_rects;
 
