@@ -313,7 +313,10 @@ class Transformer(base_converter.ConverterInterface):
             # When no replace op specified, we change the inputs of
             # its consumers to the input of the op. This handles the case
             # that the op is identity op and its input is a tensor.
-            mace_check(len(op.output) == 1 and len(op.input) == 1,
+            reshape_const_dim = op.type == MaceOp.Reshape.name and \
+                (len(op.input) == 1 or op.input[1] in self._consts)
+            mace_check(len(op.output) == 1 and (len(op.input) == 1 or
+                       reshape_const_dim),
                        "cannot remove op that w/o replace op specified"
                        " and input/output length > 1\n" + str(op))
 
@@ -386,6 +389,16 @@ class Transformer(base_converter.ConverterInterface):
                 print("Remove useless reshape: %s(%s)" % (op.name, op.type))
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
+                return True
+            elif op.type == 'Reshape' and len(op.output_shape) == 1 and \
+                    self._producer.get(op.input[0], None) is not None and \
+                    self._producer.get(op.input[0], None).type == 'Reshape':
+                producer_op = self._producer.get(op.input[0], None)
+                if (len(producer_op.input) == 1 or producer_op.input[1] in self._consts) and \
+                        self._consumers.get(producer_op.output[0], None) is not None and \
+                        len(self._consumers.get(producer_op.output[0], None)) == 1:
+                    self.safe_remove_node(producer_op, None,
+                                          remove_input_tensor=True)
                 return True
 
         return False
@@ -1410,7 +1423,7 @@ class Transformer(base_converter.ConverterInterface):
                                 is_fc = False
                     if is_fc:
                         print('convert reshape and matmul to fc')
-                        self.safe_remove_node(op, input_op,
+                        self.safe_remove_node(op, None,
                                               remove_input_tensor=True)
                         for matmul_op in consumers:
                             weight = self._consts[matmul_op.input[1]]

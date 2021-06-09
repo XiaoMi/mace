@@ -609,6 +609,9 @@ class ConverterOption(object):
                 # Must be put after TRANSFORM_MATMUL_TO_FC and
                 # before UPDATE_DATA_FORMAT
                 TransformerRule.UPDATE_FC_OUTPUT_SHAPE,
+                # After update FC output shape, there may be useless reshape
+                # which does: NC11 -> Reshape(useless) -> NC11
+                TransformerRule.REMOVE_USELESS_OP,
                 # For StoB -> conv -> BtoS -> BN pattern
                 # Insert flatten_atrous_conv before fold_xxx_and_bn
                 TransformerRule.FLATTEN_ATROUS_CONV,

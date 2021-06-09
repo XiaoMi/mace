@@ -62,6 +62,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/softmax_buffer.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/space_to_batch.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/space_to_depth.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/transpose.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/sqrdiff_mean.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/winograd_transform.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/lpnorm.cl"))

@@ -54,7 +54,7 @@ def calculate_sqnr(expected, actual):
     noise = expected - actual
 
     def power_sum(xs):
-        return sum([x * x for x in xs])
+        return np.sum(xs * xs)
 
     signal_power_sum = power_sum(expected)
     noise_power_sum = power_sum(noise)
