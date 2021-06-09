@@ -84,6 +84,8 @@ def convert(conf, output, enable_micro=False):
 
         model_params = []
         for net_name, net_conf in net_confs.items():
+            if "quantize_stat" in conf:
+                net_conf["quantize_stat"] = conf["quantize_stat"]
             net_def_with_Data = convert_net(net_name, net_conf, enable_micro)
             try:
                 visualizer = visualize_model.ModelVisualizer(
