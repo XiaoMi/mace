@@ -417,23 +417,6 @@ def get_data_type(parent_config, runtime):
     return data_type
 
 
-def get_graph_runtime(graph_config, model_config, target_abis):
-    runtime = graph_config.get(YAMLKeyword.runtime, "")
-    if len(runtime) == 0:
-        runtime = model_config.get(YAMLKeyword.runtime, "")
-    if runtime == "cpu+gpu":
-        runtime = "gpu"
-    mace_check(runtime in RuntimeTypeStrs, ModuleName.YAML_CONFIG,
-               "runtime '" + runtime +
-               "' must be in " + str(RuntimeTypeStrs))
-
-    if ABIType.host in target_abis:
-        mace_check(runtime == RuntimeType.cpu,
-                   ModuleName.YAML_CONFIG,
-                   "host only support cpu runtime now.")
-    return runtime
-
-
 def format_model_config(flags):
     with open(flags.config) as f:
         configs = yaml.load(f)
@@ -572,8 +555,8 @@ def format_model_config(flags):
             model_config[YAMLKeyword.subgraphs] = subgraphs
 
         for graph_name, graph_config in subgraphs.items():
-            runtime = get_graph_runtime(graph_config, model_config,
-                                        target_abis)
+            runtime = DeviceWrapper.get_graph_runtime(
+                graph_config, model_config, target_abis)
             get_data_type(model_config, runtime)
 
         input_ranges = model_config.get(

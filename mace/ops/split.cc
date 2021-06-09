@@ -191,11 +191,15 @@ void RegisterSplit(OpRegistry *op_registry) {
                 }
                 int axis = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                     *op, "axis", 3);
-                if (axis != 3 || op->output_shape(0).dims_size() != 4 ||
-                    (op->output_shape(0).dims()[3] % 4 != 0) ||
-                    op->input_size() > 1) {
-                  return {RuntimeType::RT_CPU};
+                if (axis != 3) return {RuntimeType::RT_CPU};
+
+                for (int i = 0; i < op->output_size(); ++i) {
+                  if (op->output_shape(i).dims_size() != 4 ||
+                      op->output_shape(i).dims()[3] % 4 != 0) {
+                    return {RuntimeType::RT_CPU};
+                  }
                 }
+
                 return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
               }));
 }

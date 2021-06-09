@@ -83,7 +83,7 @@ in one deployment file.
     * - backend
       - The onnx backend framework for validation, could be [tensorflow, caffe2, pytorch], default is tensorflow.
     * - runtime
-      - The running device, one of [cpu, gpu, dsp, cpu+gpu]. cpu+gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
+      - The running device, one of [cpu, gpu, dsp, hta, apu].
     * - data_type
       - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU and APU; [fp16_fp32, bf16_fp32, fp32_fp32, fp16_fp16] for CPU, default is fp16_fp32.
     * - input_data_types

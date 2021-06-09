@@ -817,11 +817,10 @@ bool OpenclExecutor::BuildProgramFromSource(
           CL_BUILD_ERROR) {
         std::string build_log =
             program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
-        LOG(INFO) << "Program build log: " << build_log;
+        LOG(ERROR) << "Program build log: " << build_log;
       }
-      LOG(WARNING) << "Build program "
-                   << program_name << " from source failed: "
-                   << MakeString(ret);
+      LOG(ERROR) << "Build program " << program_name
+                 << " from source failed: " << MakeString(ret);
       return false;
     }
 

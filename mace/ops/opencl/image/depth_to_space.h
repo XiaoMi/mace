@@ -32,8 +32,8 @@ namespace image {
 
 class DepthToSpaceKernel : public OpenCLDepthToSpaceKernel {
  public:
-  explicit DepthToSpaceKernel(const int block_size)
-      : block_size_(block_size) {}
+  explicit DepthToSpaceKernel(const int block_size, const std::string mode)
+      : block_size_(block_size), mode_(mode) {}
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -41,6 +41,7 @@ class DepthToSpaceKernel : public OpenCLDepthToSpaceKernel {
 
  private:
   const int block_size_;
+  const std::string mode_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
