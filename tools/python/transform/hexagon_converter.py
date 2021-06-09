@@ -849,8 +849,13 @@ class HexagonConverter(base_converter.ConverterInterface):
     def add_resize_args(self, op):
         align_corners_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_align_corners_str)
-        self.add_arg_const_node(
-            op, '/align_corners:0', [1], [align_corners_arg.i])
+
+        if align_corners_arg:
+            self.add_arg_const_node(
+                op, '/align_corners:0', [1], [align_corners_arg.i])
+        else:
+            self.add_arg_const_node(
+                op, '/align_corners:0', [1], [0])
 
         coordinate_transformation_mode_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_coordinate_transformation_mode_str)
@@ -858,10 +863,12 @@ class HexagonConverter(base_converter.ConverterInterface):
             name = CoordinateTransformationMode(
                 coordinate_transformation_mode_arg.i)
             value = coordinate_transformation_mode_arg.i
-            mace_check(value == CoordinateTransformationMode.HALF_PIXEL.value,
-                       "Hexagon does not support resize %s" % name)
-            self.add_arg_const_node(
-                op, '/half_pixel_centers:0', [1], [1])
+            if (value == CoordinateTransformationMode.HALF_PIXEL.value
+                or value == CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value):  # noqa
+                self.add_arg_const_node(
+                    op, '/half_pixel_centers:0', [1], [1])
+            else:
+                mace_check(False, "Unsupported coordinate_transformation_mode")
 
     def convert_resizebilinear(self, op):
         resize_size_arg = ConverterUtil.get_arg(
