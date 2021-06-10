@@ -16,6 +16,7 @@
 #include "mace/runtimes/opencl/opencl_runtime.h"
 #include "mace/ops/common/activation_type.h"
 #include "mace/ops/common/conv_pool_2d_util.h"
+#include "mace/ops/common/utils.h"
 #include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/utils/memory.h"
 #include "mace/utils/math.h"
@@ -147,42 +148,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    switch (activation) {
-      case NOOP: {
-        break;
-      }
-      case RELU: {
-        built_options.emplace("-DUSE_RELU");
-        break;
-      }
-      case RELUX: {
-        built_options.emplace("-DUSE_RELUX");
-        break;
-      }
-      case PRELU: {
-        built_options.emplace("-DUSE_PRELU");
-        break;
-      }
-      case ELU: {
-        built_options.emplace("-DUSE_ELU");
-        break;
-      }
-      case TANH: {
-        built_options.emplace("-DUSE_TANH");
-        break;
-      }
-      case SIGMOID: {
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      }
-      case LEAKYRELU: {
-        built_options.emplace("-DUSE_LEAKYRELU");
-        break;
-      }
-      default: {
-        LOG(FATAL) << "Unknown activation type: " << activation;
-      }
-    }
+    common::utils::FillBuiltOptions(&built_options, activation);
 
     MACE_RETURN_IF_ERROR(executor->BuildKernel("winograd_transform",
                                                obfuscated_kernel_name,

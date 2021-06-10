@@ -28,6 +28,29 @@ void GetSizeParamFromTensor(const Tensor *size_tensor, index_t *out_height,
   *out_width = size[1];
 }
 
+void FillBuiltOptions(std::set<std::string> *built_options,
+                            const ActivationType &activation) {
+  switch (activation) {
+    case NOOP:break;
+    case PRELU:built_options->emplace("-DUSE_PRELU");
+      break;
+    case RELU:built_options->emplace("-DUSE_RELU");
+      break;
+    case RELUX:built_options->emplace("-DUSE_RELUX");
+      break;
+    case TANH:built_options->emplace("-DUSE_TANH");
+      break;
+    case SIGMOID:built_options->emplace("-DUSE_SIGMOID");
+      break;
+    case LEAKYRELU:built_options->emplace("-DUSE_LEAKYRELU");
+      break;
+    case ELU:
+      built_options->emplace("-DUSE_ELU");
+      break;
+    default:
+      LOG(FATAL) << "Unknown activation type: " << activation;
+  }
+}
 }  // namespace utils
 }  // namespace common
 }  // namespace ops

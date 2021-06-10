@@ -14,6 +14,7 @@ cc_library(
     name = "cpu_flows",
     srcs = glob([
         "cpu_ref*.cc",
+        "transpose_const.cc",
     ]) + if_bfloat16_enabled(glob([
         "cpu_bf16*.cc",
     ])) + if_fp16_enabled(glob([
@@ -21,6 +22,7 @@ cc_library(
     ])),
     hdrs = glob([
         "cpu_ref*.h",
+        "transpose_const.h",
     ]) + if_bfloat16_enabled(glob([
         "cpu_bf16*.h",
     ])) + if_fp16_enabled(glob([

@@ -46,6 +46,7 @@ extern void RegisterGroupNorm(OpRegistry *op_registry);
 extern void RegisterIdentity(OpRegistry *op_registry);
 extern void RegisterIfDefined(OpRegistry *op_registry);
 extern void RegisterInferConv2dShape(OpRegistry *op_registry);
+extern void RegisterInstanceNorm(OpRegistry *op_registry);
 extern void RegisterKaldiBatchNorm(OpRegistry *op_registry);
 extern void RegisterLocalResponseNorm(OpRegistry *op_registry);
 extern void RegisterLpNorm(OpRegistry *op_registry);
@@ -129,6 +130,7 @@ void RegisterAllOps(OpRegistry *registry) {
   ops::RegisterIdentity(registry);
   ops::RegisterIfDefined(registry);
   ops::RegisterInferConv2dShape(registry);
+  ops::RegisterInstanceNorm(registry);
   ops::RegisterKaldiBatchNorm(registry);
   ops::RegisterLocalResponseNorm(registry);
   ops::RegisterLpNorm(registry);

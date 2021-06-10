@@ -1,5 +1,6 @@
 set(CPU_SRCS
   cpu_ref_flow.cc
+  transpose_const.cc
 )
 
 if(MACE_ENABLE_FP16)

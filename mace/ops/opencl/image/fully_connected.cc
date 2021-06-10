@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/ops/common/utils.h"
 #include "mace/ops/opencl/image/fully_connected.h"
 
 #include "mace/runtimes/opencl/opencl_runtime.h"
@@ -52,30 +53,7 @@ MaceStatus FullyConnectedKernel::Compute(
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }
-    switch (activation) {
-      case NOOP:
-        break;
-      case RELU:
-        built_options.emplace("-DUSE_RELU");
-        break;
-      case RELUX:
-        built_options.emplace("-DUSE_RELUX");
-        break;
-      case TANH:
-        built_options.emplace("-DUSE_TANH");
-        break;
-      case SIGMOID:
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      case LEAKYRELU:
-        built_options.emplace("-DUSE_LEAKYRELU");
-        break;
-      case ELU:
-        built_options.emplace("-DUSE_ELU");
-        break;
-      default:
-        LOG(FATAL) << "Unknown activation type: " << activation;
-    }
+    common::utils::FillBuiltOptions(&built_options, activation);
     if (executor->gpu_type() != GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_QUALCOMM_ADRENO");
     }

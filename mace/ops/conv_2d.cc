@@ -442,6 +442,15 @@ class Conv2dOp<RuntimeType::RT_OPENCL, float> : public ConvPool2dOpBase {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_ = make_unique<opencl::buffer::Conv2dKernel>();
     }
+    // Transform input tensor to target format
+    auto *input_tensor =
+        context->workspace()->GetTensor(operator_def_->input(INPUT));
+    if (input_tensor != nullptr && input_tensor->is_weight()) {
+        MACE_CHECK(TransformFilter(
+            context, operator_def_.get(), 0,
+            BufferContentType::IN_OUT_CHANNEL, mem_type)
+                       == MaceStatus::MACE_SUCCESS);
+    }
     // Transform filter tensor to target format
     auto *filter_tensor =
         context->workspace()->GetTensor(operator_def_->input(FILTER));

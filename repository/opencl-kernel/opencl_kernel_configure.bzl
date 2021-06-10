@@ -48,6 +48,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/eltwise.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/extract_image_patches.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/fully_connected.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/instance_norm.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/lstmcell.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/matmul.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/pad.cl"))

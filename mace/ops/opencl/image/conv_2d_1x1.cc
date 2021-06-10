@@ -14,6 +14,7 @@
 
 #include "mace/core/ops/op_context.h"
 #include "mace/ops/common/activation_type.h"
+#include "mace/ops/common/utils.h"
 #include "mace/runtimes/opencl/core/opencl_executor.h"
 #include "mace/runtimes/opencl/core/opencl_helper.h"
 #include "mace/runtimes/opencl/opencl_runtime.h"
@@ -112,38 +113,7 @@ MaceStatus Conv2dK1x1(OpContext *context,
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }
-    switch (activation) {
-      case NOOP: {
-        break;
-      }
-      case RELU: {
-        built_options.emplace("-DUSE_RELU");
-        break;
-      }
-      case RELUX: {
-        built_options.emplace("-DUSE_RELUX");
-        break;
-      }
-      case TANH: {
-        built_options.emplace("-DUSE_TANH");
-        break;
-      }
-      case SIGMOID: {
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      }
-      case LEAKYRELU: {
-        built_options.emplace("-DUSE_LEAKYRELU");
-        break;
-      }
-      case ELU: {
-        built_options.emplace("-DUSE_ELU");
-        break;
-      }
-      default: {
-        LOG(FATAL) << "Unknown activation type: " << activation;
-      }
-    }
+    common::utils::FillBuiltOptions(&built_options, activation);
 
     MACE_RETURN_IF_ERROR(executor->BuildKernel("conv_2d_1x1", kernel_name,
                                                built_options, kernel));

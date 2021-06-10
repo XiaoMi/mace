@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/ops/common/utils.h"
 #include "mace/ops/opencl/image/deconv_2d.h"
 
 #include "mace/runtimes/opencl/opencl_runtime.h"
@@ -71,30 +72,7 @@ MaceStatus Deconv2dKernel::Compute(
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    switch (activation) {
-      case NOOP:
-        break;
-      case RELU:
-        built_options.emplace("-DUSE_RELU");
-        break;
-      case RELUX:
-        built_options.emplace("-DUSE_RELUX");
-        break;
-      case TANH:
-        built_options.emplace("-DUSE_TANH");
-        break;
-      case SIGMOID:
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      case LEAKYRELU:
-        built_options.emplace("-DUSE_LEAKYRELU");
-        break;
-      case ELU:
-        built_options.emplace("-DUSE_ELU");
-        break;
-      default:
-        LOG(FATAL) << "Unknown activation type: " << activation;
-    }
+    common::utils::FillBuiltOptions(&built_options, activation);
 
     MACE_RETURN_IF_ERROR(executor->BuildKernel("deconv_2d", kernel_name,
                                               built_options, &kernel_));

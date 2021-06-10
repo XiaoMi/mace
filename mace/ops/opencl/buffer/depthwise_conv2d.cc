@@ -18,6 +18,7 @@
 #include <string>
 
 #include "mace/core/memory/allocator.h"
+#include "mace/ops/common/utils.h"
 #include "mace/runtimes/opencl/opencl_runtime.h"
 
 namespace mace {
@@ -64,24 +65,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
     built_options.emplace("-DOUT_DATA_TYPE=" + DtToCLDt(output->dtype()));
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DT_FLOAT));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    switch (activation) {
-      case NOOP:break;
-      case RELU:built_options.emplace("-DUSE_RELU");
-        break;
-      case RELUX:built_options.emplace("-DUSE_RELUX");
-        break;
-      case TANH:built_options.emplace("-DUSE_TANH");
-        break;
-      case SIGMOID:built_options.emplace("-DUSE_SIGMOID");
-        break;
-      case LEAKYRELU:built_options.emplace("-DUSE_LEAKYRELU");
-        break;
-      case ELU:
-        built_options.emplace("-DUSE_ELU");
-        break;
-      default:
-        LOG(FATAL) << "Unknown activation type: " << activation;
-    }
+    common::utils::FillBuiltOptions(&built_options, activation);
 
     MACE_RETURN_IF_ERROR(
         executor->BuildKernel("depthwise_conv2d_buffer", kernel_name,
