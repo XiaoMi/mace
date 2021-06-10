@@ -172,6 +172,41 @@ struct NeuronApi {
   // Support dilated convolution.
   int (*NeuronCompilation_setSWDilatedConv)(NeuronCompilation* compilation,
                                             bool allow);
+  /**
+   * Sets the execution preference associated with this compilation.
+   *
+   * Default value of preference is PREFER_SINGLE_FAST_ANSWER
+   *
+   * Available since 4.1.0
+   *
+   * @param compilation The compilation to be modified.
+   * @param preference Either NEURON_PREFER_LOW_POWER, NEURON_PREFER_SINGLE_FAST_ANSWER, or
+   * NEURON_PREFER_SUSTAINED_SPEED.
+   *
+   * @return NEURON_NO_ERROR if successful.
+   */
+  int (*NeuronCompilation_setPreference)(NeuronCompilation* compilation, int32_t preference);
+
+  /**
+   * Sets the execution boost hint associated with this execution. Required before calling
+   * NeuronExecution_compute.
+   *
+   * Execution boost is the hint for the device frequency, ranged between 0 (lowest) to 100 (highest).
+   * For the compilation with preference set as NEURON_PREFER_SUSTAINED_SPEED, scheduler
+   * guarantees that the executing boost value would equal to the boost value hint.
+   *
+   * On the other hand, for the compilation with preference set as NEURON_PREFER_LOW_POWER,
+   * scheduler would try to save power by configuring the executing boost value with some value
+   * that is not higher than the boost value hint.
+   *
+   * Available since 4.1.0
+   *
+   * @param execution The execution to be modified.
+   * @param boostValue The hint for the device frequency, ranged between 0 (lowest) to 100 (highest).
+   *
+   * @return NEURON_NO_ERROR if successful.
+   */
+  int (*NeuronExecution_setBoostHint)(NeuronExecution* execution, uint8_t boostValue);
 };
 
 /**

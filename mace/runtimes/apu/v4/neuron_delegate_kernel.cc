@@ -108,6 +108,7 @@ bool NeuronDelegateKernel::BuildGraph(
 }
 
 bool NeuronDelegateKernel::Prepare(const char *file_name,
+                                   const APUPreferenceHint preference_hint,
                                    bool load, bool store) {
   if (load) {
     NeuronModel *restoredModel = nullptr;
@@ -134,6 +135,7 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
   } else {
     LOG(INFO) << "NeuronCompilation_setSWDilatedConv is not supported";
   }
+  neuronapi_->NeuronCompilation_setPreference(compilation, preference_hint);
   const int compilation_result =
       neuronapi_->NeuronCompilation_finish(compilation);
   if (compilation_result != NEURON_NO_ERROR) {
@@ -363,7 +365,8 @@ void NeuronDelegateKernel::TransposeOutputTensors(
 
 bool NeuronDelegateKernel::Eval(
     const std::map<std::string, Tensor *> &input_tensors,
-    std::map<std::string, Tensor *> *output_tensors) {
+    std::map<std::string, Tensor *> *output_tensors,
+    const uint8_t boost_hint) {
   NeuronExecution* execution = nullptr;
   neuronapi_->NeuronExecution_create(nn_compilation_.get(), &execution);
   std::unique_ptr<NeuronExecution, NNFreeExecution> execution_unique_ptr(
@@ -377,6 +380,7 @@ bool NeuronDelegateKernel::Eval(
   auto nn_output_memory_buffers = PrepareOutputTensors(output_tensors,
                                                        execution);
 
+  neuronapi_->NeuronExecution_setBoostHint(execution, boost_hint);
   neuronapi_->NeuronExecution_compute(execution);
   TransposeOutputTensors(output_tensors);
 

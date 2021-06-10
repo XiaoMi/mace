@@ -48,6 +48,8 @@ class ApuRuntime : public Runtime {
   APUCachePolicy GetCachePolicy();
   const char *GetCacheStorePath();
   const char *GetCacheLoadPath();
+  APUPreferenceHint GetPreferenceHint();
+  uint8_t GetBoostHint();
 
  protected:
   virtual std::unique_ptr<Allocator> CreateAllocator();
@@ -61,6 +63,8 @@ class ApuRuntime : public Runtime {
   APUCachePolicy apu_cache_policy_;
   std::string apu_binary_file_;
   std::string apu_storage_file_;
+  uint8_t apu_boost_hint_;
+  APUPreferenceHint apu_preference_hint_;
 };
 
 }  // namespace mace

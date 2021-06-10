@@ -207,6 +207,8 @@ class DeviceWrapper:
                    apu_cache_policy=0,
                    apu_binary_file="",
                    apu_storage_file="",
+                   apu_boost_hint=100,
+                   apu_preference_hint=1,
                    input_file_name='model_input',
                    output_file_name='model_out',
                    input_dir="",
@@ -432,6 +434,8 @@ class DeviceWrapper:
                 "--apu_cache_policy=%s" % apu_cache_policy,
                 "--apu_binary_file=%s" % apu_binary_file,
                 "--apu_storage_file=%s" % apu_storage_file,
+                "--apu_boost_hint=%s" % apu_boost_hint,
+                "--apu_preference_hint=%s" % apu_preference_hint,
             ])
             if benchmark:
                 cmd.append("--benchmark=%s" % benchmark)
@@ -674,6 +678,8 @@ class DeviceWrapper:
             apu_cache_policy=flags.apu_cache_policy,
             apu_binary_file=flags.apu_binary_file,
             apu_storage_file=flags.apu_storage_file,
+            apu_boost_hint=flags.apu_boost_hint,
+            apu_preference_hint=flags.apu_preference_hint,
             runtime_failure_ratio=flags.runtime_failure_ratio,
             address_sanitizer=flags.address_sanitizer,
             opencl_binary_file=model_opencl_output_bin_path,

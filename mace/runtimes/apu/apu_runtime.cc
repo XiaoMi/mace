@@ -41,6 +41,8 @@ MaceStatus ApuRuntime::Init(const MaceEngineCfgImpl *engine_config,
   apu_cache_policy_ = engine_config->apu_cache_policy();
   apu_binary_file_ = engine_config->apu_binary_file();
   apu_storage_file_ = engine_config->apu_storage_file();
+  apu_boost_hint_ = engine_config->apu_boost_hint();
+  apu_preference_hint_ = engine_config->apu_preference_hint();
 
   allocator_ = CreateAllocator();
   buffer_manager_ = make_unique<GeneralMemoryManager>(allocator_.get());
@@ -67,6 +69,14 @@ ApuWrapper *ApuRuntime::GetApuWrapper() {
 
 APUCachePolicy ApuRuntime::GetCachePolicy() {
   return apu_cache_policy_;
+}
+
+uint8_t ApuRuntime::GetBoostHint() {
+  return apu_boost_hint_;
+}
+
+APUPreferenceHint ApuRuntime::GetPreferenceHint() {
+  return apu_preference_hint_;
 }
 
 const char *ApuRuntime::GetCacheStorePath() {

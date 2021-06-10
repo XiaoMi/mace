@@ -40,6 +40,7 @@ MaceStatus ApuRefFlow::Init(const NetDef *net_def,
   MACE_RETURN_IF_ERROR(InitOutputTensor());
 
   auto *apu_runtime = ApuRuntime::Get(main_runtime_);
+  auto preference_hint = apu_runtime->GetPreferenceHint();
   auto apu_cache_policy = apu_runtime->GetCachePolicy();
   bool cache_load = apu_cache_policy == APUCachePolicy::APU_CACHE_LOAD;
   bool cache_store = apu_cache_policy == APUCachePolicy::APU_CACHE_STORE;
@@ -49,12 +50,13 @@ MaceStatus ApuRefFlow::Init(const NetDef *net_def,
   bool ret = false;
   if (cache_load || cache_store) {
     VLOG(1) << "Loading/Storing init cache";
-    ret = apu_wrapper->Init(*net_def, model_data, file_name,
-                            cache_load, cache_store);
+    ret = apu_wrapper->Init(*net_def, model_data,
+                            preference_hint,
+                            file_name, cache_load, cache_store);
   }
   if (!ret && !cache_store) {
     VLOG(1) << "Do not use init cache";
-    ret = apu_wrapper->Init(*net_def, model_data);
+    ret = apu_wrapper->Init(*net_def, model_data, preference_hint);
   }
   MACE_CHECK(ret, "apu int error", cache_load, cache_store);
 
@@ -65,8 +67,10 @@ MaceStatus ApuRefFlow::Run(TensorMap *input_tensors,
                            TensorMap *output_tensors,
                            RunMetadata *run_metadata) {
   MACE_UNUSED(run_metadata);
-  auto *apu_wrapper = ApuRuntime::Get(main_runtime_)->GetApuWrapper();
-  MACE_CHECK(apu_wrapper->Run(*input_tensors, output_tensors),
+  auto *apu_runtime = ApuRuntime::Get(main_runtime_);
+  uint8_t boost_hint = apu_runtime->GetBoostHint();
+  auto *apu_wrapper = apu_runtime->GetApuWrapper();
+  MACE_CHECK(apu_wrapper->Run(*input_tensors, output_tensors, boost_hint),
              "apu run error");
   return MaceStatus::MACE_SUCCESS;
 }

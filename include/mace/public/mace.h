@@ -150,6 +150,13 @@ enum APUCachePolicy {
   APU_CACHE_LOAD = 2,
 };
 
+// APU execution preferences.
+enum APUPreferenceHint{
+    NEURON_PREFER_LOW_POWER = 0,
+    NEURON_PREFER_FAST_SINGLE_ANSWER = 1,
+    NEURON_PREFER_SUSTAINED_SPEED = 2,
+};
+
 struct CallStats {
   int64_t start_micros;
   int64_t end_micros;
@@ -449,6 +456,24 @@ class MACE_API MaceEngineConfig {
   MaceStatus SetAPUCache(APUCachePolicy policy,
                          const std::string &binary_file,
                          const std::string &storage_file);
+
+  /// \brief Set MTK APU hints.
+  ///
+  /// Caution: this function may hurt performance
+  /// if improper parameters provided.
+  ///
+  /// \param boost_hint: The hint for APU frequency, ranged between 0 (lowest)
+  ///    to 100 (highest).
+  /// \param preference_hint: For the compilation with preference set as
+  ///    NEURON_PREFER_SUSTAINED_SPEED, scheduler guarantees that the
+  ///    executing boost value would equal to the boost value hint. On the
+  ///    other hand, for the compilation with preference set as
+  ///    NEURON_PREFER_LOW_POWER, scheduler would try to save power by
+  ///    configuring the executing boost value with some value that is not
+  ///    higher than the boost value hint.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
+  MaceStatus SetAPUHints(uint8_t boost_hint,
+                         APUPreferenceHint preference_hint);
 
  private:
   std::shared_ptr<MaceEngineCfgImpl> impl_;

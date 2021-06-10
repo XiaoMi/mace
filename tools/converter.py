@@ -131,6 +131,8 @@ class DefaultValues(object):
     gpu_perf_hint = 3,
     gpu_priority_hint = 3,
     apu_cache_policy = 0,
+    apu_boost_hint = 100,
+    apu_preference_hint = 1,
 
 
 class ValidationThreshold(object):
@@ -1256,6 +1258,19 @@ def parse_args():
         type=str,
         default="",
         help="apu cache store dir.")
+    run.add_argument(
+        "--apu_boost_hint",
+        type=int,
+        default=DefaultValues.apu_boost_hint,
+        help="The boost hint for APU frequency, ranged between 0 (lowest)"
+             " to 100 (highest)")
+    run.add_argument(
+        "--apu_preference_hint",
+        type=int,
+        default=DefaultValues.apu_preference_hint,
+        help="0:NEURON_PREFER_LOW_POWER"
+             "1:NEURON_PREFER_FAST_SINGLE_ANSWER"
+             "2:NEURON_PREFER_SUSTAINED_SPEED")
     run.add_argument(
         "--use_system_libhexagon_nn",
         action="store_true",

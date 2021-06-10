@@ -98,9 +98,12 @@ class NeuronDelegateKernel {
     }
   }
   bool Init(const NetDef* net_def, unsigned const char *model_data, bool load);
-  bool Prepare(const char *file_name, bool load, bool store);
+  bool Prepare(const char *file_name,
+               const APUPreferenceHint preference_hint,
+               bool load, bool store);
   bool Eval(const std::map<std::string, Tensor *> &input_tensors,
-            std::map<std::string, Tensor *> *output_tensors);
+            std::map<std::string, Tensor *> *output_tensors,
+            const uint8_t boost_hint);
 
  private:
   bool SetInputAndOutput(const NetDef* net_def,

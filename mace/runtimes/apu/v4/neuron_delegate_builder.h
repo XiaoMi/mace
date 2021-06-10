@@ -496,7 +496,7 @@ class NeuronOpBuilder {
   size_t total_input_byte_size_;
   size_t total_output_byte_size_;
 
-  neuron_data_type MapToApuDataType(DataType mace_type) {
+  int32_t MapToApuDataType(DataType mace_type) {
     switch (mace_type) {
       case DT_FLOAT:
         return NEURON_TENSOR_FLOAT32;
@@ -513,7 +513,8 @@ class NeuronOpBuilder {
       default:
         break;
     }
-    return NEURON_TENSOR_UNDEFINED;
+    LOG(ERROR) << "Unsupported APU data type";
+    return -1;
   }
 
   int OpInputNum(OperatorDef op_def) {
