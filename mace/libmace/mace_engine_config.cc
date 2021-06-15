@@ -33,7 +33,10 @@ MaceEngineCfgImpl::MaceEngineCfgImpl()
       hexagon_latency_(100),
       apu_cache_policy_(APUCachePolicy::APU_CACHE_NONE),
       apu_binary_file_(""),
-      apu_storage_file_("") {}
+      apu_storage_file_(""),
+      apu_boost_hint_(100),
+      apu_preference_hint_(
+        APUPreferenceHint::NEURON_PREFER_FAST_SINGLE_ANSWER) {}
 
 void MaceEngineCfgImpl::SetRuntimeType(const RuntimeType runtime_type,
                                        const char *sub_graph_name) {
@@ -82,6 +85,14 @@ std::string MaceEngineCfgImpl::apu_binary_file() const {
 
 std::string MaceEngineCfgImpl::apu_storage_file() const {
   return apu_storage_file_;
+}
+
+uint8_t MaceEngineCfgImpl::apu_boost_hint() const {
+  return apu_boost_hint_;
+}
+
+APUPreferenceHint MaceEngineCfgImpl::apu_preference_hint() const {
+  return apu_preference_hint_;
 }
 
 RuntimeType MaceEngineCfgImpl::runtime_type(
@@ -153,6 +164,18 @@ MaceStatus MaceEngineCfgImpl::SetAPUCache(
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
 
+MaceStatus MaceEngineCfgImpl::SetAPUHints(
+    uint8_t boost_hint,
+    APUPreferenceHint preference_hint) {
+  bool ret = false;
+  apu_boost_hint_ = boost_hint;
+  apu_preference_hint_ = preference_hint;
+#ifdef MACE_ENABLE_MTK_APU
+  ret = true;
+#endif  // MACE_ENABLE_MTK_APU
+  return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
+}
+
 MaceEngineConfig::MaceEngineConfig() : impl_(new MaceEngineCfgImpl()) {}
 
 MaceEngineConfig::~MaceEngineConfig() = default;
@@ -200,6 +223,12 @@ MaceStatus MaceEngineConfig::SetAPUCache(
     const std::string &binary_file,
     const std::string &storage_file) {
   return impl_->SetAPUCache(policy, binary_file, storage_file);
+}
+
+MaceStatus MaceEngineConfig::SetAPUHints(
+    uint8_t boost_hint,
+    APUPreferenceHint preference_hint) {
+  return impl_->SetAPUHints(boost_hint, preference_hint);
 }
 
 }  // namespace mace

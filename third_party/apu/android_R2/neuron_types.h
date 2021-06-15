@@ -102,7 +102,7 @@ enum neuron_data_type{
   NEURON_TENSOR_QUANT8_SYMM_PER_CHANNEL = 11,
   NEURON_TENSOR_QUANT16_ASYMM = 12,
   NEURON_TENSOR_QUANT8_SYMM = 13,
-  NEURON_TENSOR_UNDEFINED = 14,
+  NEURON_TENSOR_QUANT8_ASYMM_SIGNED = 14,
 };
 
 // NeuronOperandType describes the type of an operand.
@@ -248,6 +248,13 @@ typedef enum {
   NEURON_FUSED_RELU6 = 3,
 } FuseCode;
 
+// Execution preferences.
+typedef enum {
+    NEURON_PREFER_LOW_POWER = 0,
+    NEURON_PREFER_FAST_SINGLE_ANSWER = 1,
+    NEURON_PREFER_SUSTAINED_SPEED = 2,
+} NeuronAdapterPreferenceCode;
+
 // Neuron adapter api function types
 
 typedef int (*Neuron_getVersion_fn)(uint32_t* version);
@@ -329,6 +336,10 @@ typedef int (*NeuronModel_identifyInputsAndOutputs_fn)(NeuronModel* model,
 typedef int (*NeuronCompilation_create_fn)(NeuronModel* model,
                                            NeuronCompilation** compilation);
 
+// Sets the execution preference associated with this compilation.
+typedef int (*NeuronCompilation_setPreference_fn)(
+    NeuronCompilation* compilation, int32_t preference);
+
 // Destroy a compilation.
 typedef void (*NeuronCompilation_free_fn)(NeuronCompilation* compilation);
 
@@ -376,6 +387,19 @@ typedef int (*NeuronExecution_setOutputFromMemory_fn)(
 // Returns once the execution has completed and the outputs are ready to be
 // consumed.
 typedef int (*NeuronExecution_compute_fn)(NeuronExecution* execution);
+
+// Sets the execution boost hint associated with this execution. Required before
+// calling NeuronExecution_compute. Execution boost is the hint for the device
+// frequency, ranged between 0 (lowest) to 100 (highest). For the compilation
+// with preference set as NEURON_PREFER_SUSTAINED_SPEED, scheduler guarantees
+// that the executing boost value would equal to the boost value hint.
+//
+// On the other hand, for the compilation with preference set as
+// NEURON_PREFER_LOW_POWER, scheduler would try to save power by configuring the
+// executing boost value with some value that is not higher than the boost value
+// hint.
+typedef int (*NeuronExecution_setBoostHint_fn)(NeuronExecution* execution,
+                                               uint8_t boostValue);
 
 // Create a shared memory region
 typedef int (*ASharedMemory_create_fn)(const char* name, size_t size);

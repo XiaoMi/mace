@@ -170,6 +170,12 @@ DEFINE_int32(num_threads, -1, "num of threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 DEFINE_int32(apu_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
+DEFINE_int32(apu_boost_hint, 100,
+             "APU boost value ranged between 0 (lowest) to 100 (highest)");
+DEFINE_int32(apu_preference_hint, 1,
+             "0:NEURON_PREFER_LOW_POWER"
+             "1:NEURON_PREFER_FAST_SINGLE_ANSWER"
+             "2:NEURON_PREFER_SUSTAINED_SPEED");
 DEFINE_int32(opencl_cache_reuse_policy,
             1,
             "0:NONE/1:REUSE_SAME_GPU");
@@ -359,6 +365,8 @@ bool RunModel(const std::string &model_name,
   config.SetAPUCache(static_cast<APUCachePolicy>(FLAGS_apu_cache_policy),
                      FLAGS_apu_binary_file,
                      FLAGS_apu_storage_file);
+  config.SetAPUHints(FLAGS_apu_boost_hint,
+                     static_cast<APUPreferenceHint>(FLAGS_apu_preference_hint));
 #endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
       make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
@@ -694,6 +702,8 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "apu_cache_policy: " << FLAGS_apu_cache_policy;
   LOG(INFO) << "apu_binary_file: " << FLAGS_apu_binary_file;
   LOG(INFO) << "apu_storage_file: " << FLAGS_apu_storage_file;
+  LOG(INFO) << "apu_boost_hint: " << FLAGS_apu_boost_hint;
+  LOG(INFO) << "apu_preference_hint: " << FLAGS_apu_preference_hint;
   LOG(INFO) << "round: " << FLAGS_round;
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;
   LOG(INFO) << "gpu_perf_hint: " << FLAGS_gpu_perf_hint;

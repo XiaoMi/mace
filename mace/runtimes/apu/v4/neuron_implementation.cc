@@ -108,6 +108,7 @@ const NeuronApi LoadNeuronApi() {
   LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_free, neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_finish, neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_setCaching, neuron_api);
+  LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_setPreference, neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronExecution_free, neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronExecution_setInput, neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronExecution_setOutput, neuron_api);
@@ -116,6 +117,7 @@ const NeuronApi LoadNeuronApi() {
   LOAD_FUNCTION(libneuron_adapter, NeuronExecution_setOutputFromMemory,
                 neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronExecution_compute, neuron_api);
+  LOAD_FUNCTION(libneuron_adapter, NeuronExecution_setBoostHint, neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_getCompiledNetworkSize,
                 neuron_api);
   LOAD_FUNCTION(libneuron_adapter, NeuronCompilation_storeCompiledNetwork,

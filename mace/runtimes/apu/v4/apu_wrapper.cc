@@ -36,6 +36,7 @@
 namespace mace {
 
 bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
+                      const APUPreferenceHint preference_hint,
                       const char *file_name, bool load, bool store) {
   if (initialised_) {
     LOG(ERROR) << "ApuWrapper has been initialized.";
@@ -45,7 +46,7 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
   MACE_CHECK(!(load & store),
             "Should not load and store the model simultaneously.");
   bool ret = frontend->Init(&net_def, model_data, load)
-          && frontend->Prepare(file_name, load, store);
+          && frontend->Prepare(file_name, preference_hint, load, store);
   if (!ret) {
     LOG(ERROR) << "ApuWrapper init failed.";
   } else {
@@ -57,12 +58,13 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
 }
 
 bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
-                     std::map<std::string, Tensor *> *output_tensors) {
+                     std::map<std::string, Tensor *> *output_tensors,
+                     const uint8_t boost_hint) {
   if (!initialised_) {
     LOG(ERROR) << "ApuWrapper should be initialized before running inference.";
     return false;
   }
-  bool ret = frontend->Eval(input_tensors, output_tensors);
+  bool ret = frontend->Eval(input_tensors, output_tensors, boost_hint);
   if (!ret) {
     LOG(ERROR) << "ApuWrapper Run failed.";
   } else {
