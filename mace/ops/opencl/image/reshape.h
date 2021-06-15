@@ -15,14 +15,14 @@
 #ifndef MACE_OPS_OPENCL_IMAGE_RESHAPE_H_
 #define MACE_OPS_OPENCL_IMAGE_RESHAPE_H_
 
-#include "mace/ops/opencl/reshape.h"
-
 #include <vector>
 #include <memory>
 
 #include "mace/core/ops/operator.h"
 #include "mace/core/runtime/opencl/opencl_helper.h"
 #include "mace/ops/opencl/buffer_transform_kernel.h"
+#include "mace/ops/opencl/reshape.h"
+#include "mace/ops/opencl/transpose.h"
 
 namespace mace {
 namespace ops {
@@ -31,7 +31,9 @@ namespace image {
 
 class ReshapeKernel : public OpenCLReshapeKernel {
  public:
-  explicit ReshapeKernel(OpConstructContext *context);
+  ReshapeKernel(OpConstructContext *context,
+                FrameworkType framework = TENSORFLOW,
+                int has_data_format = 0);
 
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,
@@ -40,8 +42,13 @@ class ReshapeKernel : public OpenCLReshapeKernel {
 
  private:
   std::unique_ptr<Tensor> inter_buffer_;
+  std::unique_ptr<Tensor> nchw_inter_buffer_;
   std::unique_ptr<ops::OpenCLBufferTransformKernel> i2bkernel_;
   std::unique_ptr<ops::OpenCLBufferTransformKernel> b2ikernel_;
+  std::unique_ptr<ops::OpenCLTransposeKernel> nhwc2nchw_kernel_;
+  std::unique_ptr<ops::OpenCLTransposeKernel> nchw2nhwc_kernel_;
+  FrameworkType framework_;
+  int has_data_format_;
 };
 
 }  // namespace image
