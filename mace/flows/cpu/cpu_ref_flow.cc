@@ -14,6 +14,7 @@
 
 
 #include "mace/flows/cpu/cpu_ref_flow.h"
+#include "mace/flows/cpu/transpose_const.h"
 
 #include "mace/core/flow/flow_registry.h"
 #include "mace/core/net_def_adapter.h"
@@ -43,6 +44,8 @@ MaceStatus CpuRefFlow::Init(const NetDef *net_def,
   net_def_adapter.AdaptNetDef(net_def, main_runtime_,
                               cpu_runtime_, &adapted_net_def);
 
+  TransposeConstForCPU(&cpu_runtime_->thread_pool(), ws_.get(), cpu_runtime_,
+                       &adapted_net_def);
   // Init model
   net_ = std::unique_ptr<BaseNet>(new SerialNet(op_registry_,
                                                 &adapted_net_def,

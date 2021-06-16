@@ -15,7 +15,11 @@
 #ifndef MACE_OPS_COMMON_UTILS_H_
 #define MACE_OPS_COMMON_UTILS_H_
 
+#include <set>
+#include <string>
+
 #include "mace/core/types.h"
+#include "mace/ops/common/activation_type.h"
 
 namespace mace {
 
@@ -38,6 +42,8 @@ inline float CalculateResizeScale(index_t in_size,
 void GetSizeParamFromTensor(const Tensor *size_tensor, index_t *out_height,
                             index_t *out_width);
 
+void FillBuiltOptions(std::set<std::string> *built_options,
+                            const ActivationType &activation);
 }  // namespace utils
 }  // namespace common
 }  // namespace ops

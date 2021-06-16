@@ -130,6 +130,7 @@ MaceSupportedOps = [
     'Identity',
     'IfDefined',
     'InferConv2dShape',
+    'InstanceNorm',
     'KaldiBatchNorm',
     'LocalResponseNorm',
     'LpNorm',
@@ -186,6 +187,7 @@ MaceFixedDataFormatOps = [MaceOp.BatchNorm,
                           MaceOp.DepthwiseConv2d,
                           MaceOp.DepthwiseDeconv2d,
                           MaceOp.FullyConnected,
+                          MaceOp.InstanceNorm,
                           MaceOp.Pooling,
                           MaceOp.ExtractImagePatches,
                           MaceOp.ResizeBicubic,
@@ -222,6 +224,7 @@ class MaceKeyword(object):
     mace_output_node_name = 'mace_output_node'
     mace_buffer_type = 'buffer_type'
     # arg related str
+    mace_affine_str = 'affine'
     mace_padding_str = 'padding'
     mace_padding_type_str = 'padding'
     mace_padding_values_str = 'padding_values'
@@ -374,6 +377,8 @@ class TransformerRule(Enum):
     ADD_GENERRAL_INFO = 50
     FOLD_DIV_BN = 51
     REMOVE_UNUSED_TENSOR = 52
+    TRANSPOSE_CONST_OP_INPUT = 53
+    FOLD_INSTANCE_NORM = 54
 
 
 class ConverterInterface(object):
@@ -664,6 +669,8 @@ class ConverterOption(object):
                 TransformerRule.FLATTEN_ATROUS_CONV,
                 TransformerRule.FOLD_ACTIVATION,
                 TransformerRule.FOLD_SQRDIFF_MEAN,
+                # FOLD_INSTANCE_NORM depends on FOLD_SQRDIFF_MEAN
+                TransformerRule.FOLD_INSTANCE_NORM,
                 TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
                 TransformerRule.RESHAPE_FC_WEIGHT,
                 TransformerRule.FOLD_FC_RESHAPE,
@@ -687,7 +694,8 @@ class ConverterOption(object):
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                 TransformerRule.ADD_GENERRAL_INFO,
-                TransformerRule.REMOVE_UNUSED_TENSOR
+                TransformerRule.REMOVE_UNUSED_TENSOR,
+                TransformerRule.TRANSPOSE_CONST_OP_INPUT,
             ]
 
             if self._device == DeviceType.APU.value:

@@ -113,7 +113,7 @@ OnnxSupportedOps = [
     # 'If',
     'IfDefined',
     'ImageScaler',
-    # 'InstanceNormalization',
+    'InstanceNormalization',
     # 'LRN',
     'Linear',
     'LSTM',
@@ -371,6 +371,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Identity.name: self.convert_identity,
             OnnxOpType.IfDefined.name: self.convert_ifdefined,
             OnnxOpType.ImageScaler.name: self.convert_imagescaler,
+            OnnxOpType.InstanceNormalization.name: self.convert_instance_norm,
             OnnxOpType.LeakyRelu.name: self.convert_activation,
             OnnxOpType.Linear.name: self.convert_affine,
             OnnxOpType.LogSoftmax.name: self.convert_softmax,
@@ -907,8 +908,6 @@ class OnnxConverter(base_converter.ConverterInterface):
             op.type = MaceOp.DepthwiseConv2d.name
         else:
             op.type = MaceOp.Conv2D.name
-            mace_check(op.input[1] in self._consts,
-                       "Mace does not support non-const filter convolution.")
 
         dilation_arg = op.arg.add()
         dilation_arg.name = MaceKeyword.mace_dilations_str
@@ -1281,6 +1280,35 @@ class OnnxConverter(base_converter.ConverterInterface):
         op.input.extend([scale_name, offset_name])
         del op.output[1:]
         del op.output_shape[1:]
+
+    def convert_instance_norm(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.InstanceNorm.name
+        if "epsilon" in node.attrs:
+            epsilon_value = node.attrs["epsilon"]
+        else:
+            epsilon_value = 1e-5
+
+        epsilon_arg = op.arg.add()
+        epsilon_arg.name = MaceKeyword.mace_epsilon_str
+        epsilon_arg.f = epsilon_value
+        mace_check(len(node.inputs) == 3, "instance norm must have 3 inputs.")
+        scale_value = np.array(self._consts[node.inputs[1]].float_data)
+        offset_value = np.array(self._consts[node.inputs[2]].float_data)
+        scale_are_ones = np.array_equal(
+            scale_value, np.ones(len(scale_value), dtype=np.float32))
+        offset_are_zeros = np.array_equal(
+            offset_value, np.zeros(len(offset_value), dtype=np.float32))
+        affine = not (scale_are_ones and offset_are_zeros)
+        affine_arg = op.arg.add()
+        affine_arg.name = MaceKeyword.mace_affine_str
+        affine_arg.i = int(affine)
+        if not affine:
+            for input_name in op.input[1:]:
+                if input_name in self._consts:
+                    const_tensor = self._consts[input_name]
+                    self._mace_net_def.tensors.remove(const_tensor)
+            del op.input[1:]
 
     def convert_gather(self, node):
         op = self.convert_general_op(node)
