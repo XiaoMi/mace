@@ -175,6 +175,7 @@ MaceSupportedOps = [
     'TargetRMSNorm',
     'Tile',
     'Transpose',
+    'DetectionOutput',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -199,7 +200,9 @@ MaceFixedDataFormatOps = [MaceOp.BatchNorm,
                           MaceOp.MVNorm,
                           MaceOp.MatMul,
                           MaceOp.NonlocalReshape,
-                          MaceOp.GroupNorm]
+                          MaceOp.GroupNorm,
+                          MaceOp.DetectionOutput,
+                          ]
 
 MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.AddN,
@@ -312,6 +315,11 @@ class MaceKeyword(object):
     mace_apu_16bit_per_tensor = 'mace_apu_16bit_per_tensor'
     mace_apu_data_type_arg_str = 'apu_data_type'
     mace_int8 = 'int8'
+    mace_num_classes = 'num_classes'
+    mace_nms_threshold = 'nms_threshold'
+    mace_confidence_threshold = 'confidence_threshold'
+    mace_nms_top_k = 'nms_top_k'
+    mace_keep_top_k = 'keep_top_k'
 
 
 class QatType(Enum):
