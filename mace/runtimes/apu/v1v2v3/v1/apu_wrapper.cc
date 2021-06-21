@@ -250,12 +250,16 @@ bool ApuWrapper::DoInit(const NetDef &net_def, unsigned const char *model_data,
 
 
 bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
+                      const APUPreferenceHint preference_hint,
                       const char *file_name, bool load, bool store) {
+  MACE_UNUSED(preference_hint);
   return DoInit(net_def, model_data, file_name, load, store);
 }
 
 bool ApuWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
-                     std::map<std::string, Tensor *> *output_tensors) {
+                     std::map<std::string, Tensor *> *output_tensors,
+                     const uint8_t boost_hint) {
+  MACE_UNUSED(boost_hint);
   MACE_ASSERT(input_tensors.size() == input_infos_.size(), "Wrong inputs num");
   MACE_ASSERT(output_tensors->size() == output_infos_.size(),
               "Wrong outputs num");

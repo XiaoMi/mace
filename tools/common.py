@@ -431,6 +431,7 @@ class YAMLKeyword(object):
     docker_image_tag = 'docker_image_tag'
     dockerfile_path = 'dockerfile_path'
     dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'
+    apu_version_with_no_device = 'apu_version_with_no_device'
 
 
 ################################

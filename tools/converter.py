@@ -752,6 +752,10 @@ def format_model_config(flags):
                    "'winograd' parameters must be in "
                    + str(WinogradParameters) +
                    ". 0 for disable winograd convolution")
+        apu_version_with_no_device = \
+            configs.get(YAMLKeyword.apu_version_with_no_device, "-1")
+        configs[YAMLKeyword.apu_version_with_no_device] = \
+            apu_version_with_no_device
 
     return configs
 
@@ -947,7 +951,7 @@ def convert_func(flags):
 # run
 ################################
 def build_mace_run(configs, target_abi, toolchain, address_sanitizer,
-                   mace_lib_type, debug_mode, device):
+                   mace_lib_type, debug_mode, apu_version):
     library_name = configs[YAMLKeyword.library_name]
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -973,7 +977,7 @@ def build_mace_run(configs, target_abi, toolchain, address_sanitizer,
         enable_hexagon=hexagon_enabled(configs),
         enable_hta=hta_enabled(configs),
         enable_apu=enable_apu,
-        apu_version=device.get_apu_version(enable_apu),
+        apu_version=apu_version,
         enable_opencl=opencl_enabled(configs),
         enable_quantize=quantize_enabled(configs),
         enable_bfloat16=bfloat16_enabled(configs),
@@ -1018,14 +1022,16 @@ def run_mace(flags):
             if target_abi in dev[YAMLKeyword.target_abis]:
                 # get toolchain
                 toolchain = infer_toolchain(target_abi)
+
                 device = DeviceWrapper(dev)
+                apu_version = device.get_apu_version(apu_enabled(configs))
                 build_mace_run(configs,
                                target_abi,
                                toolchain,
                                flags.address_sanitizer,
                                flags.mace_lib_type,
                                flags.debug_mode,
-                               device)
+                               apu_version)
                 # run
                 start_time = time.time()
                 with device.lock():
@@ -1036,6 +1042,16 @@ def run_mace(flags):
                 six.print_('The device with soc %s do not support abi %s' %
                            (dev[YAMLKeyword.target_socs], target_abi),
                            file=sys.stderr)
+            elif configs[YAMLKeyword.apu_version_with_no_device] != "-1":
+                apu_version = configs[YAMLKeyword.apu_version_with_no_device]
+                toolchain = infer_toolchain(target_abi)
+                build_mace_run(configs,
+                               target_abi,
+                               toolchain,
+                               flags.address_sanitizer,
+                               flags.mace_lib_type,
+                               flags.debug_mode,
+                               apu_version)
 
     # package the output files
     package_path = sh_commands.packaging_lib(BUILD_OUTPUT_DIR,
