@@ -42,10 +42,12 @@ class ApuWrapper {
  public:
   explicit ApuWrapper(Runtime *runtime);
   bool Init(const NetDef &net_def, unsigned const char *model_data = nullptr,
+            APUPreferenceHint preference_hint = static_cast<APUPreferenceHint>(1),
             const char *file_name = nullptr,
             bool load = false, bool store = false);
   bool Run(const std::map<std::string, Tensor *> &input_tensors,
-           std::map<std::string, Tensor *> *output_tensors);
+           std::map<std::string, Tensor *> *output_tensors,
+           const uint8_t boost_hint = 100);
   bool Uninit();
 
  protected:
