@@ -66,6 +66,7 @@ SocSkelInfo = [
     SocSkelTable(400, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),
     SocSkelTable(407, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),
     SocSkelTable(415, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
+    SocSkelTable(450, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
     SocSkelTable(0, None, None, None)
 ]
 
