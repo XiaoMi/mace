@@ -399,7 +399,7 @@ class Transformer(base_converter.ConverterInterface):
                         len(self._consumers.get(producer_op.output[0], None)) == 1:
                     self.safe_remove_node(producer_op, None,
                                           remove_input_tensor=True)
-                return True
+                    return True
 
         return False
 
