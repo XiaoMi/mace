@@ -86,7 +86,7 @@ MaceStatus MatMulKernel::Compute(
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

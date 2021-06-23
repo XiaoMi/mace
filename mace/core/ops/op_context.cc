@@ -17,7 +17,7 @@
 namespace mace {
 
 OpContext::OpContext(Workspace *ws, Runtime *runtime)
-    : runtime_(runtime), ws_(ws), future_(nullptr) {}
+    : runtime_(runtime), ws_(ws), future_(nullptr), fake_warmup_(false) {}
 
 OpContext::~OpContext() = default;
 
@@ -39,6 +39,14 @@ void OpContext::set_future(StatsFuture *future) {
 
 StatsFuture *OpContext::future() const {
   return future_;
+}
+
+void OpContext::set_fake_warmup(bool fake_warmup) {
+  fake_warmup_ = fake_warmup;
+}
+
+bool OpContext::fake_warmup() const {
+  return fake_warmup_;
 }
 
 }  // namespace mace

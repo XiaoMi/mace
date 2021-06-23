@@ -90,7 +90,8 @@ MaceStatus SerialNet::Init() {
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
+MaceStatus SerialNet::Run(RunMetadata *run_metadata,
+                          bool fake_warmup) {
   const char *profiling = getenv("MACE_OPENCL_PROFILING");
   bool enable_opencl_profiling =
       profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1';
@@ -98,9 +99,14 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
   MACE_MEMORY_LOGGING_GUARD();
   MACE_LATENCY_LOGGER(1, "Running net");
   OpContext context(ws_, cpu_runtime_);
+  context.set_fake_warmup(fake_warmup);
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
     RuntimeType runtime_type = op->runtime_type();
+    if (fake_warmup && RuntimeType::RT_OPENCL != runtime_type) {
+      // Fake warm up is only used for OpenCL runtime.
+      continue;
+    }
     MACE_LATENCY_LOGGER(1, "Running operator ", op->debug_def().name(),
                         "<", runtime_type, ", ", op->debug_def().type(),
                         ", ",

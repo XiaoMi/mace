@@ -74,7 +74,12 @@ MaceStatus CpuRefFlow::Run(TensorMap *input_tensors,
   VLOG(1) << "CpuRefFlow::Run";
   MACE_UNUSED(input_tensors);
   MACE_UNUSED(output_tensors);
-  return net_->Run(run_metadata);
+  return net_->Run(run_metadata, false);
+}
+
+MaceStatus CpuRefFlow::FakeWarmup() {
+  VLOG(1) << "CpuRefFlow::FakeWarmup";
+  return net_->Run(nullptr, true);
 }
 
 MaceStatus CpuRefFlow::GetInputTransposeDims(

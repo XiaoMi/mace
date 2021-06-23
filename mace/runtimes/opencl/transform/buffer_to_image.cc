@@ -135,7 +135,7 @@ MaceStatus BufferToImage::Compute(
   }
   std::string tuning_key = Concat(kernel_name, MakeString(input->shape()));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key, gws,
-                                           lws, context->future()));
+                                           lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
 
   return MaceStatus::MACE_SUCCESS;

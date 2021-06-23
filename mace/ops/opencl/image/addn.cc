@@ -93,7 +93,7 @@ MaceStatus AddNKernel::Compute(
       Concat("addn_opencl_kernel", output_tensor->dim(0), output_tensor->dim(1),
              output_tensor->dim(2), output_tensor->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }

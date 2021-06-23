@@ -97,7 +97,7 @@ MaceStatus SpaceToDepthKernel::Compute(
   std::string tuning_key = Concat("space_to_depth", input->dim(0),
                                   input->dim(1), input->dim(2), input->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

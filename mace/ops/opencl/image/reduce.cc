@@ -96,7 +96,7 @@ MaceStatus ReduceKernel::GraduallyComputeReduce(
       "reduce_opencl_kernel", gws[0], gws[1], gws[2]);
 
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
 
   return MaceStatus::MACE_SUCCESS;

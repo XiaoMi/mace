@@ -542,13 +542,15 @@ class MACE_API MaceEngine {
                   const unsigned char *model_data,
                   const int64_t model_data_size,
                   bool *model_data_unused = nullptr,
-                  MaceEngine *tutor = nullptr);
+                  MaceEngine *tutor = nullptr,
+                  bool fake_warmup = false);
 
   MaceStatus Init(const MultiNetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
                   const std::string &model_data_file,
-                  MaceEngine *tutor = nullptr);
+                  MaceEngine *tutor = nullptr,
+                  bool fake_warmup = false);
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs);
@@ -630,7 +632,8 @@ MACE_API MaceStatus CreateMaceEngineFromProto(
     const MaceEngineConfig &config,
     std::shared_ptr<MaceEngine> *engine,
     bool *model_data_unused = nullptr,
-    MaceEngine *tutor = nullptr);
+    MaceEngine *tutor = nullptr,
+    bool fake_warmup = false);
 
 /// \brief Create MaceEngine from files (model file + data file)
 /// Deprecated, will be removed in future version

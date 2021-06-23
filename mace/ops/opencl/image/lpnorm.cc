@@ -82,7 +82,7 @@ MaceStatus LpNormKernel::Compute(OpContext *context,
   std::string tuning_key =
       Concat("lpnorm_opencl_kernel", batch, height, width, channels, p_, axis_);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
 
   return MaceStatus::MACE_SUCCESS;

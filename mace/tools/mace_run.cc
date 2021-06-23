@@ -180,6 +180,7 @@ DEFINE_int32(opencl_cache_reuse_policy,
             1,
             "0:NONE/1:REUSE_SAME_GPU");
 DEFINE_bool(benchmark, false, "enable benchmark op");
+DEFINE_bool(fake_warmup, false, "enable fake warmup");
 
 namespace {
 std::shared_ptr<char> ReadInputDataFromFile(
@@ -322,6 +323,8 @@ bool RunModel(const std::string &model_name,
               const std::vector<DataFormat> &output_data_formats,
               float cpu_capability) {
   int64_t t0 = NowMicros();
+  bool *model_data_unused = nullptr;
+  MaceEngine *tutor = nullptr;
 
   MaceStatus status;
   // Graph's runtime is set in the yml file, you can use config.SetRuntimeType
@@ -411,7 +414,10 @@ bool RunModel(const std::string &model_name,
                                    input_names,
                                    output_names,
                                    config,
-                                   &engine);
+                                   &engine,
+                                   model_data_unused,
+                                   tutor,
+                                   FLAGS_fake_warmup);
 #else
     (void) (model_name);
     if (model_graph_data == nullptr || model_weights_data == nullptr) {
@@ -428,7 +434,10 @@ bool RunModel(const std::string &model_name,
                                   input_names,
                                   output_names,
                                   config,
-                                  &engine);
+                                  &engine,
+                                  model_data_unused,
+                                  tutor,
+                                  FLAGS_fake_warmup);
 #endif
     int64_t t1 = NowMicros();
 
@@ -546,7 +555,10 @@ bool RunModel(const std::string &model_name,
                                      input_names,
                                      output_names,
                                      config,
-                                     &engine);
+                                     &engine,
+                                     model_data_unused,
+                                     tutor,
+                                     FLAGS_fake_warmup);
 #else
           create_engine_status =
               CreateMaceEngineFromProto(reinterpret_cast<const unsigned char *>(
@@ -558,7 +570,10 @@ bool RunModel(const std::string &model_name,
                                         input_names,
                                         output_names,
                                         config,
-                                        &engine);
+                                        &engine,
+                                        model_data_unused,
+                                        tutor,
+                                        FLAGS_fake_warmup);
 #endif
         } while (create_engine_status != MaceStatus::MACE_SUCCESS);
       } else {
@@ -607,7 +622,10 @@ bool RunModel(const std::string &model_name,
                     input_names,
                     output_names,
                     config,
-                    &engine);
+                    &engine,
+                    model_data_unused,
+                    tutor,
+                    FLAGS_fake_warmup);
 #else
               create_engine_status =
                   CreateMaceEngineFromProto(
@@ -620,7 +638,10 @@ bool RunModel(const std::string &model_name,
                       input_names,
                       output_names,
                       config,
-                      &engine);
+                      &engine,
+                      model_data_unused,
+                      tutor,
+                      FLAGS_fake_warmup);
 #endif
             } while (create_engine_status != MaceStatus::MACE_SUCCESS);
           } else {

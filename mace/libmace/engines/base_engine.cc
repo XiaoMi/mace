@@ -190,6 +190,10 @@ MaceStatus BaseEngine::Forward(const std::map<std::string, MaceTensor> &inputs,
   return AfterRun();
 }
 
+MaceStatus BaseEngine::FakeWarmup() {
+  return MaceStatus::MACE_SUCCESS;
+}
+
 MaceStatus BaseEngine::BeforeRun() {
   for (auto i = runtimes_.begin(); i != runtimes_.end(); ++i) {
     MACE_RETURN_IF_ERROR(i->second->BeforeRun(config_impl_.get()));

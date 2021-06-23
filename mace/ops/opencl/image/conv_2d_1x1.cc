@@ -157,7 +157,7 @@ MaceStatus Conv2dK1x1(OpContext *context,
       Concat("conv2d_1x1_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }

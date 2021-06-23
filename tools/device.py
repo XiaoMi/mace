@@ -219,6 +219,7 @@ class DeviceWrapper:
                    quantize_stat=False,
                    layers_validate_file="",
                    benchmark=False,
+                   fake_warmup=False,
                    use_system_libhexagon_nn=False,
                    ):
         six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
@@ -439,6 +440,8 @@ class DeviceWrapper:
             ])
             if benchmark:
                 cmd.append("--benchmark=%s" % benchmark)
+            if fake_warmup:
+                cmd.append("--fake_warmup=%s" % fake_warmup)
 
             cmd = ' '.join(cmd)
             cmd_file_name = "%s-%s-%s" % ('cmd_file',
@@ -692,6 +695,7 @@ class DeviceWrapper:
             layers_validate_file=output_config[
                 YAMLKeyword.model_file_path],
             benchmark=flags.benchmark,
+            fake_warmup=flags.fake_warmup,
             use_system_libhexagon_nn=flags.use_system_libhexagon_nn
         )
 

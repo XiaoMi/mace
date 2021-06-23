@@ -150,7 +150,7 @@ MaceStatus PoolingKernel::Compute(
       Concat("pooling_opencl_kernel_", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, &pooling_future));
+                                           gws, lws, &pooling_future, context));
   MACE_OUT_OF_RANGE_VALIDATION;
   MergeMultipleFutureWaitFn({pad_future, pooling_future}, context->future());
 

@@ -31,10 +31,13 @@ class OpContext {
 
   void set_future(StatsFuture *future);
   StatsFuture *future() const;
+  void set_fake_warmup(bool fake_warmup);
+  bool fake_warmup() const;
  private:
   Runtime *runtime_;
   Workspace *ws_;
   StatsFuture *future_;
+  bool fake_warmup_;
 };
 
 }  // namespace mace

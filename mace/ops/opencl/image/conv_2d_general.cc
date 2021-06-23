@@ -156,7 +156,7 @@ MaceStatus Conv2d(OpContext *context,
   std::vector<uint32_t> lws =
       LocalWS(executor, gws, filter->dim(2) * filter->dim(3), *kwg_size);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
