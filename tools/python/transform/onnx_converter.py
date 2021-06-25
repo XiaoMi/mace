@@ -1464,12 +1464,14 @@ class OnnxConverter(base_converter.ConverterInterface):
             constant_value_arg = op.arg.add()
             constant_value_arg.name = MaceKeyword.mace_constant_value_str
             constant_value_arg.f = node.attrs['value']
-        if len(op.input) == 2:
+        if len(op.input) > 1:
             constant_value_arg = op.arg.add()
             constant_value_arg.name = MaceKeyword.mace_paddings_str
             paddings_value = self._consts[node.inputs[1]].int32_data
+            paddings_value = np.asarray(paddings_value).reshape(
+                (2, -1)).transpose().reshape(-1).tolist()
             constant_value_arg.ints.extend(paddings_value)
-            del op.input[1]
+            del op.input[1:]
 
     def convert_pad_context(self, node):
         op = self.convert_general_op(node)
