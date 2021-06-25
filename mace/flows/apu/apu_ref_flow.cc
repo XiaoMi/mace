@@ -42,12 +42,14 @@ MaceStatus ApuRefFlow::Init(const NetDef *net_def,
   auto *apu_runtime = ApuRuntime::Get(main_runtime_);
   auto preference_hint = apu_runtime->GetPreferenceHint();
   auto apu_cache_policy = apu_runtime->GetCachePolicy();
-  bool cache_load = apu_cache_policy ==
-                    AcceleratorCachePolicy::ACCELERATOR_CACHE_LOAD;
-  bool cache_store = apu_cache_policy ==
-                    AcceleratorCachePolicy::ACCELERATOR_CACHE_STORE;
-  const char *file_name = cache_store ? apu_runtime->GetCacheStorePath()
-                                      : apu_runtime->GetCacheLoadPath();
+  bool cache_load = (
+      apu_cache_policy == AcceleratorCachePolicy::ACCELERATOR_CACHE_LOAD ||
+      apu_cache_policy == AcceleratorCachePolicy::APU_CACHE_LOAD_OR_STORE);
+  bool cache_store = (
+      apu_cache_policy == AcceleratorCachePolicy::ACCELERATOR_CACHE_STORE ||
+      apu_cache_policy == AcceleratorCachePolicy::APU_CACHE_LOAD_OR_STORE);
+  const char *file_name = cache_load ? apu_runtime->GetCacheLoadPath()
+                                      : apu_runtime->GetCacheStorePath();
   auto *apu_wrapper = apu_runtime->GetApuWrapper();
   bool ret = false;
   if (cache_load || cache_store) {

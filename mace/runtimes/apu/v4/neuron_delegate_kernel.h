@@ -97,10 +97,12 @@ class NeuronDelegateKernel {
       delete [] int32_buffer;
     }
   }
-  bool Init(const NetDef* net_def, unsigned const char *model_data, bool load);
-  bool Prepare(const char *file_name,
-               const APUPreferenceHint preference_hint,
-               bool load, bool store);
+  bool Init(const NetDef *net_def,
+            unsigned const char *model_data,
+            const char *file_name,
+            const APUPreferenceHint preference_hint,
+            const bool load,
+            const bool store);
   bool Eval(const std::map<std::string, Tensor *> &input_tensors,
             std::map<std::string, Tensor *> *output_tensors,
             const uint8_t boost_hint);
@@ -110,7 +112,11 @@ class NeuronDelegateKernel {
                          unsigned const char *model_data);
   bool AddOpsAndTensors(const NetDef* net_def, unsigned const char *model_data);
   bool BuildGraph(const NetDef* net_def, unsigned const char *model_data);
-
+  bool CompileModel(const NetDef *net_def,
+                    unsigned const char *model_data,
+                    const APUPreferenceHint preference_hint,
+                    const bool store,
+                    const char *file_name);
   std::vector<NeuronMemory*> PrepareInputTensors(
       const std::map<std::string, Tensor *> &input_tensors,
       NeuronExecution* execution);

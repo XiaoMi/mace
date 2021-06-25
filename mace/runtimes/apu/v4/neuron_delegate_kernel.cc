@@ -64,28 +64,59 @@ NeuronDelegateKernel::NeuronDelegateKernel(const NeuronApi* neuronapi,
 }
 
 bool NeuronDelegateKernel::Init(const NetDef *net_def,
-                                unsigned const char *model_data, bool load) {
+                                unsigned const char *model_data,
+                                const char *file_name,
+                                const APUPreferenceHint preference_hint,
+                                const bool load,
+                                const bool store) {
   if (load) {
+    if (!file_name || !*file_name) {
+      LOG(ERROR) << "Unspecified or empty apu_binary_file=" << file_name;
+      return false;
+    }
     bool success = SetInputAndOutput(net_def, model_data);
     if (!success) {
       LOG(ERROR) << "SetInputAndOutput failed.";
       return false;
     }
-    return true;
-  }
-  if (!nn_model_) {
-    LOG(INFO) << "Creating Neuron model";
-    NeuronModel* model = nullptr;
-    // Creating Neuron model
-    neuronapi_->NeuronModel_create(&model);
-    nn_model_.reset(model);
-    bool success = BuildGraph(net_def, model_data);
-    if (!success) {
-      LOG(ERROR) << "BuildGraph failed.";
+    NeuronModel *restoredModel = nullptr;
+    NeuronCompilation *restoredCompilation = nullptr;
+    std::ifstream input(file_name, std::ios::binary);
+    // copy all data into buffer
+    std::vector<unsigned char>
+        buffer(std::istreambuf_iterator<char>(input), {});
+    int err = neuronapi_->NeuronModel_restoreFromCompiledNetwork(
+        &restoredModel, &restoredCompilation, buffer.data(), buffer.size());
+    if (err == NEURON_NO_ERROR) {
+        LOG(INFO) << "Load pre-compiled model successfully.";
+        nn_compilation_.reset(restoredCompilation);
+        return true;
+    }
+    // Set ensure_cache_updated=true only for LOAD_OR_STORE policy
+    // (i.e. load=true, store=true).
+    bool ensure_cache_updated = (load && store) ? true : false;
+    if (!ensure_cache_updated) {
+      LOG(ERROR) << "Load pre-compiled model failed. err=" << err
+                 << " from " << file_name;
       return false;
     }
+    // The pre-compiled model is outdated if err == NEURON_BAD_DATA and
+    // absent if err == NEURON_UNEXPECTED_NULL
+    if ((err != NEURON_BAD_DATA && err != NEURON_UNEXPECTED_NULL)) {
+      LOG(ERROR) << "Load pre-compiled model failed, but the cache is"
+                    " neither outdated or absent. err=" << err
+                 << " from " << file_name;
+      return false;
+    }
+    LOG(INFO) << "Re-compile and update pre-compiled model as the cache is"
+                 " outdated or absent. err=" << err << " from " << file_name;
   }
-  return true;
+
+  return CompileModel(net_def,
+                      model_data,
+                      preference_hint,
+                      store,
+                      file_name);
 }
 
 bool NeuronDelegateKernel::BuildGraph(
@@ -107,26 +138,21 @@ bool NeuronDelegateKernel::BuildGraph(
   return true;
 }
 
-bool NeuronDelegateKernel::Prepare(const char *file_name,
-                                   const APUPreferenceHint preference_hint,
-                                   bool load, bool store) {
-  if (load) {
-    NeuronModel *restoredModel = nullptr;
-    NeuronCompilation *restoredCompilation = nullptr;
-    std::ifstream input(file_name, std::ios::binary);
-
-    // copy all data into buffer
-    std::vector<unsigned char>
-        buffer(std::istreambuf_iterator<char>(input), {});
-    int err = neuronapi_->NeuronModel_restoreFromCompiledNetwork(
-        &restoredModel, &restoredCompilation, buffer.data(), buffer.size());
-    if (err != NEURON_NO_ERROR) {
-      LOG(ERROR) << "Load pre-compiled model failed.";
-      return false;
-    }
-    LOG(INFO) << "Load pre-compiled model successfully.";
-    nn_compilation_.reset(restoredCompilation);
-    return true;
+bool NeuronDelegateKernel::CompileModel(
+    const NetDef *net_def,
+    unsigned const char *model_data,
+    const APUPreferenceHint preference_hint,
+    const bool store, const char *file_name) {
+  MACE_ASSERT(!nn_model_, "nn_model_ is uninitialized");
+  LOG(INFO) << "Creating Neuron model";
+  NeuronModel* model = nullptr;
+  // Creating Neuron model
+  neuronapi_->NeuronModel_create(&model);
+  nn_model_.reset(model);
+  bool success = BuildGraph(net_def, model_data);
+  if (!success) {
+    LOG(ERROR) << "BuildGraph failed.";
+    return false;
   }
   NeuronCompilation* compilation = nullptr;
   neuronapi_->NeuronCompilation_create(nn_model_.get(), &compilation);
@@ -158,15 +184,19 @@ bool NeuronDelegateKernel::Prepare(const char *file_name,
     neuronapi_->NeuronCompilation_storeCompiledNetwork(
         compilation, buffer, compilationSize);
     std::ofstream fp;
+    if (!file_name || !*file_name) {
+      LOG(ERROR) << "Unspecified or empty apu_store_file=" << file_name;
+      return false;
+    }
     fp.open(file_name, std::ios::out |
         std::ios :: binary | std::ofstream::trunc);
     fp.write(reinterpret_cast<char*>(buffer), compilationSize);
     fp.close();
-    LOG(INFO) << "Store init cache successfully";
+    LOG(INFO) << "Store init cache successfully to " << file_name;
     delete[] buffer;
   }
-  LOG(INFO) << "Neuron compilation success";
   nn_compilation_.reset(compilation);
+  LOG(INFO) << "Neuron compilation success";
   return true;
 }
 
