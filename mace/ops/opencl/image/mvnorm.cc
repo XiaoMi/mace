@@ -173,7 +173,7 @@ MaceStatus MVNormKernel::ExecuteMeanValueKernel(OpContext *context,
       gws[1], normalize_variance_, mean_type_);
 
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_mean_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
@@ -213,7 +213,7 @@ MaceStatus MVNormKernel::ExecuteMeanNormKernel(OpContext *context,
                                   mean_type_, group_blocks);
 
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_step1_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
@@ -252,7 +252,7 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep1Kernel(
                           mean_type_);
 
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_step1_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
@@ -294,7 +294,7 @@ MaceStatus MVNormKernel::ExecuteVarianceNormStep2Kernel(
                           mean_type_);
 
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_step2_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }

@@ -119,6 +119,16 @@ MaceStatus SerialEngine::AfterRun() {
   return BaseEngine::AfterRun();
 }
 
+MaceStatus SerialEngine::FakeWarmup() {
+  auto flow_num = flows_.size();
+  for (size_t i = 0; i < flow_num; ++i) {
+    auto *flow = flows_[i].get();
+    auto ret = flow->FakeWarmup();
+    MACE_RETURN_IF_ERROR(ret);
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
+
 MaceStatus SerialEngine::ReleaseIntermediateBuffer() {
   if (inter_mem_released_) {
     return MaceStatus::MACE_SUCCESS;

@@ -1260,6 +1260,10 @@ def parse_args():
         action="store_true",
         help="enable op benchmark.")
     run.add_argument(
+        "--fake_warmup",
+        action="store_true",
+        help="enable fake warmup.")
+    run.add_argument(
         "--apu_cache_policy",
         type=int,
         default=DefaultValues.apu_cache_policy,

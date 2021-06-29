@@ -75,23 +75,25 @@ MaceStatus SplitKernel::Compute(
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blk * i));
     kernel_.setArg(idx++, *(output_list[i]->memory<cl::Image>()));
 
-    cl_int error;
-    if (executor->IsNonUniformWorkgroupsSupported()) {
-      error = executor->command_queue().enqueueNDRangeKernel(
-          kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
-    } else {
-      std::vector<uint32_t> roundup_gws(lws.size());
-      for (size_t j = 0; j < 3; ++j) {
-        roundup_gws[j] = RoundUp(gws[j], lws[j]);
-      }
+    if (!context->fake_warmup()) {
+      cl_int error;
+      if (executor->IsNonUniformWorkgroupsSupported()) {
+        error = executor->command_queue().enqueueNDRangeKernel(
+            kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+            cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+      } else {
+        std::vector<uint32_t> roundup_gws(lws.size());
+        for (size_t j = 0; j < 3; ++j) {
+          roundup_gws[j] = RoundUp(gws[j], lws[j]);
+        }
 
-      error = executor->command_queue().enqueueNDRangeKernel(
-          kernel_, cl::NullRange,
-          cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+        error = executor->command_queue().enqueueNDRangeKernel(
+            kernel_, cl::NullRange,
+            cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+            cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+      }
+      MACE_CL_RET_STATUS(error);
     }
-    MACE_CL_RET_STATUS(error);
     MACE_OUT_OF_RANGE_VALIDATION;
     if (context->future() != nullptr && executor->is_profiling_enabled()) {
       event.wait();

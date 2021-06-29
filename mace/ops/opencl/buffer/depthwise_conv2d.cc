@@ -112,7 +112,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
       Concat("depthwise_conv2d_buffer_kernel", in_height, in_width, in_channel,
              filter_height, filter_width, channel);
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, future, context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

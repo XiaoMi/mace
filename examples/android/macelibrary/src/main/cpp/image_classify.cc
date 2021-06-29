@@ -172,7 +172,10 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
                                input_names,
                                output_names,
                                config,
-                               &mace_context.engine);
+                               &mace_context.engine,
+                               nullptr,
+                               nullptr,
+                               false);
 
   __android_log_print(ANDROID_LOG_INFO,
                       "image_classify attrs",

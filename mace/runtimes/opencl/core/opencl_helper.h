@@ -118,7 +118,8 @@ MaceStatus TuningOrRun3DKernel(OpenclExecutor *executor,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
-                               StatsFuture *future);
+                               StatsFuture *future,
+                               OpContext *context = nullptr);
 
 // Tuning or Run OpenCL kernel with 2D work group size
 MaceStatus TuningOrRun2DKernel(OpenclExecutor *executor,
@@ -126,7 +127,8 @@ MaceStatus TuningOrRun2DKernel(OpenclExecutor *executor,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
-                               StatsFuture *future);
+                               StatsFuture *future,
+                               OpContext *context = nullptr);
 
 // Check whether limit OpenCL kernel time flag open.
 inline bool LimitKernelTime() {

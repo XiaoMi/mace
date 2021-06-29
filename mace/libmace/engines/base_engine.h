@@ -71,6 +71,7 @@ class BaseEngine {
   virtual MaceStatus Forward(const std::map<std::string, MaceTensor> &inputs,
                              std::map<std::string, MaceTensor> *outputs,
                              RunMetadata *run_metadata);
+  virtual MaceStatus FakeWarmup();
 
   virtual MaceStatus ReleaseIntermediateBuffer();
   virtual MaceStatus AllocateIntermediateBuffer();

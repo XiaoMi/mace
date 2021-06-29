@@ -36,13 +36,15 @@ class MaceEngine::Impl {
                   const unsigned char *model_data,
                   const int64_t model_data_size,
                   bool *model_data_unused = nullptr,
-                  MaceEngine::Impl *tutor = nullptr);
+                  MaceEngine::Impl *tutor = nullptr,
+                  bool fake_warmup = false);
 
   MaceStatus Init(const MultiNetDef *net_def,
                   const std::vector<std::string> &input_nodes,
                   const std::vector<std::string> &output_nodes,
                   const std::string &model_data_file,
-                  MaceEngine::Impl *tutor = nullptr);
+                  MaceEngine::Impl *tutor = nullptr,
+                  bool fake_warmup = false);
 
   // Deprecated, will be removed in future version.
   MaceStatus Init(const NetDef *net_def,
@@ -78,24 +80,34 @@ MaceStatus MaceEngine::Impl::Init(const MultiNetDef *multi_net_def,
                                   const unsigned char *model_data,
                                   const int64_t model_data_size,
                                   bool *model_data_unused,
-                                  MaceEngine::Impl *tutor) {
+                                  MaceEngine::Impl *tutor,
+                                  bool fake_warmup) {
   MACE_RETURN_IF_ERROR(engine_->BeforeInit());
   MACE_RETURN_IF_ERROR(engine_->Init(
       multi_net_def, input_nodes, output_nodes, model_data, model_data_size,
       model_data_unused, tutor == nullptr ? nullptr : tutor->engine_.get()));
-  return engine_->AfterInit();
+  MACE_RETURN_IF_ERROR(engine_->AfterInit());
+  if (fake_warmup) {
+    MACE_RETURN_IF_ERROR(engine_->FakeWarmup());
+  }
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MaceEngine::Impl::Init(const MultiNetDef *multi_net_def,
                                   const std::vector<std::string> &input_nodes,
                                   const std::vector<std::string> &output_nodes,
                                   const std::string &model_data_file,
-                                  MaceEngine::Impl *tutor) {
+                                  MaceEngine::Impl *tutor,
+                                  bool fake_warmup) {
   MACE_RETURN_IF_ERROR(engine_->BeforeInit());
   MACE_RETURN_IF_ERROR(engine_->Init(
       multi_net_def, input_nodes, output_nodes, model_data_file,
       tutor == nullptr ? nullptr : tutor->engine_.get()));
-  return engine_->AfterInit();
+  MACE_RETURN_IF_ERROR(engine_->AfterInit());
+  if (fake_warmup) {
+    MACE_RETURN_IF_ERROR(engine_->FakeWarmup());
+  }
+  return MaceStatus::MACE_SUCCESS;
 }
 
 // Deprecated, will be removed in future version.
@@ -148,21 +160,25 @@ MaceStatus MaceEngine::Init(const MultiNetDef *multi_net_def,
                             const std::vector<std::string> &output_nodes,
                             const unsigned char *model_data,
                             const int64_t model_data_size,
-                            bool *model_data_unused, MaceEngine *tutor) {
+                            bool *model_data_unused, MaceEngine *tutor,
+                            bool fake_warmup) {
   MACE_CHECK(tutor != this, "Can not use yourself as tutor.");
   return impl_->Init(multi_net_def, input_nodes, output_nodes,
                      model_data, model_data_size, model_data_unused,
-                     tutor == nullptr ? nullptr : tutor->impl_.get());
+                     tutor == nullptr ? nullptr : tutor->impl_.get(),
+                     fake_warmup);
 }
 
 MaceStatus MaceEngine::Init(const MultiNetDef *multi_net_def,
                             const std::vector<std::string> &input_nodes,
                             const std::vector<std::string> &output_nodes,
                             const std::string &model_data_file,
-                            MaceEngine *tutor) {
+                            MaceEngine *tutor,
+                            bool fake_warmup) {
   MACE_CHECK(tutor != this, "Can not use yourself as tutor.");
   return impl_->Init(multi_net_def, input_nodes, output_nodes, model_data_file,
-                     tutor == nullptr ? nullptr : tutor->impl_.get());
+                     tutor == nullptr ? nullptr : tutor->impl_.get(),
+                     fake_warmup);
 }
 
 // Deprecated, will be removed in future version.
@@ -224,7 +240,8 @@ MaceStatus CreateMaceEngineFromProto(
     const std::vector<std::string> &output_nodes,
     const MaceEngineConfig &config,
     std::shared_ptr<MaceEngine> *engine,
-    bool *model_data_unused, MaceEngine *tutor) {
+    bool *model_data_unused, MaceEngine *tutor,
+    bool fake_warmup) {
   VLOG(1) << "Create MaceEngine from model graph proto and weights data";
 
   if (engine == nullptr) {
@@ -241,7 +258,8 @@ MaceStatus CreateMaceEngineFromProto(
     VLOG(1) << "It is a multi_net_def.";
     status = (*engine)->Init(
         multi_net_def.get(), input_nodes, output_nodes, model_weights_data,
-        model_weights_data_size, model_data_unused, tutor);
+        model_weights_data_size, model_data_unused, tutor,
+        fake_warmup);
   } else {
     VLOG(1) << "It is a net_def.";
     auto net_def = std::make_shared<NetDef>();

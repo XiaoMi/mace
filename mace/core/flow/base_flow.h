@@ -80,6 +80,7 @@ class BaseFlow {
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs,
                  RunMetadata *run_metadata = nullptr);
+  virtual MaceStatus FakeWarmup();
 
   MaceStatus AllocateIntermediateBuffer();
 

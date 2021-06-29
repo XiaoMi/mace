@@ -127,7 +127,7 @@ MaceStatus ImageToBuffer::Compute(OpContext *context,
   std::vector<uint32_t> lws = {kwg_size, 1, 0};
   std::string tuning_key = Concat(kernel_name, MakeString(input->shape()));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key, gws,
-                                           lws, context->future()));
+                                           lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
 
   return MaceStatus::MACE_SUCCESS;

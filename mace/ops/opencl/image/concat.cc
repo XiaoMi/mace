@@ -114,8 +114,10 @@ MaceStatus Concat2(OpContext *context,
   std::string tuning_key =
       Concat("concat_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, context->future()));
+  if (!context->fake_warmup()) {
+    MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
+                                             gws, lws, context->future(), context));
+  }
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }
@@ -169,22 +171,24 @@ MaceStatus ConcatN(OpContext *context,
     kernel->setArg(idx++, *(output->mutable_memory<cl::Image>()));
 
     chan_blk_offset += input_channel_blk;
-    cl_int error;
-    if (executor->IsNonUniformWorkgroupsSupported()) {
-      error = executor->command_queue().enqueueNDRangeKernel(
-          *kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
-    } else {
-      std::vector<uint32_t> roundup_gws(lws.size());
-      for (size_t j = 0; j < 3; ++j) {
-        roundup_gws[j] = RoundUp(gws[j], lws[j]);
+    if (!context->fake_warmup()) {
+      cl_int error;
+      if (executor->IsNonUniformWorkgroupsSupported()) {
+        error = executor->command_queue().enqueueNDRangeKernel(
+            *kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+            cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+      } else {
+        std::vector<uint32_t> roundup_gws(lws.size());
+        for (size_t j = 0; j < 3; ++j) {
+          roundup_gws[j] = RoundUp(gws[j], lws[j]);
+        }
+        error = executor->command_queue().enqueueNDRangeKernel(
+            *kernel, cl::NullRange,
+            cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+            cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
       }
-      error = executor->command_queue().enqueueNDRangeKernel(
-          *kernel, cl::NullRange,
-          cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+      MACE_CL_RET_STATUS(error);
     }
-    MACE_CL_RET_STATUS(error);
     MACE_OUT_OF_RANGE_VALIDATION;
     if (context->future() != nullptr && executor->is_profiling_enabled()) {
       event.wait();

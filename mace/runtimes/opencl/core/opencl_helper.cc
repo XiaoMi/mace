@@ -160,7 +160,11 @@ MaceStatus TuningOrRun3DKernel(OpenclExecutor *executor,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
-                               StatsFuture *future) {
+                               StatsFuture *future,
+                               OpContext *context) {
+  if (context != nullptr && context->fake_warmup()) {
+    return MaceStatus::MACE_SUCCESS;
+  }
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel));
@@ -297,7 +301,11 @@ MaceStatus TuningOrRun2DKernel(OpenclExecutor *executor,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
-                               StatsFuture *future) {
+                               StatsFuture *future,
+                               OpContext *context) {
+  if (context != nullptr && context->fake_warmup()) {
+    return MaceStatus::MACE_SUCCESS;
+  }
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(executor->GetKernelMaxWorkGroupSize(kernel));

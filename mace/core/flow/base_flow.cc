@@ -115,6 +115,10 @@ MaceStatus BaseFlow::Run(const std::map<std::string, MaceTensor> &inputs,
   return MaceStatus::MACE_SUCCESS;
 }
 
+MaceStatus BaseFlow::FakeWarmup() {
+  return MaceStatus::MACE_SUCCESS;
+}
+
 MaceStatus BaseFlow::AllocateIntermediateBuffer() {
   MACE_RETURN_IF_ERROR(AllocateBufferForInputTensors());
   if (net_ != nullptr) {

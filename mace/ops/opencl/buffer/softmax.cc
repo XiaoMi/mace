@@ -89,7 +89,7 @@ MaceStatus SoftmaxKernel::Compute(
   std::string tuning_key =
       Concat("softmax_opencl_kernel", batch, height, width, channels);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }

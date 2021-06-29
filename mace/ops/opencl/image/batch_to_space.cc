@@ -86,7 +86,7 @@ MaceStatus BatchToSpaceKernel::Compute(
       Concat("batch_to_space", batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

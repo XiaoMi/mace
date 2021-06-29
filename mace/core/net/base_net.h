@@ -41,7 +41,8 @@ class BaseNet {
 
   virtual MaceStatus Init() = 0;
 
-  virtual MaceStatus Run(RunMetadata *run_metadata = nullptr) = 0;
+  virtual MaceStatus Run(RunMetadata *run_metadata = nullptr,
+                         bool fake_warmup = false) = 0;
 
   virtual MaceStatus AllocateIntermediateBuffer() = 0;
 

@@ -1085,6 +1085,7 @@ class OnnxConverter(base_converter.ConverterInterface):
                 type_arg.s = six.b(ActivationType.RELU.name)
         else:
             self.convert_eltwise(node)
+            return
         if inputs_num > 1:
             del op.input[1:]
 

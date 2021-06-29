@@ -87,7 +87,7 @@ MaceStatus PadInput(OpContext *context,
              padded_height, padded_width, padded_channel);
   std::vector<uint32_t> lws = {8, 4, 0};
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, future, context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }

@@ -144,7 +144,8 @@ MaceStatus CreateMaceEngineFromCode(
     const MaceEngineConfig &config,
     std::shared_ptr<MaceEngine> *engine,
     bool *model_data_unused = nullptr,
-    MaceEngine *tutor = nullptr) {
+    MaceEngine *tutor = nullptr,
+    bool fake_warmup = false) {
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
@@ -166,12 +167,13 @@ MaceStatus CreateMaceEngineFromCode(
       model_data = mace::{{model_tags[i]}}::LoadModelData();
       const int64_t model_size = mace::{{model_tags[i]}}::GetModelSize();
       status = (*engine)->Init(
-            multi_net_def.get(), input_nodes, output_nodes,
-            model_data, model_size, model_data_unused, tutor);
+          multi_net_def.get(), input_nodes, output_nodes,
+          model_data, model_size, model_data_unused, tutor, fake_warmup);
 {% else %}
       status = (*engine)->Init(
-      multi_net_def.get(), input_nodes, output_nodes, model_weights_data,
-      model_weights_data_size, model_data_unused, tutor);
+          multi_net_def.get(), input_nodes, output_nodes,
+          model_weights_data, model_weights_data_size, model_data_unused,
+          tutor, fake_warmup);
 {% endif %}
       break;
     }

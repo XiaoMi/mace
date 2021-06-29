@@ -101,7 +101,7 @@ MaceStatus WinogradInputTransform(OpContext *context,
                                   output_tensor->dim(1),
                                   output_tensor->dim(2));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, future, context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
@@ -189,7 +189,7 @@ MaceStatus WinogradOutputTransform(OpContext *context,
              output_tensor->dim(1), output_tensor->dim(2),
              output_tensor->dim(3), input_tensor->dim(2));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, future, context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
@@ -294,7 +294,7 @@ extern MaceStatus WinogradConv2dK3x3S1(OpContext *context,
   std::string tuning_key = Concat("matmul_opencl_kernel", mm_output_shape[0],
                                   mm_output_shape[1], mm_output_shape[2]);
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernels[1], tuning_key,
-                                           gws, lws, &mm_future));
+                                           gws, lws, &mm_future, context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
 

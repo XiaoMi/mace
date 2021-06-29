@@ -40,7 +40,8 @@ class SerialNet : public BaseNet {
 
   MaceStatus Init() override;
 
-  MaceStatus Run(RunMetadata *run_metadata = nullptr) override;
+  MaceStatus Run(RunMetadata *run_metadata = nullptr,
+                 bool fake_warmup = false) override;
 
   MaceStatus AllocateIntermediateBuffer() override;
 

@@ -90,7 +90,7 @@ MaceStatus LSTMCellKernel::Compute(
   std::string tuning_key =
       Concat("lstmcell_opencl_kernel", output->dim(0), output->dim(1));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, kernel_, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
   MACE_OUT_OF_RANGE_VALIDATION;
 
   return MaceStatus::MACE_SUCCESS;

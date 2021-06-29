@@ -116,7 +116,7 @@ MaceStatus DepthToSpaceKernel::Compute(OpContext *context,
                                   output_width, output_depth);
   const std::vector<uint32_t> lws = Default3DLocalWS(executor, gws, kwg_size_);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, kernel_, tuning_key, gws,
-                                           lws, context->future()));
+                                           lws, context->future(), context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

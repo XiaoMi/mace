@@ -57,6 +57,7 @@ class SerialEngine : public BaseEngine {
                  std::map<std::string, MaceTensor> *outputs,
                  RunMetadata *run_metadata) override;
   MaceStatus AfterRun() override;
+  MaceStatus FakeWarmup() override;
 
  private:
   typedef std::unordered_map<const NetDef *,

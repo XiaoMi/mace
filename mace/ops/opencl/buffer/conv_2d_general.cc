@@ -116,7 +116,7 @@ MaceStatus Conv2dGeneral(OpContext *context,
              output->dim(2), output->dim(3), filter_height, filter_width);
   std::vector<uint32_t> lws = {16, 4, 0};
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(executor, *kernel, tuning_key, gws,
-                                           lws, future));
+                                           lws, future, context));
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;
 }

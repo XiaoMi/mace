@@ -103,22 +103,24 @@ MaceStatus SqrDiffMeanKernel::Compute(
   }
 
   cl::Event event;
-  cl_int error;
-  if (executor->IsNonUniformWorkgroupsSupported()) {
-    error = executor->command_queue().enqueueNDRangeKernel(
-        kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
-  } else {
-    std::vector<uint32_t> roundup_gws(lws.size());
-    for (size_t i = 0; i < lws.size(); ++i) {
-      roundup_gws[i] = RoundUp(gws[i], lws[i]);
+  if (!context->fake_warmup()) {
+    cl_int error;
+    if (executor->IsNonUniformWorkgroupsSupported()) {
+      error = executor->command_queue().enqueueNDRangeKernel(
+          kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+    } else {
+      std::vector<uint32_t> roundup_gws(lws.size());
+      for (size_t i = 0; i < lws.size(); ++i) {
+        roundup_gws[i] = RoundUp(gws[i], lws[i]);
+      }
+      error = executor->command_queue().enqueueNDRangeKernel(
+          kernel_, cl::NullRange,
+          cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     }
-    error = executor->command_queue().enqueueNDRangeKernel(
-        kernel_, cl::NullRange,
-        cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+    MACE_CL_RET_STATUS(error);
   }
-  MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION;
 
   if (context->future() != nullptr) {

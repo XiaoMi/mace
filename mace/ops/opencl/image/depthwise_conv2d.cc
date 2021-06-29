@@ -168,7 +168,7 @@ MaceStatus DepthwiseConv2d(OpContext *context,
   std::string tuning_key =
       Concat("depthwise_conv2d_ocl_kernel", gws[0], gws[1], gws[2], multiplier);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(executor, *kernel, tuning_key,
-                                           gws, lws, context->future()));
+                                           gws, lws, context->future(), context));
 
   MACE_OUT_OF_RANGE_VALIDATION;
   return MaceStatus::MACE_SUCCESS;

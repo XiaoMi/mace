@@ -66,18 +66,20 @@ MaceStatus BufferTypeTransform(
   const uint32_t lws =
       static_cast<uint32_t>(RoundUpDiv4(executor->GetDeviceMaxWorkGroupSize()));
   cl::Event event;
-  cl_int error;
-  if (executor->IsNonUniformWorkgroupsSupported()) {
-    error = executor->command_queue().enqueueNDRangeKernel(
-        *kernel, cl::NullRange, cl::NDRange(gws),
-        cl::NDRange(lws), nullptr, &event);
-  } else {
-    uint32_t roundup_gws = RoundUp(gws, lws);
-    error = executor->command_queue().enqueueNDRangeKernel(
-        *kernel, cl::NullRange, cl::NDRange(roundup_gws),
-        cl::NDRange(lws), nullptr, &event);
+  if (!context->fake_warmup()) {
+    cl_int error;
+    if (executor->IsNonUniformWorkgroupsSupported()) {
+      error = executor->command_queue().enqueueNDRangeKernel(
+          *kernel, cl::NullRange, cl::NDRange(gws),
+          cl::NDRange(lws), nullptr, &event);
+    } else {
+      uint32_t roundup_gws = RoundUp(gws, lws);
+      error = executor->command_queue().enqueueNDRangeKernel(
+          *kernel, cl::NullRange, cl::NDRange(roundup_gws),
+          cl::NDRange(lws), nullptr, &event);
+    }
+    MACE_CL_RET_STATUS(error);
   }
-  MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATE;
   if (context->future() != nullptr) {
     context->future()->wait_fn = [executor, event](CallStats *stats) {
