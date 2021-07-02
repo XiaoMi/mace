@@ -204,9 +204,9 @@ class DeviceWrapper:
                    cl_cache_reuse_policy=1,
                    gpu_perf_hint=3,
                    gpu_priority_hint=3,
-                   apu_cache_policy=0,
-                   apu_binary_file="",
-                   apu_storage_file="",
+                   accelerator_cache_policy=0,
+                   accelerator_binary_file="",
+                   accelerator_storage_file="",
                    apu_boost_hint=100,
                    apu_preference_hint=1,
                    input_file_name='model_input',
@@ -336,13 +336,13 @@ class DeviceWrapper:
 
             apu_storage_cpy = False
             if device_type == common.DeviceType.APU:
-                if apu_cache_policy == 1:
+                if accelerator_cache_policy == 1:
                     if not apu_storage_file:
                         apu_storage_cpy = True
                         apu_src_file = model_tag + ".bin"
                         apu_storage_file = os.path.join(self.data_dir,
                                                         apu_src_file)
-                elif apu_cache_policy == 2:
+                elif accelerator_cache_policy == 2:
                     if os.path.exists(apu_binary_file):
                         self.push(apu_binary_file, self.data_dir)
                         apu_binary_file = os.path.join(
@@ -379,7 +379,10 @@ class DeviceWrapper:
                     libhexgon_nn_skel_shared_lib)
                 self.push(libhexgon_nn_skel_shared_lib, self.data_dir)
                 sh.rm(libhexgon_nn_skel_shared_lib)
-
+            qnn_path = \
+                "third_party/qnn/target/%s/libQnnHtpAltPrepStub.so" % abi
+            if os.path.exists(qnn_path):
+                self.push(qnn_path, self.data_dir)
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:
                 mace_model_phone_path = "%s/%s.pb" % (self.data_dir,
@@ -432,9 +435,9 @@ class DeviceWrapper:
                 (self.data_dir, os.path.basename(opencl_binary_file)),
                 "--opencl_parameter_file=%s/%s" %
                 (self.data_dir, os.path.basename(opencl_parameter_file)),
-                "--apu_cache_policy=%s" % apu_cache_policy,
-                "--apu_binary_file=%s" % apu_binary_file,
-                "--apu_storage_file=%s" % apu_storage_file,
+                "--accelerator_cache_policy=%s" % accelerator_cache_policy,
+                "--accelerator_binary_file=%s" % accelerator_binary_file,
+                "--accelerator_storage_file=%s" % accelerator_storage_file,
                 "--apu_boost_hint=%s" % apu_boost_hint,
                 "--apu_preference_hint=%s" % apu_preference_hint,
             ])
@@ -678,9 +681,9 @@ class DeviceWrapper:
             cl_cache_reuse_policy=flags.opencl_cache_reuse_policy,
             gpu_perf_hint=flags.gpu_perf_hint,
             gpu_priority_hint=flags.gpu_priority_hint,
-            apu_cache_policy=flags.apu_cache_policy,
-            apu_binary_file=flags.apu_binary_file,
-            apu_storage_file=flags.apu_storage_file,
+            accelerator_cache_policy=flags.accelerator_cache_policy,
+            accelerator_binary_file=flags.accelerator_binary_file,
+            accelerator_storage_file=flags.accelerator_storage_file,
             apu_boost_hint=flags.apu_boost_hint,
             apu_preference_hint=flags.apu_preference_hint,
             runtime_failure_ratio=flags.runtime_failure_ratio,

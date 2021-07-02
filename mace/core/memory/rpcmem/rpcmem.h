@@ -34,7 +34,7 @@ class Rpcmem {
 
   bool IsRpcmemSupported();
 
-  virtual void *New(int heapid, uint32_t flags, int nbytes) = 0;
+  virtual void *New(uint32_t flags, int nbytes) = 0;
   virtual void *New(int nbytes) = 0;
   virtual void Delete(void *data) = 0;
   virtual int GetDefaultHeapId() = 0;

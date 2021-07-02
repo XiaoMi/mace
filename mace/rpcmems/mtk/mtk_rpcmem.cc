@@ -53,9 +53,7 @@ MtkRpcmem::~MtkRpcmem() {
   }
 }
 
-void *MtkRpcmem::New(int heapid, uint32_t flags, int nbytes) {
-  MACE_UNUSED(heapid);
-
+void *MtkRpcmem::New(uint32_t flags, int nbytes) {
   ion_user_handle_t buf_handle;
   if (mtk_ion_wrapper_->ion_alloc_mm(ion_handle_, static_cast<size_t>(nbytes),
                                      0, flags, &buf_handle)) {
@@ -89,7 +87,7 @@ void *MtkRpcmem::New(int heapid, uint32_t flags, int nbytes) {
 }
 
 void *MtkRpcmem::New(int nbytes) {
-  return New(0, GetIonCacheFlag(), nbytes);
+  return New(GetIonCacheFlag(), nbytes);
 }
 
 void MtkRpcmem::Delete(void *data) {

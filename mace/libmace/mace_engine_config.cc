@@ -31,9 +31,9 @@ MaceEngineCfgImpl::MaceEngineCfgImpl()
       hexagon_corner_(HexagonNNCornerType::HEXAGON_NN_CORNER_TURBO),
       hexagon_dcvs_enable_(true),
       hexagon_latency_(100),
-      apu_cache_policy_(APUCachePolicy::APU_CACHE_NONE),
-      apu_binary_file_(""),
-      apu_storage_file_(""),
+      accelerator_cache_policy_(AcceleratorCachePolicy::ACCELERATOR_CACHE_NONE),
+      accelerator_binary_file_(""),
+      accelerator_storage_file_(""),
       apu_boost_hint_(100),
       apu_preference_hint_(
         APUPreferenceHint::NEURON_PREFER_FAST_SINGLE_ANSWER) {}
@@ -75,16 +75,20 @@ int MaceEngineCfgImpl::hexagon_latency() const {
   return hexagon_latency_;
 }
 
-APUCachePolicy MaceEngineCfgImpl::apu_cache_policy() const {
-  return apu_cache_policy_;
+AcceleratorCachePolicy MaceEngineCfgImpl::accelerator_cache_policy() const {
+  return accelerator_cache_policy_;
 }
 
-std::string MaceEngineCfgImpl::apu_binary_file() const {
-  return apu_binary_file_;
+std::string MaceEngineCfgImpl::accelerator_binary_file() const {
+  return accelerator_binary_file_;
 }
 
-std::string MaceEngineCfgImpl::apu_storage_file() const {
-  return apu_storage_file_;
+std::string MaceEngineCfgImpl::accelerator_storage_file() const {
+  return accelerator_storage_file_;
+}
+
+HexagonPerformanceType MaceEngineCfgImpl::hexagon_performance() const {
+  return hexagon_perf_;
 }
 
 uint8_t MaceEngineCfgImpl::apu_boost_hint() const {
@@ -150,14 +154,24 @@ MaceStatus MaceEngineCfgImpl::SetHexagonPower(
   return ret ? MaceStatus::MACE_SUCCESS : MaceStatus::MACE_RUNTIME_ERROR;
 }
 
-MaceStatus MaceEngineCfgImpl::SetAPUCache(
-    APUCachePolicy policy,
+MaceStatus MaceEngineCfgImpl::SetQnnPerformance(
+    HexagonPerformanceType type) {
+  hexagon_perf_ = type;
+#ifdef MACE_ENABLE_QNN
+  return MaceStatus::MACE_SUCCESS;
+#else
+  return MaceStatus::MACE_RUNTIME_ERROR;
+#endif  // MACE_ENABLE_QNN
+}
+
+MaceStatus MaceEngineCfgImpl::SetAcceleratorCache(
+    AcceleratorCachePolicy policy,
     const std::string &binary_file,
     const std::string &storage_file) {
   bool ret = false;
-  apu_cache_policy_ = policy;
-  apu_binary_file_ = binary_file;
-  apu_storage_file_ = storage_file;
+  accelerator_cache_policy_ = policy;
+  accelerator_binary_file_ = binary_file;
+  accelerator_storage_file_ = storage_file;
 #ifdef MACE_ENABLE_MTK_APU
   ret = true;
 #endif  // MACE_ENABLE_MTK_APU
@@ -218,11 +232,16 @@ MaceStatus MaceEngineConfig::SetHexagonPower(
   return impl_->SetHexagonPower(corner, dcvs_enable, latency);
 }
 
-MaceStatus MaceEngineConfig::SetAPUCache(
-    APUCachePolicy policy,
+MaceStatus MaceEngineConfig::SetQnnPerformance(
+    HexagonPerformanceType type) {
+  return impl_->SetQnnPerformance(type);
+}
+
+MaceStatus MaceEngineConfig::SetAcceleratorCache(
+    AcceleratorCachePolicy policy,
     const std::string &binary_file,
     const std::string &storage_file) {
-  return impl_->SetAPUCache(policy, binary_file, storage_file);
+  return impl_->SetAcceleratorCache(policy, binary_file, storage_file);
 }
 
 MaceStatus MaceEngineConfig::SetAPUHints(

@@ -25,6 +25,7 @@ load(
     "if_neon_enabled",
     "if_opencl_enabled",
     "if_quantize_enabled",
+    "if_qnn_enabled",
     "if_rpcmem_enabled",
 )
 
@@ -69,6 +70,8 @@ cc_library(
         "-DMACE_ENABLE_HTA",
     ]) + if_apu_enabled([
         "-DMACE_ENABLE_MTK_APU",
+    ]) + if_qnn_enabled([
+        "-DMACE_ENABLE_QNN",
     ]) + if_rpcmem_enabled([
         "-DMACE_ENABLE_RPCMEM",
     ]) + apu_version_select(
@@ -161,6 +164,10 @@ genrule(
         "//mace/runtimes/hexagon:base",
         "//mace/flows/hexagon:hexagon_flows",
         "//mace/runtimes/hexagon:hexagon_runtimes",
+    ]) + if_qnn_enabled([
+        "//mace/proto:qnn_cache_cc",
+        "//mace/runtimes/qnn:qnn_runtimes",
+        "//mace/flows/qnn:qnn_flows",
     ]) + if_apu_enabled([
         "//mace/flows/apu:apu_flows",
         "//mace/runtimes/apu:apu_runtimes",
@@ -197,15 +204,18 @@ genrule(
               default_value = "",
           ) + if_hexagon_or_hta_enabled(
               "$(locations //mace/runtimes/hexagon:base) " +
-              "$(locations //mace/flows/hexagon:hexagon_flows) " +
-              "$(locations //mace/runtimes/hexagon:hexagon_runtimes) ",
+              "$(locations //mace/flows/hexagon:hexagon_flows) ",
               default_value = "",
-          ) +
-          if_hexagon_enabled(
+          ) + if_hexagon_enabled(
               "$(locations //mace/runtimes/hexagon:dsp) ",
               default_value = "",
           ) + if_hta_enabled(
               "$(locations //mace/runtimes/hexagon:hta) ",
+              default_value = "",
+          ) + if_qnn_enabled(
+              "$(locations //mace/flows/qnn:qnn_flows) " +
+              "$(locations //mace/proto:qnn_cache_cc) " +
+              "$(locations //mace/runtimes/qnn:qnn_runtimes) ",
               default_value = "",
           ) + if_apu_enabled(
               "$(locations //mace/flows/apu:apu_flows) " +

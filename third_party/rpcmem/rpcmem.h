@@ -92,12 +92,12 @@ struct rpcmem {
  * call once to initialize the library
  * NOTE: rpcmem_init is now thread safe
  */
-void rpcmem_init(rpcmem *rm);
+void mace_rpcmem_init(rpcmem *rm);
 /**
  * call once for cleanup
  * NOTE: rpcmem_deinit is now thread safe
  */
-void rpcmem_deinit(rpcmem *rm);
+void mace_rpcmem_deinit(rpcmem *rm);
 
 /**
  * Allocate via ION a buffer of size
@@ -110,7 +110,7 @@ void rpcmem_deinit(rpcmem *rm);
  *    buf = rpcmem_alloc(rm, RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
  */
 
-void* rpcmem_alloc(rpcmem *rm, int heapid, uint32_t flags, int size);
+void* mace_rpcmem_alloc(rpcmem *rm, int heapid, uint32_t flags, int size);
 
 /**
  * allocate with default settings
@@ -118,24 +118,24 @@ void* rpcmem_alloc(rpcmem *rm, int heapid, uint32_t flags, int size);
  #if !defined(WINNT) && !defined (_WIN32_WINNT)
 __attribute__((unused))
 #endif
-static __inline void* rpcmem_alloc_def(rpcmem *rm, int size) {
-  return rpcmem_alloc(rm, RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
+static __inline void* mace_rpcmem_alloc_def(rpcmem *rm, int size) {
+  return mace_rpcmem_alloc(rm, RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, size);
 }
 
 /**
  * free buffer, ignores invalid buffers
  */
-void rpcmem_free(rpcmem *rm, void* po);
+void mace_rpcmem_free(rpcmem *rm, void* po);
 
 /**
  * returns associated fd
  */
-int rpcmem_to_fd(rpcmem *rm, void* po);
+int mace_rpcmem_to_fd(rpcmem *rm, void* po);
 
 /**
  * cache coherency management
  */
-int rpcmem_sync_cache(rpcmem *rm, void* po, uint32_t flags);
+int mace_rpcmem_sync_cache(rpcmem *rm, void* po, uint32_t flags);
 
 #ifdef __cplusplus
 }

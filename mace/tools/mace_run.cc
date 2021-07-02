@@ -155,12 +155,14 @@ DEFINE_string(model_data_file,
 DEFINE_string(model_file,
               "",
               "model file name, used when load mace model in pb");
-DEFINE_string(apu_binary_file,
-              "",
-              "apu init cache path, used when load apu init cache");
-DEFINE_string(apu_storage_file,
-              "",
-              "apu init cache path, used when store apu init cache");
+DEFINE_string(
+    accelerator_binary_file,
+    "",
+    "accelerator init cache path, used when load accelerator init cache");
+DEFINE_string(
+    accelerator_storage_file,
+    "",
+    "accelerator init cache path, used when store accelerator init cache");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
@@ -169,7 +171,6 @@ DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(num_threads, -1, "num of threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
-DEFINE_int32(apu_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
 DEFINE_int32(apu_boost_hint, 100,
              "APU boost value ranged between 0 (lowest) to 100 (highest)");
 DEFINE_int32(apu_preference_hint, 1,
@@ -179,6 +180,7 @@ DEFINE_int32(apu_preference_hint, 1,
 DEFINE_int32(opencl_cache_reuse_policy,
             1,
             "0:NONE/1:REUSE_SAME_GPU");
+DEFINE_int32(accelerator_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
 DEFINE_bool(benchmark, false, "enable benchmark op");
 DEFINE_bool(fake_warmup, false, "enable fake warmup");
 
@@ -361,15 +363,20 @@ bool RunModel(const std::string &model_name,
 #ifdef MACE_ENABLE_HEXAGON
   // SetHexagonToUnsignedPD() can be called for 8150 family(with new cDSP
   // firmware) or 8250 family above to run hexagon nn on unsigned PD.
-  // config.SetHexagonToUnsignedPD();
+  config.SetHexagonToUnsignedPD();
   config.SetHexagonPower(HEXAGON_NN_CORNER_TURBO, true, 100);
 #endif
 #ifdef MACE_ENABLE_MTK_APU
-  config.SetAPUCache(static_cast<APUCachePolicy>(FLAGS_apu_cache_policy),
-                     FLAGS_apu_binary_file,
-                     FLAGS_apu_storage_file);
   config.SetAPUHints(FLAGS_apu_boost_hint,
                      static_cast<APUPreferenceHint>(FLAGS_apu_preference_hint));
+#endif
+#if defined(MACE_ENABLE_MTK_APU) || defined(MACE_ENABLE_QNN)
+  config.SetAcceleratorCache(
+      static_cast<AcceleratorCachePolicy>(FLAGS_accelerator_cache_policy),
+      FLAGS_accelerator_binary_file, FLAGS_accelerator_storage_file);
+#endif
+#ifdef MACE_ENABLE_QNN
+  config.SetQnnPerformance(HEXAGON_HIGH_PERFORMANCE);
 #endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
       make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
@@ -703,6 +710,7 @@ int Main(int argc, char **argv) {
   if (FLAGS_benchmark) {
     setenv("MACE_OPENCL_PROFILING", "1", 1);
     setenv("MACE_HEXAGON_PROFILING", "1", 1);
+    setenv("MACE_QNN_PROFILE_LEVEL", "2", 2);
   }
 
   LOG(INFO) << "model name: " << FLAGS_model_name;
@@ -720,9 +728,9 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "output dir: " << FLAGS_output_dir;
   LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
   LOG(INFO) << "model_file: " << FLAGS_model_file;
-  LOG(INFO) << "apu_cache_policy: " << FLAGS_apu_cache_policy;
-  LOG(INFO) << "apu_binary_file: " << FLAGS_apu_binary_file;
-  LOG(INFO) << "apu_storage_file: " << FLAGS_apu_storage_file;
+  LOG(INFO) << "accelerator_cache_policy: " << FLAGS_accelerator_cache_policy;
+  LOG(INFO) << "accelerator_binary_file: " << FLAGS_accelerator_binary_file;
+  LOG(INFO) << "accelerator_storage_file: " << FLAGS_accelerator_storage_file;
   LOG(INFO) << "apu_boost_hint: " << FLAGS_apu_boost_hint;
   LOG(INFO) << "apu_preference_hint: " << FLAGS_apu_preference_hint;
   LOG(INFO) << "round: " << FLAGS_round;

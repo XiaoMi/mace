@@ -23,8 +23,8 @@ or \n\t\thost if the library is built for the host machine (linux-x86-64).\n\t\
 \tThe default ABI is arm64-v8a."
 
   echo -e "\t"${BOLD}"--runtimes:"${NORMAL}" specifies the runtimes, supported \
-runtimes are:\n\t\tcpu, gpu, dsp, apu, hta. By default, the library is built to\
- run on CPU."
+runtimes are:\n\t\tcpu, gpu, dsp, apu, hta, htp. By default, the library is \
+built to run on CPU."
 
   echo -e "\t"${BOLD}"--static:"${NORMAL}" option to generate the corresponding\
  static library.\n\t\tIf the option is omitted, a shared library is built."
@@ -40,6 +40,8 @@ enable_cpu=false
 enable_gpu=false
 enable_dsp=false
 enable_apu=false
+enable_htp=false
+enable_qnn=false
 enable_quantize=false
 enable_bfloat16=false
 enable_rpcmem=true
@@ -90,6 +92,12 @@ for opt in "${@}";do
           hta|HTA)
             enable_hta=true
             runtime_label=""${runtime_label}" hta"
+            ;;
+          htp|HTP)
+            enable_htp=true
+            enable_gpu=true
+            enable_qnn=true
+            runtime_label=""${runtime_label}" htp"
             ;;
           *)
             echo -e ""${RED}""${BOLD}"ERROR:"${NORMAL}""${NC}" unknown device \
@@ -176,7 +184,8 @@ case "${abi}" in
     --define opencl="${enable_gpu}" --define apu="${enable_apu}" \
     --define hexagon="${enable_dsp}" --define quantize="${enable_quantize}" \
     --define rpcmem="${enable_rpcmem}" --define bfloat16="${enable_bfloat16}" \
-    --cpu="${abi}" --define apu_version="${apu_version}"
+    --cpu="${abi}" --define apu_version="${apu_version}" \
+    --define qnn="${enable_qnn}"
     if [[ "${enable_dsp}" == true ]];then
       cp third_party/nnlib/"${abi}"/libhexagon_controller.so \
       "${LIB_DIR}"/"${abi}"/
@@ -187,6 +196,9 @@ case "${abi}" in
     fi
     if [[ "${enable_hta}" == true ]];then
       cp third_party/hta/"${abi}"/*so "${LIB_DIR}"/"${abi}"/
+    fi
+    if [[ "${enable_qnn}" == true ]];then
+      cp third_party/qnn/target/"${abi}"/*so "${LIB_DIR}"/"${abi}"/
     fi
     ;;
 esac

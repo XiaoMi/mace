@@ -19,7 +19,7 @@
 namespace mace {
 
 QualcommRpcmem::QualcommRpcmem() {
-  rpcmem_init(&rm);
+  mace_rpcmem_init(&rm);
   if (rm.flag != 0) {
     LOG(WARNING) << "QualcommRpcmem, rpcmem_init failed!";
     valid_detected_ = true;
@@ -28,35 +28,35 @@ QualcommRpcmem::QualcommRpcmem() {
 }
 
 QualcommRpcmem::~QualcommRpcmem() {
-  rpcmem_deinit(&rm);
+  mace_rpcmem_deinit(&rm);
 }
 
-void *QualcommRpcmem::New(int heapid, uint32_t flags, int nbytes) {
-  return rpcmem_alloc(&rm, heapid, flags, nbytes);
+void *QualcommRpcmem::New(uint32_t flags, int nbytes) {
+  return mace_rpcmem_alloc(&rm, RPCMEM_HEAP_ID_SYSTEM, flags, nbytes);
 }
 
 void *QualcommRpcmem::New(int nbytes) {
-  return New(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_FLAG_CACHED, nbytes);
+  return New(RPCMEM_FLAG_CACHED, nbytes);
 }
 
 void QualcommRpcmem::Delete(void *data) {
-  rpcmem_free(&rm, data);
+  mace_rpcmem_free(&rm, data);
 }
 
 int QualcommRpcmem::GetDefaultHeapId() {
-  return RPCMEM_HEAP_ID_SYSTEM;
+  return RPCMEM_DEFAULT_HEAP;
 }
 
 int QualcommRpcmem::ToFd(void *data) {
-  return rpcmem_to_fd(&rm, data);
+  return mace_rpcmem_to_fd(&rm, data);
 }
 
 int QualcommRpcmem::SyncCacheStart(void *data) {
-  return rpcmem_sync_cache(&rm, data, RPCMEM_SYNC_START);
+  return mace_rpcmem_sync_cache(&rm, data, RPCMEM_SYNC_START);
 }
 
 int QualcommRpcmem::SyncCacheEnd(void *data) {
-  return rpcmem_sync_cache(&rm, data, RPCMEM_SYNC_END);
+  return mace_rpcmem_sync_cache(&rm, data, RPCMEM_SYNC_END);
 }
 
 RpcmemType QualcommRpcmem::GetRpcmemType() {

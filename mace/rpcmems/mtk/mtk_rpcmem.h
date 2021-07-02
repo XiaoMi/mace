@@ -28,7 +28,7 @@ class MtkRpcmem : public Rpcmem {
   MtkRpcmem();
   virtual ~MtkRpcmem();
 
-  void *New(int heapid, uint32_t flags, int nbytes) override;
+  void *New(uint32_t flags, int nbytes) override;
   void *New(int nbytes) override;
   void Delete(void *data) override;
   int GetDefaultHeapId() override;

@@ -45,7 +45,7 @@ class ApuRuntime : public Runtime {
       const index_t model_data_size) override;
 
   ApuWrapper *GetApuWrapper();
-  APUCachePolicy GetCachePolicy();
+  AcceleratorCachePolicy GetCachePolicy();
   const char *GetCacheStorePath();
   const char *GetCacheLoadPath();
   APUPreferenceHint GetPreferenceHint();
@@ -60,7 +60,7 @@ class ApuRuntime : public Runtime {
   std::unique_ptr<GeneralMemoryManager> buffer_manager_;
 
   std::unique_ptr<ApuWrapper> apu_wrapper_;
-  APUCachePolicy apu_cache_policy_;
+  AcceleratorCachePolicy apu_cache_policy_;
   std::string apu_binary_file_;
   std::string apu_storage_file_;
   uint8_t apu_boost_hint_;

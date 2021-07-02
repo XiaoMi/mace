@@ -44,9 +44,11 @@ class MaceEngineCfgImpl {
                              bool dcvs_enable,
                              int latency);
 
-  MaceStatus SetAPUCache(APUCachePolicy policy,
-                         const std::string &binary_file,
-                         const std::string &storage_file);
+  MaceStatus SetQnnPerformance(HexagonPerformanceType type);
+
+  MaceStatus SetAcceleratorCache(AcceleratorCachePolicy policy,
+                                 const std::string &binary_file,
+                                 const std::string &storage_file);
 
   MaceStatus SetAPUHints(uint8_t boost_hint,
                          APUPreferenceHint preference_hint);
@@ -67,15 +69,17 @@ class MaceEngineCfgImpl {
 
   int hexagon_latency() const;
 
-  APUCachePolicy apu_cache_policy() const;
+  HexagonPerformanceType hexagon_performance() const;
+
+  AcceleratorCachePolicy accelerator_cache_policy() const;
 
   uint8_t apu_boost_hint() const;
 
   APUPreferenceHint apu_preference_hint() const;
 
-  std::string apu_binary_file() const;
+  std::string accelerator_binary_file() const;
 
-  std::string apu_storage_file() const;
+  std::string accelerator_storage_file() const;
 
   RuntimeType runtime_type(const std::string &sub_graph_name) const;
 
@@ -88,9 +92,10 @@ class MaceEngineCfgImpl {
   HexagonNNCornerType hexagon_corner_;
   bool hexagon_dcvs_enable_;
   int hexagon_latency_;
-  APUCachePolicy apu_cache_policy_;
-  std::string apu_binary_file_;
-  std::string apu_storage_file_;
+  HexagonPerformanceType hexagon_perf_;
+  AcceleratorCachePolicy accelerator_cache_policy_;
+  std::string accelerator_binary_file_;
+  std::string accelerator_storage_file_;
   uint8_t apu_boost_hint_;
   APUPreferenceHint apu_preference_hint_;
   std::unordered_map<std::string, int> runtime_map_;

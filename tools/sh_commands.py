@@ -281,6 +281,7 @@ def bazel_build(target,
                 enable_hta=False,
                 enable_apu=False,
                 apu_version=-1,
+                enable_qnn=False,
                 enable_neon=True,
                 enable_opencl=True,
                 enable_quantize=True,
@@ -334,7 +335,9 @@ def bazel_build(target,
             "--define",
             "apu=%s" % str(enable_apu).lower(),
             "--define",
-            "apu_version=%s" % int(apu_version))
+            "apu_version=%s" % int(apu_version),
+            "--define",
+            "qnn=%s" % str(enable_qnn).lower())
     if address_sanitizer:
         bazel_args += ("--config", "asan")
     if debug_mode:

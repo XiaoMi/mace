@@ -53,6 +53,13 @@ extern void RegisterApuIonRuntime(RuntimeRegistry *runtime_registry);
 #endif  // MACE_ENABLE_RPCMEM
 #endif  // MACE_ENABLE_MTK_APU
 
+#ifdef MACE_ENABLE_QNN
+extern void RegisterQnnRuntime(RuntimeRegistry *runtime_registry);
+#ifdef MACE_ENABLE_OPENCL
+extern void RegisterQnnOpenclRuntime(RuntimeRegistry *runtime_registry);
+#endif  // MACE_ENABLE_OPENCL
+#endif  // MACE_ENABLE_QNN
+
 void RegisterAllRuntimes(RuntimeRegistry *runtime_registry) {
   RegisterCpuRefRuntime(runtime_registry);
 
@@ -84,6 +91,13 @@ void RegisterAllRuntimes(RuntimeRegistry *runtime_registry) {
   RegisterApuIonRuntime(runtime_registry);
 #endif  // MACE_ENABLE_RPCMEM
 #endif  // MACE_ENABLE_MTK_APU
+
+#ifdef MACE_ENABLE_QNN
+  RegisterQnnRuntime(runtime_registry);
+#ifdef MACE_ENABLE_OPENCL
+  RegisterQnnOpenclRuntime(runtime_registry);
+#endif  // MACE_ENABLE_OPENCL
+#endif  // MACE_ENABLE_QNN
 }
 
 RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
@@ -108,6 +122,8 @@ RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
           sub_type = RuntimeSubType::RT_SUB_ION;
         }
       } else if (runtime_type == RuntimeType::RT_HTA) {
+        sub_type = RuntimeSubType::RT_SUB_WITH_OPENCL;
+      } else if (runtime_type == RuntimeType::RT_HTP) {
         sub_type = RuntimeSubType::RT_SUB_WITH_OPENCL;
       }
 #endif  // MACE_ENABLE_OPENCL

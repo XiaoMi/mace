@@ -40,3 +40,10 @@ py_proto_library(
         "@com_google_protobuf//:protobuf_python",
     ],
 )
+
+cc_proto_library(
+    name = "qnn_cache_cc",
+    srcs = ["qnn_cache.proto"],
+    default_runtime = "@com_google_protobuf//:protobuf_lite",
+    protoc = "@com_google_protobuf//:protoc",
+)

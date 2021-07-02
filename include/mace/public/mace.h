@@ -51,13 +51,14 @@ enum RuntimeType {  // should not > RT_MAX
   RT_HEXAGON = 3,
   RT_HTA = 4,
   RT_APU = 5,
+  RT_HTP = 6,
 
   RT_NONE = 65534,
   RT_MAX = 65535,
 };
 
 // @Deprecated, replaced by RuntimeType
-enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, HTA = 4, APU = 5 };
+enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, HTA = 4, APU = 5, HTP = 6 };
 
 // Must be the same as DataType
 enum IDataType {
@@ -139,15 +140,28 @@ enum HexagonNNCornerType {
   HEXAGON_NN_CORNER_SVS2,
 };
 
-// APU Initial Cache Policy:
+enum HexagonPerformanceType {
+  HEXAGON_BURST = 0,
+  HEXAGON_SUSTAINED_HIGH_PERFORMANCE = 1,
+  HEXAGON_HIGH_PERFORMANCE = 2,
+  HEXAGON_BALANCED = 3,
+  HEXAGON_LOW_BALANCED = 4,
+  HEXAGON_POWER_SAVER = 5,
+  HEXAGON_LOW_POWER_SAVER = 6,
+  HEXAGON_HIGH_POWER_SAVER = 7,
+  HEXAGON_SYSTEM_SETTINGS = 8,
+  HEXAGON_INVALID = 0x7FFFFFFF,
+};
+
+// ACCELERATOR Initial Cache Policy:
 // NONE: Compile model using the information from net_def and model_data.
 // STORE: Compile model using the information from net_def and model_data and
 // store the compiled model.
 // LOAD: Get input/output information from net_def and load pre-compiled model.
-enum APUCachePolicy {
-  APU_CACHE_NONE = 0,
-  APU_CACHE_STORE = 1,
-  APU_CACHE_LOAD = 2,
+enum AcceleratorCachePolicy {
+  ACCELERATOR_CACHE_NONE = 0,
+  ACCELERATOR_CACHE_STORE = 1,
+  ACCELERATOR_CACHE_LOAD = 2,
 };
 
 // APU execution preferences.
@@ -442,20 +456,22 @@ class MACE_API MaceEngineConfig {
                              bool dcvs_enable,
                              int latency);
 
-  /// \brief Set MTK APU initial cache
+  MaceStatus SetQnnPerformance(HexagonPerformanceType type);
+
+  /// \brief Set accelerator initial cache policy and path
   ///
-  /// \param policy is a policy for loading or storing apu initial cache.
+  /// \param policy is a policy for loading or storing accelerator cache.
   /// \param binary_file will load cache file from this path.
   /// \param storage_file will store cache file to this path.
   ///
   /// Now the path is used to store the cache to file,
-  /// which could speed up the APU initialization.
-  /// If do not call this API, the initialization maybe slow for APU.
+  /// which could speed up the Accelerator (e.g., APU, HTP) initialization.
+  /// If do not call this API, the initialization maybe slow.
   ///
   /// \return MaceStatus::MACE_SUCCESS for success, other for failure.
-  MaceStatus SetAPUCache(APUCachePolicy policy,
-                         const std::string &binary_file,
-                         const std::string &storage_file);
+  MaceStatus SetAcceleratorCache(AcceleratorCachePolicy policy,
+                                 const std::string &binary_file,
+                                 const std::string &storage_file);
 
   /// \brief Set MTK APU hints.
   ///

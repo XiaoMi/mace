@@ -73,6 +73,7 @@ RuntimeTypeStrs = [
     "dsp",
     "hta",
     "apu",
+    "htp"
 ]
 
 InOutDataTypeStrs = [
@@ -130,7 +131,7 @@ class DefaultValues(object):
     cpu_affinity_policy = 1,
     gpu_perf_hint = 3,
     gpu_priority_hint = 3,
-    apu_cache_policy = 0,
+    accelerator_cache_policy = 0,
     apu_boost_hint = 100,
     apu_preference_hint = 1,
 
@@ -173,6 +174,8 @@ def parse_device_type(runtime):
         device_type = DeviceType.HEXAGON
     elif runtime == RuntimeType.hta:
         device_type = DeviceType.HTA
+    elif runtime == RuntimeType.htp:
+        device_type = DeviceType.HTP
     elif runtime == RuntimeType.gpu:
         device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
@@ -256,6 +259,21 @@ def hta_enabled(configs):
     return False
 
 
+def htp_enabled(configs):
+    return RuntimeType.htp in get_runtimes(configs)
+
+
+def qnn_enabled(configs):
+    accelerator_apis = []
+    for model_name in configs[YAMLKeyword.models]:
+        accelerator_api = \
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.accelerator_api, "")
+        accelerator_apis.append(accelerator_api.lower())
+
+    return 'qnn' in accelerator_apis or htp_enabled(configs)
+
+
 def apu_enabled(configs):
     if RuntimeType.apu in get_runtimes(configs):
         return True
@@ -265,7 +283,8 @@ def apu_enabled(configs):
 def opencl_enabled(configs):
     runtime_list = get_runtimes(configs)
     if RuntimeType.gpu in runtime_list or RuntimeType.cpu_gpu in runtime_list \
-            or RuntimeType.hta in runtime_list:
+            or RuntimeType.hta in runtime_list \
+            or RuntimeType.htp in runtime_list:
         return True
     return False
 
@@ -608,6 +627,7 @@ def format_model_config(flags):
             DeviceType.HEXAGON: ValidationThreshold.quantize_threshold,
             DeviceType.HTA: ValidationThreshold.quantize_threshold,
             DeviceType.APU: ValidationThreshold.quantize_threshold,
+            DeviceType.HTP: ValidationThreshold.quantize_threshold,
             DeviceType.QUANTIZE: ValidationThreshold.quantize_threshold,
         }
         for k, v in six.iteritems(validation_threshold):
@@ -816,6 +836,7 @@ def build_model_lib(configs, address_sanitizer, debug_mode):
             enable_hexagon=hexagon_enabled(configs),
             enable_hta=hta_enabled(configs),
             enable_apu=apu_enabled(configs),
+            enable_qnn=qnn_enabled(configs),
             enable_opencl=opencl_enabled(configs),
             enable_quantize=quantize_enabled(configs),
             enable_bfloat16=bfloat16_enabled(configs),
@@ -978,6 +999,7 @@ def build_mace_run(configs, target_abi, toolchain, address_sanitizer,
         enable_hta=hta_enabled(configs),
         enable_apu=enable_apu,
         apu_version=apu_version,
+        enable_qnn=qnn_enabled(configs),
         enable_opencl=opencl_enabled(configs),
         enable_quantize=quantize_enabled(configs),
         enable_bfloat16=bfloat16_enabled(configs),
@@ -1264,20 +1286,20 @@ def parse_args():
         action="store_true",
         help="enable fake warmup.")
     run.add_argument(
-        "--apu_cache_policy",
+        "--accelerator_cache_policy",
         type=int,
-        default=DefaultValues.apu_cache_policy,
+        default=DefaultValues.accelerator_cache_policy,
         help="0:NONE/1:STORE/2:LOAD")
     run.add_argument(
-        "--apu_binary_file",
+        "--accelerator_binary_file",
         type=str,
         default="",
-        help="apu cache load dir.")
+        help="accelerator cache load dir.")
     run.add_argument(
-        "--apu_storage_file",
+        "--accelerator_storage_file",
         type=str,
         default="",
-        help="apu cache store dir.")
+        help="accelerator cache store dir.")
     run.add_argument(
         "--apu_boost_hint",
         type=int,

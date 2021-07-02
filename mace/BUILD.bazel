@@ -143,6 +143,17 @@ config_setting(
 )
 
 config_setting(
+    name = "qnn_enabled",
+    define_values = {
+        "qnn": "true",
+    },
+    values = {
+        "crosstool_top": "//external:android/crosstool",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "hexagon_enabled",
     define_values = {
         "hexagon": "true",

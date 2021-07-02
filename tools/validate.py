@@ -213,6 +213,12 @@ def validate_tf_model(platform, device_type, model_file,
     with open(model_file, "rb") as f:
         data = f.read()
         input_graph_def.ParseFromString(data)
+        # delete explicit_paddings
+        for node in input_graph_def.node:
+            name = str(node.name).split('/')[-1]
+            if name == 'depthwise_Fold' or name == 'depthwise':
+                if 'explicit_paddings' in node.attr:
+                    del node.attr['explicit_paddings']
         tf.import_graph_def(input_graph_def, name="")
 
         with tf.Session() as session:

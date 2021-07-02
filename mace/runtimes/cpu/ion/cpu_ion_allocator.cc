@@ -30,17 +30,17 @@ MemoryType CpuIonAllocator::GetMemType() {
 MaceStatus CpuIonAllocator::New(const MemInfo &info, void **result) {
   int nbytes = info.bytes();
   auto flag_cached = rpcmem_->GetIonCacheFlag();
-  *result = New(rpcmem_->GetDefaultHeapId(), flag_cached, nbytes);
+  *result = New(flag_cached, nbytes);
   MACE_CHECK(*result != nullptr, "info.dims: ", MakeString(info.dims));
 
   return MaceStatus::MACE_SUCCESS;
 }
 
-void *CpuIonAllocator::New(int heapid, uint32_t flags, int nbytes) {
+void *CpuIonAllocator::New(uint32_t flags, int nbytes) {
   // It seems that ion memory needs to add an extra segment of memory as
   // padding. I only know that can avoid occasional crash.
   nbytes += kMaceAlignment - 1;
-  return rpcmem_->New(heapid, flags, PadAlignSize(nbytes));
+  return rpcmem_->New(flags, PadAlignSize(nbytes));
 }
 
 void CpuIonAllocator::Delete(void *data) {

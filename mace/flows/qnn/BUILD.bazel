@@ -1,0 +1,25 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_library(
+    name = "qnn_flows",
+    srcs = glob([
+        "*.cc",
+    ]),
+    hdrs = glob([
+        "*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkopts = ["-ldl"],
+    deps = [
+        "//mace/core",
+        "//mace/runtimes/qnn:qnn_runtimes",
+    ],
+)

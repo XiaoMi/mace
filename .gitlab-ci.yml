@@ -141,7 +141,7 @@ model_tests:
     - set +x
     - rm -rf mace-models
     - rm -rf generic-mobile-devices
-    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone https://github.com/XiaoMi/mace-models.git
     - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
     - >
       if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
@@ -165,7 +165,7 @@ quantization_tests:
     - pwd
     - set +x
     - rm -rf mace-models
-    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone https://github.com/XiaoMi/mace-models.git
     - >
       if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then
         GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/generic-mobile-devices.git
@@ -192,7 +192,7 @@ dynamic_linking_test:
     - export ANDROID_NDK_HOME=/opt/android-ndk-r17b
     - rm -rf mace-models
     - rm -rf generic-mobile-devices
-    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone https://github.com/XiaoMi/mace-models.git
     - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
     - >
       if ping -c 1 v9.git.n.xiaomi.com 1>/dev/null 2>&1; then

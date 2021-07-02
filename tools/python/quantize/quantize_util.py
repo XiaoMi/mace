@@ -79,6 +79,26 @@ def adjust_range_int8(in_min, in_max):
     return scale, zero, in_min, in_max
 
 
+def adjust_range_uint16(in_min, in_max, device, non_zero):
+    out_max = max(0.0, in_max)
+    out_min = min(0.0, in_min)
+    if non_zero:
+        out_min = min(out_min, in_min - (out_max - in_min) / 65534.0)
+    scale = (out_max - out_min) / 65535.0
+    eps = 1e-6
+    if out_min < -eps and out_max > eps:
+        zero = -out_min / scale
+        zero_int = int(round(zero))
+        if abs(zero - zero_int) > eps and non_zero:
+            zero_int = int(math.ceil(zero))
+    elif out_min > -eps:
+        zero_int = 0
+    else:
+        zero_int = 65535
+
+    return scale, zero_int, -zero_int*scale, (65535-zero_int)*scale
+
+
 def adjust_range(in_min, in_max, device, non_zero):
     if device in [DeviceType.HEXAGON.value, DeviceType.HTA.value]:
         return adjust_range_for_hexagon(in_min, in_max)

@@ -84,6 +84,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_SQRDIFF_MEAN: self.fold_squared_diff_mean,
             # fold_instance_norm depends on fold_squared_diff_mean
             TransformerRule.FOLD_INSTANCE_NORM: self.fold_instance_norm,
+            TransformerRule.FOLD_MOMENTS: self.fold_moments,
             TransformerRule.FOLD_EMBEDDING_LOOKUP: self.fold_embedding_lookup,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_MATMUL_WEIGHT:
@@ -378,8 +379,7 @@ class Transformer(base_converter.ConverterInterface):
             else:
                 output_info.alias = output_node.name
             output_info.data_format = output_node.data_format.value
-            output_info.dims.extend(
-                self._producer[output_node.name].output_shape[0].dims)
+            output_info.dims.extend(output_node.shape)
             output_info.data_type = output_node.data_type
 
         return False
@@ -399,7 +399,18 @@ class Transformer(base_converter.ConverterInterface):
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
                 return True
-
+            elif op.type == 'Eltwise' and \
+                    ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i == \
+                    EltwiseType.PROD.value:
+                scala = ConverterUtil.get_arg(
+                                    op, MaceKeyword.mace_scalar_input_str)
+                if scala is not None and scala.f == 1.0:
+                    print("Remove useless eltwise mul: %s(%s)" % (op.name,
+                                                                  op.type))
+                    self.safe_remove_node(op,
+                                          self._producer.get(op.input[0],
+                                                             None))
         return False
 
     def transform_global_pooling(self):
@@ -484,6 +495,47 @@ class Transformer(base_converter.ConverterInterface):
                             self.safe_remove_node(consumer_op, op)
                             return True
 
+        return False
+
+    def fold_moments(self):
+        if self._option.device != DeviceType.HTP.value:
+            return False
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.Reduce.name:
+                axis = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_axis_str).ints
+                keep_dims = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_keepdims_str).i
+                reduce_type = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_reduce_type_str).i
+                if reduce_type == ReduceType.MEAN.value and \
+                        len(op.input) == 1 and \
+                        axis[0] == 1 and axis[1] == 2 and \
+                        keep_dims > 0:
+                    outputs = op.output
+                    sqr_diff_mean_count = 0
+                    for output in outputs:
+                        consumer_ops = self._consumers[output]
+                        for consumer_op in consumer_ops:
+                            print(consumer_op.type)
+                            if consumer_op.type == MaceOp.SqrDiffMean.name:
+                                sqr_diff_mean_count += 1
+                    if sqr_diff_mean_count == 1:
+                        for output in outputs:
+                            consumer_ops = self._consumers[output]
+                            for consumer_op in consumer_ops:
+                                if consumer_op.type == MaceOp.SqrDiffMean.name:
+                                    print("Fold Moments: %s" % op.name)
+                                    op.type = MaceOp.Moments.name
+                                    op.output.extend(consumer_op.output)
+                                    op.output_shape.extend(
+                                        consumer_op.output_shape)
+                                    if len(consumer_op.quantize_info) > 0:
+                                        op.quantize_info.extend(
+                                            consumer_op.quantize_info)
+                                    net.op.remove(consumer_op)
+                                    return True
         return False
 
     def fold_embedding_lookup(self):
@@ -932,7 +984,8 @@ class Transformer(base_converter.ConverterInterface):
     def flatten_atrous_conv(self):
         if self._option.device != DeviceType.GPU.value \
                and self._option.device != DeviceType.APU.value \
-               and self._option.device != DeviceType.HTA.value:
+               and self._option.device != DeviceType.HTA.value \
+               and self._option.device != DeviceType.HTP.value:
             return
 
         net = self._model
@@ -1202,12 +1255,31 @@ class Transformer(base_converter.ConverterInterface):
             self.set_filter_format(DataFormat.OHWI)
         elif self._option.quantize and \
                 (self._option.device == DeviceType.HEXAGON.value or
-                 self._option.device == DeviceType.HTA.value):
+                 self._option.device == DeviceType.HTA.value or
+                 self._option.device == DeviceType.HTP.value):
             print("Transpose filters to HWIO/HWIM")
             for op in net.op:
+                if op.type == MaceOp.Eltwise.name or \
+                        op.type == MaceOp.Concat.name:
+                    for i in range(len(op.input)):
+                        if op.input[i] in self._consts and \
+                                op.input[i] not in transposed_filter:
+                            filter = self._consts[op.input[i]]
+                            filter_data = np.array(filter.float_data).reshape(
+                                filter.dims)
+                            if filter_format == DataFormat.OIHW:
+                                filter_data = filter_data.transpose(0, 2, 3, 1)
+                            else:
+                                print(op.type, op.name, filter_format)
+                                mace_check(False, "Unsupported filter format.")
+                            filter.float_data[:] = filter_data.flat
+                            filter.dims[:] = filter_data.shape
+                            transposed_filter.add(op.input[i])
                 if filter_format == DataFormat.OIHW and \
                         (op.type == MaceOp.Conv2D.name or
-                         op.type == MaceOp.DepthwiseConv2d.name or
+                         (op.type == MaceOp.DepthwiseConv2d.name and
+                          (self._option.device == DeviceType.HEXAGON.value or
+                           self._option.device == DeviceType.HTA.value)) or
                          (op.type == MaceOp.FullyConnected.name and
                           len(self._consts[op.input[1]].dims) == 4)) and \
                         op.input[1] in self._consts and \
@@ -1230,13 +1302,33 @@ class Transformer(base_converter.ConverterInterface):
                         # from HWOI to OHWI
                         filter_data = filter_data.transpose(2, 0, 1, 3)
                     elif filter_format == DataFormat.OIHW:
-                        # from IOHW to OHWI
-                        filter_data = filter_data.transpose(1, 2, 3, 0)
+                        if self._option.device == DeviceType.HTP.value:
+                            filter_data = filter_data.transpose(2, 3, 0, 1)
+                        else:
+                            # from IOHW to OHWI
+                            filter_data = filter_data.transpose(1, 2, 3, 0)
                     else:
                         mace_check(False, "Unsupported filter format.")
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
                     transposed_deconv_filter.add(op.input[1])
+
+                if op.type == MaceOp.DepthwiseConv2d.name \
+                        and self._option.device == DeviceType.HTP.value:
+                    filter = self._consts[op.input[1]]
+                    dims = filter.dims[:]
+                    if filter_format == DataFormat.HWIO:
+                        filter.dims[:] = \
+                            [dims[0], dims[1], 1, dims[2] * dims[3]]
+                    elif filter_format == DataFormat.OIHW:
+                        # from MIHW to HW1O
+                        filter_data = np.array(filter.float_data).reshape(dims)
+                        filter_data = filter_data.transpose(2, 3, 0, 1)
+                        filter.float_data[:] = filter_data.flat
+                        filter.dims[:] = filter_data.shape
+                    else:
+                        mace_check(False, "Unsupported filter format.")
+                    transposed_filter.add(op.input[1])
         else:
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
             if filter_format == DataFormat.HWIO:
@@ -1742,6 +1834,9 @@ class Transformer(base_converter.ConverterInterface):
                 if self._option.quantize_schema == \
                         MaceKeyword.mace_apu_16bit_per_tensor:
                     data_type_arg.i = mace_pb2.DT_INT16
+                elif self._option.quantize_schema == \
+                        MaceKeyword.mace_htp_u16a_s8w:
+                    data_type_arg.i = mace_pb2.DT_UINT16
                 elif self._option.quantize_schema == MaceKeyword.mace_int8:
                     data_type_arg.i = mace_pb2.DT_INT8
                 else:
@@ -1754,6 +1849,13 @@ class Transformer(base_converter.ConverterInterface):
             elif data_type_arg.i == mace_pb2.DT_INT16 \
                 and self._option.quantize_schema == \
                     MaceKeyword.mace_apu_16bit_per_tensor:
+                mace_check(op.type == MaceOp.Quantize.name
+                           or op.type == MaceOp.Dequantize.name,
+                           "Only Quantization ops support int16, "
+                           "but got %s(%s)" % (op.name, op.type))
+            elif data_type_arg.i == mace_pb2.DT_UINT16 \
+                and self._option.quantize_schema == \
+                    MaceKeyword.mace_htp_u16a_s8w:
                 mace_check(op.type == MaceOp.Quantize.name
                            or op.type == MaceOp.Dequantize.name,
                            "Only Quantization ops support int16, "
@@ -1789,6 +1891,9 @@ class Transformer(base_converter.ConverterInterface):
             if self._option.quantize_schema == \
                     MaceKeyword.mace_apu_16bit_per_tensor:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT16)
+            elif self._option.quantize_schema == \
+                    MaceKeyword.mace_htp_u16a_s8w:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT16)
             elif self._option.quantize_schema == MaceKeyword.mace_int8:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT8)
             else:
@@ -1818,6 +1923,9 @@ class Transformer(base_converter.ConverterInterface):
             if self._option.quantize_schema == \
                     MaceKeyword.mace_apu_16bit_per_tensor:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT16)
+            elif self._option.quantize_schema == \
+                    MaceKeyword.mace_htp_u16a_s8w:
+                ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT16)
             elif self._option.quantize_schema == MaceKeyword.mace_int8:
                 ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_INT8)
             else:
@@ -1975,6 +2083,11 @@ class Transformer(base_converter.ConverterInterface):
             minval = -maxval
             scale = maxval / 2**15
             zero = 0
+        elif quantize_schema == MaceKeyword.mace_htp_u16a_s8w:
+            scale, zero, minval, maxval = \
+                quantize_util.adjust_range_uint16(minval, maxval,
+                                                  self._option.device,
+                                                  non_zero=False)
         elif quantize_schema == MaceKeyword.mace_int8:
             scale, zero, minval, maxval = quantize_util.adjust_range_int8(
                 minval, maxval)
@@ -2092,6 +2205,13 @@ class Transformer(base_converter.ConverterInterface):
                     elif quantize_schema == MaceKeyword.mace_int8:
                         scale, zero, min_val, max_val = \
                             quantize_util.adjust_range_int8(min_val, max_val)
+                    elif quantize_schema == MaceKeyword.mace_htp_u16a_s8w:
+                        device = self._option.device
+                        scale, zero, min_val, max_val = \
+                            quantize_util.adjust_range_uint16(min_val,
+                                                              max_val,
+                                                              device,
+                                                              non_zero=False)
                     else:
                         scale, zero, min_val, max_val = \
                             quantize_util.adjust_range(min_val, max_val,
@@ -2133,6 +2253,12 @@ class Transformer(base_converter.ConverterInterface):
                     minval = -maxval
                     scale = maxval / 2**15
                     zero = 0
+                elif quantize_schema == MaceKeyword.mace_htp_u16a_s8w:
+                    scale, zero, minval, maxval = \
+                        quantize_util.adjust_range_uint16(input_node.range[0],
+                                                          input_node.range[1],
+                                                          self._option.device,
+                                                          non_zero=False)
                 elif quantize_schema == MaceKeyword.mace_int8:
                     scale, zero, minval, maxval = \
                         quantize_util.adjust_range_int8(
