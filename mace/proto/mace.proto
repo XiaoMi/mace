@@ -17,7 +17,8 @@ enum DataType {
   DT_BFLOAT16 = 6;
   DT_INT16 = 7;
   DT_INT8 = 8;
-  DT_UINT32 = 9;
+  DT_UINT16 = 9;
+  DT_UINT32 = 10;
 }
 
 message ConstTensor {

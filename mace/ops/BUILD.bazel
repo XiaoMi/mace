@@ -20,6 +20,18 @@ load(
 )
 
 cc_library(
+    name = "common_types",
+    hdrs = [
+        "common/activation_type.h",
+        "common/coordinate_transformation_mode.h",
+        "common/eltwise_type.h",
+        "common/pad_type.h",
+        "common/pooling_type.h",
+        "common/reduce_type.h",
+    ],
+)
+
+cc_library(
     name = "common",
     srcs = glob(
         [
@@ -55,6 +67,7 @@ cc_library(
         "-DMACE_ENABLE_HEXAGON",
     ]),
     deps = [
+        ":common_types",
         "//mace/core",
         "//mace/runtimes",
     ],

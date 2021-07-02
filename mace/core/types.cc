@@ -62,6 +62,8 @@ size_t GetEnumTypeSize(const DataType dt) {
 #endif
     case DT_UINT8:
       return sizeof(uint8_t);
+    case DT_UINT16:
+      return sizeof(uint16_t);
     case DT_INT32:
       return sizeof(int32_t);
     case DT_INT16:

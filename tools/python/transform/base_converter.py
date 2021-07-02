@@ -138,6 +138,7 @@ MaceSupportedOps = [
     'LstmNonlinear',
     'DynamicLSTM',
     'MatMul',
+    'Moments',
     'MVNorm',
     'NonlocalReshape',
     'OneHot',
@@ -320,6 +321,7 @@ class MaceKeyword(object):
     mace_confidence_threshold = 'confidence_threshold'
     mace_nms_top_k = 'nms_top_k'
     mace_keep_top_k = 'keep_top_k'
+    mace_htp_u16a_s8w = 'mace_htp_u16a_s8w'
 
 
 class QatType(Enum):
@@ -387,6 +389,7 @@ class TransformerRule(Enum):
     REMOVE_UNUSED_TENSOR = 52
     TRANSPOSE_CONST_OP_INPUT = 53
     FOLD_INSTANCE_NORM = 54
+    FOLD_MOMENTS = 55
 
 
 class ConverterInterface(object):
@@ -679,6 +682,7 @@ class ConverterOption(object):
                 TransformerRule.FOLD_SQRDIFF_MEAN,
                 # FOLD_INSTANCE_NORM depends on FOLD_SQRDIFF_MEAN
                 TransformerRule.FOLD_INSTANCE_NORM,
+                TransformerRule.FOLD_MOMENTS,
                 TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
                 TransformerRule.RESHAPE_FC_WEIGHT,
                 TransformerRule.FOLD_FC_RESHAPE,

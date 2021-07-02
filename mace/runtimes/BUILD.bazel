@@ -10,6 +10,7 @@ load(
     "if_hexagon_enabled",
     "if_hta_enabled",
     "if_opencl_enabled",
+    "if_qnn_enabled",
     "if_quantize_enabled",
     "if_rpcmem_enabled",
 )
@@ -52,6 +53,8 @@ cc_library(
         "-DMACE_ENABLE_HTA",
     ]) + if_apu_enabled([
         "-DMACE_ENABLE_MTK_APU",
+    ]) + if_qnn_enabled([
+        "-DMACE_ENABLE_QNN",
     ]) + if_rpcmem_enabled([
         "-DMACE_ENABLE_RPCMEM",
     ]),
@@ -64,5 +67,7 @@ cc_library(
         "opencl_headers",
     ]) + if_apu_enabled([
         "//mace/runtimes/apu:apu_runtimes",
+    ]) + if_qnn_enabled([
+        "//mace/runtimes/qnn:qnn_runtimes",
     ]),
 )

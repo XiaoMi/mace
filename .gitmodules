@@ -10,4 +10,6 @@
 	path = micro/third_party/gflags
 	url = https://github.com/gflags/gflags.git
 	shallow = true
-
+[submodule "third_party/qnn"]
+	path = third_party/qnn
+	url = git@git.n.xiaomi.com:wuzhuo1/qnn.git

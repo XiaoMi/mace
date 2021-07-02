@@ -343,6 +343,24 @@ def validate_caffe_model(platform, model_file, input_file,
                        real_output_shape, real_output_data_format)
 
 
+# Remove annoying warning from onnxruntime.
+def remove_initializer_from_input(model):
+    if model.ir_version < 4:
+        print(
+            'Model with ir_version below 4 requires to include initilizer in graph input'  # noqa
+        )
+        return in_path
+
+    inputs = model.graph.input
+    name_to_input = {}
+    for input in inputs:
+        name_to_input[input.name] = input
+
+    for initializer in model.graph.initializer:
+        if initializer.name in name_to_input:
+            inputs.remove(name_to_input[initializer.name])
+
+
 def validate_onnx_model(platform, model_file,
                         input_file, mace_out_file,
                         input_names, input_shapes, input_data_formats,
@@ -359,6 +377,7 @@ def validate_onnx_model(platform, model_file,
             "Input graph file '" + model_file + "' does not exist!")
 
     model = onnx.load(model_file)
+    remove_initializer_from_input(model)
     model_outputs = set()
     for output in model.graph.output:
         model_outputs.add(output.name)

@@ -67,6 +67,10 @@ if(MACE_ENABLE_HEXAGON_HTA)
   include(${PROJECT_SOURCE_DIR}/third_party/hta/hta.cmake)
 endif(MACE_ENABLE_HEXAGON_HTA)
 
+if(MACE_ENABLE_QNN)
+  include(${PROJECT_SOURCE_DIR}/third_party/qnn/qnn.cmake)
+endif(MACE_ENABLE_QNN)
+
 if(MACE_ENABLE_MTK_APU)
   include(${PROJECT_SOURCE_DIR}/third_party/apu/apu.cmake)
 endif(MACE_ENABLE_MTK_APU)

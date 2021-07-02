@@ -28,6 +28,11 @@ inline bool EnvConfEnabled(std::string env_name) {
   return !(!env || env[0] == 0 || env[0] == '0');
 }
 
+inline int GetIntEnv(const std::string &name, int default_value) {
+  char *env = getenv(name.c_str());
+  return env != nullptr ? std::atoi(env) : default_value;
+}
+
 }  // namespace mace
 
 #endif  // MACE_UTILS_CONF_UTIL_H_

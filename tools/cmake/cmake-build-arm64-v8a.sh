@@ -26,6 +26,9 @@ elif [[ "$RUNTIME" == "HEXAGON" ]]; then
 elif [[ "$RUNTIME" == "HTA" ]]; then
     MACE_ENABLE_HEXAGON_HTA=ON
     MACE_ENABLE_OPENCL=ON
+elif [[ "$RUNTIME" == "HTP" ]]; then
+    MACE_ENABLE_QNN=ON
+    MACE_ENABLE_OPENCL=ON
 elif [[ "$RUNTIME" == "APU" ]]; then
     MACE_ENABLE_MTK_APU=ON
     set +e
@@ -61,6 +64,7 @@ cmake -DANDROID_ABI="arm64-v8a" \
       -DMACE_ENABLE_OPENCL=${MACE_ENABLE_OPENCL}             \
       -DMACE_ENABLE_HEXAGON_DSP=${MACE_ENABLE_HEXAGON_DSP}   \
       -DMACE_ENABLE_HEXAGON_HTA=${MACE_ENABLE_HEXAGON_HTA}   \
+      -DMACE_ENABLE_QNN=${MACE_ENABLE_QNN}                   \
       -DMACE_ENABLE_MTK_APU=${MACE_ENABLE_MTK_APU}           \
       -DMACE_MTK_APU_VERSION=${MACE_MTK_APU_VERSION}         \
       -DMACE_ENABLE_BFLOAT16=${MACE_ENABLE_BFLOAT16}         \

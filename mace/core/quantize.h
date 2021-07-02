@@ -82,6 +82,12 @@ inline Q Quantize(float value, float scale, int32_t zero_point) {
   return Saturate<Q>(std::roundf(value / scale + zero_point));
 }
 
+template<typename Q>
+inline Q Quantize(float value, float *scale, int32_t *zero_point) {
+  AdjustRange<Q>(value, value, false, scale, zero_point);
+  return Saturate<Q>(std::roundf(value / *scale + *zero_point));
+}
+
 inline void FindMinMax(const float *input,
                        const index_t size,
                        float *min_val, float *max_val) {
@@ -220,6 +226,13 @@ void QuantizeUtil<float, uint8_t>::QuantizeWithScaleAndZeropoint(
 
 template<>
 void QuantizeUtil<float, uint8_t>::Dequantize(const uint8_t *input,
+                                              const index_t size,
+                                              const float scale,
+                                              const int32_t zero_point,
+                                              float *output);
+
+template<>
+void QuantizeUtil<float, uint16_t>::Dequantize(const uint16_t *input,
                                               const index_t size,
                                               const float scale,
                                               const int32_t zero_point,

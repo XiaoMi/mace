@@ -104,6 +104,37 @@ void QuantizeUtil<float, uint8_t>::Dequantize(const uint8_t *input,
 }
 
 template<>
+void QuantizeUtil<float, uint16_t>::Dequantize(const uint16_t *input,
+                                              const index_t size,
+                                              const float scale,
+                                              const int32_t zero_point,
+                                              float *output) {
+  const index_t block_count = size / 8;
+  const int32x4_t vzero = vdupq_n_s32(zero_point);
+  const float32x4_t vscale = vdupq_n_f32(scale);
+
+  thread_pool_->Compute1D([=](index_t start, index_t end, index_t step) {
+    for (index_t i = start; i < end; i += step) {
+      uint16x8_t vi = vld1q_u16(input + i * 8);
+      float32x4x2_t vo = {{
+        vmulq_f32(vscale,
+                  vcvtq_f32_s32(vsubq_s32(vmovl_u16(vget_low_u16(vi)),
+                                                    vzero))),
+        vmulq_f32(vscale,
+                  vcvtq_f32_s32(vsubq_s32(vmovl_u16(vget_high_u16(vi)),
+                                                    vzero))),
+      }};
+      vst1q_f32(output + i * 8, vo.val[0]);
+      vst1q_f32(output + i * 8 + 4, vo.val[1]);
+    }
+  }, 0, block_count, 1);
+
+  for (index_t i = block_count * 8; i < size; ++i) {
+    output[i] = scale * (input[i] - zero_point);
+  }
+}
+
+template<>
 void QuantizeUtil<float, int32_t>::Dequantize(const int *input,
                                               const index_t size,
                                               const float scale,

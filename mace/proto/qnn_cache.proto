@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+package qnn_cache;
+
+option optimize_for = LITE_RUNTIME;
+
+message CacheContext {
+  repeated uint32 input_ids = 1;
+  repeated uint32 output_ids = 2;
+  optional string graph_name = 3;
+  optional bytes graph_cache = 4;
+}

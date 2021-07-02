@@ -289,6 +289,7 @@ class OnnxTensor(object):
 
 class OnnxConverter(base_converter.ConverterInterface):
     pooling_type_mode = {
+        OnnxOpType.GlobalAveragePool.name: PoolingType.AVG,
         OnnxOpType.AveragePool.name: PoolingType.AVG,
         OnnxOpType.MaxPool.name: PoolingType.MAX
     }
@@ -366,7 +367,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Flatten.name: self.convert_flatten,
             OnnxOpType.Gather.name: self.convert_gather,
             OnnxOpType.Gemm.name: self.convert_gemm,
-            OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
+            OnnxOpType.GlobalAveragePool.name: self.convert_pooling,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
             OnnxOpType.Identity.name: self.convert_identity,
             OnnxOpType.IfDefined.name: self.convert_ifdefined,
@@ -457,6 +458,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         if polish_available and hasattr(onnx.utils, "polish_model"):
             onnx_model = onnx.utils.polish_model(onnx_model)
 
+        self._opset_version = onnx_model.opset_import[0].version
         self._onnx_model = onnx_model
         self._graph_shapes_dict = {}
         self._consts = {}
@@ -539,6 +541,13 @@ class OnnxConverter(base_converter.ConverterInterface):
             for i, dim in enumerate(input.type.tensor_type.shape.dim):
                 dim.dim_value = input_shape[i]
         self._onnx_model = onnx.shape_inference.infer_shapes(self._onnx_model)
+
+    def remove_tensor(self, name):
+        tensors = self._mace_net_def.tensors
+        for i in range(len(tensors)):
+            if tensors[i].name == name:
+                del tensors[i]
+                break
 
     def run(self):
         self.infer_shapes()
@@ -1083,11 +1092,15 @@ class OnnxConverter(base_converter.ConverterInterface):
                 alpha_arg.f = max_value
             else:
                 type_arg.s = six.b(ActivationType.RELU.name)
+            for input_name in op.input[1:]:
+                if input_name in self._consts:
+                    const_tensor = self._consts[input_name]
+                    self._mace_net_def.tensors.remove(const_tensor)
+            if inputs_num > 1:
+                del op.input[1:]
         else:
             self.convert_eltwise(node)
             return
-        if inputs_num > 1:
-            del op.input[1:]
 
     def convert_eltwise(self, node):
         op = self.convert_general_op(node)
@@ -1095,7 +1108,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         type_arg = op.arg.add()
         type_arg.name = MaceKeyword.mace_element_type_str
         type_arg.i = self.eltwise_type[node.op_type].value
-
+        inputs_num = len(node.inputs)
         if node.op_type == OnnxOpType.Sqrt.name:
             value_arg = op.arg.add()
             value_arg.name = MaceKeyword.mace_scalar_input_str
@@ -1110,17 +1123,26 @@ class OnnxConverter(base_converter.ConverterInterface):
             value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = value
         elif node.op_type == OnnxOpType.Clip.name:
-            if 'min' in node.attrs:
+            if inputs_num > 1:
+                min_value = self._consts[node.inputs[1]].float_data[0]
+            elif 'min' in node.attrs:
                 min_value = node.attrs['min']
             else:
                 min_value = np.finfo(np.float32).min
-            if 'max' in node.attrs:
+            if inputs_num > 1:
+                max_value = self._consts[node.inputs[2]].float_data[0]
+            elif 'max' in node.attrs:
                 max_value = node.attrs['max']
             else:
                 max_value = np.finfo(np.float32).max
             coeff_arg = op.arg.add()
             coeff_arg.name = MaceKeyword.mace_coeff_str
             coeff_arg.floats.extend([min_value, max_value])
+            for input_name in op.input[1:]:
+                if input_name in self._consts:
+                    const_tensor = self._consts[input_name]
+                    self._mace_net_def.tensors.remove(const_tensor)
+            del op.input[1:]
         elif len(node.inputs) == 2:
             if node.inputs[1] in self._consts and \
                     node.inputs[0] not in self._consts:
@@ -1289,7 +1311,6 @@ class OnnxConverter(base_converter.ConverterInterface):
             epsilon_value = node.attrs["epsilon"]
         else:
             epsilon_value = 1e-5
-
         epsilon_arg = op.arg.add()
         epsilon_arg.name = MaceKeyword.mace_epsilon_str
         epsilon_arg.f = epsilon_value
@@ -1304,12 +1325,6 @@ class OnnxConverter(base_converter.ConverterInterface):
         affine_arg = op.arg.add()
         affine_arg.name = MaceKeyword.mace_affine_str
         affine_arg.i = int(affine)
-        if not affine:
-            for input_name in op.input[1:]:
-                if input_name in self._consts:
-                    const_tensor = self._consts[input_name]
-                    self._mace_net_def.tensors.remove(const_tensor)
-            del op.input[1:]
 
     def convert_gather(self, node):
         op = self.convert_general_op(node)
@@ -1513,6 +1528,13 @@ class OnnxConverter(base_converter.ConverterInterface):
         round_mode_arg = op.arg.add()
         round_mode_arg.name = MaceKeyword.mace_round_mode_str
         round_mode_arg.i = RoundMode.FLOOR.value
+        if node.op_type == OnnxOpType.GlobalAveragePool.name:
+            shape_info = self._graph_shapes_dict[node.inputs[0]]
+            kernel_shape = shape_info[2:]
+            kernel = [kernel_shape[0], kernel_shape[1]]
+            kernels_arg = op.arg.add()
+            kernels_arg.name = MaceKeyword.mace_kernel_str
+            kernels_arg.ints.extend(kernel)
 
     def convert_reduce(self, node):
         op = self.convert_general_op(node)
@@ -1794,6 +1816,9 @@ class OnnxConverter(base_converter.ConverterInterface):
             width_scale_arg.name = MaceKeyword.mace_width_scale_str
             height_scale_arg.f = scale_tensor.float_data[-2]
             width_scale_arg.f = scale_tensor.float_data[-1]
+        for name in op.input[1:]:
+            if name in self._consts:
+                self.remove_tensor(name)
 
         if node.attrs['mode'] == 'nearest':
             op.type = MaceOp.ResizeNearestNeighbor.name
@@ -1825,3 +1850,4 @@ class OnnxConverter(base_converter.ConverterInterface):
                 MaceKeyword.mace_coordinate_transformation_mode_str
             coordinate_transformation_mode_arg.i = \
                 CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value
+        del op.input[1:]

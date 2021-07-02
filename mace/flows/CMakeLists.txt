@@ -14,6 +14,9 @@ if(MACE_ENABLE_MTK_APU)
   add_subdirectory(apu)
 endif(MACE_ENABLE_MTK_APU)
 
+if(MACE_ENABLE_QNN)
+  add_subdirectory(qnn)
+endif(MACE_ENABLE_QNN)
 
 add_library(flows STATIC ${FLOWS_SRCS})
 target_link_libraries(flows PRIVATE core cpu_flow)

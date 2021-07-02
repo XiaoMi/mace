@@ -106,6 +106,12 @@ def apu_version_select(v1, v2, v3, v4):
         "//conditions:default": [],
     })
 
+def if_qnn_enabled(a, default_value = []):
+    return select({
+        "//mace:qnn_enabled": a,
+        "//conditions:default": default_value,
+    })
+
 def if_opencl_enabled(a, default_value = []):
     return select({
         "//mace:opencl_enabled": a,

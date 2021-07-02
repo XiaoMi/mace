@@ -230,6 +230,26 @@ __kernel void buffer_quantize(BUFFER_OUT_OF_RANGE_PARAMS
   vstore4(output_value, out_idx, output);
 }
 
+__kernel void buffer_quantize_uint16(BUFFER_OUT_OF_RANGE_PARAMS
+                              __private const int global_size_dim0,
+                              __private const float scale,
+                              __private const int zero_point,
+                              __global float *input,
+                              __private const int input_offset,
+                              __global ushort *output) {
+  const int out_idx = get_global_id(0);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_idx >= global_size_dim0) {
+    return;
+  }
+#endif
+
+  ushort4 output_value =
+      convert_ushort4_sat_rte(vload4(out_idx, input) / scale + zero_point);
+  vstore4(output_value, out_idx, output);
+}
+
 __kernel void buffer_dequantize(BUFFER_OUT_OF_RANGE_PARAMS
                                 __private const int global_size_dim0,
                                 __private const float scale,
@@ -249,6 +269,24 @@ __kernel void buffer_dequantize(BUFFER_OUT_OF_RANGE_PARAMS
   vstore4(output_value, out_idx, output);
 }
 
+__kernel void buffer_dequantize_uint16(BUFFER_OUT_OF_RANGE_PARAMS
+                                __private const int global_size_dim0,
+                                __private const float scale,
+                                __private const int zero_point,
+                                __global ushort *input,
+                                __private const int input_offset,
+                                __global float *output) {
+  const int out_idx = get_global_id(0);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_idx >= global_size_dim0) {
+    return;
+  }
+#endif
+  float4 output_value =
+      convert_float4(convert_int4(vload4(out_idx, input)) - zero_point) * scale;
+  vstore4(output_value, out_idx, output);
+}
 
 // NHWC -> NCHW (W roundup to 32)
 __kernel void transform_nhwc_to_nchw32(BUFFER_OUT_OF_RANGE_PARAMS

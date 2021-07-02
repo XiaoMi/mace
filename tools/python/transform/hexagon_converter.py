@@ -51,10 +51,13 @@ HexagonSupportedOps = [
     'QuantizedAdd_8p8to8',
     'QuantizedAvgPool_8',
     'QuantizedBatchNorm_8x8p8to8',
+    'QuantizedClamp_8',
     'QuantizedConcat_8',
     'QuantizedDiv_8',
+    'QuantizedInstanceNorm_8',
     'QuantizedMaxPool_8',
     'QuantizedMaximum_8',
+    'QuantizedMean_8',
     'QuantizedMinimum_8',
     'QuantizedMul_8x8to8',
     'QuantizedPad_8',
@@ -66,6 +69,7 @@ HexagonSupportedOps = [
     'QuantizedSigmoid_8',
     'QuantizedSoftmax_8',
     'QuantizedSplit_8',
+    'QuantizedSqrt_8',
     'QuantizedStridedSlice_8',
     'QuantizedSub_8p8to8',
     'QuantizedTanh_8',
@@ -162,6 +166,7 @@ class HexagonConverter(base_converter.ConverterInterface):
             MaceOp.Eltwise.name: self.convert_elementwise,
             MaceOp.ExpandDims.name: self.convert_expanddims,
             MaceOp.FullyConnected.name: self.convert_fullyconnected,
+            MaceOp.InstanceNorm.name: self.convert_instancenorm,
             MaceOp.Pad.name: self.convert_pad,
             MaceOp.Pooling.name: self.convert_pooling,
             MaceOp.Quantize.name: self.convert_quantize,
@@ -264,13 +269,17 @@ class HexagonConverter(base_converter.ConverterInterface):
             tensor.dims.extend([1])
             tensor.float_data.extend([val])
 
-    def add_arg_const_node(self, op, name, dims, data=None, insert_index=None):
+    def add_arg_const_node(self, op, name, dims, data=None, insert_index=None,
+                           data_type=mace_pb2.DT_INT32):
         arg_tensor = self._model.tensors.add()
         arg_tensor.name = op.name + name
-        arg_tensor.data_type = mace_pb2.DT_INT32
+        arg_tensor.data_type = data_type
         arg_tensor.dims.extend(dims)
         if data:
-            arg_tensor.int32_data.extend(data)
+            if data_type == mace_pb2.DT_INT32:
+                arg_tensor.int32_data.extend(data)
+            else:
+                arg_tensor.float_data.extend(data)
         if insert_index is None:
             op.input.append(arg_tensor.name)
         else:
@@ -732,7 +741,23 @@ class HexagonConverter(base_converter.ConverterInterface):
                     self.add_min_max_const_node(op, op.input[0])
                     op.type = HexagonOp.QuantizedRecip_8.name
                     return
-
+        if element_type == EltwiseType.POW.value and \
+                ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_scalar_input_str).f == 0.5:
+            self.add_min_max_const_node(op, op.input[0])
+            op.type = HexagonOp.QuantizedSqrt_8.name
+            return
+        if element_type == EltwiseType.CLIP.value:
+            self.add_min_max_const_node(op, op.input[0])
+            coeff = ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_coeff_str).floats
+            min_value, max_value = coeff[0], coeff[1]
+            self.add_arg_const_node(op, "/min:0", [1], [min_value],
+                                    data_type=mace_pb2.DT_FLOAT)
+            self.add_arg_const_node(op, "/max:0", [1], [max_value],
+                                    data_type=mace_pb2.DT_FLOAT)
+            op.type = HexagonOp.QuantizedClamp_8.name
+            return
         if len(op.input) == 1:
             scalar_input = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_scalar_input_str).f
@@ -775,6 +800,16 @@ class HexagonConverter(base_converter.ConverterInterface):
             op, op.output[0], True, True, False)
 
         op.type = HexagonOp.SuperFC_8x8p32to8.name
+
+    def convert_instancenorm(self, op):
+        affine = ConverterUtil.get_arg(op, MaceKeyword.mace_affine_str).i
+        if not affine:
+            del op.input[1:]
+            self.add_min_max_const_node(op, op.input[0])
+            op.type = HexagonOp.QuantizedInstanceNorm_8.name
+        else:
+            mace_check(False,
+                       "Hexagon does not support instancenorm with affine")
 
     def convert_pad(self, op):
         self.add_min_max_const_node(op, op.input[0])
@@ -829,22 +864,12 @@ class HexagonConverter(base_converter.ConverterInterface):
             op, MaceKeyword.mace_keepdims_str)
         mace_check(keep_dims_arg.i == 1,
                    "Hexagon Reduce Mean only supports keep dims now.")
-        axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
-        mace_check(1 <= len(axis_arg.ints) <= 2,
-                   "Hexagon Reduce Mean only supports spatial now.")
-        for i in axis_arg.ints:
-            mace_check(1 <= i <= 2,
-                       "Hexagon Reduce Mean only supports spatial now")
-        input_shape = self.get_input_shape(op.input[0])
-        if len(axis_arg.ints) == 1:
-            dim1, dim2 = (input_shape[1], 1) \
-                if axis_arg.ints[0] == 1 else (1, input_shape[2])
-        else:
-            dim1, dim2 = input_shape[1], input_shape[2]
-        self.add_arg_const_node(op, '/window:0', [1, dim1, dim2, 1])
-        self.add_arg_const_node(op, '/strides:0', [1, dim1, dim2, 1])
 
-        op.type = HexagonOp.QuantizedAvgPool_8.name
+        self.add_arg_const_node(op, '/axes:0', [len(axis_arg.ints)],
+                                axis_arg.ints)
+        self.add_min_max_const_node(op, op.output[0], True, True, False)
+
+        op.type = HexagonOp.QuantizedMean_8.name
 
     def add_resize_args(self, op):
         align_corners_arg = ConverterUtil.get_arg(

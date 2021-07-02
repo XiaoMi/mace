@@ -14,6 +14,9 @@ if(DMACE_ENABLE_MTK_APU)
   add_subdirectory(apu)
 endif(DMACE_ENABLE_MTK_APU)
 
+if(DMACE_ENABLE_QNN)
+  add_subdirectory(qnn)
+endif(DMACE_ENABLE_QNN)
 
 add_library(runtimes STATIC ${RUNTIMES_SRCS})
 target_link_libraries(runtimes PRIVATE core cpu_runtime)

@@ -13,6 +13,7 @@ load(
     "if_hexagon_or_hta_enabled",
     "if_hta_enabled",
     "if_opencl_enabled",
+    "if_qnn_enabled",
 )
 
 cc_library(
@@ -35,6 +36,8 @@ cc_library(
         "-DMACE_ENABLE_HTA",
     ]) + if_apu_enabled([
         "-DMACE_ENABLE_MTK_APU",
+    ]) + if_qnn_enabled([
+        "-DMACE_ENABLE_QNN",
     ]) + if_bfloat16_enabled([
         "-DMACE_ENABLE_BFLOAT16",
     ]) + if_fp16_enabled([
@@ -50,5 +53,7 @@ cc_library(
         "//mace/flows/hexagon:hexagon_flows",
     ]) + if_apu_enabled([
         "//mace/flows/apu:apu_flows",
+    ]) + if_qnn_enabled([
+        "//mace/flows/qnn:qnn_flows",
     ]),
 )

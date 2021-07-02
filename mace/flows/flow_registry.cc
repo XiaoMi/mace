@@ -38,6 +38,10 @@ extern void RegisterHexagonRefFlow(FlowRegistry *flow_registry);
 extern void RegisterApuRefFlow(FlowRegistry *flow_registry);
 #endif  // MACE_ENABLE_MTK_APU
 
+#ifdef MACE_ENABLE_QNN
+extern void RegisterQnnRefFlow(FlowRegistry *flow_registry);
+#endif  // MACE_ENABLE_QNN
+
 void RegisterAllFlows(FlowRegistry *flow_registry) {
   RegisterCpuRefFlow(flow_registry);
 
@@ -60,6 +64,10 @@ void RegisterAllFlows(FlowRegistry *flow_registry) {
 #ifdef MACE_ENABLE_MTK_APU
   RegisterApuRefFlow(flow_registry);
 #endif  // MACE_ENABLE_MTK_APU
+
+#ifdef MACE_ENABLE_QNN
+  RegisterQnnRefFlow(flow_registry);
+#endif  // MACE_ENABLE_QNN
 }
 
 }  // namespace mace

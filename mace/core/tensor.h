@@ -80,6 +80,7 @@ namespace mace {
   switch (TYPE_ENUM) {                                             \
     MACE_CASE(float, MACE_SINGLE_ARG(STATEMENTS))                  \
     MACE_CASE(uint8_t, MACE_SINGLE_ARG(STATEMENTS))                \
+    MACE_CASE(uint16_t, MACE_SINGLE_ARG(STATEMENTS))               \
     MACE_CASE(int32_t, MACE_SINGLE_ARG(STATEMENTS))                \
     MACE_TYPE_ENUM_SWITCH_CASE_FLOAT16(STATEMENTS)                 \
     MACE_TYPE_ENUM_SWITCH_CASE_BFLOAT16(STATEMENTS)                \

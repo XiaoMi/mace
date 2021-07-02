@@ -181,7 +181,8 @@ def convert(model_file, output_dir, layers):
                 (cur_op.type == MaceOp.Quantize.name or
                  cur_op.type == HexagonOp.QuantizeINPUT_f_to_8.name or
                  cur_op.type == HexagonOp.INPUT.name) or \
-                (cur_op.type == HexagonOp.DequantizeOUTPUT_8tof.name or
+                (cur_op.type == MaceOp.Dequantize.name or
+                 cur_op.type == HexagonOp.DequantizeOUTPUT_8tof.name or
                  cur_op.type == HexagonOp.OUTPUT.name) or \
                 (next_op is not None and
                  (next_op.type == MaceOp.BatchToSpaceND.name or

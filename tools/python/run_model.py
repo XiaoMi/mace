@@ -30,6 +30,7 @@ from utils import config_parser
 from utils.config_parser import DeviceType
 from utils.target import Target
 from utils.config_parser import ModelKeys
+from utils.util import ABIType
 from utils.util import MaceLogger
 from utils.util import mace_check
 import run_target
@@ -208,7 +209,10 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     elif DeviceType.APU in runtime_list:
         apu_libs = get_apu_so_paths(dev)
         libs += apu_libs
-
+    elif DeviceType.HTP in runtime_list:
+        libs += [
+            "third_party/qnn/target/%s/libQnnHtpAltPrepStub.so" %
+            target_abi]
     cpp_shared_lib_path = os.path.join(
         build_dir, "install/lib/libc++_shared.so")
     if os.path.exists(cpp_shared_lib_path):

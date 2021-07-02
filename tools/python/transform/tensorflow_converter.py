@@ -319,6 +319,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
         with tf.gfile.Open(src_model_file, 'rb') as f:
             tf_graph_def.ParseFromString(f.read())
 
+        # delete explicit_paddings
+        for node in tf_graph_def.node:
+            name = str(node.name).split('/')[-1]
+            if name == 'depthwise_Fold' or name == 'depthwise':
+                if 'explicit_paddings' in node.attr:
+                    del node.attr['explicit_paddings']
+
         self._placeholders = {}
         self._skip_tensor = set()
         self._output_shape = {}

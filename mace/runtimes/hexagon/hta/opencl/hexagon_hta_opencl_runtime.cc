@@ -44,7 +44,7 @@ MaceStatus HexagonHtaOpenclRuntime::Init(const MaceEngineCfgImpl *config_impl,
 }
 
 RuntimeSubType HexagonHtaOpenclRuntime::GetRuntimeSubType() {
-    return RuntimeSubType::RT_SUB_WITH_OPENCL;
+  return RuntimeSubType::RT_SUB_WITH_OPENCL;
 }
 
 MemoryType HexagonHtaOpenclRuntime::GetBaseMemoryType() {

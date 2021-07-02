@@ -141,6 +141,7 @@ class DeviceType(Enum):
     HEXAGON = 3
     HTA = 4
     APU = 5
+    HTP = 6
     CPU_GPU = 100
 
 
@@ -151,7 +152,8 @@ DEVICE_MAP = {
     "dsp": DeviceType.HEXAGON,
     "hta": DeviceType.HTA,
     "apu": DeviceType.APU,
-    "cpu+gpu": DeviceType.GPU
+    "cpu+gpu": DeviceType.GPU,
+    "htp": DeviceType.HTP,
 }
 
 

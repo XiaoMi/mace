@@ -38,9 +38,9 @@ std::unique_ptr<Allocator> ApuRuntime::CreateAllocator() {
 MaceStatus ApuRuntime::Init(const MaceEngineCfgImpl *engine_config,
                             const MemoryType mem_type) {
   MACE_UNUSED(mem_type);
-  apu_cache_policy_ = engine_config->apu_cache_policy();
-  apu_binary_file_ = engine_config->apu_binary_file();
-  apu_storage_file_ = engine_config->apu_storage_file();
+  apu_cache_policy_ = engine_config->accelerator_cache_policy();
+  apu_binary_file_ = engine_config->accelerator_binary_file();
+  apu_storage_file_ = engine_config->accelerator_storage_file();
   apu_boost_hint_ = engine_config->apu_boost_hint();
   apu_preference_hint_ = engine_config->apu_preference_hint();
 
@@ -67,7 +67,7 @@ ApuWrapper *ApuRuntime::GetApuWrapper() {
   return apu_wrapper_.get();
 }
 
-APUCachePolicy ApuRuntime::GetCachePolicy() {
+AcceleratorCachePolicy ApuRuntime::GetCachePolicy() {
   return apu_cache_policy_;
 }
 

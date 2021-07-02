@@ -236,12 +236,10 @@ class ResizeBilinearOp<RuntimeType::RT_CPU, T> : public Operation {
     }
 
     // ONNX's scale is the opposite of ours
-    float height_scale = height_scale_ > 0 ? 1 / height_scale_ :
-                         common::utils::CalculateResizeScale(in_height,
+    float height_scale = common::utils::CalculateResizeScale(in_height,
                                                              out_height,
                                                              align_corners_);
-    float width_scale = width_scale_ > 0 ? 1 / width_scale_ :
-                        common::utils::CalculateResizeScale(in_width,
+    float width_scale = common::utils::CalculateResizeScale(in_width,
                                                             out_width,
                                                             align_corners_);
 

@@ -131,6 +131,7 @@ class DeviceType(object):
     HEXAGON = 'HEXAGON'
     HTA = 'HTA'
     APU = 'APU'
+    HTP = 'HTP'
 
     # for validation threshold
     QUANTIZE = 'QUANTIZE'
@@ -215,6 +216,10 @@ def parse_device_type(runtime):
         device_type = DeviceType.APU
     elif runtime == RuntimeType.cpu_gpu:
         device_type = DeviceType.GPU
+    elif runtime == RuntimeType.htp:
+        device_type = DeviceType.HTP
+    else:
+        mace_check(False, "Unknown runtime type: %s" % runtime)
 
     return device_type
 
@@ -432,6 +437,7 @@ class YAMLKeyword(object):
     dockerfile_path = 'dockerfile_path'
     dockerfile_sha256_checksum = 'dockerfile_sha256_checksum'
     apu_version_with_no_device = 'apu_version_with_no_device'
+    accelerator_api = 'accelerator_api'
 
 
 ################################
@@ -526,6 +532,7 @@ class RuntimeType(object):
     dsp = 'dsp'
     hta = 'hta'
     apu = 'apu'
+    htp = 'htp'
     cpu_gpu = 'cpu+gpu'
 
 
