@@ -117,17 +117,24 @@ MaceStatus OpenclRefFlow::GetInputTransposeDims(
   return MaceStatus::MACE_SUCCESS;
 }
 
+void OpenclRefFlow::AfterRun() {
+  auto *opencl_runtime = static_cast<OpenclRuntime *>(main_runtime_);
+  auto *opencl_executor = opencl_runtime->GetOpenclExecutor();
+  opencl_executor->command_queue().finish();
+  opencl_executor->SaveBuiltCLProgram();
+}
 MaceStatus OpenclRefFlow::Run(TensorMap *input_tensors,
                               TensorMap *output_tensors,
                               RunMetadata *run_metadata) {
   MACE_RETURN_IF_ERROR(CpuRefFlow::Run(
       input_tensors, output_tensors, run_metadata));
+  AfterRun();
+  return MaceStatus::MACE_SUCCESS;
+}
 
-  auto *opencl_runtime = static_cast<OpenclRuntime *>(main_runtime_);
-  auto *opencl_executor = opencl_runtime->GetOpenclExecutor();
-  opencl_executor->command_queue().finish();
-  opencl_executor->SaveBuiltCLProgram();
-
+MaceStatus OpenclRefFlow::FakeWarmup() {
+  MACE_RETURN_IF_ERROR(net_->Run(nullptr, true));
+  AfterRun();
   return MaceStatus::MACE_SUCCESS;
 }
 

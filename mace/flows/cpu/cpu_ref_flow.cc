@@ -77,11 +77,6 @@ MaceStatus CpuRefFlow::Run(TensorMap *input_tensors,
   return net_->Run(run_metadata, false);
 }
 
-MaceStatus CpuRefFlow::FakeWarmup() {
-  VLOG(1) << "CpuRefFlow::FakeWarmup";
-  return net_->Run(nullptr, true);
-}
-
 MaceStatus CpuRefFlow::GetInputTransposeDims(
     const std::pair<const std::string, MaceTensor> &input,
     const Tensor *input_tensor,

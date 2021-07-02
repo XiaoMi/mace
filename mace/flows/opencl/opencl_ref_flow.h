@@ -31,6 +31,7 @@ class OpenclRefFlow : public CpuRefFlow {
   MaceStatus Run(TensorMap *input_tensors,
                  TensorMap *output_tensors,
                  RunMetadata *run_metadata) override;
+  MaceStatus FakeWarmup() override;
 
  protected:
   MaceStatus TransposeInputByDims(const MaceTensor &mace_tensor,
@@ -45,6 +46,7 @@ class OpenclRefFlow : public CpuRefFlow {
       DataFormat *data_format) override;
 
  private:
+  void AfterRun();
   MACE_DISABLE_COPY_AND_ASSIGN(OpenclRefFlow);
 };
 
