@@ -36,8 +36,6 @@ class CpuRefFlow : public CommonFp32Flow {
 
   MaceStatus Run(TensorMap *input_tensors, TensorMap *output_tensors,
                  RunMetadata *run_metadata) override;
-  MaceStatus FakeWarmup() override;
-
  protected:
   MaceStatus GetInputTransposeDims(
       const std::pair<const std::string, MaceTensor> &input,
