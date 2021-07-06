@@ -1041,6 +1041,9 @@ def run_mace(flags):
             target_devices = device_list
         # build target
         for dev in target_devices:
+            if len(flags.devices_to_run) > 0 and \
+                    dev['address'] not in flags.devices_to_run.split(','):
+                continue
             if target_abi in dev[YAMLKeyword.target_abis]:
                 # get toolchain
                 toolchain = infer_toolchain(target_abi)
@@ -1114,6 +1117,11 @@ def str_to_mace_lib_type(v):
 def parse_args():
     """Parses command line arguments."""
     all_type_parent_parser = argparse.ArgumentParser(add_help=False)
+    all_type_parent_parser.add_argument(
+        '--devices_to_run',
+        type=str,
+        default="",
+        help="devices you want to run")
     all_type_parent_parser.add_argument(
         '--config',
         type=str,
