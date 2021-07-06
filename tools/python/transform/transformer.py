@@ -3305,8 +3305,8 @@ class Transformer(base_converter.ConverterInterface):
     def do_single_transpose(self, input_name, already_dealt):
         tensor = self._consts[input_name]
         shape = list(tensor.dims)
-        array = np.array(tensor.float_data).reshape(shape)
         if len(shape) == 4:
+            array = np.array(tensor.float_data).reshape(shape)
             array = array.transpose(0, 2, 3, 1)
             tensor.dims[:] = array.shape
             tensor.float_data[:] = array.flat

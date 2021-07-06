@@ -1801,15 +1801,19 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         del op.input[1:]
 
-        scale_tensor = self._consts[node.inputs[2]]
-        if scale_tensor.dims[0] == 0:
-            size_tensor = self._consts[node.inputs[3]]
-            size_arg = op.arg.add()
-            size_arg.name = MaceKeyword.mace_resize_size_str
-            size_value = np.array([size_tensor.int32_data[-2],
-                                   size_tensor.int32_data[-1]], dtype=np.int32)
-            size_arg.ints.extend(size_value)
+        if self._opset_version <= 10:
+            scale_tensor = self._consts[node.inputs[1]]
         else:
+            scale_tensor = self._consts[node.inputs[2]]
+            if scale_tensor.dims[0] == 0:
+                size_tensor = self._consts[node.inputs[3]]
+                size_arg = op.arg.add()
+                size_arg.name = MaceKeyword.mace_resize_size_str
+                size_value = np.array([size_tensor.int32_data[-2],
+                                       size_tensor.int32_data[-1]],
+                                      dtype=np.int32)
+                size_arg.ints.extend(size_value)
+        if scale_tensor.dims[0] != 0:
             height_scale_arg = op.arg.add()
             height_scale_arg.name = MaceKeyword.mace_height_scale_str
             width_scale_arg = op.arg.add()
@@ -1829,25 +1833,26 @@ class OnnxConverter(base_converter.ConverterInterface):
         else:
             mace_check(False, "Unsupported mode %s" % node.attrs['mode'])
 
-        ct_mode = node.attrs['coordinate_transformation_mode']
-        # Only support pytorch resize, i.e. 'asymmetric' for 'nearest' and
-        # ['align_corners', 'pytorch_half_pixel'] for ['linear', 'cubic']
-        if op.type == MaceOp.ResizeNearestNeighbor.name:
-            mace_check(ct_mode == 'asymmetric',
-                       "Resize nearest doesn't support: %s" % ct_mode)
-        elif op.type in [MaceOp.ResizeBilinear.name,
-                         MaceOp.ResizeBicubic.name]:
-            mace_check(ct_mode == 'align_corners' or
-                       ct_mode == 'pytorch_half_pixel',
-                       "Resize linear/cubic doesn't support: %s" % ct_mode)
-        if ct_mode == 'align_corners':
-            align_corners_arg = op.arg.add()
-            align_corners_arg.name = MaceKeyword.mace_align_corners_str
-            align_corners_arg.i = 1
-        elif ct_mode == 'pytorch_half_pixel':
-            coordinate_transformation_mode_arg = op.arg.add()
-            coordinate_transformation_mode_arg.name = \
-                MaceKeyword.mace_coordinate_transformation_mode_str
-            coordinate_transformation_mode_arg.i = \
-                CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value
+        if self._opset_version >= 11:
+            ct_mode = node.attrs['coordinate_transformation_mode']
+            # Only support pytorch resize, i.e. 'asymmetric' for 'nearest' and
+            # ['align_corners', 'pytorch_half_pixel'] for ['linear', 'cubic']
+            if op.type == MaceOp.ResizeNearestNeighbor.name:
+                mace_check(ct_mode == 'asymmetric',
+                           "Resize nearest doesn't support: %s" % ct_mode)
+            elif op.type in [MaceOp.ResizeBilinear.name,
+                             MaceOp.ResizeBicubic.name]:
+                mace_check(ct_mode == 'align_corners' or
+                           ct_mode == 'pytorch_half_pixel',
+                           "Resize linear/cubic doesn't support: %s" % ct_mode)
+            if ct_mode == 'align_corners':
+                align_corners_arg = op.arg.add()
+                align_corners_arg.name = MaceKeyword.mace_align_corners_str
+                align_corners_arg.i = 1
+            elif ct_mode == 'pytorch_half_pixel':
+                coordinate_transformation_mode_arg = op.arg.add()
+                coordinate_transformation_mode_arg.name = \
+                    MaceKeyword.mace_coordinate_transformation_mode_str
+                coordinate_transformation_mode_arg.i = \
+                    CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value
         del op.input[1:]
