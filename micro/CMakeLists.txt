@@ -25,6 +25,10 @@ if(MACE_MICRO_ENABLE_BFLOAT16)
   add_definitions(-DMACE_ENABLE_BFLOAT16)
 endif()
 
+if(HEXAGON)
+  add_definitions(-DMACE_MICRO_ENABLE_HEXAGON)
+endif()
+
 if(MACE_MICRO_NDEBUG)
   add_definitions(-DMACE_MICRO_NDEBUG)
 endif()
@@ -77,7 +81,7 @@ add_custom_target(micro_combine_core
 
 set_target_properties(micro PROPERTIES
   IMPORTED_LOCATION ${lib_micro_path}
-  INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/include/public
+  INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include/public;${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
 add_dependencies(micro micro_combine_core)

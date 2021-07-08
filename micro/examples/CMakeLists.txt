@@ -1,1 +1,2 @@
 add_subdirectory(classifier)
+add_subdirectory(runtime_load_model)

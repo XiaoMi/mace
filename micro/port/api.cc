@@ -18,7 +18,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#ifdef MACE_ENABLE_HEXAGON
+#ifdef MACE_MICRO_ENABLE_HEXAGON_HAP
 #include <HAP_perf.h>
 #include <HAP_farf.h>
 #else
@@ -31,7 +31,7 @@ namespace api {
 
 void DebugLog(const char *str) {
   // you should rewrite this file in the platform source file.
-#ifdef MACE_ENABLE_HEXAGON
+#ifdef MACE_MICRO_ENABLE_HEXAGON_HAP
   FARF(ALWAYS, "%s", str);
 #else
   printf("%s", str);
@@ -39,7 +39,7 @@ void DebugLog(const char *str) {
 }
 
 int64_t NowMicros() {
-#ifdef MACE_ENABLE_HEXAGON
+#ifdef MACE_MICRO_ENABLE_HEXAGON_HAP
   return HAP_perf_get_time_us();
 #elif __linux__
   struct timeval tv;
