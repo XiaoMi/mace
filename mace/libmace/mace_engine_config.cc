@@ -31,6 +31,7 @@ MaceEngineCfgImpl::MaceEngineCfgImpl()
       hexagon_corner_(HexagonNNCornerType::HEXAGON_NN_CORNER_TURBO),
       hexagon_dcvs_enable_(true),
       hexagon_latency_(100),
+      hexagon_perf_(HEXAGON_SYSTEM_SETTINGS),
       accelerator_cache_policy_(AcceleratorCachePolicy::ACCELERATOR_CACHE_NONE),
       accelerator_binary_file_(""),
       accelerator_storage_file_(""),
