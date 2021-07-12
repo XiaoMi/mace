@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from os import path
 import shutil
 import numpy as np
 
@@ -110,6 +111,26 @@ class MicroConverter:
         tensor_bytes = bytearray(model_weights)
         self.code_gen.gen_model_data(model_name, tensor_bytes,
                                      self.model_dir + 'micro_model_data.h')
+
+        net_def_bytes = bytearray(net_def_bytes)
+        graph_bytes = bytearray(graph_bytes)
+        model_bytes = tensor_bytes
+        offsets = np.zeros(6, dtype=np.int64)
+        offsets[0] = offsets.size * 8
+        offsets[1] = offsets[0] + len(net_def_bytes)
+        offsets[2] = offsets[1] + len(graph_bytes)
+        offsets[3] = offsets[2] + len(model_bytes)
+        offsets[4] = tensor_mem_size
+        offsets[5] = scratch_buffer_size
+        offset_bytes = bytearray(offsets.tobytes())
+        const_mem_bytes = (offset_bytes + net_def_bytes +
+                           graph_bytes + model_bytes)
+
+        if not path.exists(".model"):
+            os.mkdir(".model")
+
+        model_bin = open(path.join(".model", model_name + ".bin"), "wb")
+        model_bin.write(const_mem_bytes)
 
     def gen_engine_interface_code(self, model_name):
         self.code_gen.gen_engine_factory(

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MICRO_EXAMPLES_CLASSIFIER_DATA_H_
-#define MICRO_EXAMPLES_CLASSIFIER_DATA_H_
+#ifndef MICRO_EXAMPLES_DATA_DATA_H_
+#define MICRO_EXAMPLES_DATA_DATA_H_
 
 #include "data/har.h"
 #include "data/kws.h"
@@ -35,4 +35,4 @@ const float *input = data_kws_yes;
 const int32_t input_dims[4] = {1, 98, 40, 1};
 }  // namespace kws
 
-#endif  // MICRO_EXAMPLES_CLASSIFIER_DATA_H_
+#endif  // MICRO_EXAMPLES_DATA_DATA_H_

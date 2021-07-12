@@ -13,7 +13,7 @@
 // limitations under the License.
 
 
-#ifdef MACE_ENABLE_HEXAGON
+#ifdef MACE_MICRO_ENABLE_HEXAGON_HAP
 #include "micro/rpc/stub/benchmark.h"
 #else
 #include "micro/benchmark_utils/test_benchmark.h"
