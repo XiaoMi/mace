@@ -150,6 +150,9 @@ def convert_net(net_name, conf, enable_micro):
         # used by `base_converter`
         option.device = option.device.value
 
+    if option.quantize_stat:
+        option.quantize = False
+
     option.enable_micro = enable_micro
     option.data_type = conf[ModelKeys.data_type]
 
