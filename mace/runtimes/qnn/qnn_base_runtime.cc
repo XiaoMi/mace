@@ -93,4 +93,8 @@ std::string QnnBaseRuntime::GetCacheLoadPath() {
   return cache_binary_file_;
 }
 
+HexagonPerformanceType QnnBaseRuntime::GetPerformanceType() {
+  return perf_type_;
+}
+
 }  // namespace mace

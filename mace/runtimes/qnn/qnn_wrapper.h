@@ -244,7 +244,8 @@ class QnnWrapper {
             const index_t model_data_size,
             const AcceleratorCachePolicy cache_policy,
             const std::string &cache_binary_file,
-            const std::string &cache_storage_file);
+            const std::string &cache_storage_file,
+            HexagonPerformanceType perf_type_);
   bool InitOnline(const NetDef &net_def,
                   unsigned const char *model_data,
                   const index_t model_data_size);

@@ -47,7 +47,7 @@ class QnnBaseRuntime : public Runtime {
   AcceleratorCachePolicy GetCachePolicy();
   std::string GetCacheStorePath();
   std::string GetCacheLoadPath();
-
+  HexagonPerformanceType GetPerformanceType();
  protected:
   std::unique_ptr<CpuIonAllocator> ion_allocator_;
   std::unique_ptr<GeneralMemoryManager> buffer_manager_;

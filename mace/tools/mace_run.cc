@@ -376,7 +376,7 @@ bool RunModel(const std::string &model_name,
       FLAGS_accelerator_binary_file, FLAGS_accelerator_storage_file);
 #endif
 #ifdef MACE_ENABLE_QNN
-  config.SetQnnPerformance(HEXAGON_HIGH_PERFORMANCE);
+  config.SetQnnPerformance(HEXAGON_SYSTEM_SETTINGS);
 #endif
   std::unique_ptr<mace::port::ReadOnlyMemoryRegion> model_graph_data =
       make_unique<mace::port::ReadOnlyBufferMemoryRegion>();
