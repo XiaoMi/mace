@@ -243,6 +243,398 @@ class PoolingOp<RuntimeType::RT_CPU, T> : public PoolingOpBase {
   }
 };
 
+template<>
+class PoolingOp<RuntimeType::RT_CPU, float> : public PoolingOpBase {
+ public:
+  explicit PoolingOp(OpConstructContext *context)
+      : PoolingOpBase(context) {}
+
+  MaceStatus Run(OpContext *context) override {
+    MACE_UNUSED(context);
+    const Tensor *input_tensor = this->Input(0);
+    Tensor *output_tensor = this->Output(0);
+    std::vector<index_t> output_shape(4);
+    std::vector<index_t> filter_shape = {
+        input_tensor->dim(1), input_tensor->dim(1), kernels_[0], kernels_[1]};
+
+    std::vector<int> paddings(2);
+    if (paddings_.empty()) {
+      ops::CalcNCHWPaddingAndOutputSize(
+          input_tensor->shape().data(), filter_shape.data(), dilations_.data(),
+          strides_.data(), padding_type_, output_shape.data(), paddings.data());
+    } else {
+      paddings = paddings_;
+      CalcNCHWOutputSize(input_tensor->shape().data(),
+                         filter_shape.data(),
+                         paddings_.data(),
+                         dilations_.data(),
+                         strides_.data(),
+                         round_type_,
+                         output_shape.data());
+    }
+    MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
+
+    const float *input = input_tensor->data<float>();
+    MACE_CHECK(output_tensor->dtype() == DataTypeToEnum<float>::value);
+    float *output = output_tensor->mutable_data<float>();
+    const index_t *input_shape = input_tensor->shape().data();
+    int pad_hw[2] = {paddings[0] / 2, paddings[1] / 2};
+
+    if (pooling_type_ == PoolingType::MAX) {
+      MaxPooling(context,
+                 input,
+                 input_shape,
+                 output_shape.data(),
+                 kernels_.data(),
+                 strides_.data(),
+                 dilations_.data(),
+                 pad_hw,
+                 output);
+    } else if (pooling_type_ == PoolingType::AVG) {
+      AvgPooling(context,
+                 input,
+                 input_shape,
+                 output_shape.data(),
+                 kernels_.data(),
+                 strides_.data(),
+                 dilations_.data(),
+                 pad_hw,
+                 output);
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+ private:
+  void MaxPoolingPad(const float *input,
+                     int in_base,
+                     int in_width,
+                     int in_height,
+                     int inw_base,
+                     int inh_base,
+                     const int *filter_hw,
+                     const int *dilation_hw,
+                     float *output) {
+    float res = std::numeric_limits<float>::lowest();
+    for (index_t fh = 0; fh < filter_hw[0]; ++fh) {
+      index_t inh = inh_base + dilation_hw[0] * fh;
+      for (index_t fw = 0; fw < filter_hw[1]; ++fw) {
+        index_t inw = inw_base + dilation_hw[1] * fw;
+        if (inh >= 0 && inh < in_height && inw >= 0
+            && inw < in_width) {
+          index_t input_offset = in_base + inh * in_width + inw;
+          res = std::max(res, input[input_offset]);
+        }
+      }
+    }
+    *output = res;
+  }
+
+  void AvgPoolingPad(const float *input,
+                     int in_base,
+                     int in_width,
+                     int in_height,
+                     int inw_base,
+                     int inh_base,
+                     const int *filter_hw,
+                     const int *dilation_hw,
+                     float *output) {
+    float res = 0;
+    int block_size = 0;
+    for (index_t fh = 0; fh < filter_hw[0]; ++fh) {
+      index_t inh = inh_base + dilation_hw[0] * fh;
+      for (index_t fw = 0; fw < filter_hw[1]; ++fw) {
+        index_t inw = inw_base + dilation_hw[1] * fw;
+        if (inh >= 0 && inh < in_height && inw >= 0
+            && inw < in_width) {
+          index_t input_offset = in_base + inh * in_width + inw;
+          res += input[input_offset];
+          ++block_size;
+        }
+      }
+    }
+    *output = res / block_size;
+  }
+
+  void MaxPooling(const OpContext *context,
+                  const float *input,
+                  const index_t *in_shape,
+                  const index_t *out_shape,
+                  const int *filter_hw,
+                  const int *stride_hw,
+                  const int *dilation_hw,
+                  const int *pad_hw,
+                  float *output) {
+    const index_t batch = out_shape[0];
+    const index_t out_channels = out_shape[1];
+    const index_t out_height = out_shape[2];
+    const index_t out_width = out_shape[3];
+    const index_t in_channels = in_shape[1];
+    const index_t in_height = in_shape[2];
+    const index_t in_width = in_shape[3];
+
+    const index_t in_image_size = in_height * in_width;
+    const index_t out_image_size = out_height * out_width;
+    const index_t in_batch_size = in_channels * in_image_size;
+    const index_t out_batch_size = out_channels * out_image_size;
+
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
+
+    if (out_image_size == 1 && filter_hw[0] == in_height && filter_hw[1] == in_width) {
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            const index_t out_base = b * out_batch_size + c;
+            const index_t in_base = b * in_batch_size + c * in_image_size;
+            float res = std::numeric_limits<float>::lowest();
+            index_t i = 0;
+#if defined(MACE_ENABLE_NEON)
+#ifndef __aarch64__
+#define vmaxvq_f32(v)               \
+  ({                                \
+      float __m = v[0];                 \
+      for (int i = 1; i < 4; i++) { \
+          if (v[i] > __m)           \
+              __m = v[i];           \
+      }                             \
+      __m;                          \
+  })
+#endif
+            if (i + 3 < in_image_size) {
+              float32x4_t maxx4 = vld1q_f32(input);
+              i += 4;
+              for (; i + 3 < in_image_size; i += 4) {
+                  maxx4 = vmaxq_f32(maxx4, vld1q_f32(input + in_base + i));
+              }
+              float val = vmaxvq_f32(maxx4);
+              if (val > res)
+                  res = val;
+            }
+#endif
+            for (; i < in_image_size; ++i) {
+              res = std::max(res, input[in_base + i]);
+            }
+            output[out_base] = res;
+          }
+        }
+      }, 0, batch, 1, 0, out_channels, 1);
+    } else {
+      int l = 0, t = 0, r = out_width, b = out_height;
+      for (; l * stride_hw[1] - pad_hw[1] < 0 && l < out_width; l++) {
+        // do nothing
+      }
+      for (; t * stride_hw[0] - pad_hw[0] < 0 && t < out_height; t++) {
+        // do nothing
+      }
+      for (; (r - 1) * stride_hw[1] - pad_hw[1] + (filter_hw[1] - 1) * dilation_hw[1] >= in_width && r > l; r--) {
+        // do nothing
+      }
+      for (; (b - 1) * stride_hw[0] - pad_hw[0] + (filter_hw[0] - 1) * dilation_hw[0] >= in_height && b > t; b--) {
+        // do nothing
+      }
+      int pad_left = l, pad_right = r, pad_top = t, pad_bottom = b;
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            const index_t out_base = b * out_batch_size + c * out_image_size;
+            const index_t in_base = b * in_batch_size + c * in_image_size;
+            { // handle paddings
+              for (index_t h = 0; h < pad_top; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = 0; w < out_width; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  MaxPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, &output[out_offset]);
+                }
+              }
+              for (index_t h = pad_top; h < pad_bottom; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = 0; w < pad_left; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  MaxPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+                for (index_t w = pad_right; w < out_width; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  MaxPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+              }
+              for (index_t h = pad_bottom; h < out_height; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = 0; w < out_width; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  MaxPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+              }
+            }
+            { // handle no paddings
+              for (index_t h = pad_top; h < pad_bottom; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = pad_left; w < pad_right; ++w) {
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  const index_t out_offset = out_base + h * out_width + w;
+                  float res = std::numeric_limits<float>::lowest();
+                  for (int fh = 0; fh < filter_hw[0]; ++fh) {
+                    index_t inh = inh_base + fh * dilation_hw[0];
+                    for (int fw = 0; fw < filter_hw[1]; ++fw) {
+                      index_t inw = inw_base + fw * dilation_hw[1];
+                      index_t input_offset = in_base + inh * in_width + inw;
+                      res = std::max(res, input[input_offset]);
+                    }
+                  }
+                  output[out_offset] = res;
+                }
+              }
+            }
+          }
+        }
+      }, 0, batch, 1, 0, out_channels, 1);
+    }
+  }
+
+  void AvgPooling(const OpContext *context,
+                  const float *input,
+                  const index_t *in_shape,
+                  const index_t *out_shape,
+                  const int *filter_hw,
+                  const int *stride_hw,
+                  const int *dilation_hw,
+                  const int *pad_hw,
+                  float *output) {
+    const index_t batch = out_shape[0];
+    const index_t out_channels = out_shape[1];
+    const index_t out_height = out_shape[2];
+    const index_t out_width = out_shape[3];
+    const index_t in_channels = in_shape[1];
+    const index_t in_height = in_shape[2];
+    const index_t in_width = in_shape[3];
+
+    const index_t in_image_size = in_height * in_width;
+    const index_t out_image_size = out_height * out_width;
+    const index_t in_batch_size = in_channels * in_image_size;
+    const index_t out_batch_size = out_channels * out_image_size;
+
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
+
+    if (out_image_size == 1 && filter_hw[0] == in_height && filter_hw[1] == in_width) {
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            const index_t out_base = b * out_batch_size + c;
+            const index_t in_base = b * in_batch_size + c * in_image_size;
+            float res = 0;
+            index_t i = 0;
+#if defined(MACE_ENABLE_NEON)
+            if (i + 3 < in_image_size) {
+              float32x4_t sumx4 = vld1q_f32(input + in_base);
+              i += 4;
+              for (; i + 3 < in_image_size; i += 4) {
+                sumx4 = vaddq_f32(sumx4, vld1q_f32(input + in_base + i));
+              }
+              res += (sumx4[0] + sumx4[1] + sumx4[2] + sumx4[3]);
+            }
+#endif
+            for (; i < in_image_size; ++i) {
+              res += input[in_base + i];
+            }
+            output[out_base] = res / in_image_size;
+          }
+        }
+      }, 0, batch, 1, 0, out_channels, 1);
+    } else {
+      int l = 0, t = 0, r = out_width, b = out_height;
+      for (; l * stride_hw[1] - pad_hw[1] < 0 && l < out_width; l++) {
+        // do nothing
+      }
+      for (; t * stride_hw[0] - pad_hw[0] < 0 && t < out_height; t++) {
+        // do nothing
+      }
+      for (; (r - 1) * stride_hw[1] - pad_hw[1] + (filter_hw[1] - 1) * dilation_hw[1] >= in_width && r > l; r--) {
+        // do nothing
+      }
+      for (; (b - 1) * stride_hw[0] - pad_hw[0] + (filter_hw[0] - 1) * dilation_hw[0] >= in_height && b > t; b--) {
+        // do nothing
+      }
+      int pad_left = l, pad_right = r, pad_top = t, pad_bottom = b;
+      thread_pool.Compute2D([=](index_t start0, index_t end0, index_t step0,
+                                index_t start1, index_t end1, index_t step1) {
+        for (index_t b = start0; b < end0; b += step0) {
+          for (index_t c = start1; c < end1; c += step1) {
+            const index_t out_base = b * out_batch_size + c * out_image_size;
+            const index_t in_base = b * in_batch_size + c * in_image_size;
+            { // handle paddings
+              for (index_t h = 0; h < pad_top; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = 0; w < out_width; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  AvgPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+              }
+              for (index_t h = pad_top; h < pad_bottom; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = 0; w < pad_left; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  AvgPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+                for (index_t w = pad_right; w < out_width; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  AvgPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+              }
+              for (index_t h = pad_bottom; h < out_height; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = 0; w < out_width; ++w) {
+                  const index_t out_offset = out_base + h * out_width + w;
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  AvgPoolingPad(input, in_base, in_width, in_height, inw_base, inh_base,
+                                filter_hw, dilation_hw, output + out_offset);
+                }
+              }
+            }
+            { // handle no paddings
+              int block_size = filter_hw[0] * filter_hw[1];
+              for (index_t h = pad_top; h < pad_bottom; ++h) {
+                index_t inh_base = h * stride_hw[0] - pad_hw[0];
+                for (index_t w = pad_left; w < pad_right; ++w) {
+                  index_t inw_base = w * stride_hw[1] - pad_hw[1];
+                  const index_t out_offset = out_base + h * out_width + w;
+                  float res = 0;
+                  for (int fh = 0; fh < filter_hw[0]; ++fh) {
+                    index_t inh = inh_base + fh * dilation_hw[0];
+                    for (int fw = 0; fw < filter_hw[1]; ++fw) {
+                      index_t inw = inw_base + fw * dilation_hw[1];
+                      index_t input_offset = in_base + inh * in_width + inw;
+                      res += input[input_offset];
+                    }
+                  }
+                  output[out_offset] = res / block_size;
+                }
+              }
+            }
+          }
+        }
+      }, 0, batch, 1, 0, out_channels, 1);
+    }
+  }
+};
+
 #ifdef MACE_ENABLE_QUANTIZE
 template<>
 class PoolingOp<RuntimeType::RT_CPU, uint8_t> : public PoolingOpBase {
