@@ -8,6 +8,7 @@ python tools/python/convert.py --config micro/pretrained_models/tensorflow/kws/k
 -DMACE_MICRO_ENABLE_HARDFP=OFF || exit -1
 
 cp build/micro/gcc-arm-none-eabi/install micro/examples/classifier -r
+cp micro/examples/data micro/examples/classifier -r
 
 cd micro/examples/classifier
 

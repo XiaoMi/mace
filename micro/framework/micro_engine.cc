@@ -78,4 +78,8 @@ MaceMicroEngine &MaceMicroEngine::operator=(const MaceMicroEngine &) {
   return *this;
 }
 
+MaceMicroEngineConfig *MaceMicroEngine::GetEngineConfig() {
+  return engine_config_;
+}
+
 }  // namespace micro

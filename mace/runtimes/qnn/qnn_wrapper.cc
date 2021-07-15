@@ -99,7 +99,6 @@ QnnWrapper::QnnWrapper(Runtime *runtime)
   std::call_once(backend_prepared, PrepareBackend);
   graph_state_ = QNN_INIT_START;
   perf_ = make_unique<QnnPerformance>();
-  perf_type_ = HEXAGON_SYSTEM_SETTINGS;
   LOG(INFO) << "QNN version: " << GetVersion();
 }
 
@@ -137,10 +136,11 @@ bool QnnWrapper::Init(const NetDef &net_def,
                       const index_t model_data_size,
                       const AcceleratorCachePolicy cache_policy,
                       const std::string &cache_binary_file,
-                      const std::string &cache_storage_file) {
+                      const std::string &cache_storage_file,
+                      HexagonPerformanceType perf_type) {
   Qnn_ErrorHandle_t ret;
   int64_t t0 = NowMicros();
-
+  perf_type_ = perf_type;
   perf_->SetPerformance(QNN_INIT_START, perf_type_);
 
   profile_level_ =

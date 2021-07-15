@@ -170,8 +170,19 @@ class Transformer(base_converter.ConverterInterface):
 
     def initialize_name_map(self):
         for input_node in self._option.input_nodes.values():
-            new_input_name = MaceKeyword.mace_input_node_name \
-                             + '_' + input_node.name
+            # When tf.Keras > 2.2 version, input_node, it is possible
+            # that input_node.name and model input tensor name are different.
+            if self._option.platform == Platform.KERAS:
+                input_name_parts = input_node.name.split(":")
+                if len(input_name_parts) == 2:
+                    input_name_without_postfix = input_name_parts[0]
+                    for op in self._model.op:
+                        for i, name in enumerate(op.input):
+                            if name == input_name_without_postfix:
+                                op.input[i] = input_node.name
+
+            new_input_name = (MaceKeyword.mace_input_node_name
+                              + '_' + input_node.name)
             self.input_name_map[input_node.name] = new_input_name
 
         output_nodes = self._option.check_nodes.values()

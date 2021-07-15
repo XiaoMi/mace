@@ -95,6 +95,8 @@ class MaceMicroEngine {
                              const int32_t **output_dims,
                              uint32_t *output_dim_size);
 
+  MaceMicroEngineConfig *GetEngineConfig();
+
  private:
   MaceMicroEngineConfig *engine_config_;
 

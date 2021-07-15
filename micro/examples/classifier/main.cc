@@ -14,7 +14,7 @@
 
 #include <cstdio>
 
-#include "data.h"
+#include "data/data.h"
 #include "micro.h"
 
 namespace micro {

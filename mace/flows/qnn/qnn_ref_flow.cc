@@ -45,7 +45,8 @@ MaceStatus QnnRefFlow::Init(const NetDef *net_def,
   MACE_CHECK(qnn_wrapper->Init(*net_def, model_data, model_data_size,
                                qnn_runtime->GetCachePolicy(),
                                qnn_runtime->GetCacheLoadPath(),
-                               qnn_runtime->GetCacheStorePath()),
+                               qnn_runtime->GetCacheStorePath(),
+                               qnn_runtime->GetPerformanceType()),
              "Qnn init error.");
 
   return MaceStatus::MACE_SUCCESS;

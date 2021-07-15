@@ -31,7 +31,6 @@ MaceStatus ArmSoftmaxInt8Op::OnInit() {
   input_ = GetInputData<mifloat>(INPUT);
   input_dims_ = GetInputShapeDims(INPUT);
   input_dim_size_ = GetInputShapeDimSize(INPUT);
-  MACE_ASSERT(input_dim_size_ == 2);
 
   output_ = GetOutputData<mifloat>(OUTPUT);
 

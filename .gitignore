@@ -38,3 +38,4 @@ mace-models
 __pycache__
 *.egg-info
 .mace_run
+.model

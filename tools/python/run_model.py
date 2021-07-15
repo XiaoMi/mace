@@ -77,6 +77,9 @@ def run_models(flags, args):
 
     for device_id in run_devices:
         dev = device.create_device(flags.target_abi, device_id)
+        if len(flags.devices_to_run) > 0 and \
+                device_id not in flags.devices_to_run.split(','):
+            continue
         run_models_for_device(flags, args, dev)
 
 
@@ -300,6 +303,11 @@ def parse_args():
         default="",
         help="yaml conf path"
     )
+    parser.add_argument(
+        '--devices_to_run',
+        type=str,
+        default="",
+        help="devices you want to run")
     parser.add_argument(
         "--model_name",
         type=str,

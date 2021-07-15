@@ -240,6 +240,270 @@ class SoftmaxOp<RuntimeType::RT_CPU, T> : public Operation {
   }
 };
 
+template<>
+class SoftmaxOp<RuntimeType::RT_CPU, float> : public Operation {
+ public:
+  explicit SoftmaxOp(OpConstructContext *context)
+      : Operation(context),
+        use_log_(Operation::GetOptionalArg<bool>("use_log", false)),
+        has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)) {}
+
+  MaceStatus Run(OpContext *context) override {
+    MACE_UNUSED(context);
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
+
+    if (isNCHW(input)) {  // NCHW
+      return RunForNCHW(context);
+    } else {
+      return RunForNHWC(context);
+    }
+  }
+
+ protected:
+  bool use_log_;
+  bool has_df_;
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
+
+ protected:
+  MaceStatus RunForNCHW(OpContext *context) {
+    const Tensor *input = this->Input(INPUT);
+    const float *input_data = input->data<float>();
+    Tensor *output = this->Output(OUTPUT);
+    float *output_data = output->mutable_data<float>();
+
+    MACE_CHECK(input->dim_size() == 4, "The dim size of NCHW should be 4.");
+    index_t hw_stride = input->dim(3);
+    index_t hw_size = hw_stride * input->dim(2);
+    index_t class_stride = hw_size;
+    index_t class_size = class_stride * input->dim(1);
+    index_t batch_stride = class_size;
+    index_t batch_size = batch_stride * input->dim(0);
+
+    auto *runtime = context->runtime();
+    MemInfo mem_info(input->memory_type(), DataType::DT_FLOAT, {hw_size});
+    auto cache_buffer = runtime->ObtainBuffer(mem_info, RENT_SCRATCH);
+
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
+    float std_lowest = std::numeric_limits<float>::lowest();
+    float *cache_ptr = cache_buffer->mutable_data<float>();
+
+    for (index_t b_offset = 0;
+         b_offset < batch_size; b_offset += batch_stride) {
+      const float *input_b_base = input_data + b_offset;
+      float *output_b_base = output_data + b_offset;
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        const auto raw_step_size = step * sizeof(float);
+        for (index_t k = start; k < end; k += step) {
+          float *cache_k_ptr = cache_ptr + k;
+          for (index_t i = 0; i < step; ++i) {
+            cache_k_ptr[i] = std_lowest;
+          }
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          const float *input_c_base = input_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            const float *input_ptr = input_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              cache_k_ptr[i] = std::max(cache_k_ptr[i], input_ptr[i]);
+            }
+          }
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          const float *input_c_base = input_b_base + c_offset;
+          float *output_c_base = output_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            const float *input_ptr = input_c_base + k;
+            float *output_ptr = output_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              output_ptr[i] = std::exp(input_ptr[i] - cache_k_ptr[i]);
+            }
+          }
+        }
+
+        for (index_t k = start; k < end; k += step) {
+          memset(cache_ptr + k, 0, raw_step_size);
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          float *output_c_base = output_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            float *output_ptr = output_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              cache_k_ptr[i] += static_cast<float>(output_ptr[i]);
+            }
+          }
+        }
+
+        for (index_t c_offset = 0; c_offset < class_size;
+             c_offset += class_stride) {
+          float *output_c_base = output_b_base + c_offset;
+          for (index_t k = start; k < end; k += step) {
+            float *output_ptr = output_c_base + k;
+            float *cache_k_ptr = cache_ptr + k;
+            for (index_t i = 0; i < step; ++i) {
+              output_ptr[i] /= cache_k_ptr[i];
+            }
+          }
+        }
+
+        if (use_log_) {
+          for (index_t c_offset = 0; c_offset < class_size;
+               c_offset += class_stride) {
+            float *output_c_base = output_b_base + c_offset;
+            for (index_t k = start; k < end; k += step) {
+              float *output_ptr = output_c_base + k;
+              for (index_t i = 0; i < step; ++i) {
+                output_ptr[i] = std::log(output_ptr[i]);
+              }
+            }
+          }
+        }  // use_log_
+      }, 0, hw_size, hw_stride);
+    }
+
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  MaceStatus RunForNHWC(OpContext *context) {
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
+    float *output_data = output->mutable_data<float>();
+
+    MACE_CHECK(input->dim_size() >= 2, "The input->dim_size() >= 2 failed.");
+    index_t class_size = input->dim(input->dim_size() - 1);
+    index_t hw_stride = class_size;
+    index_t hw_size = std::accumulate(input->shape().begin() + 1,
+                                      input->shape().end() - 1,
+                                      hw_stride,
+                                      std::multiplies<index_t>());
+    index_t batch_stride = hw_size;
+    index_t batch_size = std::accumulate(input->shape().begin(),
+                                         input->shape().end(),
+                                         1,
+                                         std::multiplies<index_t>());
+
+    utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
+    const float *input_data = input->data<float>();
+    float std_lowest = std::numeric_limits<float>::lowest();
+    for (index_t b_offset = 0; b_offset < batch_size;
+         b_offset += batch_stride) {
+      const float *input_b_ptr = input_data + b_offset;
+      float *output_b_ptr = output_data + b_offset;
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        for (index_t k = start; k < end; k += step) {
+          const float *input_ptr = input_b_ptr + k;
+          float *output_ptr = output_b_ptr + k;
+          float max_val = std_lowest;
+          index_t c = 0;
+#if defined(MACE_ENABLE_NEON)
+#ifndef __aarch64__
+#define vmaxvq_f32(v)                 \
+    ({                                \
+        float __m = v[0];             \
+        for (int i = 1; i < 4; i++) { \
+            if (v[i] > __m)           \
+                __m = v[i];           \
+        }                             \
+        __m;                          \
+    })
+#endif
+          if (c + 3 < class_size) {
+            float32x4_t maxx4 = vld1q_f32(input_ptr + c);
+            c += 4;
+            for (; c + 3 < class_size; c += 4) {
+                maxx4 = vmaxq_f32(maxx4, vld1q_f32(input_ptr + c));
+            }
+            float val = vmaxvq_f32(maxx4);
+            if (val > max_val)
+                max_val = val;
+          }
+#endif
+          for (; c < class_size; ++c) {
+            max_val = std::max(max_val, input_ptr[c]);
+          }
+          c = 0;
+#if defined(MACE_ENABLE_NEON)
+          float32x4_t val = vld1q_dup_f32(&max_val);
+          for (; c + 3 < class_size; c += 4) {
+            vst1q_f32(output_ptr + c, vsubq_f32(vld1q_f32(input_ptr + c), val));
+          }
+#endif
+          for (; c < class_size; ++c) {
+            output_ptr[c] = -max_val + input_ptr[c];
+          }
+        }
+      }, 0, hw_size, hw_stride);
+    }
+
+    thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        for (index_t k = start; k < end; k += step) {
+          output_data[k] = std::exp(output_data[k]);
+        }
+    }, 0, batch_size, 1);
+
+    for (index_t b_offset = 0; b_offset < batch_size;
+         b_offset += batch_stride) {
+      float *output_b_ptr = output_data + b_offset;
+      thread_pool.Compute1D([=](index_t start, index_t end, index_t step) {
+        for (index_t k = start; k < end; k += step) {
+          float *output_ptr = output_b_ptr + k;
+          float sum = 0;
+          index_t c = 0;
+#if defined(MACE_ENABLE_NEON)
+          if (c + 3 < class_size) {
+            float32x4_t sumx4 = vld1q_f32(output_ptr);
+            c += 4;
+            for (; c + 3 < class_size; c += 4) {
+              sumx4 = vaddq_f32(sumx4, vld1q_f32(output_ptr + c));
+            }
+            sum += (sumx4[0] + sumx4[1] + sumx4[2] + sumx4[3]);
+          }
+#endif
+          for (; c < class_size; ++c) {
+            sum += output_ptr[c];
+          }
+          if (use_log_) {
+            for (index_t c = 0; c < class_size; ++c) {
+              float output = (static_cast<float>(output_ptr[c])) / sum;
+              output_ptr[c] = std::log(output);
+            }
+          } else {
+            index_t c = 0;
+#if defined(MACE_ENABLE_NEON)
+            float div = 1.f / sum;
+            for (; c + 3 < class_size; c += 4) {
+              vst1q_f32(output_ptr + c, vmulq_n_f32(vld1q_f32(output_ptr + c), div));
+            }
+#endif
+            for (; c < class_size; ++c) {
+              output_ptr[c] /= sum;
+            }
+          }
+        }  // k
+      }, 0, hw_size, hw_stride);
+    }  // b_offset
+
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  inline bool isNCHW(const Tensor *input) {
+    auto data_format = input->data_format();
+    auto dim_size = input->dim_size();
+    return dim_size == 4 && (has_df_ || data_format == DataFormat::NCHW);
+  }
+};
+
 #ifdef MACE_ENABLE_QUANTIZE
 static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
