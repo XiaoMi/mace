@@ -103,6 +103,12 @@ MaceStatus GetCPUCoresToUse(const std::vector<float> &cpu_max_freqs,
                 });
     } else if (policy == CPUAffinityPolicy::AFFINITY_HIGH_PERFORMANCE ||
         policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
+      for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
+        if (cpu_max_freqs[i] == 0) {
+          LOG(WARNING) << "CPU maybe isolated, don't set CPU affinity";
+          return MaceStatus::MACE_SUCCESS;
+        }
+      }
       std::sort(cpu_freq.begin(),
                 cpu_freq.end(),
                 [](const CPUFreq &lhs, const CPUFreq &rhs) {
@@ -350,7 +356,7 @@ void ThreadPool::Compute1D(const std::function<void(int64_t,
   }
 
   if (tile_size == 0) {
-    tile_size = std::max(static_cast<int64_t>(1), items / default_tile_count_);
+    tile_size = 1 + (items - 1) / default_tile_count_;
   }
 
   const int64_t step_tile_size = step * tile_size;
@@ -391,12 +397,11 @@ void ThreadPool::Compute2D(const std::function<void(const int64_t,
 
   if (tile_size0 == 0 || tile_size1 == 0) {
     if (items0 >= default_tile_count_) {
-      tile_size0 = items0 / default_tile_count_;
+      tile_size0 = 1 + (items0 - 1) / default_tile_count_;
       tile_size1 = items1;
     } else {
       tile_size0 = 1;
-      tile_size1 = std::max(static_cast<int64_t>(1),
-                            items1 * items0 / default_tile_count_);
+      tile_size1 = 1 + (items1 * items0 - 1) / default_tile_count_;
     }
   }
 
@@ -454,19 +459,18 @@ void ThreadPool::Compute3D(const std::function<void(const int64_t,
 
   if (tile_size0 == 0 || tile_size1 == 0 || tile_size2 == 0) {
     if (items0 >= default_tile_count_) {
-      tile_size0 = items0 / default_tile_count_;
+      tile_size0 = 1 + (items0 - 1) / default_tile_count_;
       tile_size1 = items1;
       tile_size2 = items2;
     } else {
       tile_size0 = 1;
       const int64_t items01 = items1 * items0;
       if (items01 >= default_tile_count_) {
-        tile_size1 = items01 / default_tile_count_;
+        tile_size1 = 1 + (items01 - 1) / default_tile_count_;
         tile_size2 = items2;
       } else {
         tile_size1 = 1;
-        tile_size2 = std::max(static_cast<int64_t>(1),
-                              items01 * items2 / default_tile_count_);
+        tile_size2 = 1 + (items01 * items2 - 1) / default_tile_count_;
       }
     }
   }

@@ -90,8 +90,10 @@ MaceStatus CpuRuntime::SetThreadsHintAndAffinityPolicy(
 
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   if (policy != CPUAffinityPolicy::AFFINITY_NONE) {
-    status = SchedSetAffinity(cores_to_use);
-    VLOG(1) << "Set affinity : " << MakeString(cores_to_use);
+    if (!cores_to_use.empty()) {
+      status = SchedSetAffinity(cores_to_use);
+      VLOG(1) << "Set affinity : " << MakeString(cores_to_use);
+    }
   }
 
   return status;
