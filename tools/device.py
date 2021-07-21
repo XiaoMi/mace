@@ -337,16 +337,16 @@ class DeviceWrapper:
             apu_storage_cpy = False
             if device_type == common.DeviceType.APU:
                 if accelerator_cache_policy == 1:
-                    if not apu_storage_file:
+                    if not accelerator_storage_file:
                         apu_storage_cpy = True
                         apu_src_file = model_tag + ".bin"
-                        apu_storage_file = os.path.join(self.data_dir,
-                                                        apu_src_file)
+                        accelerator_storage_file = os.path.join(self.data_dir,
+                                                                apu_src_file)
                 elif accelerator_cache_policy == 2:
-                    if os.path.exists(apu_binary_file):
-                        self.push(apu_binary_file, self.data_dir)
-                        apu_binary_file = os.path.join(
-                            self.data_dir, os.path.basename(apu_binary_file))
+                    if os.path.exists(accelerator_binary_file):
+                        self.push(accelerator_binary_file, self.data_dir)
+                        accelerator_binary_file = os.path.join(
+                            self.data_dir, os.path.basename(accelerator_binary_file))
                 for so_path in self.get_apu_so_paths():
                     self.push(so_path, self.data_dir)
 
