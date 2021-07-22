@@ -43,17 +43,36 @@ class ReduceKernel : public OpenCLReduceKernel {
       Tensor *output) override;
 
  private:
-  MaceStatus BuildReduceKernel(OpenclExecutor *executor);
-  MaceStatus GraduallyComputeReduce(
+  MaceStatus BuildReduceKernel(OpenclExecutor *executor,
+                               bool divisable_by_four = false);
+  MaceStatus GraduallyComputeReduceHW(
       OpContext *context, const index_t batch, const index_t channel_blocks,
       const index_t in_height, const index_t in_width,
       const index_t out_height, const index_t out_width,
       const index_t org_height, const index_t org_width,
-      const cl::Image *input, cl::Image *output);
+      const cl::Image *input, cl::Image *output,
+      std::vector<StatsFuture> *futures);
+  MaceStatus GraduallyComputeReduceC(
+      OpContext *context,
+      const index_t batch,
+      const index_t height,
+      const index_t width,
+      const index_t channels,
+      const index_t channel_blocks,
+      const index_t out_ch_blks,
+      const index_t in_ch_blks,
+      const cl::Image *input, cl::Image *output,
+      std::vector<StatsFuture> *futures);
+  MaceStatus ReduceHW(OpContext *context,
+                      const Tensor *input,
+                      Tensor *output);
+  MaceStatus ReduceC(OpContext *context,
+                      const Tensor *input,
+                      Tensor *output);
 
  private:
   ReduceType reduce_type_;
-  const std::vector<int> axis_;
+  std::vector<int> axis_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
