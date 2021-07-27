@@ -355,9 +355,9 @@ std::vector<int> ParseQcomDateFromVersion(const std::string &version) {
     month_date_year[2] = "20" + month_date_year[2];
   }
   std::vector<int> date_vec(3);
-  date_vec[0] = stoi(month_date_year[2]);  // year
-  date_vec[1] = stoi(month_date_year[0]);  // month
-  date_vec[2] = stoi(month_date_year[1]);  // date
+  date_vec[0] = atoi(month_date_year[2].c_str());  // year
+  date_vec[1] = atoi(month_date_year[0].c_str());  // month
+  date_vec[2] = atoi(month_date_year[1].c_str());  // date
   return date_vec;
 }
 

@@ -410,6 +410,9 @@ class Transformer(base_converter.ConverterInterface):
             elif op.type == 'Reshape' and len(op.output_shape) == 1 and \
                     op.output_shape[0].dims == \
                     self.get_tensor_shape(op.input[0]):
+                mace_check(len(op.output_shape[0].dims) != 0,
+                           "Output shape is null in op: %s(%s)"
+                           % (op.name, op.type))
                 print("Remove useless reshape: %s(%s)" % (op.name, op.type))
                 self.safe_remove_node(op,
                                       self._producer.get(op.input[0], None))
