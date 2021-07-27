@@ -329,7 +329,11 @@ class Transformer(base_converter.ConverterInterface):
             # When no replace op specified, we change the inputs of
             # its consumers to the input of the op. This handles the case
             # that the op is identity op and its input is a tensor.
-            mace_check(len(op.output) == 1 and len(op.input) == 1,
+            reshape_const_dim = op.type == MaceOp.Reshape.name and \
+                (len(op.input) == 1 or op.input[1] in self._consts)
+
+            mace_check(len(op.output) == 1 and len(op.input) == 1 or
+                       reshape_const_dim,
                        "cannot remove op that w/o replace op specified"
                        " and input/output length > 1\n" + str(op))
 
@@ -2598,40 +2602,49 @@ class Transformer(base_converter.ConverterInterface):
                     len(op.output_shape[0].dims) == 5:
                 perm = ConverterUtil.get_arg(op,
                                              MaceKeyword.mace_dims_str).ints
-                if [0, 1, 2, 4, 3] == list(perm):
-                    # Remove the following Reshape op
-                    reshape_op = self._consumers.get(op.output[0], None)
-                    if (reshape_op and
-                            len(reshape_op) == 1 and
-                            reshape_op[0].type == MaceOp.Reshape.name and
-                            len(reshape_op[0].output_shape[0].dims) == 4):
-                        print("Transform channel shuffle")
-                        output_shape = reshape_op[0].output_shape[0].dims
-                        self.safe_remove_node(reshape_op[0], op,
-                                              remove_input_tensor=True)
-                    else:
-                        return False
+                framework = ConverterUtil.framework_type(net)
+                if framework == FrameworkType.TENSORFLOW.value and \
+                        [0, 1, 2, 4, 3] == list(perm):
+                    group_dim = 4
+                elif framework == FrameworkType.ONNX.value and \
+                        [0, 2, 1, 3, 4] == list(perm):
+                    group_dim = 2
+                else:
+                    continue
 
-                    # Change Transpose op to ChannelShuffle
-                    op.type = MaceOp.ChannelShuffle.name
-                    del op.arg[:]
-                    group_arg = op.arg.add()
-                    group_arg.name = MaceKeyword.mace_group_str
-                    group_arg.i = op.output_shape[0].dims[4]
-                    op.output_shape[0].dims[:] = output_shape
+                # Remove the following Reshape op
+                reshape_op = self._consumers.get(op.output[0], None)
+                if (reshape_op and
+                        len(reshape_op) == 1 and
+                        reshape_op[0].type == MaceOp.Reshape.name and
+                        len(reshape_op[0].output_shape[0].dims) == 4):
+                    print("Transform channel shuffle")
+                    output_shape = reshape_op[0].output_shape[0].dims
+                    self.safe_remove_node(reshape_op[0], op,
+                                          remove_input_tensor=True)
+                else:
+                    continue
 
-                    # Remove previous Reshape op
-                    producer_op = self._producer.get(op.input[0], None)
-                    if producer_op:
-                        if producer_op.type == MaceOp.Reshape.name:
-                            self.safe_remove_node(producer_op, None)
-                        elif producer_op.type == MaceOp.Stack.name:
-                            print("Change channel shuffle stack to concat")
-                            # Change previous Stack op to Concat if any
-                            producer_op.type = MaceOp.Concat.name
-                            producer_op.output_shape[0].dims[:] = output_shape
+                # Change Transpose op to ChannelShuffle
+                op.type = MaceOp.ChannelShuffle.name
+                del op.arg[:]
+                group_arg = op.arg.add()
+                group_arg.name = MaceKeyword.mace_group_str
+                group_arg.i = op.output_shape[0].dims[group_dim]
+                op.output_shape[0].dims[:] = output_shape
 
-                    return True
+                # Remove previous Reshape op
+                producer_op = self._producer.get(op.input[0], None)
+                if producer_op:
+                    if producer_op.type == MaceOp.Reshape.name:
+                        self.safe_remove_node(producer_op, None)
+                    elif producer_op.type == MaceOp.Stack.name:
+                        print("Change channel shuffle stack to concat")
+                        # Change previous Stack op to Concat if any
+                        producer_op.type = MaceOp.Concat.name
+                        producer_op.output_shape[0].dims[:] = output_shape
+
+                return True
 
     def quantize_specific_ops_only(self):
         """
