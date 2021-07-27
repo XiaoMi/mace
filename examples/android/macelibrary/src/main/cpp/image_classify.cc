@@ -41,7 +41,7 @@ struct MaceContext {
   std::shared_ptr<mace::OpenclContext> gpu_context;
   std::shared_ptr<mace::MaceEngine> engine;
   std::string model_name;
-  mace::DeviceType device_type = mace::DeviceType::CPU;
+  mace::RuntimeType runtime_type = mace::RuntimeType::RT_CPU;
   std::map<std::string, ModelInfo> model_infos = {
       {"mobilenet_v1", {"input", "MobilenetV1/Predictions/Reshape_1",
                             {1, 224, 224, 3}, {1, 1001}}},
@@ -54,15 +54,15 @@ struct MaceContext {
   };
 };
 
-mace::DeviceType ParseDeviceType(const std::string &device) {
+mace::RuntimeType ParseDeviceType(const std::string &device) {
   if (device.compare("CPU") == 0) {
-    return mace::DeviceType::CPU;
+    return mace::RuntimeType::RT_CPU;
   } else if (device.compare("GPU") == 0) {
-    return mace::DeviceType::GPU;
+    return mace::RuntimeType::RT_OPENCL;
   } else if (device.compare("HEXAGON") == 0) {
-    return mace::DeviceType::HEXAGON;
+    return mace::RuntimeType::RT_HEXAGON;
   } else {
-    return mace::DeviceType::CPU;
+    return mace::RuntimeType::RT_CPU;
   }
 }
 
@@ -115,12 +115,13 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
   // get device
   const char *device_ptr = env->GetStringUTFChars(device, nullptr);
   if (device_ptr == nullptr) return JNI_ERR;
-  mace_context.device_type = ParseDeviceType(device_ptr);
+  mace_context.runtime_type = ParseDeviceType(device_ptr);
   env->ReleaseStringUTFChars(device, device_ptr);
 
   // create MaceEngineConfig
   mace::MaceStatus status;
   mace::MaceEngineConfig config;
+  config.SetRuntimeType(mace_context.runtime_type);
   status = config.SetCPUThreadPolicy(
       num_threads,
       static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy));
@@ -130,7 +131,7 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
                         "threads: %d, cpu: %d",
                         num_threads, cpu_affinity_policy);
   }
-  if (mace_context.device_type == mace::DeviceType::GPU) {
+  if (mace_context.runtime_type == mace::RuntimeType::RT_OPENCL) {
     config.SetGPUContext(mace_context.gpu_context);
     config.SetGPUHints(
         static_cast<mace::GPUPerfHint>(gpu_perf_hint),
@@ -144,7 +145,7 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
   __android_log_print(ANDROID_LOG_INFO,
                       "image_classify attrs",
                       "device: %d",
-                      mace_context.device_type);
+                      mace_context.runtime_type);
 
   //  parse model name
   const char *model_name_ptr = env->GetStringUTFChars(model_name_str, nullptr);
