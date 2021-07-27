@@ -1099,7 +1099,9 @@ void RegisterReduce(OpRegistry *op_registry) {
                 auto axis =
                     ProtoArgHelper::GetRepeatedArgs<OperatorDef, int>(
                         *op, "axis");
-                if (axis.size() != 2 || axis[0] != 1 || axis[1] != 2) {
+                bool reduce_hw = (axis.size() == 2) && (axis[0] == 1) && (axis[1] == 2);
+                bool reduce_c = (axis.size() == 1) && (axis[0] == 3);
+                if (!(reduce_hw || reduce_c)) {
                   return {RuntimeType::RT_CPU};
                 }
                 auto tensor_shape_info = context->tensor_shape_info();

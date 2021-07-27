@@ -54,7 +54,7 @@ cp -rf include/mace $INCLUDE_DIR
 cp -rf build/mobilenet/include/mace/public/*.h $INCLUDE_DIR/mace/public/
 cp -rf build/mobilenet/model $LIBRARY_DIR
 
-bazel build --config android --config optimization $BAZEL_LIBMACE_TARGET --define neon=true --define opencl=true --define quantize=true --cpu=$TARGET_ABI
+bazel build --config android --config optimization $BAZEL_LIBMACE_TARGET --define cpu_enabled=true --define neon=true --define opencl=true --define quantize=true --cpu=$TARGET_ABI
 cp -rf $BAZEL_GEN_LIBMACE_PATH $LIBMACE_DIR
 
 if [ $MACE_LINK_TYPE == "dynamic" ]; then
