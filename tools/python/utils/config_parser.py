@@ -490,6 +490,7 @@ def find_output_tensors_info(subgraphs, tensor_names):
     tensors_info[ModelKeys.check_tensors] = []
     tensors_info[ModelKeys.check_shapes] = []
     for tensor_name in tensor_names:
+        tensor_name = str(tensor_name)
         i = name_id[tensor_name]
         tensors_info[ModelKeys.output_tensors].append(tensor_name)
         tensors_info[ModelKeys.output_shapes].append(all_tensor_shapes[i])
