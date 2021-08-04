@@ -180,7 +180,7 @@ DEFINE_int32(apu_preference_hint, 1,
 DEFINE_int32(opencl_cache_reuse_policy,
             1,
             "0:NONE/1:REUSE_SAME_GPU");
-DEFINE_int32(accelerator_cache_policy, 0, "0:NONE/1:STORE/2:LOAD");
+DEFINE_int32(accelerator_cache_policy, 0, "0:NONE/1:STORE/2:LOAD/3:APU_LOAD_OR_STORE");
 DEFINE_bool(benchmark, false, "enable benchmark op");
 DEFINE_bool(fake_warmup, false, "enable fake warmup");
 

@@ -43,10 +43,8 @@ bool ApuWrapper::Init(const NetDef &net_def, unsigned const char *model_data,
     return false;
   }
   frontend = new neuron::NeuronDelegateKernel(neuron_, runtime_);
-  MACE_CHECK(!(load & store),
-            "Should not load and store the model simultaneously.");
-  bool ret = frontend->Init(&net_def, model_data, load)
-          && frontend->Prepare(file_name, preference_hint, load, store);
+  bool ret = frontend->Init(&net_def, model_data, file_name,
+                            preference_hint, load, store);
   if (!ret) {
     LOG(ERROR) << "ApuWrapper init failed.";
   } else {

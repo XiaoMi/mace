@@ -342,7 +342,7 @@ class DeviceWrapper:
                         apu_src_file = model_tag + ".bin"
                         accelerator_storage_file = os.path.join(self.data_dir,
                                                                 apu_src_file)
-                elif accelerator_cache_policy == 2:
+                elif accelerator_cache_policy in (2, 3):
                     if len(accelerator_binary_file) == 0:
                         apu_src_file = model_tag + ".bin"
                         accelerator_binary_file = '{}/apu_init_cache/{}'.format(mace_model_dir, apu_src_file)

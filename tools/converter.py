@@ -1297,7 +1297,7 @@ def parse_args():
         "--accelerator_cache_policy",
         type=int,
         default=DefaultValues.accelerator_cache_policy,
-        help="0:NONE/1:STORE/2:LOAD")
+        help="0:NONE/1:STORE/2:LOAD/3:APU_LOAD_OR_STORE")
     run.add_argument(
         "--accelerator_binary_file",
         type=str,

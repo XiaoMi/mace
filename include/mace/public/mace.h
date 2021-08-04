@@ -158,10 +158,13 @@ enum HexagonPerformanceType {
 // STORE: Compile model using the information from net_def and model_data and
 // store the compiled model.
 // LOAD: Get input/output information from net_def and load pre-compiled model.
+// LOAD_OR_STORE: Try LOAD first. If the pre-compiled model is outdated,
+//                or absent, then STORE.
 enum AcceleratorCachePolicy {
   ACCELERATOR_CACHE_NONE = 0,
   ACCELERATOR_CACHE_STORE = 1,
   ACCELERATOR_CACHE_LOAD = 2,
+  APU_CACHE_LOAD_OR_STORE = 3,
 };
 
 // APU execution preferences.
