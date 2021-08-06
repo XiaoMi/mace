@@ -45,7 +45,7 @@ Here we use the mobilenet-v2 model as an example.
         cd path/to/mace
         # Build library
         # output lib path: build/lib
-        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-quantize][-static]
+        bash tools/bazel_build_standalone_lib.sh [-abi=abi][-runtimes=rt1,rt2,...][-quantize][-static][-debug][-asan]
 
     .. note::
 
@@ -55,6 +55,7 @@ Here we use the mobilenet-v2 model as an example.
         - Omit the `-static` option if a shared library is desired instead of a static one. By default, a shared library is built.
         - See 'bash tools/bazel_build_standalone_lib.sh -help' for detailed information.
         - DO respect the hyphens ('-') and the underscores ('_') in the ABI.
+        - Omit the debug options such as `-debug` and `-asan` if a release version is desired.
 
 
     4. Convert the pre-trained mobilenet-v2 model to MACE format model.

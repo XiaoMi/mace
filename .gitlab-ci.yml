@@ -70,13 +70,15 @@ bazel_build:
     - LIBMACE32_FULL_SIZE=`stat -c%s build/lib/armeabi-v7a/libmace.so`
     - if (( LIBMACE32_FULL_SIZE > 1500000 )) ; then echo "The libmace.so size too large(LIBMACE32_FULL_SIZE)"; exit 1; fi
     - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,dsp
-    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,apu
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,dsp --debug --asan
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu
     - LIBMACE64_FULL_SIZE=`stat -c%s build/lib/arm64-v8a/libmace.so`
       - if (( LIBMACE64_FULL_SIZE > 2300000 )) ; then echo "The libmace.so size too large(LIBMACE64_FULL_SIZE)"; exit 1; fi
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,dsp
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,apu
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,dsp --debug --asan
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,apu --debug --asan
     - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu
     - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu,gpu
     - bash tools/bazel_build_standalone_lib.sh --abi=aarch64_linux_gnu --runtimes=cpu
@@ -86,11 +88,13 @@ bazel_build:
     - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu --static
     - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu --static
     - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,dsp --static
-    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,apu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=armeabi-v7a --runtimes=cpu,gpu,dsp --static --debug --asan
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu --static
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu --static
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,dsp --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,dsp --static --debug --asan
     - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,apu --static
+    - bash tools/bazel_build_standalone_lib.sh --abi=arm64-v8a --runtimes=cpu,gpu,apu --static --debug --asan
     - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu --static
     - bash tools/bazel_build_standalone_lib.sh --abi=arm_linux_gnueabihf --runtimes=cpu,gpu --static
     - bash tools/bazel_build_standalone_lib.sh --abi=aarch64_linux_gnu --runtimes=cpu --static
