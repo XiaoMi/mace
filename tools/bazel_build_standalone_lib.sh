@@ -45,6 +45,8 @@ enable_qnn=false
 enable_quantize=false
 enable_bfloat16=false
 enable_rpcmem=true
+enable_debug=false
+enable_asan=false
 static_lib=false
 symbol_hidden=
 runtime_label=""
@@ -110,6 +112,12 @@ for opt in "${@}";do
     static|-static|--static)
       static_lib=true
       ;;
+    debug|-debug|--debug)
+      enable_debug=true
+      ;;
+    asan|-asan|--asan)
+      enable_asan=true
+      ;;
     quantize|-quantize|--quantize)
       enable_quantize=true
       ;;
@@ -140,6 +148,16 @@ if [[ "${static_lib}" == true ]];then
   bazel_dir=bazel-genfiles
 fi
 
+debug_str=""
+if [[ "${enable_debug}" == true ]];then
+  debug_str="debug"
+fi
+
+asan_str=""
+if [[ "${enable_asan}" == true ]];then
+  asan_str="asan"
+fi
+
 if [[ "${abi}" == host || "${abi}" == HOST ]];then
   abi=linux-x86-64
 fi
@@ -148,15 +166,15 @@ fi
 rm -rf "${LIB_DIR}"/"${abi}"
 mkdir "${LIB_DIR}"/"${abi}"
 # build the target library
-build_msg="build "${lib_label}" lib for "${abi}""
+build_msg="build "${lib_label}" lib for "${abi}" "${debug_str}" "${asan_str}""
 if [[ "${abi}" != linux-x86-64 ]];then
   build_msg=""${build_msg}" + "${runtime_label}""
 fi
 echo "-------------${build_msg}------------"
 case "${abi}" in
   arm_linux_gnueabihf|aarch64_linux_gnu)
-    bazel build --config "${abi}" \
-    --config optimization mace/libmace:libmace_"${lib_type}"\
+    bazel build --config "${abi}" --config "${debug_str}" --config "${asan_str}" \
+    --config optimization mace/libmace:libmace_"${lib_type}" \
     --define cpu_enabled="${enable_cpu}" \
     --define neon="${enable_neon}" \
     --define opencl="${enable_gpu}" \
@@ -164,8 +182,8 @@ case "${abi}" in
     --define bfloat16="${enable_bfloat16}"
     ;;
   linux-x86-64)
-    bazel build mace/libmace:libmace_"${lib_type}" --config linux --config \
-    optimization
+    bazel build mace/libmace:libmace_"${lib_type}" --config linux \
+    --config "${debug_str}" --config "${asan_str}" --config optimization \
     cp "${bazel_dir}"/mace/libmace/libmace"${lib_suffix}" "${LIB_DIR}"/"${abi}"/
     ;;
   *)
@@ -177,7 +195,8 @@ case "${abi}" in
         echo "The apu version is ${apu_version}"
         set -e
     fi
-    bazel build --config android --config optimization \
+    bazel build --config android --config "${debug_str}" \
+    --config "${asan_str}" --config optimization \
     mace/libmace:libmace_"${lib_type}" ${symbol_hidden} \
     --define cpu_enabled="${enable_cpu}" \
     --define neon="${enable_neon}" --define hta="${enable_hta}" \
