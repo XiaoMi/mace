@@ -38,6 +38,7 @@ NetDefExcludeFields = {
         'padding',
         'node_input',
         'out_max_byte_size',
+        'max_output_shape',
     ],
     'NetDef': [
         'name',
