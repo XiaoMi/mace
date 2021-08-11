@@ -43,7 +43,7 @@ BaseEngine::BaseEngine(const MaceEngineConfig &config)
       model_data_(nullptr), op_registry_(new OpRegistry),
       op_delegator_registry_(new OpDelegatorRegistry),
       config_impl_(config.impl_) {
-#ifdef MACE_ENABLE_RPCMEM
+#ifndef MACE_ENABLE_RPCMEM
   runtime_context_ = make_unique<IonRuntimeContext>(
       thread_pool_.get(), rpcmem_factory::CreateRpcmem());
 #else
