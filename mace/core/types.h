@@ -87,7 +87,8 @@ enum RuntimeSubType {  // should not > RT_SUB_MAX
   RT_SUB_REF = 0,
   RT_SUB_ION = 1,
   RT_SUB_WITH_OPENCL = 2,
-
+  RT_SUB_QC_ION = 3,
+  RT_SUB_MTK_ION = 4,
   RT_SUB_MAX = 65535,
 };
 

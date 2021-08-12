@@ -51,6 +51,7 @@ enum OpenCLVersion {
 
 enum IONType {
   QUALCOMM_ION,
+  MTK_ION,
   NONE_ION,
 };
 
@@ -84,6 +85,7 @@ class OpenclExecutor {
   void SetOpenclContext(std::shared_ptr<OpenclContext> opencl_context);
   cl::Context &context();
   cl::Device &device();
+  cl::Platform &platform();
   // Warning: don't use cl::CommandQueue&, will lead to lower perf on MTK GPU.
   cl::CommandQueue command_queue();
   GPUType gpu_type() const;
@@ -147,6 +149,7 @@ class OpenclExecutor {
   // OpenCL library.
   std::shared_ptr<cl::Context> context_;
   std::shared_ptr<cl::Device> device_;
+  cl::Platform platform_;
   std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
   std::set<std::string> programs_need_store_;
