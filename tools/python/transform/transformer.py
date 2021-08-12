@@ -970,10 +970,7 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if (((op.type == MaceOp.Conv2D.name
                   or op.type == MaceOp.DepthwiseConv2d.name
-                  or op.type == MaceOp.FullyConnected.name
-                  or (op.type == MaceOp.MatMul.name
-                      and self._option.device == DeviceType.CPU.value
-                      and not self._option.quantize))
+                  or op.type == MaceOp.FullyConnected.name)
                  and len(op.input) == 2)
                 or (op.type == MaceOp.Deconv2D.name
                     and ((ConverterUtil.get_arg(
@@ -1658,6 +1655,9 @@ class Transformer(base_converter.ConverterInterface):
                     ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
                         output_dims, ConverterUtil.data_format(op))
                     transposable = (in_b == ou_b and in_c == ou_c)
+                    if self._option.device == DeviceType.HEXAGON.value or \
+                            self._option.device == DeviceType.HTP.value:
+                        transposable = True
         elif op.type == MaceOp.Squeeze:
             input_op = self._producer[op.input[0]]
             if len(input_op.output_shape) == 0 or len(op.output_shape) == 0:
