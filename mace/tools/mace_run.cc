@@ -302,6 +302,7 @@ void PrintRuntimes(const std::vector<RuntimeType> &runtime_types) {
       {RT_OPENCL, "GPU"},
       {RT_HEXAGON, "DSP"},
       {RT_HTA, "HTA"},
+      {RT_HTP, "HTP"},
       {RT_APU, "APU"},
   };
   std::vector<std::string> runtime_strings(runtime_types.size());

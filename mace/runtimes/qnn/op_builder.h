@@ -51,7 +51,7 @@ class OpBuilder {
         op_package_name_(QNN_OP_PACKAGE_NAME_QTI_AISW) {}
   virtual ~OpBuilder() = default;
 
-  virtual MaceStatus BuildOp(const OperatorDef &op) = 0;
+  virtual MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) = 0;
 
   const std::vector<Qnn_Param_t> &GetParams() const { return params_; }
   const std::vector<Qnn_Tensor_t> &GetInputs() const { return inputs_; }
@@ -89,10 +89,12 @@ class GraphBuilder {
 
   void Init(const NetDef *net_def,
             Qnn_GraphHandle_t graph,
-            Runtime *runtime) {
+            Runtime *runtime,
+            DataType quantized_type) {
     net_def_ = net_def;
     graph_ = graph;
     runtime_ = runtime;
+    quantized_type_ = quantized_type;
   }
   Qnn_Tensor_t CreateParamTensor(
       const std::vector<uint32_t> &tensor_dims,
@@ -114,19 +116,15 @@ class GraphBuilder {
   void AddConstTensors(unsigned const char *model_data,
                        const index_t model_data_size);
   void AddModelInputs(std::vector<QnnInOutInfo> *infos,
-                      std::vector<Qnn_Tensor_t> *tensors,
-                      DataType quantized_type);
+                      std::vector<Qnn_Tensor_t> *tensors);
   void AddModelOutputs(std::vector<QnnInOutInfo> *infos,
-                       std::vector<Qnn_Tensor_t> *tensors,
-                       DataType quantized_type);
+                       std::vector<Qnn_Tensor_t> *tensors);
   void AddModelInputsFromOfflineCache(std::vector<QnnInOutInfo> *infos,
                                       std::vector<Qnn_Tensor_t> *tensors,
-                                      const uint32_t *ids,
-                                      DataType quantized_type);
+                                      const uint32_t *ids);
   void AddModelOutputsFromOfflineCache(std::vector<QnnInOutInfo> *infos,
                                        std::vector<Qnn_Tensor_t> *tensors,
-                                       const uint32_t *ids,
-                                       DataType quantized_type);
+                                       const uint32_t *ids);
   void AddOpsOutputs();
   void AddOps();
 
@@ -151,6 +149,7 @@ class GraphBuilder {
   Qnn_GraphHandle_t graph_ = nullptr;
   TensorInfoMap tensor_map_;
   Runtime* runtime_;
+  DataType quantized_type_;
 };
 
 namespace qnn {

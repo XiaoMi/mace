@@ -362,8 +362,7 @@ void GraphBuilder::AddGraphNode(const OpBuilder &op_builder) {
 }
 
 void GraphBuilder::AddModelInputs(std::vector<QnnInOutInfo> *infos,
-                                  std::vector<Qnn_Tensor_t> *tensors,
-                                  DataType quantized_type) {
+                                  std::vector<Qnn_Tensor_t> *tensors) {
   tensors->resize(net_def_->input_info_size());
   for (int i = 0; i < net_def_->input_info_size(); ++i) {
     const auto &input_info = net_def_->input_info(i);
@@ -372,7 +371,7 @@ void GraphBuilder::AddModelInputs(std::vector<QnnInOutInfo> *infos,
     std::vector<index_t> mace_shape(input_info.dims().begin(),
                                     input_info.dims().end());
 
-    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type,
+    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type_,
                                                 runtime_->GetBaseMemoryType());
     quantized_tensor->Resize(mace_shape);
     quantized_tensor->SetScale(input_info.scale());
@@ -383,7 +382,7 @@ void GraphBuilder::AddModelInputs(std::vector<QnnInOutInfo> *infos,
                         std::move(quantized_tensor));
     Tensor::MappingGuard input_guard((*infos)[i].quantized_tensor.get());
 
-    Qnn_DataType_t qnn_quantized_type = quantized_type == DT_UINT16 ?
+    Qnn_DataType_t qnn_quantized_type = quantized_type_ == DT_UINT16 ?
                                         QNN_DATATYPE_UFIXED_POINT_16 :
                                         QNN_DATATYPE_UFIXED_POINT_8;
     CreateGraphTensor(input_info.name(), 0, QNN_TENSOR_TYPE_APP_WRITE,
@@ -395,8 +394,7 @@ void GraphBuilder::AddModelInputs(std::vector<QnnInOutInfo> *infos,
 }
 
 void GraphBuilder::AddModelOutputs(std::vector<QnnInOutInfo> *infos,
-                                   std::vector<Qnn_Tensor_t> *tensors,
-                                   DataType quantized_type) {
+                                   std::vector<Qnn_Tensor_t> *tensors) {
   tensors->resize(net_def_->output_info_size());
   for (int i = 0; i < net_def_->output_info_size(); ++i) {
     const auto &output_info = net_def_->output_info(i);
@@ -405,7 +403,7 @@ void GraphBuilder::AddModelOutputs(std::vector<QnnInOutInfo> *infos,
     std::vector<index_t> mace_shape(output_info.dims().begin(),
                                     output_info.dims().end());
 
-    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type,
+    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type_,
                                                 runtime_->GetBaseMemoryType());
     quantized_tensor->Resize(mace_shape);
     quantized_tensor->SetScale(output_info.scale());
@@ -416,7 +414,7 @@ void GraphBuilder::AddModelOutputs(std::vector<QnnInOutInfo> *infos,
                         std::move(quantized_tensor));
     Tensor::MappingGuard output_guard((*infos)[i].quantized_tensor.get());
 
-    Qnn_DataType_t qnn_quantized_type = quantized_type == DT_UINT16 ?
+    Qnn_DataType_t qnn_quantized_type = quantized_type_ == DT_UINT16 ?
                                         QNN_DATATYPE_UFIXED_POINT_16 :
                                         QNN_DATATYPE_UFIXED_POINT_8;
     CreateGraphTensor(output_info.name(), 0, QNN_TENSOR_TYPE_APP_READ,
@@ -430,8 +428,7 @@ void GraphBuilder::AddModelOutputs(std::vector<QnnInOutInfo> *infos,
 void GraphBuilder::AddModelInputsFromOfflineCache(
     std::vector<QnnInOutInfo> *infos,
     std::vector<Qnn_Tensor_t> *tensors,
-    const uint32_t *ids,
-    DataType quantized_type) {
+    const uint32_t *ids) {
   tensors->resize(net_def_->input_info_size());
   for (int i = 0; i < net_def_->input_info_size(); ++i) {
     const auto &input_info = net_def_->input_info(i);
@@ -440,7 +437,7 @@ void GraphBuilder::AddModelInputsFromOfflineCache(
     std::vector<index_t> mace_shape(input_info.dims().begin(),
                                 input_info.dims().end());
 
-    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type,
+    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type_,
                                                 runtime_->GetBaseMemoryType());
     quantized_tensor->Resize(mace_shape);
     quantized_tensor->SetScale(input_info.scale());
@@ -451,7 +448,7 @@ void GraphBuilder::AddModelInputsFromOfflineCache(
                         std::move(quantized_tensor));
     Tensor::MappingGuard input_guard((*infos)[i].quantized_tensor.get());
 
-    Qnn_DataType_t qnn_quantized_type = quantized_type == DT_UINT16 ?
+    Qnn_DataType_t qnn_quantized_type = quantized_type_ == DT_UINT16 ?
                                         QNN_DATATYPE_UFIXED_POINT_16 :
                                         QNN_DATATYPE_UFIXED_POINT_8;
     Qnn_Tensor_t tensor_info = {
@@ -472,11 +469,11 @@ void GraphBuilder::AddModelInputsFromOfflineCache(
     (*tensors)[i] = tensor_info;
   }
 }
+
 void GraphBuilder::AddModelOutputsFromOfflineCache(
     std::vector<QnnInOutInfo> *infos,
     std::vector<Qnn_Tensor_t> *tensors,
-    const uint32_t *ids,
-    DataType quantized_type) {
+    const uint32_t *ids) {
   tensors->resize(net_def_->output_info_size());
   for (int i = 0; i < net_def_->output_info_size(); ++i) {
     const auto &output_info = net_def_->output_info(i);
@@ -484,7 +481,7 @@ void GraphBuilder::AddModelOutputsFromOfflineCache(
                                 output_info.dims().end());
     std::vector<index_t> mace_shape(output_info.dims().begin(),
                                 output_info.dims().end());
-    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type,
+    auto quantized_tensor = make_unique<Tensor>(runtime_, quantized_type_,
                                                 runtime_->GetBaseMemoryType());
     quantized_tensor->Resize(mace_shape);
     quantized_tensor->SetScale(output_info.scale());
@@ -495,7 +492,7 @@ void GraphBuilder::AddModelOutputsFromOfflineCache(
                         std::move(quantized_tensor));
     Tensor::MappingGuard output_guard((*infos)[i].quantized_tensor.get());
 
-    Qnn_DataType_t qnn_quantized_type = quantized_type == DT_UINT16 ?
+    Qnn_DataType_t qnn_quantized_type = quantized_type_ == DT_UINT16 ?
                                         QNN_DATATYPE_UFIXED_POINT_16 :
                                         QNN_DATATYPE_UFIXED_POINT_8;
     Qnn_Tensor_t tensor_info = {
@@ -515,6 +512,7 @@ void GraphBuilder::AddModelOutputsFromOfflineCache(
     (*tensors)[i] = tensor_info;
   }
 }
+
 void GraphBuilder::AddConstTensors(unsigned const char *model_data,
                                    const index_t model_data_size) {
   MACE_CHECK(model_data != nullptr && model_data_size > 0);
@@ -537,6 +535,7 @@ void GraphBuilder::AddConstTensors(unsigned const char *model_data,
                       tensor_dims, tensor_data, tensor_data_len);
   }
 }
+
 void GraphBuilder::AddOpsOutputs() {
   for (const auto &op : net_def_->op()) {
     if (op.type() == "Quantize") {
@@ -566,6 +565,7 @@ void GraphBuilder::AddOpsOutputs() {
     }
   }
 }
+
 void GraphBuilder::AddOps() {
   qnn::OpRegistry registry;
   qnn::RegisterAllOps(&registry);
@@ -580,7 +580,7 @@ void GraphBuilder::AddOps() {
 
     qnn::OpCreator &creator = registry.GetOpCreator(op.type());
     auto op_builder = creator(this);
-    op_builder->BuildOp(op);
+    op_builder->BuildOp(op, quantized_type_);
     AddGraphNode(*op_builder);
   }
 }

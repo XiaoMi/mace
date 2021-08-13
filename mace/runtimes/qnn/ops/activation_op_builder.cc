@@ -15,6 +15,7 @@
 #include "mace/runtimes/qnn/op_builder.h"
 
 #include "mace/core/proto/arg_helper.h"
+#include "mace/core/quantize.h"
 
 namespace mace {
 const char *MapActivationTypeToQnn(const std::string &type) {
@@ -26,6 +27,8 @@ const char *MapActivationTypeToQnn(const std::string &type) {
     return QNN_OP_TANH;
   } else if (type == "RELUX") {
     return QNN_OP_RELU_MIN_MAX;
+  } else if (type == "LEAKYRELU") {
+    return QNN_OP_PRELU;
   } else {
     LOG(FATAL) << "Unknown activation type: " << type;
     return nullptr;
@@ -36,14 +39,11 @@ class ActivationOpBuilder : public OpBuilder {
   explicit ActivationOpBuilder(GraphBuilder *graph_builder)
       : OpBuilder(graph_builder) {}
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
     auto type = ProtoArgHelper::GetOptionalArg<OperatorDef, std::string>(
             op, "activation", "NOOP");
     SetOpType(MapActivationTypeToQnn(type));
     SetOpName(op.name().c_str());
-    if (type == "RELU") {
-      // SetOpPackageName("examples.OpPackage");
-    }
     if (type == "RELUX") {
       AddScalarParam(
         QNN_OP_RELU_MIN_MAX_PARAM_MIN_VALUE,
@@ -54,9 +54,32 @@ class ActivationOpBuilder : public OpBuilder {
         QNN_OP_RELU_MIN_MAX_PARAM_MAX_VALUE,
         {QNN_DATATYPE_FLOAT_32, .floatValue = static_cast<float>(max_value)});
     }
-    AddInput(op.input(0));
+    if (type == "LEAKYRELU") {
+      std::vector<uint32_t> coeff_dims{1};
+      auto coeff = ProtoArgHelper::GetOptionalArg<OperatorDef, float>(
+            op, "activation_coefficient", 0.01);
+      float scale = 0;
+      int32_t zero = 0;
+      const std::string coeff_input_name = op.name() + "_coeff";
+      if (quantized_type == DT_UINT8) {
+        uint8_t quantized_coeff = Quantize<uint8_t>(coeff, &scale, &zero);
+        graph_builder_->CreateGraphTensor(
+            coeff_input_name, 0, QNN_TENSOR_TYPE_STATIC,
+            QNN_DATATYPE_UFIXED_POINT_8, scale, zero, coeff_dims,
+            &quantized_coeff, 1);
+      } else {
+        uint16_t quantized_coeff = Quantize<uint16_t>(coeff, &scale, &zero);
+        graph_builder_->CreateGraphTensor(
+            coeff_input_name, 0, QNN_TENSOR_TYPE_STATIC,
+            QNN_DATATYPE_UFIXED_POINT_16, scale, zero, coeff_dims,
+            &quantized_coeff, 1);
+      }
+      AddInput(op.input(0));
+      AddInput(coeff_input_name);
+    } else {
+      AddInput(op.input(0));
+    }
     AddOutput(op.output(0));
-
     return MaceStatus::MACE_SUCCESS;
   }
 };
