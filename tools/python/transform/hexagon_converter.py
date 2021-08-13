@@ -527,7 +527,7 @@ class HexagonConverter(base_converter.ConverterInterface):
                 op.type == HexagonOp.QuantizedSigmoid_8.name:
             op.max_output_shape[0].dims[1] += 128
             op.max_output_shape[0].dims[2] += 128
-            op.max_output_shape[0].dims[3] += 1
+            op.max_output_shape[0].dims[3] += 64
 
         if not op.HasField("padding"):
             op.padding = padding_mode[PaddingMode.NA]
