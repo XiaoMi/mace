@@ -95,7 +95,6 @@ void ArmPoolingInt8Op::AvgPooling(const mifloat *input,
   pool_params.padding.h = pad_hw[0];
   pool_params.padding.w = pad_hw[1];
 
-  MACE_ASSERT(input_dims_[0] == 1);
 
   cmsis_nn_dims input_dims;
   input_dims.n = input_dims_[0];

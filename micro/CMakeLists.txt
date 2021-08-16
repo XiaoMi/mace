@@ -16,6 +16,7 @@ option(MACE_MICRO_ENABLE_TESTS "Whether to enable Mace Micro tests"         OFF)
 option(MACE_MICRO_ENABLE_EXAMPLES "Whether to enable Mace Micro examples"         OFF)
 option(MACE_MICRO_ENABLE_TOOLS "Whether to enable Mace Micro tools" OFF)
 option(MACE_MICRO_ENABLE_XTENSA "Whether to enable xa nnlib engine" OFF)
+option(MACE_MICRO_ENABLE_ASAN "Whether to enable clang asan" OFF)
 
 if(MACE_MICRO_ARM_NONE)
   add_definitions(-DMACE_MICRO_ARM_NONE)
@@ -26,7 +27,12 @@ if(MACE_MICRO_ENABLE_BFLOAT16)
 endif()
 
 if(HEXAGON)
+  option(MACE_MICRO_ENABLE_HEXAGON_HAP "Whether to enable hexagon hap" ON)
   add_definitions(-DMACE_MICRO_ENABLE_HEXAGON)
+endif()
+
+if(MACE_MICRO_ENABLE_HEXAGON_HAP)
+  add_definitions(-DMACE_MICRO_ENABLE_HEXAGON_HAP)
 endif()
 
 if(MACE_MICRO_NDEBUG)
@@ -35,6 +41,11 @@ endif()
 
 if(MACE_MICRO_GCC_ARM)
   include(cmake/config_gcc_arm.cmake)
+endif()
+
+if(MACE_MICRO_ENABLE_ASAN)
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
 endif()
 
 #set CMAKE_BUILD_TYPE default value as Release

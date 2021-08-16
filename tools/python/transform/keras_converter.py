@@ -55,15 +55,6 @@ def dtype2mtype(dtype):
     return None
 
 
-def keras_shape2list(shape):
-    dims = shape.as_list()
-    for i in range(len(dims)):
-        if dims[i] is None:
-            dims[i] = 1
-
-    return dims
-
-
 def get_input(keras_op):
     if hasattr(keras_op, "input_proxy"):
         return keras_op.input_proxy
@@ -197,10 +188,25 @@ class KerasConverter(base_converter.ConverterInterface):
         ConverterUtil.set_filter_format(self._mace_net_def, DataFormat.HWIO)
         ConverterUtil.add_data_format_arg(self._mace_net_def, DataFormat.NHWC)
 
+        mace_check(len(option.input_nodes) == 1,
+                   "Only 1 input node is supportted")
+        self._batch = list(option.input_nodes.items())[0][1].shape[0]
+
         with tfmot.quantization.keras.quantize_scope():
             self._keras_model = keras.models.load_model(src_model_file,
                                                         compile=False)
             self._keras_model.summary()
+
+    def keras_shape2list(self, shape):
+        dims = shape.as_list()
+        for i in range(len(dims)):
+            if dims[i] is None:
+                if i == 0:
+                    dims[i] = self._batch
+                else:
+                    dims[i] = 1
+
+        return dims
 
     def run(self):
         for op in self._keras_model.layers:
@@ -246,7 +252,7 @@ class KerasConverter(base_converter.ConverterInterface):
         mace_check(not isinstance(output, list), "only support one output")
         op.output.append(output.name)
         output_shape = op.output_shape.add()
-        output_shape.dims.extend(keras_shape2list(output.shape))
+        output_shape.dims.extend(self.keras_shape2list(output.shape))
 
         return op
 
@@ -519,7 +525,8 @@ class KerasConverter(base_converter.ConverterInterface):
         op.input.append(get_input(keras_op).name)
         op.output.append(get_output(keras_op).name)
         output_shape = op.output_shape.add()
-        output_shape.dims.extend(keras_shape2list(get_output(keras_op).shape))
+        output_shape.dims.extend(
+            self.keras_shape2list(get_output(keras_op).shape))
 
         ConverterUtil.add_data_type_arg(op, mace_pb2.DT_FLOAT)
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
@@ -604,7 +611,7 @@ class KerasConverter(base_converter.ConverterInterface):
             op.output.append(get_output(keras_op).name)
             output_shape = op.output_shape.add()
             output_shape.dims.extend(
-                keras_shape2list(get_output(keras_op).shape)
+                self.keras_shape2list(get_output(keras_op).shape)
             )
 
             return None
@@ -613,7 +620,7 @@ class KerasConverter(base_converter.ConverterInterface):
             op.output.append(activation_tmp_name)
             output_shape = op.output_shape.add()
             output_shape.dims.extend(
-                keras_shape2list(get_output(keras_op).shape)
+                self.keras_shape2list(get_output(keras_op).shape)
             )
 
             activation_op = self._mace_net_def.op.add()
@@ -630,7 +637,7 @@ class KerasConverter(base_converter.ConverterInterface):
             activation_op.output.append(get_output(keras_op).name)
             output_shape = activation_op.output_shape.add()
             output_shape.dims.extend(
-                keras_shape2list(get_output(keras_op).shape)
+                self.keras_shape2list(get_output(keras_op).shape)
             )
 
             data_type_arg = activation_op.arg.add()
@@ -714,7 +721,7 @@ class KerasConverter(base_converter.ConverterInterface):
         dw_conv2d_output_name = keras_op.name + "_dw"
         dw_conv2d_op.output.append(dw_conv2d_output_name)
 
-        input_shape = keras_shape2list(get_input(keras_op).shape)
+        input_shape = self.keras_shape2list(get_input(keras_op).shape)
 
         height = conv_output_length(input_shape[1],
                                     dw_kernel.dims[0],
@@ -768,7 +775,7 @@ class KerasConverter(base_converter.ConverterInterface):
         op = self.convert_general_op_with_input_output(keras_op)
         op.type = MaceOp.Reshape.name
 
-        shape = keras_shape2list(get_output(keras_op).shape)
+        shape = self.keras_shape2list(get_output(keras_op).shape)
         shape_tensor_name = keras_op.name + "_shape"
         self.add_tensor(
             shape_tensor_name, [len(shape)],

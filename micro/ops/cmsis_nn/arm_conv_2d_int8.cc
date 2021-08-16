@@ -64,7 +64,6 @@ MaceStatus ArmConv2dInt8Op::Compute(int32_t (&output_dims)[4]) {
     quant_params.shift[i] = shift;
   }
 
-  MACE_ASSERT(input_dims_[0] == 1);
   MACE_ASSERT(dilations_[0] == 1 && dilations_[1] == 1);
 
   cmsis_nn_dims input_dims;

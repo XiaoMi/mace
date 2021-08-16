@@ -22,6 +22,7 @@ from py_proto import mace_pb2
 from utils import util
 from utils.config_parser import DataFormat
 from utils.config_parser import Platform
+from utils.util import mace_check
 
 VALIDATION_MODULE = 'VALIDATION'
 
@@ -498,19 +499,21 @@ def validate_keras_model(platform, model_file,
 
         output_values = keras_model.predict(input)
 
+        mace_check(len(output_names) == 1, "Unexpected")
+
         for i in range(len(output_names)):
             output_file_name = util.formatted_file_name(
                 mace_out_file, output_names[i])
             mace_out_value = load_data(
                 output_file_name,
-                get_data_type_by_value(output_values[i]))
+                get_data_type_by_value(output_values))
             mace_out_value, real_output_shape, real_output_data_format = \
                 get_real_out_value_shape_df(platform,
                                             mace_out_value,
                                             output_shapes[i],
                                             output_data_formats[i])
             compare_output(output_names[i],
-                           mace_out_value, output_values[i],
+                           mace_out_value, output_values,
                            validation_threshold, log_file,
                            real_output_shape, real_output_data_format)
 

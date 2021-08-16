@@ -27,7 +27,7 @@ namespace {
 {%endfor%}
 }  // namespace
 
-framework::Operator *kOpsArray[{{ data_size }}] = {
+static framework::Operator *kOpsArray[{{ data_size }}] = {
 {% for i in range(0, op_class_name_list_size) %}
   {{ "&op%s," % i }}
 {%endfor%}

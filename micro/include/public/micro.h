@@ -104,6 +104,14 @@ class MaceMicroEngine {
   MaceMicroEngine &operator=(const MaceMicroEngine &);
 };
 
+MaceStatus CreateMaceMicroEngineFromBinary(uint8_t *model_data,
+                                           uint32_t size,
+                                           framework::Operator **op_array,
+                                           uint32_t input_num,
+                                           MaceMicroEngine **engine);
+
+void DestroyMicroEngineFromBinary(micro::MaceMicroEngine *engine);
+
 }  // namespace micro
 
 #endif  // MICRO_INCLUDE_PUBLIC_MICRO_H_
