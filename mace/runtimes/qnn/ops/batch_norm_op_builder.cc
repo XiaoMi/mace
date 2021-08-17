@@ -23,7 +23,8 @@ class BatchNormOpBuilder : public OpBuilder {
   explicit BatchNormOpBuilder(GraphBuilder *graph_builder)
       : OpBuilder(graph_builder) {}
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     const char *op_type = QNN_OP_BATCHNORM;
     SetOpType(op_type);
     SetOpName(op.name().c_str());

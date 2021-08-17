@@ -203,12 +203,10 @@ bool QnnWrapper::InitOnline(const NetDef &net_def,
 
   int64_t t0 = NowMicros();
 
-  graph_builder_.Init(&net_def, graph_, runtime_);
+  graph_builder_.Init(&net_def, graph_, runtime_, quantized_type_);
   graph_builder_.AddConstTensors(model_data, model_data_size);
-  graph_builder_.AddModelInputs(&input_info_, &input_tensors_,
-                                quantized_type_);
-  graph_builder_.AddModelOutputs(&output_info_, &output_tensors_,
-                                 quantized_type_);
+  graph_builder_.AddModelInputs(&input_info_, &input_tensors_);
+  graph_builder_.AddModelOutputs(&output_info_, &output_tensors_);
   graph_builder_.AddOpsOutputs();
   graph_builder_.AddOps();
   int64_t t1 = NowMicros();
@@ -300,13 +298,11 @@ bool QnnWrapper::InitWithOfflineCache(const NetDef &net_def,
   ret = QnnGraph_retrieve(ctx_, cache_ctx.graph_name().c_str(), &graph_);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_retrieve failed with error: ", ret);
 
-  graph_builder_.Init(&net_def, graph_, runtime_);
+  graph_builder_.Init(&net_def, graph_, runtime_, quantized_type_);
   graph_builder_.AddModelInputsFromOfflineCache(&input_info_, &input_tensors_,
-                                                cache_ctx.input_ids().data(),
-                                                quantized_type_);
+                                                cache_ctx.input_ids().data());
   graph_builder_.AddModelOutputsFromOfflineCache(
-      &output_info_, &output_tensors_, cache_ctx.output_ids().data(),
-      quantized_type_);
+      &output_info_, &output_tensors_, cache_ctx.output_ids().data());
   int64_t t1 = NowMicros();
   VLOG(1) << t1 - t0;
   return true;
@@ -346,10 +342,9 @@ void QnnWrapper::GetEvent(QnnProfile_EventId_t event, bool collect_op_infos) {
     profile_info_.op_cycles.back().push_back(event_data.value);
   } else {
     if (identifier == "Accelerator (execute) time") {
-      if (event_data.unit == 1)
-        profile_info_.npu_time += event_data.value;
-      else
-        profile_info_.npu_cycle += event_data.value;
+      profile_info_.npu_time += event_data.value;
+    } else if (identifier == "Accelerator (execute) time (cycles)") {
+      profile_info_.npu_cycle += event_data.value;
     } else if (identifier == "QNN (execute) time") {
       profile_info_.qnn_time += event_data.value;
     }

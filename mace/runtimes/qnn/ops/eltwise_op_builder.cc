@@ -54,7 +54,8 @@ class EltwiseOpBuilder : public OpBuilder {
   explicit EltwiseOpBuilder(GraphBuilder *graph_builder)
       : OpBuilder(graph_builder) {}
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     auto type = static_cast<ops::EltwiseType>(
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "type", static_cast<int>(ops::EltwiseType::NONE)));
@@ -85,12 +86,20 @@ class EltwiseOpBuilder : public OpBuilder {
           op, "scalar_input_index", 1);
       float scale = 0;
       int32_t zero = 0;
-      uint8_t quantized_scalar = Quantize<uint8_t>(scalar_input, &scale, &zero);
       const std::string scalar_input_name = op.name() + "_scalar";
-      graph_builder_->CreateGraphTensor(
-          scalar_input_name, 0, QNN_TENSOR_TYPE_STATIC,
-          QNN_DATATYPE_UFIXED_POINT_8, scale, zero, scalar_dims,
-          &quantized_scalar, 1);
+      if (quantized_type == DT_UINT8) {
+        uint8_t quantized_scalar = Quantize<uint8_t>(scalar_input, &scale, &zero);
+        graph_builder_->CreateGraphTensor(
+            scalar_input_name, 0, QNN_TENSOR_TYPE_STATIC,
+            QNN_DATATYPE_UFIXED_POINT_8, scale, zero, scalar_dims,
+            &quantized_scalar, 1);
+      } else {
+        uint16_t quantized_scalar = Quantize<uint16_t>(scalar_input, &scale, &zero);
+        graph_builder_->CreateGraphTensor(
+            scalar_input_name, 0, QNN_TENSOR_TYPE_STATIC,
+            QNN_DATATYPE_UFIXED_POINT_16, scale, zero, scalar_dims,
+            &quantized_scalar, 1);
+      }
       if (scalar_input_index == 0) {
         AddInput(scalar_input_name);
         AddInput(op.input(0));

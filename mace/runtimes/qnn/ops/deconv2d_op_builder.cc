@@ -30,7 +30,8 @@ class Deconv2DOpBuilder : public OpBuilder {
         }};
   }
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     MACE_CHECK(names_.count(op.type()) > 0,
                "QNN does not support op: ", op.type());
     auto names = names_.at(op.type());

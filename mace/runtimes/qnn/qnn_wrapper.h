@@ -284,12 +284,12 @@ class QnnWrapper {
   std::vector<Qnn_Tensor_t> output_tensors_;
   struct ProfileInfo{
     std::vector<std::pair<std::string, std::string>> op_infos;
-    std::vector<std::vector<uint32_t>> op_cycles;
+    std::vector<std::vector<uint64_t>> op_cycles;
     std::vector<std::vector<uint32_t>> output_shapes;
     bool is_warmup = true;
     unsigned int qnn_time;
     unsigned int npu_time;
-    unsigned long npu_cycle;
+    uint64_t npu_cycle;
   };
   ProfileInfo profile_info_;
   QuantizeTransformer *transformer_;

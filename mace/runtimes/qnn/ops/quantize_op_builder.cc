@@ -23,7 +23,8 @@ class QuantizeOpBuilder : public OpBuilder {
   explicit QuantizeOpBuilder(GraphBuilder *graph_builder)
       : OpBuilder(graph_builder) {}
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     const char *op_type = op.type().compare("Quantize") == 0
                               ? QNN_OP_QUANTIZE
                               : QNN_OP_DEQUANTIZE;

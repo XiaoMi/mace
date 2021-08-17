@@ -22,7 +22,8 @@ class SpaceToDepthOpBuilder : public OpBuilder {
   explicit SpaceToDepthOpBuilder(GraphBuilder *graph_builder)
       : OpBuilder(graph_builder) {}
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     SetOpType(QNN_OP_SPACE_TO_DEPTH);
     SetOpName(op.name().c_str());
 

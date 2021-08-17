@@ -33,7 +33,8 @@ class PoolingOpBuilder : public OpBuilder {
                 QNN_OP_POOL_MAX_2D_PARAM_PAD_AMOUNT}}};
   }
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     auto pooling_type =
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "pooling_type", static_cast<int>(PoolingType::AVG));

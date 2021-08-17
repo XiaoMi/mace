@@ -20,7 +20,8 @@ class SoftmaxOpBuilder : public OpBuilder {
   explicit SoftmaxOpBuilder(GraphBuilder *graph_builder)
       : OpBuilder(graph_builder) {}
 
-  MaceStatus BuildOp(const OperatorDef &op) {
+  MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
+    MACE_UNUSED(quantized_type);
     SetOpType(QNN_OP_SOFTMAX);
     SetOpName(op.name().c_str());
 
