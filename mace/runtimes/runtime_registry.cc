@@ -32,6 +32,7 @@ extern void RegisterCpuIonRuntime(RuntimeRegistry *runtime_registry);
 extern void RegisterOpenclRefRuntime(RuntimeRegistry *runtime_registry);
 #ifdef MACE_ENABLE_RPCMEM
 extern void RegisterOpenclQcIonRuntime(RuntimeRegistry *runtime_registry);
+extern void RegisterOpenclMtkIonRuntime(RuntimeRegistry *runtime_registry);
 #endif  // MACE_ENABLE_RPCMEM
 #endif  // MACE_ENABLE_OPENCL
 
@@ -71,6 +72,7 @@ void RegisterAllRuntimes(RuntimeRegistry *runtime_registry) {
   RegisterOpenclRefRuntime(runtime_registry);
 #ifdef MACE_ENABLE_RPCMEM
   RegisterOpenclQcIonRuntime(runtime_registry);
+  RegisterOpenclMtkIonRuntime(runtime_registry);
 #endif  // MACE_ENABLE_RPCMEM
 #endif  // MACE_ENABLE_OPENCL
 
@@ -115,11 +117,14 @@ RuntimeSubType SmartGetRuntimeSubType(const RuntimeType runtime_type,
       }
 #endif  // MACE_ENABLE_MTK_APU
 #ifdef MACE_ENABLE_OPENCL
-      if (runtime_type == RuntimeType::RT_OPENCL ||
-          runtime_type == RuntimeType::RT_CPU) {
+      if (runtime_type == RuntimeType::RT_CPU) {
+        sub_type = RuntimeSubType::RT_SUB_ION;
+      } else if (runtime_type == RuntimeType::RT_OPENCL) {
         auto ion_type = OpenclExecutor::FindCurDeviceIonType();
         if (ion_type == IONType::QUALCOMM_ION) {
-          sub_type = RuntimeSubType::RT_SUB_ION;
+          sub_type = RuntimeSubType::RT_SUB_QC_ION;
+        } else if (ion_type == IONType::MTK_ION) {
+          sub_type = RuntimeSubType::RT_SUB_MTK_ION;
         }
       } else if (runtime_type == RuntimeType::RT_HTA) {
         sub_type = RuntimeSubType::RT_SUB_WITH_OPENCL;

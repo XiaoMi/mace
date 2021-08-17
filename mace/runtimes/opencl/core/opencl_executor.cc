@@ -429,6 +429,7 @@ MaceStatus OpenclExecutor::Init(std::shared_ptr<OpenclContext> opencl_context,
                                 const GPUPerfHint perf_hint) {
   opencl_context_ = opencl_context;
   auto default_platform = FindGpuPlatform();
+  platform_ = default_platform;
   std::stringstream ss;
   std::string platform_version =
       default_platform.getInfo<CL_PLATFORM_VERSION>();
@@ -636,6 +637,8 @@ bool OpenclExecutor::is_opencl_avaliable() {
 cl::Context &OpenclExecutor::context() { return *context_; }
 
 cl::Device &OpenclExecutor::device() { return *device_; }
+
+cl::Platform &OpenclExecutor::platform() { return platform_; }
 
 cl::CommandQueue OpenclExecutor::command_queue() { return *command_queue_; }
 
@@ -1015,10 +1018,14 @@ GPUType OpenclExecutor::gpu_type() const {
 
 IONType OpenclExecutor::FindCurDeviceIonType() {
   constexpr const char *kQualcommIONStr = "cl_qcom_ion_host_ptr";
-  std::shared_ptr<cl::Device> device = FindGpuDevice(FindGpuPlatform());
+  constexpr const char *kMtkIONStr = "clImportMemoryARM";
+  auto gpu_platform = FindGpuPlatform();
+  std::shared_ptr<cl::Device> device = FindGpuDevice(gpu_platform);
   const auto device_extensions = device->getInfo<CL_DEVICE_EXTENSIONS>();
   if (device_extensions.find(kQualcommIONStr) != std::string::npos) {
     return IONType::QUALCOMM_ION;
+  } else if (clGetExtensionFunctionAddressForPlatform(gpu_platform(), kMtkIONStr) != nullptr) {
+    return IONType::MTK_ION;
   } else {
     return IONType::NONE_ION;
   }

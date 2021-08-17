@@ -24,6 +24,11 @@ if(MACE_ENABLE_RPCMEM)
     qc_ion/opencl_qc_ion_runtime.cc
     qc_ion/opencl_buffer_qc_ion_allocator.cc
     qc_ion/opencl_qc_ion_executor.cc
+    mtk_ion/opencl_image_mtk_ion_allocator.cc
+    mtk_ion/opencl_base_mtk_ion_allocator.cc
+    mtk_ion/opencl_mtk_ion_runtime.cc
+    mtk_ion/opencl_buffer_mtk_ion_allocator.cc
+    mtk_ion/opencl_mtk_ion_executor.cc
   )
 endif(MACE_ENABLE_RPCMEM)
 

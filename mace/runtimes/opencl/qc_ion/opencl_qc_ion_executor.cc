@@ -15,6 +15,7 @@
 #include "mace/runtimes/opencl/qc_ion/opencl_qc_ion_executor.h"
 
 #include <string>
+
 #include "mace/runtimes/opencl/core/opencl_extension.h"
 
 namespace mace {
@@ -93,5 +94,3 @@ void OpenclQcIonExecutor::InitGpuDeviceProperty(const cl::Device &device) {
 }
 
 }  // namespace mace
-
-

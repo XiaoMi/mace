@@ -17,6 +17,7 @@ cc_library(
         "transform/*.cc",
     ]) + if_rpcmem_enabled(glob([
         "qc_ion/*.cc",
+        "mtk_ion/*.cc",
     ])),
     hdrs = glob([
         "*.h",
@@ -24,6 +25,7 @@ cc_library(
         "transform/*.h",
     ]) + if_rpcmem_enabled(glob([
         "qc_ion/*.h",
+        "mtk_ion/*.h",
     ])),
     copts = [
         "-Werror",

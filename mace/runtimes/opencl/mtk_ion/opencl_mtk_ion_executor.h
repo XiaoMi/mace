@@ -1,4 +1,4 @@
-// Copyright 2020 The MACE Authors. All Rights Reserved.
+// Copyright 2021 The MACE Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_RUNTIMES_OPENCL_QC_ION_OPENCL_QC_ION_EXECUTOR_H_
-#define MACE_RUNTIMES_OPENCL_QC_ION_OPENCL_QC_ION_EXECUTOR_H_
+#ifndef MACE_RUNTIMES_OPENCL_MTK_ION_OPENCL_MTK_ION_EXECUTOR_H_
+#define MACE_RUNTIMES_OPENCL_MTK_ION_OPENCL_MTK_ION_EXECUTOR_H_
 
 #include <memory>
 
@@ -21,28 +21,16 @@
 
 namespace mace {
 
-class OpenclQcIonExecutor : public OpenclExecutor {
+class OpenclMtkIonExecutor : public OpenclExecutor {
  public:
-  OpenclQcIonExecutor();
-  ~OpenclQcIonExecutor() = default;
+  OpenclMtkIonExecutor();
+  ~OpenclMtkIonExecutor() = default;
 
-  static OpenclQcIonExecutor *Get(OpenclExecutor *executor);
+  static OpenclMtkIonExecutor *Get(OpenclExecutor *executor);
 
   IONType ion_type() const override;
-
-  uint32_t qcom_ext_mem_padding() const;
-  uint32_t qcom_page_size() const;
-  uint32_t qcom_host_cache_policy() const;
-
- protected:
-  void InitGpuDeviceProperty(const cl::Device &device) override;
-
- private:
-  uint32_t qcom_ext_mem_padding_;
-  uint32_t qcom_page_size_;
-  uint32_t qcom_host_cache_policy_;
 };
 
 }  // namespace mace
 
-#endif  // MACE_RUNTIMES_OPENCL_QC_ION_OPENCL_QC_ION_EXECUTOR_H_
+#endif // MACE_RUNTIMES_OPENCL_MTK_ION_OPENCL_MTK_ION_EXECUTOR_H_

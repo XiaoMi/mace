@@ -224,6 +224,8 @@ class OpenCLLibrary final {
                                                   size_t,
                                                   void *,
                                                   size_t *);
+  using clGetExtensionFunctionAddressForPlatformFunc = void *(*)(cl_platform_id,
+                                                                 const char  *funcname);
 
 #define MACE_CL_DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
@@ -275,6 +277,7 @@ class OpenCLLibrary final {
   MACE_CL_DEFINE_FUNC_PTR(clGetEventProfilingInfo);
   MACE_CL_DEFINE_FUNC_PTR(clGetImageInfo);
   MACE_CL_DEFINE_FUNC_PTR(clGetDeviceImageInfoQCOM);
+  MACE_CL_DEFINE_FUNC_PTR(clGetExtensionFunctionAddressForPlatform);
 
 #undef MACE_CL_DEFINE_FUNC_PTR
 
@@ -423,6 +426,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetImageInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetDeviceImageInfoQCOM);
+  MACE_CL_ASSIGN_FROM_DLSYM(clGetExtensionFunctionAddressForPlatform);
 
 #undef MACE_CL_ASSIGN_FROM_DLSYM
 
@@ -842,6 +846,17 @@ CL_API_ENTRY cl_int clGetDeviceImageInfoQCOM(
                 param_value_size, param_value, param_value_size_ret);
   } else {
     return CL_INVALID_PLATFORM;
+  }
+}
+
+CL_API_ENTRY void *clGetExtensionFunctionAddressForPlatform(cl_platform_id platform_id,
+                                                            const char  *funcname) {
+  auto func = mace::runtime::OpenCLLibrary::Get()->clGetExtensionFunctionAddressForPlatform;
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetExtensionFunctionAddressForPlatform");
+    return func(platform_id, funcname);
+  } else {
+    return nullptr;
   }
 }
 
