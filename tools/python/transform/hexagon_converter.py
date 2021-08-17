@@ -61,6 +61,7 @@ HexagonSupportedOps = [
     'QuantizedMinimum_8',
     'QuantizedMul_8x8to8',
     'QuantizedPad_8',
+    'QuantizedPRelu_8',
     'QuantizedRecip_8',
     'QuantizedRelu_8',
     'QuantizedReluX_8',
@@ -135,6 +136,8 @@ class HexagonConverter(base_converter.ConverterInterface):
         ActivationType.RELUX.name: HexagonOp.QuantizedReluX_8.name,
         ActivationType.TANH.name: HexagonOp.QuantizedTanh_8.name,
         ActivationType.SIGMOID.name: HexagonOp.QuantizedSigmoid_8.name,
+        ActivationType.LEAKYRELU.name: HexagonOp.QuantizedPRelu_8.name,
+        ActivationType.PRELU.name: HexagonOp.QuantizedPRelu_8.name,
     }
 
     eltwise_type = {
@@ -171,6 +174,7 @@ class HexagonConverter(base_converter.ConverterInterface):
             MaceOp.Pooling.name: self.convert_pooling,
             MaceOp.Quantize.name: self.convert_quantize,
             MaceOp.Reduce.name: self.convert_reduce,
+            MaceOp.Reshape.name: self.convert_reshape,
             MaceOp.ResizeBilinear.name: self.convert_resizebilinear,
             MaceOp.ResizeNearestNeighbor.name:
                 self.convert_resizenearestneighbor,
@@ -546,6 +550,12 @@ class HexagonConverter(base_converter.ConverterInterface):
             x = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_activation_max_limit_str).f
             self.add_scalar_const_node("/x:0", x, op)
+        elif act_type == ActivationType.LEAKYRELU.name:
+            alphas_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_activation_coefficient_str)
+            self.add_arg_const_node(
+                op, '/alphas:0', [op.output_shape[0].dims[3]],
+                [alphas_arg.f] * op.output_shape[0].dims[3], data_type=mace_pb2.DT_FLOAT)
         try:
             op.type = self.activation_type[act_type]
         except KeyError:
@@ -830,8 +840,9 @@ class HexagonConverter(base_converter.ConverterInterface):
         mace_check(pad_type_arg is None or
                    pad_type_arg.i == PadType.CONSTANT.value,
                    "Hexagon only supports constant pad")
-        constant_value = ConverterUtil.get_arg(
-            op, MaceKeyword.mace_constant_value_str).f
+        const_arg = \
+            ConverterUtil.get_arg(op, MaceKeyword.mace_constant_value_str)
+        constant_value = 0.0 if const_arg is None else const_arg.f
         self.add_scalar_const_node('/constant_value:0', constant_value, op)
 
         op.type = HexagonOp.QuantizedPad_8.name
@@ -866,17 +877,26 @@ class HexagonConverter(base_converter.ConverterInterface):
         reduce_type_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_reduce_type_str)
         mace_check(reduce_type_arg.i == ReduceType.MEAN.value,
-                   "Hexagon Reduce only supports Mean now.")
+                   "Hexagon Reduce only supports Mean now, "
+                   "the current type is: %s" % reduce_type_arg.i)
         keep_dims_arg = ConverterUtil.get_arg(
             op, MaceKeyword.mace_keepdims_str)
         mace_check(keep_dims_arg.i == 1,
                    "Hexagon Reduce Mean only supports keep dims now.")
 
+        axis_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str)
+
         self.add_arg_const_node(op, '/axes:0', [len(axis_arg.ints)],
                                 axis_arg.ints)
         self.add_min_max_const_node(op, op.output[0], True, True, False)
-
         op.type = HexagonOp.QuantizedMean_8.name
+
+    def convert_reshape(self, op):
+        del op.input[1:]
+        shape = op.output_shape[0].dims
+        self.add_arg_const_node(op, '/shape:0', [len(shape)], shape)
+        self.add_min_max_const_node(op, op.input[0])
+        op.type = HexagonOp.QuantizedReshape.name
 
     def add_resize_args(self, op):
         align_corners_arg = ConverterUtil.get_arg(
