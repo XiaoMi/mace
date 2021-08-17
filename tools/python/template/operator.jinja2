@@ -117,6 +117,22 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   {% endfor %}
   {% endif %}
 
+  {% if net.op[i].max_output_shape|length > 0 %}
+  op->mutable_max_output_shape()->Reserve({{ net.op[i].max_output_shape|length }});
+  {% for shape in net.op[i].max_output_shape %}
+  {% if shape.dims|length > 0 %}
+  {
+      mace::OutputShape *max_output_shape = op->add_max_output_shape();
+      max_output_shape->mutable_dims()->Reserve({{ shape.dims|length }});
+      {% for dim in shape.dims %}
+      max_output_shape->add_dims({{ dim }});
+      {% endfor %}
+  }
+  {% endif %}
+
+  {% endfor %}
+  {% endif %}
+
   std::vector<int> output_types_int({ {{ net.op[i].output_type | join(', ') }} });
   std::vector<mace::DataType> output_types({{ net.op[i].output_type | length }});
   for (int k = 0; k < {{ net.op[i].output_type | length }}; ++k) {
