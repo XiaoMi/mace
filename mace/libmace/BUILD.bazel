@@ -137,7 +137,7 @@ genrule(
         "//mace/utils",
         "//mace/proto:mace_cc",
         "@com_google_protobuf//:protobuf_lite",
-        "//mace/ops:common",
+        "//mace/ops",
     ] + if_linux_base([
         "//mace/port/linux_base:port_linux_base",
     ]) + if_android([
@@ -147,10 +147,6 @@ genrule(
     ]) + if_darwin([
         "//mace/port/darwin:port_darwin",
         "//mace/port/darwin:darwin_ar_merge",
-    ]) + if_cpu_enabled([
-        "//mace/ops:ref_kernels",
-        "//mace/ops:internal_ops",
-        "//mace/ops",
     ]) + if_opencl_enabled([
         "//mace/ops:opencl_kernels",
         "//mace/runtimes/opencl:opencl_runtimes",
@@ -174,8 +170,6 @@ genrule(
     ]) + if_rpcmem_enabled([
         "//mace/rpcmems",
         "//third_party/rpcmem:rpcmem.a",
-    ]) + if_neon_enabled([
-        "//mace/ops:arm_neon_kernels",
     ]),
     outs = ["libmace.a"],
     cmd = "tmp_mri_file=$$(mktemp mace-static-lib-mri.XXXXXXXXXX);" +
@@ -186,17 +180,7 @@ genrule(
           "$(locations //mace/flows) " +
           "$(locations //mace/runtimes/cpu:cpu_runtimes) " +
           "$(locations //mace/runtimes) " +
-          "$(locations //mace/ops:common) " +
-          if_cpu_enabled(
-            "$(locations //mace/ops:ref_kernels) " +
-            "$(locations //mace/ops:internal_ops) " +
-            "$(locations //mace/ops:ops) ",
-            default_value = "",
-          ) +
-          if_neon_enabled(
-              "$(locations //mace/ops:arm_neon_kernels) ",
-              default_value = "",
-          ) +
+          "$(locations //mace/ops:ops) " +
           if_opencl_enabled(
               "$(locations //mace/ops:opencl_kernels) " +
               "$(locations //mace/flows/opencl:opencl_flows) " +
