@@ -4,7 +4,7 @@ if(NOT MICRO_MODEL_NAME OR NOT MICRO_DATA_NAME)
 endif()
 
 add_executable(runtime_load_${MICRO_MODEL_NAME} main.cc)
-target_link_libraries(runtime_load_${MICRO_MODEL_NAME} micro)
+target_link_libraries(runtime_load_${MICRO_MODEL_NAME} model_${MICRO_MODEL_NAME} micro)
 target_include_directories(runtime_load_${MICRO_MODEL_NAME} PRIVATE ../../codegen ..)
 target_compile_options(${MICRO_MODEL_NAME}
   PRIVATE "-Wno-error"

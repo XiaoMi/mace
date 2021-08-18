@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #ifdef MACE_MICRO_ENABLE_HEXAGON_HAP
-#include <HAP_perf.h>
-#include <HAP_farf.h>
+#include "HAP_perf.h"
+#include "HAP_farf.h"
 #else
 #include <sys/time.h>
 #endif
@@ -33,8 +33,10 @@ void DebugLog(const char *str) {
   // you should rewrite this file in the platform source file.
 #ifdef MACE_MICRO_ENABLE_HEXAGON_HAP
   FARF(ALWAYS, "%s", str);
-#else
+#elif __linux__
   printf("%s", str);
+#else
+  // Do none
 #endif
 }
 

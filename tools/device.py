@@ -382,6 +382,7 @@ class DeviceWrapper:
                     libhexgon_nn_skel_shared_lib)
                 self.push(libhexgon_nn_skel_shared_lib, self.data_dir)
                 sh.rm(libhexgon_nn_skel_shared_lib)
+
             qnn_path = \
                 "third_party/qnn/target/%s/libQnnHtpAltPrepStub.so" % abi
             if os.path.exists(qnn_path):

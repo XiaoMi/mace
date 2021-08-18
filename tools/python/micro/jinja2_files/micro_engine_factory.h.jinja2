@@ -22,5 +22,9 @@ namespace {{model_tag}} {
 
 MaceStatus GetMicroEngineSingleton(MaceMicroEngine **engine);
 
+MaceStatus CreateMaceMicroEngineFromBinary(uint8_t *model_data,
+                                           int32_t size,
+                                           MaceMicroEngine **engine);
+
 }  // namespace {{model_tag}}
 }  // namespace micro

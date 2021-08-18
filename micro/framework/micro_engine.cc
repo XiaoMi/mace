@@ -20,8 +20,10 @@
 #include "micro/model/net_def.h"
 #include "micro/model/operator_def.h"
 #include "micro/port/api.h"
+#include "micro/framework/operator.h"
 
 namespace micro {
+
 MaceStatus MaceMicroEngine::Init(MaceMicroEngineConfig *engine_config) {
   MACE_ASSERT(engine_config != NULL && engine_config->net_def_ != NULL
                   && engine_config->model_data_ != NULL
@@ -80,6 +82,62 @@ MaceMicroEngine &MaceMicroEngine::operator=(const MaceMicroEngine &) {
 
 MaceMicroEngineConfig *MaceMicroEngine::GetEngineConfig() {
   return engine_config_;
+}
+
+MaceStatus CreateMaceMicroEngineFromBinary(uint8_t *model_data,
+                                           uint32_t size,
+                                           framework::Operator **op_array,
+                                           uint32_t input_num,
+                                           MaceMicroEngine **engine) {
+  struct model_header {
+    int64_t net_def_offset;
+    int64_t graph_offset;
+    int64_t model_offset;
+    int64_t model_end;
+    int64_t tensor_mem_size;
+    int64_t scratch_buffer_size;
+  };
+
+  auto header = reinterpret_cast<model_header *>(model_data);
+  MACE_ASSERT(static_cast<int64_t>(size) == header->model_end);
+  auto net_def = reinterpret_cast<micro::model::NetDef *>(
+      model_data + header->net_def_offset);
+  auto graph = reinterpret_cast<micro::framework::Graph *>(
+      model_data + header->graph_offset);
+  auto model = reinterpret_cast<uint8_t *>(model_data + header->model_offset);
+
+  auto tensor_mem = new uint8_t[header->tensor_mem_size];
+  auto scratch_buffer = new uint8_t[header->scratch_buffer_size];
+
+  const void **input_buffers = new const void *[input_num];
+  const int32_t **input_shapes = new const int32_t *[input_num];
+  for (uint32_t i = 0; i < input_num; ++i) {
+    input_buffers[i] = nullptr;
+    input_shapes[i] = nullptr;
+  }
+
+  *engine = new micro::MaceMicroEngine();
+  micro::MaceMicroEngineConfig *engine_config =
+      new micro::MaceMicroEngineConfig{net_def,
+                                       model,
+                                       graph,
+                                       op_array,
+                                       tensor_mem,
+                                       input_buffers,
+                                       input_shapes,
+                                       scratch_buffer,
+                                       static_cast<uint32_t>(header->scratch_buffer_size)};
+  return (*engine)->Init(engine_config);
+}
+
+
+void DestroyMicroEngineFromBinary(micro::MaceMicroEngine *engine) {
+  delete[] engine->GetEngineConfig()->tensor_mem_;
+  delete[] engine->GetEngineConfig()->scratch_buffer_;
+  delete[] engine->GetEngineConfig()->input_buffers_;
+  delete[] engine->GetEngineConfig()->input_shapes_;
+  delete engine->GetEngineConfig();
+  delete engine;
 }
 
 }  // namespace micro

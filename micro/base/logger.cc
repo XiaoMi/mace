@@ -52,6 +52,7 @@ Logger::Logger(const char *fname, uint32_t line,
   char *end = buffer + 15;
   buffer[0] = LogLevelToShortStr(severity);
   buffer[1] = ' ';
+  micro::port::api::DebugLog("MACE_Micro ");
   micro::port::api::DebugLog(buffer);
 
   micro::port::api::DebugLog(fname);

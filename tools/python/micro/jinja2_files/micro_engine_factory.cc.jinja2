@@ -15,6 +15,7 @@
 // This is a generated file. DO NOT EDIT!
 
 #include "micro/codegen/{{model_tag}}/micro_engine_factory.h"
+#include "micro/codegen/{{model_tag}}/micro_ops_list.h"
 
 
 namespace micro {
@@ -38,6 +39,13 @@ MaceStatus GetMicroEngineSingleton(MaceMicroEngine **engine) {
     *engine = &kMaceMicroEngine;
   }
   return status;
+}
+
+MaceStatus CreateMaceMicroEngineFromBinary(uint8_t *model_data,
+                                           int32_t size,
+                                           int32_t input_size,
+                                           MaceMicroEngine **engine) {
+  return micro::CreateMaceMicroEngineFromBinary(model_data, size, kOpsArray, input_size, engine);
 }
 
 }  // namespace {{model_tag}}
