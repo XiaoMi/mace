@@ -27,6 +27,11 @@ class Deconv2DOpBuilder : public OpBuilder {
          {QNN_OP_TRANSPOSE_CONV_2D, QNN_OP_TRANSPOSE_CONV_2D_PARAM_STRIDE,
           QNN_OP_TRANSPOSE_CONV_2D_PARAM_GROUP,
           QNN_OP_TRANSPOSE_CONV_2D_PARAM_PAD_AMOUNT}
+        },
+        {"DepthwiseDeconv2d",
+         {QNN_OP_TRANSPOSE_CONV_2D, QNN_OP_TRANSPOSE_CONV_2D_PARAM_STRIDE,
+          QNN_OP_TRANSPOSE_CONV_2D_PARAM_GROUP,
+          QNN_OP_TRANSPOSE_CONV_2D_PARAM_PAD_AMOUNT}
         }};
   }
 
@@ -59,6 +64,9 @@ class Deconv2DOpBuilder : public OpBuilder {
     std::vector<uint32_t> paddings_dims{2, 2};
     AddTensorParam(names.pad_amount, paddings_dims, paddings_data.data());
 
+    auto group = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(op, "group", 1);
+    AddScalarParam(names.group, {QNN_DATATYPE_UINT_32, .uint32Value = static_cast<uint32_t>(group)});
+
     const std::string act_type =
         ProtoArgHelper::GetOptionalArg<OperatorDef, std::string>(
             op, "activation", "NOOP");
@@ -86,6 +94,7 @@ class Deconv2DOpBuilder : public OpBuilder {
 namespace qnn {
 void RegisterDeconv2D(OpRegistry *op_registry) {
   QNN_REGISTER_OP(op_registry, "Deconv2D", Deconv2DOpBuilder);
+  QNN_REGISTER_OP(op_registry, "DepthwiseDeconv2d", Deconv2DOpBuilder);
 }
 }  // namespace qnn
 }  // namespace mace

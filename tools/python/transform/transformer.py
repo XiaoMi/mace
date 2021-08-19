@@ -1307,7 +1307,8 @@ class Transformer(base_converter.ConverterInterface):
                     filter.dims[:] = filter_data.shape
                     transposed_filter.add(op.input[1])
 
-                if op.type == MaceOp.Deconv2D.name \
+                if (op.type == MaceOp.Deconv2D.name or
+                        op.type == MaceOp.DepthwiseDeconv2d.name) \
                         and op.input[1] in self._consts \
                         and op.input[1] not in transposed_deconv_filter:
                     filter = self._consts[op.input[1]]
