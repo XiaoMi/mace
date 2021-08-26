@@ -84,7 +84,6 @@ message OperatorDef {
   optional uint32 padding = 102;
   repeated NodeInput node_input = 103;
   repeated int32 out_max_byte_size = 104;  // only support 32-bit len
-  repeated OutputShape max_output_shape = 105;
 }
 
 message InputOutputInfo {

@@ -245,7 +245,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     for (int i = 0; i < op.output_shape().size(); ++i) {
       outputs[i].rank = op.output_shape()[i].dims().size();
       for (size_t j = 0; j < outputs[i].rank; ++j) {
-        outputs[i].max_sizes[j] = op.max_output_shape()[i].dims()[j];
+        outputs[i].max_sizes[j] = op.output_shape()[i].dims()[j];
       }
       if (outputs[i].rank == 0) {
         outputs[i].rank = 1;

@@ -521,17 +521,10 @@ class HexagonConverter(base_converter.ConverterInterface):
             op.output_type.extend(
                 [mace_pb2.DT_UINT8, mace_pb2.DT_FLOAT, mace_pb2.DT_FLOAT])
         for i in range(len(op.output_shape)):
-            op.max_output_shape.extend([op.output_shape[i]])
             out_max_byte_size = reduce(mul, op.output_shape[i].dims)
             if op.output_type[i] == mace_pb2.DT_FLOAT:
                 out_max_byte_size *= 4
             op.out_max_byte_size.extend([out_max_byte_size])
-        # dsp op tanh and sigmoid may require more space that exceed output_shape
-        if op.type == HexagonOp.QuantizedTanh_8.name or \
-                op.type == HexagonOp.QuantizedSigmoid_8.name:
-            op.max_output_shape[0].dims[1] += 128
-            op.max_output_shape[0].dims[2] += 128
-            op.max_output_shape[0].dims[3] += 64
 
         if not op.HasField("padding"):
             op.padding = padding_mode[PaddingMode.NA]
