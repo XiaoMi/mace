@@ -1,0 +1,14 @@
+licenses(["notice"])
+
+exports_files(["license.txt"])
+
+cc_library(
+    name = "dmabufheap",
+    srcs = [],
+    hdrs = [
+        "include/BufferAllocatorWrapper.h",
+        "include/dmabufheap-defs.h",
+    ],
+    linkopts = ["-Wl,-unresolved-symbols=ignore-in-shared-libs"],
+    visibility = ["//visibility:public"],
+)

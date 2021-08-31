@@ -1,5 +1,7 @@
 set(RPCMEMS_SRCS
   qualcomm/qualcomm_rpcmem.cc
+  dmabufheap/dma_buf_heap_rpcmem.cc
+  dmabufheap/dma_buf_heap_wrapper.cc
   rpcmem_factory.cc)
 
 if(ANDROID_ABI STREQUAL "arm64-v8a")
@@ -8,9 +10,5 @@ endif(ANDROID_ABI STREQUAL "arm64-v8a")
 
 add_library(rpcmems STATIC ${RPCMEMS_SRCS})
 target_link_libraries(rpcmems PRIVATE rpcmem)
-
-#if(ANDROID_ABI STREQUAL "arm64-v8a")
-#  target_link_libraries(rpcmems PRIVATE mtk_rpcmem})
-#endif(ANDROID_ABI STREQUAL "arm64-v8a")
 
 install(TARGETS rpcmems ARCHIVE DESTINATION lib)

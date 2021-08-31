@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_RPCMEMS_QUALCOMM_QUALCOMM_RPCMEM_H_
-#define MACE_RPCMEMS_QUALCOMM_QUALCOMM_RPCMEM_H_
+#ifndef MACE_RPCMEMS_DMABUFHEAP_DMA_BUF_HEAP_RPCMEM_H_
+#define MACE_RPCMEMS_DMABUFHEAP_DMA_BUF_HEAP_RPCMEM_H_
+
+#include <unordered_map>
 
 #include "mace/core/memory/rpcmem/rpcmem.h"
-#include "third_party/rpcmem/rpcmem.h"
+#include "mace/rpcmems/dmabufheap/dma_buf_heap_wrapper.h"
 
 namespace mace {
-class QualcommRpcmem : public Rpcmem {
+
+class DmaBufHeapRpcmem : public Rpcmem {
  public:
-  QualcommRpcmem();
-  virtual ~QualcommRpcmem();
+  DmaBufHeapRpcmem();
+  virtual ~DmaBufHeapRpcmem();
 
   void *New(int nbytes) override;
   void Delete(void *data) override;
@@ -33,8 +36,14 @@ class QualcommRpcmem : public Rpcmem {
   RpcmemType GetRpcmemType() override;
 
  private:
-  rpcmem rm;
+  BufferAllocator* buffer_allocator_;
+  std::unique_ptr<DmaBufWrapper> dma_buf_wrapper_;
+
+  std::unordered_map<void *, int> addr_handle_map_;
+  std::unordered_map<int, void *> handle_addr_map_;
+  std::unordered_map<void *, int> addr_length_map_;
 };
 
 }  // namespace mace
-#endif  // MACE_RPCMEMS_QUALCOMM_QUALCOMM_RPCMEM_H_
+
+#endif  // MACE_RPCMEMS_DMABUFHEAP_DMA_BUF_HEAP_RPCMEM_H_
