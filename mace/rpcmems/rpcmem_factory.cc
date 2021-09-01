@@ -17,6 +17,7 @@
 #if defined(__aarch64__) && defined(__ANDROID__)
 #include "mace/rpcmems/mtk/mtk_rpcmem.h"
 #endif
+#include "mace/rpcmems/dmabufheap/dma_buf_heap_rpcmem.h"
 #include "mace/rpcmems/qualcomm/qualcomm_rpcmem.h"
 
 namespace mace {
@@ -34,6 +35,9 @@ std::shared_ptr<Rpcmem> CreateRpcmem(RpcmemType type) {
       return nullptr;
 #endif
     }
+    case DMA_BUF_HEAP: {
+      return std::make_shared<DmaBufHeapRpcmem>();
+    }
     default: {
       LOG(FATAL) << "Invalid RpcmemType: " << type;
       return nullptr;
@@ -46,6 +50,7 @@ std::shared_ptr<Rpcmem> CreateRpcmem() {
     auto type = static_cast<RpcmemType>(i);
     auto rpcmem = CreateRpcmem(type);
     if (rpcmem != nullptr && rpcmem->IsRpcmemSupported()) {
+      LOG(INFO) << "Rpcmem is supported. type: " << i;
       return rpcmem;
     }
   }

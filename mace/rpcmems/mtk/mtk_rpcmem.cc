@@ -53,10 +53,10 @@ MtkRpcmem::~MtkRpcmem() {
   }
 }
 
-void *MtkRpcmem::New(uint32_t flags, int nbytes) {
+void *MtkRpcmem::New(int nbytes) {
   ion_user_handle_t buf_handle;
   if (mtk_ion_wrapper_->ion_alloc_mm(ion_handle_, static_cast<size_t>(nbytes),
-                                     0, flags, &buf_handle)) {
+                                     0, kIonFlagCached | kIonFlagCachedNeedSync, &buf_handle)) {
     LOG(WARNING) << "Fail to get ion buffer handle, ion_handle_ = "
                  << ion_handle_ << ", nbytes = " << nbytes;
     return nullptr;
@@ -84,10 +84,6 @@ void *MtkRpcmem::New(uint32_t flags, int nbytes) {
   addr_handle_map_[buf_addr] = buf_share_fd;
   addr_length_map_[buf_addr] = nbytes;
   return buf_addr;
-}
-
-void *MtkRpcmem::New(int nbytes) {
-  return New(GetIonCacheFlag(), nbytes);
 }
 
 void MtkRpcmem::Delete(void *data) {
@@ -125,10 +121,6 @@ void MtkRpcmem::Delete(void *data) {
   if (mtk_ion_wrapper_->ion_free(ion_handle_, buf_handle)) {
     LOG(WARNING) << "Fail to free ion buffer (free ion_alloc_mm ref cnt)";
   }
-}
-
-int MtkRpcmem::GetDefaultHeapId() {
-  return 1;
 }
 
 int MtkRpcmem::ToFd(void *data) {
@@ -185,10 +177,6 @@ int MtkRpcmem::SyncCacheEnd(void *data) {
 
 RpcmemType MtkRpcmem::GetRpcmemType() {
   return RpcmemType::ION_MTK;
-}
-
-int MtkRpcmem::GetIonCacheFlag() {
-  return kIonFlagCached | kIonFlagCachedNeedSync;
 }
 
 }  // namespace mace

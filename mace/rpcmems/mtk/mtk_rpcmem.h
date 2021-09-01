@@ -28,16 +28,13 @@ class MtkRpcmem : public Rpcmem {
   MtkRpcmem();
   virtual ~MtkRpcmem();
 
-  void *New(uint32_t flags, int nbytes) override;
   void *New(int nbytes) override;
   void Delete(void *data) override;
-  int GetDefaultHeapId() override;
   int ToFd(void *data) override;
   int SyncCacheStart(void *data) override;
   int SyncCacheEnd(void *data) override;
 
   RpcmemType GetRpcmemType() override;
-  int GetIonCacheFlag() override;
 
  private:
   int ion_handle_;

@@ -31,20 +31,12 @@ QualcommRpcmem::~QualcommRpcmem() {
   mace_rpcmem_deinit(&rm);
 }
 
-void *QualcommRpcmem::New(uint32_t flags, int nbytes) {
-  return mace_rpcmem_alloc(&rm, RPCMEM_HEAP_ID_SYSTEM, flags, nbytes);
-}
-
 void *QualcommRpcmem::New(int nbytes) {
-  return New(RPCMEM_FLAG_CACHED, nbytes);
+  return mace_rpcmem_alloc(&rm, RPCMEM_HEAP_ID_SYSTEM, RPCMEM_FLAG_CACHED, nbytes);
 }
 
 void QualcommRpcmem::Delete(void *data) {
   mace_rpcmem_free(&rm, data);
-}
-
-int QualcommRpcmem::GetDefaultHeapId() {
-  return RPCMEM_DEFAULT_HEAP;
 }
 
 int QualcommRpcmem::ToFd(void *data) {
@@ -61,10 +53,6 @@ int QualcommRpcmem::SyncCacheEnd(void *data) {
 
 RpcmemType QualcommRpcmem::GetRpcmemType() {
   return RpcmemType::ION_QUALCOMM;
-}
-
-int QualcommRpcmem::GetIonCacheFlag() {
-  return RPCMEM_FLAG_CACHED;
 }
 
 }  // namespace mace

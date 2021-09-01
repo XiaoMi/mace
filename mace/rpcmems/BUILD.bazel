@@ -14,12 +14,15 @@ cc_library(
     srcs = glob([
         "*.cc",
         "qualcomm/*.cc",
+        "dmabufheap/*.cc",
     ]) + if_android_arm64([
         "mtk/mtk_rpcmem.cc",
         "mtk/mtk_ion_wrapper.cc",
     ]),
     hdrs = [
         "qualcomm/qualcomm_rpcmem.h",
+        "dmabufheap/dma_buf_heap_rpcmem.h",
+        "dmabufheap/dma_buf_heap_wrapper.h",
     ] + if_android_arm64([
         "mtk/mtk_rpcmem.h",
         "mtk/mtk_ion_wrapper.h",
@@ -33,6 +36,7 @@ cc_library(
     deps = [
         "//mace/core",
         "//third_party/rpcmem",
+        "//third_party/dmabufheap",
     ] + if_android_arm64([
         "//third_party/mtk_rpcmem",
     ]),

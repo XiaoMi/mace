@@ -32,7 +32,7 @@ class CpuIonAllocator : public Allocator {
   void Delete(void *data) override;
 
   // for ion
-  void *New(uint32_t flags, int nbytes);
+  void *New(int nbytes);
   std::shared_ptr<Rpcmem> GetRpcmem();
 
  private:

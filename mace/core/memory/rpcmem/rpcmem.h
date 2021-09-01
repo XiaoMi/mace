@@ -23,6 +23,7 @@ namespace mace {
 enum RpcmemType {
   ION_QUALCOMM = 0,
   ION_MTK,
+  DMA_BUF_HEAP,
 
   ION_TYPE_NUM,  // The number of rpcmem type
 };
@@ -34,15 +35,12 @@ class Rpcmem {
 
   bool IsRpcmemSupported();
 
-  virtual void *New(uint32_t flags, int nbytes) = 0;
   virtual void *New(int nbytes) = 0;
   virtual void Delete(void *data) = 0;
-  virtual int GetDefaultHeapId() = 0;
   virtual int ToFd(void *data) = 0;
   virtual int SyncCacheStart(void *data) = 0;
   virtual int SyncCacheEnd(void *data) = 0;
 
-  virtual int GetIonCacheFlag() = 0;
   virtual RpcmemType GetRpcmemType() = 0;
 
  protected:
