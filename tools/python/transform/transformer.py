@@ -2173,6 +2173,7 @@ class Transformer(base_converter.ConverterInterface):
                             act_op = self._consumers[biasadd_op.output[0]][0]
                             biasadd_op.input[0] = conv_op.output[0]
                             b2s_op.input[0] = act_op.output[0]
+                            act_op.output_shape[0].dims[:] = conv_op.output_shape[0].dims[:]
                             for op in self._consumers[act_op.output[0]]:
                                 self.replace(op.input,
                                              act_op.output[0],

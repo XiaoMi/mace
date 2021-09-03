@@ -67,6 +67,7 @@ SocSkelInfo = [
     SocSkelTable(407, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),
     SocSkelTable(415, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
     SocSkelTable(450, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
+    SocSkelTable(457, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
     SocSkelTable(0, None, None, None)
 ]
 
@@ -76,4 +77,4 @@ def get_soc_skel_info(soc_id):
         if info.soc_id == soc_id:
             return info
 
-    mace_check(False, ModuleName.RUN, "Unsupported dsp soc")
+    mace_check(False, ModuleName.RUN, "Unsupported dsp soc %d" % soc_id)
