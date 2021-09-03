@@ -28,10 +28,6 @@
 typedef cl_queue_properties_APPLE cl_queue_properties;
 #endif
 
-#if CL_HPP_TARGET_OPENCL_VERSION < 200
-#define CL_API_SUFFIX__VERSION_2_0
-#endif
-
 namespace mace {
 
 namespace runtime {
@@ -838,7 +834,7 @@ CL_API_ENTRY cl_int clGetDeviceImageInfoQCOM(
     size_t param_value_size,
     void *param_value,
     size_t *param_value_size_ret)
-    CL_EXT_SUFFIX__VERSION_1_1 {
+    CL_API_SUFFIX__VERSION_1_1 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetDeviceImageInfoQCOM;
   if (func != nullptr) {
     MACE_LATENCY_LOGGER(3, "clGetDeviceImageInfoQCOM");

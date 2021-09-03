@@ -65,7 +65,7 @@ MaceStatus ArmSoftmaxInt8Op::RunForNHWC() {
   int32_t scale_q = static_cast<int32_t>(
       base::min(static_cast<double>(input_quantize_info.scale) *
                     (1 << (31 - kInputDeltaIntBits)),
-                (1ll << 31) - 1.0));
+                static_cast<double>((1ll << 31) - 1.0)));
   int32_t mult;
   int32_t shift;
   QuantizeMultiplier(scale_q, &mult, &shift);

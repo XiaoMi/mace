@@ -1045,7 +1045,9 @@ OpenCLVersion OpenclExecutor::ParseDeviceVersion(
   // OpenCL<space><major_version.minor_version><space>
   // <vendor-specific information>
   auto words = Split(device_version, ' ');
-  if (words[1] == "2.1") {
+  if (words[1] == "3.0") {
+    return OpenCLVersion::CL_VER_3_0;
+  } else if (words[1] == "2.1") {
     return OpenCLVersion::CL_VER_2_1;
   } else if (words[1] == "2.0") {
     return OpenCLVersion::CL_VER_2_0;
