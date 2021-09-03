@@ -80,7 +80,6 @@ std::string FloatToString(const FloatType v, const int32_t precision) {
   return stream.str();
 }
 
-std::once_flag backend_prepared;
 void PrepareBackend() {
   LOG(INFO) << "Prepare QNN backend.";
   auto log_level = static_cast<QnnLog_Level_t>(
@@ -96,7 +95,7 @@ void PrepareBackend() {
 
 QnnWrapper::QnnWrapper(Runtime *runtime)
     : runtime_(runtime) {
-  std::call_once(backend_prepared, PrepareBackend);
+  PrepareBackend();
   graph_state_ = QNN_INIT_START;
   perf_ = make_unique<QnnPerformance>();
   LOG(INFO) << "QNN version: " << GetVersion();
