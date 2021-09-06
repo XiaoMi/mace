@@ -35,22 +35,22 @@ new_http_archive(
 new_http_archive(
     name = "opencl_headers",
     build_file = "third_party/opencl-headers/opencl-headers.BUILD",
-    sha256 = "b2b813dd88a7c39eb396afc153070f8f262504a7f956505b2049e223cfc2229b",
-    strip_prefix = "OpenCL-Headers-f039db6764d52388658ef15c30b2237bbda49803",
+    sha256 = "e08f3c77a76f0e3d9ef886c7a7245757a831fdf5bc2c554587f57adb9226f53a",
+    strip_prefix = "OpenCL-Headers-2021.06.30",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-Headers/f039db6764d52388658ef15c30b2237bbda49803.zip",
-        "https://github.com/KhronosGroup/OpenCL-Headers/archive/f039db6764d52388658ef15c30b2237bbda49803.zip",
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-Headers/OpenCL-Headers-2021.06.30.zip",
+        "https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v2021.06.30.zip",
     ],
 )
 
 new_http_archive(
     name = "opencl_clhpp",
     build_file = "third_party/opencl-clhpp/opencl-clhpp.BUILD",
-    sha256 = "dab6f1834ec6e3843438cc0f97d63817902aadd04566418c1fcc7fb78987d4e7",
-    strip_prefix = "OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12",
+    sha256 = "767c2e9589739cfca814cbb94c57bcbb3112d94f1a8cafffa8a5cc3a5de00d12",
+    strip_prefix = "OpenCL-CLHPP-2.0.15",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-CLHPP/OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12.zip",
-        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/4c6f7d56271727e37fb19a9b47649dd175df2b12.zip",
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-CLHPP/OpenCL-CLHPP-2.0.15.zip",
+        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/refs/tags/v2.0.15.zip",
     ],
 )
 

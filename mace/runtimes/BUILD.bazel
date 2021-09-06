@@ -27,7 +27,7 @@ cc_library(
     ],
     deps = [
         "@opencl_clhpp",
-        "@opencl_headers//:opencl20_headers",
+        "@opencl_headers//:opencl_headers",
     ],
 )
 
