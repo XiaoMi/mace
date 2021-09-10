@@ -69,7 +69,7 @@ class TileOp : public Operation {
 
     auto *runtime = context->runtime();
     Tensor fake_input(runtime, DataTypeToEnum<T>::v(),
-                      input->memory_type(), output_shape);
+                      MemoryType::CPU_BUFFER, output_shape);
     runtime->AllocateBufferForTensor(&fake_input, RENT_SCRATCH);
     T *fake_input_data = fake_input.mutable_data<T>();
     std::memcpy(fake_input_data, input_data, input->size() * sizeof(T));
