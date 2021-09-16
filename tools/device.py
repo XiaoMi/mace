@@ -221,6 +221,7 @@ class DeviceWrapper:
                    benchmark=False,
                    fake_warmup=False,
                    use_system_libhexagon_nn=False,
+                   debug_mode=False,
                    ):
         six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
                    "out_of_range_check=%s, num_threads=%s, "
@@ -352,6 +353,8 @@ class DeviceWrapper:
                             self.data_dir, os.path.basename(accelerator_binary_file))
                 for so_path in self.get_apu_so_paths():
                     self.push(so_path, self.data_dir)
+                if debug_mode:
+                    cmd.append("MTKNN_ENABLE_PROFILER=1")
 
             if (device_type == common.DeviceType.HEXAGON and
                     not use_system_libhexagon_nn):
@@ -703,7 +706,8 @@ class DeviceWrapper:
                 YAMLKeyword.model_file_path],
             benchmark=flags.benchmark,
             fake_warmup=flags.fake_warmup,
-            use_system_libhexagon_nn=flags.use_system_libhexagon_nn
+            use_system_libhexagon_nn=flags.use_system_libhexagon_nn,
+            debug_mode=flags.debug_mode,
         )
 
     def get_output_map(self,
