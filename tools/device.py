@@ -391,7 +391,7 @@ class DeviceWrapper:
             if os.path.exists(qnn_path):
                 self.push(qnn_path, self.data_dir)
                 self.push("third_party/qnn/target/%s/libQnnHtpAltPrepV69Stub.so" % abi,
-                        self.data_dir)
+                          self.data_dir)
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:
                 mace_model_phone_path = "%s/%s.pb" % (self.data_dir,
