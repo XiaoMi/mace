@@ -24,16 +24,25 @@
 
 namespace micro {
 
+MaceMicroEngine::MaceMicroEngine() : engine_config_(nullptr),
+                                     initialized_(false) {}
+
 MaceStatus MaceMicroEngine::Init(MaceMicroEngineConfig *engine_config) {
   MACE_ASSERT(engine_config != NULL && engine_config->net_def_ != NULL
                   && engine_config->model_data_ != NULL
                   && engine_config->graph_ != NULL
                   && engine_config->op_array_ != NULL
                   && engine_config->tensor_mem_ != NULL);
+  if (initialized_) {
+    MACE_ASSERT1(engine_config == engine_config_,
+                 "The engine has initialized and get an invalid config.");
+    return MACE_SUCCESS;
+  }
   engine_config_ = engine_config;
 
   MACE_RETURN_IF_ERROR(engine_config_->graph_->Init(engine_config_));
 
+  initialized_ = true;
   return MACE_SUCCESS;
 }
 
@@ -49,6 +58,8 @@ MaceStatus MaceMicroEngine::RegisterInputData(uint32_t idx,
 }
 
 MaceStatus MaceMicroEngine::Run() {
+  MACE_ASSERT1(initialized_ == true, "The engine has not initialized.");
+
   return engine_config_->graph_->Run(engine_config_);
 }
 
@@ -129,7 +140,6 @@ MaceStatus CreateMaceMicroEngineFromBinary(uint8_t *model_data,
                                        static_cast<uint32_t>(header->scratch_buffer_size)};
   return (*engine)->Init(engine_config);
 }
-
 
 void DestroyMicroEngineFromBinary(micro::MaceMicroEngine *engine) {
   delete[] engine->GetEngineConfig()->tensor_mem_;

@@ -216,6 +216,9 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
         libs += [
             "third_party/qnn/target/%s/libQnnHtpAltPrepStub.so" %
             target_abi]
+        libs += [
+            "third_party/qnn/target/%s/libQnnHtpAltPrepV69Stub.so" %
+            target_abi]
     cpp_shared_lib_path = os.path.join(
         build_dir, "install/lib/libc++_shared.so")
     if os.path.exists(cpp_shared_lib_path):

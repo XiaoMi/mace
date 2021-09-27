@@ -77,7 +77,7 @@ struct MaceMicroEngineConfig {
 
 class MaceMicroEngine {
  public:
-  MaceMicroEngine() {}
+  MaceMicroEngine();
   ~MaceMicroEngine() {}
 
   MaceStatus Init(MaceMicroEngineConfig *engine_config);
@@ -99,6 +99,7 @@ class MaceMicroEngine {
 
  private:
   MaceMicroEngineConfig *engine_config_;
+  bool initialized_;
 
   MaceMicroEngine(const MaceMicroEngine &);
   MaceMicroEngine &operator=(const MaceMicroEngine &);
