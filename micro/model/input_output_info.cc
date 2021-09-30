@@ -26,5 +26,11 @@ MACE_DEFINE_OBJECT_FUNC(InputOutputInfo, int32_t, data_format)
 MACE_DEFINE_OBJECT_FUNC(InputOutputInfo, float, scale)
 MACE_DEFINE_OBJECT_FUNC(InputOutputInfo, int32_t, zero_point)
 
+const int32_t *InputOutputInfo::dim() const {
+  const int32_t *array = reinterpret_cast<const int32_t *>(
+      reinterpret_cast<const char *>(this) + dims_.offset_);
+  return array;
+}
+
 }  // namespace model
 }  // namespace micro

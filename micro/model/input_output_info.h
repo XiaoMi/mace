@@ -33,6 +33,8 @@ class InputOutputInfo : public Serialize {
   MACE_DECLARE_OBJECT_FUNC(float, scale);
   MACE_DECLARE_OBJECT_FUNC(int32_t, zero_point);
 
+  const int32_t *dim() const;
+
  private:
   SerialString name_;
   SerialInt32 node_id_;

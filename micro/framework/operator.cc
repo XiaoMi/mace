@@ -129,7 +129,9 @@ const int32_t *Operator::GetInputShapeDims(uint32_t idx) {
         engine_config_->net_def_->tensor(input_info->output_idx_);
     dims = const_tensor->dim();
   } else if (kIdxModelInput == op_def_idx) {
-    dims = engine_config_->input_shapes_[input_info->output_idx_];
+    const model::InputOutputInfo *info =
+        engine_config_->net_def_->input_info(input_info->output_idx_);
+    dims = info->dim();
   } else {
     const model::OperatorDef *op_def = engine_config_->net_def_->op(op_def_idx);
     const model::OutputShape *output_shape =

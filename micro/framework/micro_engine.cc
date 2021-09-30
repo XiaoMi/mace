@@ -53,6 +53,17 @@ MaceStatus MaceMicroEngine::RegisterInputData(uint32_t idx,
   MACE_ASSERT(input_buffer != NULL);
   MACE_ASSERT(input_dims != NULL);
 
+  uint32_t dim_size = 0;
+  const int32_t *dims = NULL;
+  const model::InputOutputInfo *info =
+    engine_config_->net_def_->input_info(idx);
+  dim_size = info->dim_size();
+  dims = info->dim();
+  for (uint32_t i = 0; i < dim_size; ++i) {
+    MACE_ASSERT1(dims[i] == input_dims[i],
+                 "Input data shape not match!");
+  }
+
   return engine_config_->graph_->RegisterInputData(engine_config_, idx,
                                                    input_buffer, input_dims);
 }
