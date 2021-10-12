@@ -177,6 +177,8 @@ class KerasConverter(base_converter.ConverterInterface):
             keras.layers.GlobalAveragePooling2D:
                 self.convert_global_average_pooling2d,
             keras.layers.Add: self.convert_add,
+            keras.layers.Subtract: self.convert_substract,
+            keras.layers.Multiply: self.convert_multiply,
             QuantizeLayer: self.convert_quantize_layer,
             QuantizeWrapper: self.convert_quantize_wrapper,
             # keras.Sequential: self.convert_sequential,
@@ -385,13 +387,21 @@ class KerasConverter(base_converter.ConverterInterface):
     def convert_batch_normalization(self, keras_op):
         op = self.convert_general_op_with_input_output(keras_op)
         op.type = MaceOp.BatchNorm.name
-        gamma = keras_op.gamma.numpy()
-        beta = keras_op.beta.numpy()
-        mean = keras_op.moving_mean.numpy()
+
+        channel = op.output_shape[0].dims[-1]
+        gamma = np.array([1.0] * channel).astype(np.float32)
+        if keras_op.gamma is not None:
+            gamma = keras_op.gamma.numpy()
         variance = keras_op.moving_variance.numpy()
         epsilon = keras_op.epsilon
         scale = (1.0 / np.sqrt(variance + epsilon)) * gamma
+
+        beta = np.array([0.0] * channel).astype(np.float32)
+        if keras_op.beta is not None:
+            beta = keras_op.beta.numpy()
+        mean = keras_op.moving_mean.numpy()
         offset = (-mean * scale) + beta
+
         scale_name = keras_op.name + '/scale:0'
         offset_name = keras_op.name + '/offset:0'
         self.add_numpy_tensor(scale_name, scale)
@@ -508,15 +518,24 @@ class KerasConverter(base_converter.ConverterInterface):
         axis_arg.i = axis
         return op
 
-    def convert_add(self, keras_op):
+    def convert_eltwise(self, keras_op, eltwise_type):
         op = self.convert_general_op_with_input_output(keras_op)
         op.type = MaceOp.Eltwise.name
 
         type_arg = op.arg.add()
         type_arg.name = MaceKeyword.mace_element_type_str
-        type_arg.i = EltwiseType.SUM.value
+        type_arg.i = eltwise_type
 
         return op
+
+    def convert_add(self, keras_op):
+        return self.convert_eltwise(keras_op, EltwiseType.SUM.value)
+
+    def convert_substract(self, keras_op):
+        return self.convert_eltwise(keras_op, EltwiseType.SUB.value)
+
+    def convert_multiply(self, keras_op):
+        return self.convert_eltwise(keras_op, EltwiseType.PROD.value)
 
     def convert_quantize_layer(self, keras_op):
         op = self._mace_net_def.op.add()
