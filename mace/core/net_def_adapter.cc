@@ -430,6 +430,23 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
         }
       }
     }
+  } else if (op_data_format == DataFormat::NCHW) {
+    op_data_format = GetDefaultDataFormat(runtime_type, is_quantized_model);
+    SetProtoArg<int>(op_def, "data_format", static_cast<int>(op_data_format));
+    if (op_data_format == DataFormat::NHWC) {
+      int output_shape_size = op_def->output_shape_size();
+      for (int i = 0; i < output_shape_size; ++i) {
+        auto output_shape = op_def->mutable_output_shape(i);
+        if (output_shape->dims_size() == 4) {
+          // transpose output shape format from NCHW to NHWC
+          int64_t height = output_shape->dims(2);
+          int64_t width = output_shape->dims(3);
+          output_shape->set_dims(3, output_shape->dims(1));
+          output_shape->set_dims(1, height);
+          output_shape->set_dims(2, width);
+        }
+      }
+    }
   }
   *op_output_df = op_data_format;
 
