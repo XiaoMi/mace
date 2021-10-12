@@ -1038,8 +1038,6 @@ class Transformer(base_converter.ConverterInterface):
                         if len(padding_arg_values) > 0 \
                                 and padding_arg_values[0] > 0:
                             padding_arg.i = PaddingMode.SAME.value
-                        else:
-                            padding_arg.i = PaddingMode.VALID.value
 
                         strides_arg = ConverterUtil.get_arg(
                             conv_op,
