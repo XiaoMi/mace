@@ -528,7 +528,7 @@ class Transformer(base_converter.ConverterInterface):
                 reduce_type = ConverterUtil.get_arg(
                     op, MaceKeyword.mace_reduce_type_str).i
                 if reduce_type == ReduceType.MEAN.value and \
-                        len(op.input) == 1 and \
+                        len(op.input) == 1 and len(axis) >= 2 and \
                         axis[0] == 1 and axis[1] == 2 and \
                         keep_dims > 0:
                     outputs = op.output
@@ -968,20 +968,15 @@ class Transformer(base_converter.ConverterInterface):
     def fold_biasadd(self):
         net = self._model
         for op in net.op:
+            framework = ConverterUtil.get_arg(op, MaceKeyword.mace_framework_type_str).i
             if (((op.type == MaceOp.Conv2D.name
                   or op.type == MaceOp.DepthwiseConv2d.name
                   or op.type == MaceOp.FullyConnected.name)
                  and len(op.input) == 2)
                 or (op.type == MaceOp.Deconv2D.name
-                    and ((ConverterUtil.get_arg(
-                                op,
-                                MaceKeyword.mace_framework_type_str).i ==
-                          FrameworkType.CAFFE.value
+                    and ((framework == FrameworkType.CAFFE.value
                           and len(op.input) == 2)
-                         or (ConverterUtil.get_arg(
-                                        op,
-                                        MaceKeyword.mace_framework_type_str).i
-                             == FrameworkType.TENSORFLOW.value
+                         or (framework == FrameworkType.TENSORFLOW.value
                              and len(op.input) == 3)))) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
@@ -2353,13 +2348,20 @@ class Transformer(base_converter.ConverterInterface):
                 act_type = ConverterUtil.get_arg(
                     op, MaceKeyword.mace_activation_type_str).s.decode()
                 if act_type not in [ActivationType.TANH.name,
-                                    ActivationType.SIGMOID.name]:
+                                    ActivationType.SIGMOID.name,
+                                    ActivationType.RELUX.name]:
                     continue
                 del op.quantize_info[:]
                 if act_type == ActivationType.TANH.name:
                     quantize_info = self.add_quantize_info(op, -1.0, 1.0)
-                else:
+                elif act_type == ActivationType.SIGMOID.name:
                     quantize_info = self.add_quantize_info(op, 0.0, 1.0)
+                elif act_type == ActivationType.RELUX.name:
+                    for arg in op.arg:
+                        if arg.name == MaceKeyword.mace_activation_max_limit_str:
+                            maxval = arg.f
+                            minval = 0.0
+                            quantize_info = self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
             elif op.type == MaceOp.Softmax.name:
                 del op.quantize_info[:]
@@ -2387,6 +2389,19 @@ class Transformer(base_converter.ConverterInterface):
                         - producer_op1.quantize_info[0].maxval
                     maxval = producer_op0.quantize_info[0].maxval \
                         - producer_op1.quantize_info[0].minval
+                elif ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_element_type_str).i \
+                        == EltwiseType.PROD.value:
+                    mul_a = producer_op0.quantize_info[0].minval \
+                        * producer_op1.quantize_info[0].minval
+                    mul_b = producer_op0.quantize_info[0].minval \
+                        * producer_op1.quantize_info[0].maxval
+                    mul_c = producer_op0.quantize_info[0].maxval \
+                        * producer_op1.quantize_info[0].minval
+                    mul_d = producer_op0.quantize_info[0].maxval \
+                        * producer_op1.quantize_info[0].maxval
+                    minval = min(mul_a, mul_b, mul_c, mul_d)
+                    maxval = max(mul_a, mul_b, mul_c, mul_d)
                 else:
                     print(op)
                     mace_check(False, "Quantized Elementwise only support:"
@@ -2394,7 +2409,12 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_info = \
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
-
+            elif op.type == MaceOp.Split.name:
+                del op.quantize_info[:]
+                producer_op = self._producer[op.input[0]]
+                for i in op.output:
+                    self.copy_quantize_info(op,
+                                            producer_op.quantize_info[0])
         return False
 
     def check_quantize_info(self):
