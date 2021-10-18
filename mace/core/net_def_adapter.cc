@@ -419,14 +419,37 @@ MaceStatus NetDefAdapter::AdaptDataFormat(
     if (op_data_format == DataFormat::NCHW) {
       int output_shape_size = op_def->output_shape_size();
       for (int i = 0; i < output_shape_size; ++i) {
-        auto output_shape = op_def->mutable_output_shape(i);
-        if (output_shape->dims_size() == 4) {
-          // transpose output shape format from NHWC to NCHW
-          int64_t height = output_shape->dims(1);
-          int64_t width = output_shape->dims(2);
-          output_shape->set_dims(1, output_shape->dims(3));
-          output_shape->set_dims(2, height);
-          output_shape->set_dims(3, width);
+        auto raw_output_shape = op_def->mutable_output_shape(i);
+        if (raw_output_shape->dims_size() == 4) {
+          // Transpose output shape format from NHWC to NCHW
+          std::vector<index_t> output_shape(raw_output_shape->dims().begin(),
+                                            raw_output_shape->dims().end());
+          std::vector<int> dst_dims{0, 3, 1, 2};
+          output_shape = TransposeShape<index_t, index_t>(output_shape, dst_dims);
+          int size = output_shape.size();
+          for (int j = 0; j < size; ++j) {
+            raw_output_shape->set_dims(j, output_shape[j]);
+          }
+        }
+      }
+    }
+  } else if (op_data_format == DataFormat::NCHW) {
+    op_data_format = GetDefaultDataFormat(runtime_type, is_quantized_model);
+    SetProtoArg<int>(op_def, "data_format", static_cast<int>(op_data_format));
+    if (op_data_format == DataFormat::NHWC) {
+      int output_shape_size = op_def->output_shape_size();
+      for (int i = 0; i < output_shape_size; ++i) {
+        auto raw_output_shape = op_def->mutable_output_shape(i);
+        if (raw_output_shape->dims_size() == 4) {
+          // Transpose output shape format from NCHW to NHWC
+          std::vector<index_t> output_shape(raw_output_shape->dims().begin(),
+                                            raw_output_shape->dims().end());
+          std::vector<int> dst_dims{0, 2, 3, 1};
+          output_shape = TransposeShape<index_t, index_t>(output_shape, dst_dims);
+          int size = output_shape.size();
+          for (int j = 0; j < size; ++j) {
+            raw_output_shape->set_dims(j, output_shape[j]);
+          }
         }
       }
     }

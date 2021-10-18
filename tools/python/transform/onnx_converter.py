@@ -662,12 +662,8 @@ class OnnxConverter(base_converter.ConverterInterface):
                             mace_check(dequant_node.op_type ==
                                        OnnxOpType.DequantizeLinear.name,
                                        'consumer of QuantizeLinear must be DequantizeLinear')  # noqa
-                            tensor_real_consumers = \
-                                self._consumers[dequant_node.output[0]]
-                            for tensor_real_consumer in tensor_real_consumers:
-                                self.replace_input(
-                                    tensor_real_consumer,
-                                    dequant_node.output[0], init.name)
+                            for node in self._onnx_model.graph.node:
+                                self.replace_input(node, dequant_node.output[0], init.name)
                             self._skip_quant_dequants.add(quant_node.output[0])
                             self._skip_quant_dequants.add(
                                 dequant_node.output[0])
