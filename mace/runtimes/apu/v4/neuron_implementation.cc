@@ -75,13 +75,16 @@ const NeuronApi LoadNeuronApi() {
   libneuron_adapter =
       dlopen("libneuronusdk_adapter.mtk.so", RTLD_LAZY | RTLD_LOCAL);
   if (libneuron_adapter == nullptr) {
-    NEURONAPI_LOG("NeuronApi error: unable to open library %s",
-                  "libneuronusdk_adapter.mtk.so");
+    libneuron_adapter = dlopen("libneuron_adapter_mgvi.so", RTLD_LAZY | RTLD_LOCAL);
+  }
+  if (libneuron_adapter == nullptr) {
     libneuron_adapter = dlopen("libneuron_adapter.so", RTLD_LAZY | RTLD_LOCAL);
-    if (libneuron_adapter == nullptr) {
-      NEURONAPI_LOG("NeuronApi error: unable to open library %s",
-                    "libneuron_adapter.so");
-    }
+  }
+  if (libneuron_adapter == nullptr) {
+    NEURONAPI_LOG("NeuronApi error: unable to open library %s",
+                  "libneuronusdk_adapter.mtk.so, "
+                  "libneuron_adapter_mgvi.so, "
+                  "libneuron_adapter.so");
   }
 
   neuron_api.neuron_exists = libneuron_adapter != nullptr;
