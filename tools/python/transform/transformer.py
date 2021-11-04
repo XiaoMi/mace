@@ -2365,8 +2365,16 @@ class Transformer(base_converter.ConverterInterface):
                 self._quantize_activation_info[op.output[0]] = quantize_info
             elif op.type == MaceOp.Softmax.name:
                 del op.quantize_info[:]
-                quantize_info = \
-                    self.add_quantize_info(op, 0.0, 1.0)
+                if self._option.device == DeviceType.APU.value:
+                    mace_check(quantize_schema != MaceKeyword.mace_htp_u16a_s8w,
+                               "mace_htp_u16a_s8w is not a valid quantize_schema for APU")
+                    if quantize_schema == MaceKeyword.mace_apu_16bit_per_tensor:
+                        quantize_info = self.add_quantize_info(op, 0.0, 1.0)
+                    else:
+                        # to comply with softmax scale constraints for APU
+                        quantize_info = self.add_quantize_info(op, 0.0, 255.0/256.0)
+                else:
+                    quantize_info = self.add_quantize_info(op, 0.0, 1.0)
                 self._quantize_activation_info[op.output[0]] = quantize_info
             elif (op.type == MaceOp.Eltwise.name
                   and not op.quantize_info
