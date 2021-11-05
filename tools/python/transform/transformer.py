@@ -1537,10 +1537,20 @@ class Transformer(base_converter.ConverterInterface):
                                     input_op)
                                 # OI+NCHW[2:]=OIHW
                                 if in_data_format == DataFormat.NCHW:
+                                    size = input_shape[2] * input_shape[3]
+                                    mace_check(weight.dims[1] % size == 0,
+                                               "Reshape dims of input cannot be \
+                                                divisible by dims of output")
+                                    weight.dims[1] = weight.dims[1] // size
                                     weight.dims.extend(input_shape[2:])
-                                # OI+NHWC[1:3]=OIHW
+                                # OI+NHWC[1:2]=OIHW
                                 else:
-                                    weight.dims.extend(input_shape[1:3])
+                                    size = input_shape[1] * input_shape[2]
+                                    mace_check(weight.dims[1] % size == 0,
+                                               "Reshape dims of input cannot be \
+                                                divisible by dims of output")
+                                    weight.dims[1] = weight.dims[1] // size
+                                    weight.dims.extend(input_shape[1:2])
                         return True
 
             # transform `fc1(2D) -> matmul` to `fc1(2D) -> fc1(2D)`
