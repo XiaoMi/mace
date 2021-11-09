@@ -367,7 +367,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Flatten.name: self.convert_flatten,
             OnnxOpType.Gather.name: self.convert_gather,
             OnnxOpType.Gemm.name: self.convert_gemm,
-            OnnxOpType.GlobalAveragePool.name: self.convert_pooling,
+            OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
             OnnxOpType.Identity.name: self.convert_identity,
             OnnxOpType.IfDefined.name: self.convert_ifdefined,
