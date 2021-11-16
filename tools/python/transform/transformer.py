@@ -67,6 +67,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_RESHAPE: self.fold_reshape,
             TransformerRule.TRANSFORM_MATMUL_TO_FC:
                 self.transform_matmul_to_fc,
+            TransformerRule.UPDATE_FC_OUTPUT_SHAPE:
+                self.update_fc_output_shape,
             TransformerRule.FOLD_BATCHNORM: self.fold_batchnorm,
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FOLD_CONV_AND_BN:
@@ -429,6 +431,18 @@ class Transformer(base_converter.ConverterInterface):
                     self.safe_remove_node(op,
                                           self._producer.get(op.input[0],
                                                              None))
+                    return True
+            elif op.type == 'Reshape' and len(op.output_shape) == 1 and \
+                    self._producer.get(op.input[0], None) is not None and \
+                    self._producer.get(op.input[0], None).type == 'Reshape':
+                print("Remove useless Reshape: %s(%s)" % (op.name, op.type))
+                producer_op = self._producer.get(op.input[0], None)
+                if (len(producer_op.input) == 1 or producer_op.input[1] in self._consts) and \
+                        self._consumers.get(producer_op.output[0], None) is not None and \
+                        len(self._consumers.get(producer_op.output[0], None)) == 1:
+                    self.safe_remove_node(producer_op, None,
+                                          remove_input_tensor=True)
+                    return True
         return False
 
     def transform_global_pooling(self):
@@ -1522,7 +1536,7 @@ class Transformer(base_converter.ConverterInterface):
                                 is_fc = False
                     if is_fc:
                         print('convert reshape and matmul to fc')
-                        self.safe_remove_node(op, input_op,
+                        self.safe_remove_node(op, None,
                                               remove_input_tensor=True)
                         for matmul_op in consumers:
                             weight = self._consts[matmul_op.input[1]]
@@ -1574,6 +1588,31 @@ class Transformer(base_converter.ConverterInterface):
                     if is_torch or is_onnx:
                         weight.dims.extend([1, 1])
                     return True
+        return False
+
+    # When FC is producer of Reshape, updating output shape of FC makes
+    # Reshape transposable.
+    def update_fc_output_shape(self):
+        net = self._model
+        framework = ConverterUtil.framework_type(net)
+        is_torch = framework == FrameworkType.PYTORCH.value
+        is_onnx = framework == FrameworkType.ONNX.value
+        dev = self._option.device
+        if not ((is_torch or is_onnx) and
+                (dev == DeviceType.GPU.value or dev == DeviceType.CPU.value)):
+            return False
+        for op in net.op:
+            if op.type != MaceOp.FullyConnected.name:
+                continue
+            out_data_format = ConverterUtil.data_format(op)
+            if len(op.output_shape[0].dims) != 2:
+                continue
+            if out_data_format == DataFormat.NCHW:
+                op.output_shape[0].dims.extend([1, 1])
+            else:
+                dim1 = op.output_shape[0].dims[1]
+                del op.output_shape[0].dims[1:]
+                op.output_shape[0].dims.extend([1, 1, dim1])
         return False
 
     def update_float_op_data_type(self):
@@ -1642,6 +1681,9 @@ class Transformer(base_converter.ConverterInterface):
 
     def is_transposable_data_format_ops(self, op):
         transposable = op.type in MaceTransposableDataFormatOps
+        framework = ConverterUtil.framework_type(self._model)
+        is_torch = framework == FrameworkType.PYTORCH.value
+        is_onnx = framework == FrameworkType.ONNX.value
 
         if op.type == MaceOp.Reshape:
             input_op = self._producer[op.input[0]]
@@ -1654,14 +1696,17 @@ class Transformer(base_converter.ConverterInterface):
                         len(input_dims) != 4 or len(output_dims) != 4:
                     transposable = False
                 else:
-                    in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
-                        input_dims, ConverterUtil.data_format(input_op))
-                    ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
-                        output_dims, ConverterUtil.data_format(op))
-                    transposable = (in_b == ou_b and in_c == ou_c)
-                    if self._option.device == DeviceType.HEXAGON.value or \
-                            self._option.device == DeviceType.HTP.value:
+                    if is_torch or is_onnx:
                         transposable = True
+                    else:
+                        in_b, in_h, in_w, in_c = self.sort_feature_map_shape(
+                            input_dims, ConverterUtil.data_format(input_op))
+                        ou_b, ou_h, ou_w, ou_c = self.sort_feature_map_shape(
+                            output_dims, ConverterUtil.data_format(op))
+                        transposable = (in_b == ou_b and in_c == ou_c)
+                        if self._option.device == DeviceType.HEXAGON.value or \
+                                self._option.device == DeviceType.HTP.value:
+                            transposable = True
         elif op.type == MaceOp.Squeeze:
             input_op = self._producer[op.input[0]]
             if len(input_op.output_shape) == 0 or len(op.output_shape) == 0:

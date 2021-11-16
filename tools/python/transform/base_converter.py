@@ -389,6 +389,7 @@ class TransformerRule(Enum):
     TRANSPOSE_CONST_OP_INPUT = 53
     FOLD_INSTANCE_NORM = 54
     FOLD_MOMENTS = 55
+    UPDATE_FC_OUTPUT_SHAPE = 56
 
 
 class ConverterInterface(object):
@@ -666,6 +667,12 @@ class ConverterOption(object):
                 TransformerRule.TRANSPOSE_SHAPE_TENSOR_TO_PARAM,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
+                # Must be put after TRANSFORM_MATMUL_TO_FC and
+                # before UPDATE_DATA_FORMAT
+                TransformerRule.UPDATE_FC_OUTPUT_SHAPE,
+                # After update FC output shape, there may be useless reshape
+                # which does: NC11 -> Reshape(useless) -> NC11
+                TransformerRule.REMOVE_USELESS_OP,
                 # For StoB -> conv -> BtoS -> BN pattern
                 # Insert flatten_atrous_conv before fold_xxx_and_bn
                 TransformerRule.FLATTEN_ATROUS_CONV,

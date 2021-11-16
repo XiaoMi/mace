@@ -146,7 +146,14 @@ class ReshapeOp<RuntimeType::RT_OPENCL, float> : public Operation {
       : Operation(context), dim_(Operation::GetRepeatedArgs<int>("dim")),
         mem_type_(context->GetOpMemoryType()) {
     if (mem_type_ == MemoryType::GPU_IMAGE) {
-      kernel_ = make_unique<opencl::image::ReshapeKernel>(context);
+      OperatorDef *op_def = context->operator_def().get();
+      int int_framework = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          *op_def, "framework_type", 0);
+      framework_ = static_cast<FrameworkType>(int_framework);
+      has_data_format_ = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          *op_def, "has_data_format", 0);
+      kernel_ = make_unique<opencl::image::ReshapeKernel>(
+          context, framework_, has_data_format_);
     } else {
       kernel_ = make_unique<opencl::buffer::ReshapeKernel>();
     }
@@ -175,6 +182,8 @@ class ReshapeOp<RuntimeType::RT_OPENCL, float> : public Operation {
  private:
   std::vector<int> dim_;
   std::unique_ptr<OpenCLReshapeKernel> kernel_;
+  FrameworkType framework_;
+  int has_data_format_;
   MemoryType mem_type_;
   MACE_OP_INPUT_TAGS(INPUT, SHAPE);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
@@ -202,7 +211,16 @@ void RegisterReshape(OpRegistry *op_registry) {
         int has_data_format =
             ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
                 *op, "has_data_format", 0);
-        if (has_data_format && op->input_size() == 1) {
+        const Tensor *dim_tensor = nullptr;
+        bool has_const_dim = false;
+        if (op->input_size() >= 2) {
+          dim_tensor =
+              context->workspace()->GetTensor(op->input(1));
+        }
+        if (dim_tensor != nullptr && dim_tensor->is_weight()) {
+          has_const_dim = true;
+        }
+        if ((has_data_format && has_const_dim) || has_const_dim) {
           return {RuntimeType::RT_CPU, RuntimeType::RT_OPENCL};
         }
 

@@ -25,6 +25,7 @@
 
 #define DATA_TYPE4 VEC_DATA_TYPE(DATA_TYPE, 4)
 #define OUT_DATA_TYPE4 VEC_DATA_TYPE(OUT_DATA_TYPE, 4)
+#define IN_DATA_TYPE4 VEC_DATA_TYPE(IN_DATA_TYPE, 4)
 
 #define CONVERT_STR(value, type) convert_##type((value))
 
