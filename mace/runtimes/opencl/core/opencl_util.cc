@@ -55,7 +55,14 @@ void CalDepthwiseConv2dFilterImageShape(
 // [(size + 3) / 4, 1]
 void CalArgImageShape(const std::vector<index_t> &shape,
                       std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 1);
+  auto shape_size = shape.size();
+  if (shape_size > 1) {
+    for (size_t i = 1; i < shape_size; ++i) {
+      MACE_CHECK(shape[i] == 1, "The value of shape[1:] should be 1.");
+    }
+  } else {
+    MACE_CHECK(shape.size() == 1, "The shape should be 1D.");
+  }
   image_shape->resize(2);
   (*image_shape)[0] = RoundUpDiv4(shape[0]);
   (*image_shape)[1] = 1;
