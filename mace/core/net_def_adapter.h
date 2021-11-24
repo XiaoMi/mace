@@ -130,7 +130,12 @@ class NetDefAdapter {
       std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
       OperatorDef *op_def, const int i, const DataFormat dst_df,
       const std::vector<int> &dst_dims);
-
+#ifdef MACE_ENABLE_OPENCL
+  std::string BuildImageToBufferOp(
+      TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
+      std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
+      OperatorDef *op_def, const int i, const InternalOutputInfo &input_info);
+#endif
   std::string DebugString(const NetDef *net_def);
 
  private:
