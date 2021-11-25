@@ -57,7 +57,7 @@ cmake_build_android-arm64-v8:
     - set +x
     - RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-arm64-v8a.sh
     - LIBMACE64_FULL_SIZE=`stat -c%s build/cmake-build/arm64-v8a/install/lib/libmace.so`
-    - if (( LIBMACE64_FULL_SIZE > 2300000 )) ; then echo "The libmace.so size too large($LIBMACE64_FULL_SIZE)"; exit 1; fi
+    - if (( LIBMACE64_FULL_SIZE > 2400000 )) ; then echo "The libmace.so size too large($LIBMACE64_FULL_SIZE)"; exit 1; fi
 
 cmake_build_host:
   stage: build

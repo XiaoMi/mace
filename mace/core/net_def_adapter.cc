@@ -42,22 +42,60 @@ struct FilterRulerInfo {
 typedef std::unordered_map<
     std::string, std::unique_ptr<FilterRulerInfo>> FilterTransposeRuler;
 
-FilterTransposeRuler GetFilterTransposeRuler() {
+FilterTransposeRuler GetFilterTransposeRuler(FrameworkType framework) {
   FilterTransposeRuler filter_ruler;
-  // Filter's src format is actually HWIO in tf, OIHW in others
-  // For Conv2D in MACE, the dst format is OIHW
-  filter_ruler.emplace("Conv2D", make_unique<FilterRulerInfo>(
-      1, std::vector<int>({3, 2, 0, 1}), std::vector<int>({})));
+  // Only TENSORFLOW and ONNX is tested in real model, PYTORCH's filter
+  // format is the same as ONNX.
+  switch (framework) {
+    case TENSORFLOW:
+      // GPU: TF uses HWIO, {3, 2, 0, 1} does HWIO -> OIHW.
+      // CPU: HWIO will be transposed to HOWI(because NHWC->NCHW),
+      // {1, 3, 0, 2} does HOWI -> OIHW.
+      filter_ruler.emplace("Conv2D", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({3, 2, 0, 1}), std::vector<int>({1, 3, 0, 2})));
 
-  // Filter's src format is actually HWOI in tf, MIHW in others
-  filter_ruler.emplace("Deconv2D", make_unique<FilterRulerInfo>(
-      1, std::vector<int>({2, 3, 0, 1}), std::vector<int>({})));
+      // GPU: TF uses HWOI, {2, 3, 0, 1} does HWOI -> OIHW.
+      // CPU: HWOI will be transposed to HIWO(because NHWC->HCHW),
+      // {3, 1, 0, 2} does HIWO -> OIHW.
+      filter_ruler.emplace("Deconv2D", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({2, 3, 0, 1}), std::vector<int>({3, 1, 0, 2})));
 
-  filter_ruler.emplace("DepthwiseConv2d", make_unique<FilterRulerInfo>(
-      1, std::vector<int>({3, 2, 0, 1}), std::vector<int>({})));
+      // GPU: TF uses HWIM, {3, 2, 0, 1} does HWIM -> MIHW.
+      // CPU: HWIM will be transposed to HMWI(because NHWC -> NCHW),
+      // {1, 3, 0, 2} does HMWI->MIHW.
+      filter_ruler.emplace("DepthwiseConv2d", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({3, 2, 0, 1}), std::vector<int>({1, 3, 0, 2})));
 
-  filter_ruler.emplace("DepthwiseDeconv2d", make_unique<FilterRulerInfo>(
-      1, std::vector<int>({2, 3, 0, 1}), std::vector<int>({})));
+      break;
+    case ONNX:
+    case PYTORCH:
+      // GPU: OIHW will be transposed to OHWI(because NCHW->NHWC).
+      // {0, 3, 1, 2} does OHWI -> OIHW.
+      // CPU: Nothing is need.
+      filter_ruler.emplace("Conv2D", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({0, 3, 1, 2}), std::vector<int>({})));
+
+      // GPU: IOHW will be transposed to IHWO(because NCHW->NHWC),
+      // {3, 0, 1, 2} does IHWO->OIHW.
+      // CPU: {1, 0,  2, 3} does IOHW->OIHW.
+      filter_ruler.emplace("Deconv2D", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({3, 0, 1, 2}), std::vector<int>({1, 0, 2, 3})));
+
+      // GPU: O1HW will be transposed to OHW1(because NCHW->NHWC),
+      // {3, 0, 1, 2} does OHW1 -> 1OHW(MIHW in MACE).
+      // CPU: {1, 0, 2, 3} does O1HW -> 1OHW(MIHW in MACE).
+      filter_ruler.emplace("DepthwiseConv2d", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({3, 0, 1, 2}), std::vector<int>({1, 0, 2, 3})));
+
+      // GPU: I1HW will be transposed to IHW1(because NCHW->NHWC),
+      // {3, 0, 1, 2} does IHW1->1IHW(MIHW in MACE).
+      // CPU: {1, 0, 2, 3} does I1HW->1IHW(MIHW in MACE).
+      filter_ruler.emplace("DepthwiseDeconv2d", make_unique<FilterRulerInfo>(
+          1, std::vector<int>({3, 0, 1, 2}), std::vector<int>({1, 0, 2, 3})));
+      break;
+    default:
+      break;
+  }
 
   return filter_ruler;
 }
@@ -605,8 +643,20 @@ std::vector<int> NetDefAdapter::GetDstDimsFromTransposeRuler(
       dst_dims = {0, 3, 1, 2};
       transposable = true;
     } else if (dst_df == DataFormat::OIHW) {
-      static const auto filter_transpose_ruler = GetFilterTransposeRuler();
+      int int_framework = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          *op_def, "framework_type", 0);
+      FrameworkType framework = static_cast<FrameworkType>(int_framework);
       auto &op_type = op_def->type();
+      if (TENSORFLOW == framework  && "DepthwiseDeconv2d" == op_type) {
+        LOG(FATAL) << "Tensorflow does not support DepthwiseDeconv2d.";
+      }
+      if (TENSORFLOW != framework && ONNX != framework &&
+          PYTORCH != framework) {
+        LOG(FATAL) << "Only support transposing TENSORFLOW/ONNX/PYTORCH filter"
+          << " into OIHW format, but framework " << framework << " is got.";
+      }
+      static const auto filter_transpose_ruler =
+          GetFilterTransposeRuler(framework);
       MACE_CHECK((filter_transpose_ruler.count(op_type) > 0) &&
           filter_transpose_ruler.at(op_type)->filter_idx == input_idx);
       if (src_df == DataFormat::NCHW) {
@@ -632,25 +682,43 @@ MaceStatus NetDefAdapter::AddTranposeOpForDataFormat(
     std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
     OperatorDef *op_def, const int i,
     const DataFormat dst_df, const std::vector<int> &dst_dims) {
+  auto &input_info = output_map->at(op_def->input(i));
+  std::string transpose_input = op_def->input(i);
+#ifdef MACE_ENABLE_OPENCL
+  bool need_img2buf = MemoryType::GPU_IMAGE == input_info.mem_type &&
+      4 == input_info.shape.size();
+  if (need_img2buf) {
+    std::string img2buf_name = BuildImageToBufferOp(
+        output_map, tensor_shape_map, transformed_set, target_net_def,
+        op_def, i, input_info);
+    transpose_input = img2buf_name;
+  }  // GPU_IMAGE == input_info.mem_type
+#endif
   std::string transformed_name = TransformedName(
       op_def->input(i), "data_format", MakeString(dst_dims));
   if (transformed_set->count(transformed_name) == 0) {
-    auto &input_info = output_map->at(op_def->input(i));
     auto output_shape = input_info.shape.empty() ?
                         std::vector<index_t>() :
                         TransposeShape<index_t, index_t>(input_info.shape,
                                                          dst_dims);
     OperatorDef *transpose_op_def = target_net_def->add_op();
-    BuildTransposeOpDef(op_def->input(i), transformed_name, output_shape,
+    BuildTransposeOpDef(transpose_input, transformed_name, output_shape,
                         dst_dims, input_info.dtype, transpose_op_def);
     // Set data format arg
     SetProtoArg<int>(transpose_op_def, "data_format", static_cast<int>(dst_df));
     // Set output memory type argument
     SetProtoArg<int>(transpose_op_def, OutputMemoryTypeTagName(), CPU_BUFFER);
     // Update tensor consumer information
-    output_map->at(op_def->input(i)).consumer_op_indices.push_back(
-        target_net_def->op_size() - 1);
-
+    // need_img2buf = true: consumer is set to BufferTransform
+    // need_img2buf = false: consumer is set to Transpose
+#ifdef MACE_ENABLE_OPENCL
+    if (!need_img2buf) {
+#endif
+      output_map->at(op_def->input(i)).consumer_op_indices.push_back(
+          target_net_def->op_size() - 1);
+#ifdef MACE_ENABLE_OPENCL
+    }
+#endif
     // Update output information map
     output_map->emplace(transformed_name, InternalOutputInfo(
         CPU_BUFFER, input_info.dtype, dst_df, output_shape,
@@ -748,5 +816,49 @@ std::string NetDefAdapter::DebugString(const NetDef *net_def) {
   }
   return sstream.str();
 }
+
+#ifdef MACE_ENABLE_OPENCL
+std::string NetDefAdapter::BuildImageToBufferOp(
+    TensorInfoMap *output_map, TensorShapeMap *tensor_shape_map,
+    std::unordered_set<std::string> *transformed_set, NetDef *target_net_def,
+    OperatorDef *op_def, const int i, const InternalOutputInfo &input_info) {
+  // Transposing GPU_IMAGE is impossible, image_to_buffer is needed.
+  std::string img2buf_name = TransformedName(op_def->input(i),
+                                             "_mem_type_",
+                                             MemoryType::GPU_BUFFER);
+  if (0 == transformed_set->count(img2buf_name)) {
+    OperatorDef *transformed_op_def = target_net_def->add_op();
+    OpsUtils::BuildTransformOpDef(
+        op_def->input(i),
+        input_info.shape,
+        img2buf_name,
+        input_info.dtype,
+        BufferContentType::IN_OUT_CHANNEL,
+        MemoryType::GPU_BUFFER,
+        input_info.data_format,
+        transformed_op_def);
+    // Set output memory type argument
+    SetProtoArg<int>(transformed_op_def,
+                     OutputMemoryTypeTagName(),
+                     MemoryType::GPU_BUFFER);
+    // Update tensor consumer information
+    output_map->at(op_def->input(i)).consumer_op_indices.push_back(
+        target_net_def->op_size() - 1);
+    // Update output information map
+    output_map->emplace(
+        img2buf_name,
+        InternalOutputInfo(
+            MemoryType::GPU_BUFFER,
+            input_info.dtype,
+            input_info.data_format,
+            input_info.shape,
+            target_net_def->op_size() - 1));
+    // Update tensor shape map
+    tensor_shape_map->emplace(img2buf_name, input_info.shape);
+    transformed_set->insert(img2buf_name);
+  }  // 0 == transformed_set->count(img2buf_name)
+  return img2buf_name;
+}
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace mace
