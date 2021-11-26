@@ -56,7 +56,7 @@ class ReduceOpBuilder : public OpBuilder {
     MACE_CHECK((0 < axes.size() && static_cast<int>(axes.size()) <= input_dims),
                "Expected axis num in the range [", 1, ", ", input_dims,
                "], but got ", axes.size());
-    for (auto axis : axes) {
+    for (auto &axis : axes) {
       axis = axis < 0 ? axis + input_dims : axis;
       MACE_CHECK((0 <= axis && axis < input_dims),
                  "Expected reducing axis in the range [", -input_dims, ", ",
