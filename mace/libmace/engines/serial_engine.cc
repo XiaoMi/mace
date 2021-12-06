@@ -313,8 +313,8 @@ std::unordered_map<std::string, int> SerialEngine::AllocOutTensors(
         tensor_id_map.emplace(output_name, i);
       } else {
         used_block_list.emplace(iter->first, iter->second);
-        free_block_list.erase(iter);
         tensor_id_map.emplace(output_name, iter->second);
+        free_block_list.erase(iter);
       }
     }
     for (auto block : used_block_list) {
