@@ -44,6 +44,8 @@ inline ActivationType StringToActivationType(const std::string type) {
     return ActivationType::LEAKYRELU;
   } else if (type == "ELU") {
     return ActivationType::ELU;
+  } else if (type == "HARDSIGMOID") {
+    return ActivationType::HARDSIGMOID;
   } else {
     LOG(FATAL) << "Unknown activation type: " << type;
   }

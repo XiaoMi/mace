@@ -15,6 +15,10 @@
 #ifndef MACE_OPS_COMMON_COORDINATE_TRANSFORMATION_MODE_H_
 #define MACE_OPS_COMMON_COORDINATE_TRANSFORMATION_MODE_H_
 
+#include <functional>
+
+#include "mace/core/types.h"
+
 namespace mace {
 namespace ops {
 
@@ -23,6 +27,12 @@ enum CoordinateTransformationMode {
   HALF_PIXEL = 1,
   PYTORCH_HALF_PIXEL = 2,
 };
+
+enum NearestMode {
+  FLOOR = 0,
+  ROUND_PREFER_FLOOR = 1,
+};
+typedef std::function<index_t(float)> NearestFunc;
 
 }  // namespace ops
 }  // namespace mace

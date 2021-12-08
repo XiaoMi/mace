@@ -102,6 +102,14 @@ void Activation<T>::DoActivation(const OpContext *context,
       break;
     }
 
+    case HARDSIGMOID: {
+      for (index_t i = 0; i < size; ++i) {
+        *output_ptr++ = std::max(0.0f, std::min(1.0f,
+          hardsigmoid_alpha_ * (*input_ptr++) + hardsigmoid_beta_));
+      }
+      break;
+    }
+
     case ELU: {
       for (index_t i = 0; i < input->size(); ++i) {
         const auto in_val = *input_ptr++;

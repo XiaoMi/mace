@@ -47,8 +47,9 @@ class ActivationOp<RuntimeType::RT_CPU, T> : public Operation {
             delegator::ActivationParam(
                 activation_type_,
                 Operation::GetOptionalArg<float>("max_limit", 0.f),
-                Operation::GetOptionalArg<float>(
-                    "activation_coefficient", 0.f)))) {}
+                Operation::GetOptionalArg<float>("activation_coefficient", 0.f),
+                Operation::GetOptionalArg<float>("hardsigmoid_alpha", 0.f),
+                Operation::GetOptionalArg<float>("hardsigmoid_beta", 0.f)))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);

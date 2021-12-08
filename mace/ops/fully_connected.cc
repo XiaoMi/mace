@@ -66,9 +66,14 @@ class FullyConnectedOp<RuntimeType::RT_CPU, T> : public FullyConnectedOpBase {
             context->workspace(),
             MACE_DELEGATOR_KEY(Activation,
                                RuntimeType::RT_CPU, T, kCpuImplType),
-            delegator::ActivationParam(activation_,
-                                       relux_max_limit_,
-                                       activation_coefficient_))),
+            delegator::ActivationParam(
+                activation_,
+                relux_max_limit_,
+                activation_coefficient_,
+                Operation::GetOptionalArg<float>(
+                    "hardsigmoid_alpha", 0.f),
+                Operation::GetOptionalArg<float>(
+                    "hardsigmoid_beta", 0.f)))),
         gemv_(delegator::Gemv::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(Gemv, RuntimeType::RT_CPU, T, kCpuImplType),

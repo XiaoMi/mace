@@ -69,9 +69,11 @@ class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
  public:
   explicit ResizeNearestNeighborKernel(
       bool align_corners,
-      CoordinateTransformationMode coordinate_transformation_mode)
+      CoordinateTransformationMode coordinate_transformation_mode,
+      NearestMode nearest_mode)
       : align_corners_(align_corners),
-        coordinate_transformation_mode_(coordinate_transformation_mode) {}
+        coordinate_transformation_mode_(coordinate_transformation_mode),
+        nearest_mode_(nearest_mode) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -83,6 +85,7 @@ class ResizeNearestNeighborKernel : public OpenCLResizeNearestNeighborKernel {
  private:
   bool align_corners_;
   CoordinateTransformationMode coordinate_transformation_mode_;
+  NearestMode nearest_mode_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;

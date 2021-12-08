@@ -27,6 +27,7 @@ enum ActivationType {
   SIGMOID = 5,
   LEAKYRELU = 6,
   ELU = 7,
+  HARDSIGMOID = 8,
 };
 
 }  // namespace ops

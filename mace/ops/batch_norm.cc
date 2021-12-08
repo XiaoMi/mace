@@ -51,7 +51,9 @@ class BatchNormOp<RuntimeType::RT_CPU, T> : public Operation {
                                                                "NOOP")),
                     Operation::GetOptionalArg<float>("max_limit", 0.0f),
                     Operation::GetOptionalArg<float>("activation_coefficient",
-                                                     0.0f)))) {}
+                                                     0.0f),
+                    Operation::GetOptionalArg<float>("hardsigmoid_alpha", 0.f),
+                    Operation::GetOptionalArg<float>("hardsigmoid_beta", 0.f)))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
