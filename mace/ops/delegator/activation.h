@@ -28,18 +28,32 @@ struct ActivationParam : public DelegatorParam {
   explicit ActivationParam(ActivationType type, const float limit,
                            const float activation_coefficient)
       : type_(type), limit_(limit),
-        activation_coefficient_(activation_coefficient) {}
+        activation_coefficient_(activation_coefficient),
+        hardsigmoid_alpha_(0),
+        hardsigmoid_beta_(0) {}
+  explicit ActivationParam(ActivationType type, const float limit,
+                           const float activation_coefficient,
+                           const float hardsigmoid_alpha,
+                           const float hardsigmoid_beta)
+      : type_(type), limit_(limit),
+        activation_coefficient_(activation_coefficient),
+        hardsigmoid_alpha_(hardsigmoid_alpha),
+        hardsigmoid_beta_(hardsigmoid_beta) {}
 
   ActivationType type_;
   const float limit_;
   const float activation_coefficient_;
+  const float hardsigmoid_alpha_;
+  const float hardsigmoid_beta_;
 };
 
 class Activation : public OpDelegator {
  public:
   explicit Activation(const ActivationParam &param)
       : OpDelegator(param), type_(param.type_), limit_(param.limit_),
-        activation_coefficient_(param.activation_coefficient_) {}
+        activation_coefficient_(param.activation_coefficient_),
+        hardsigmoid_alpha_(param.hardsigmoid_alpha_),
+        hardsigmoid_beta_(param.hardsigmoid_beta_) {}
   virtual ~Activation() = default;
 
   MACE_DEFINE_DELEGATOR_CREATOR(Activation)
@@ -52,6 +66,8 @@ class Activation : public OpDelegator {
   ActivationType type_;
   const float limit_;
   const float activation_coefficient_;
+  const float hardsigmoid_alpha_;
+  const float hardsigmoid_beta_;
 };
 
 }  // namespace delegator

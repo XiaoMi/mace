@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "mace/core/ops/operator.h"
@@ -27,6 +29,36 @@
 
 namespace mace {
 namespace ops {
+namespace {
+
+  const std::unordered_map<std::string, NearestMode> nearest_mode_map = {
+    {"floor", FLOOR},
+    {"round_prefer_floor", ROUND_PREFER_FLOOR},
+  };
+
+  NearestFunc GetNearestFunc(const NearestMode& nearest_mode) {
+    switch (nearest_mode) {
+      case FLOOR:
+        return [] (float x) {
+          return static_cast<index_t>(floorf(x));
+        };
+      case ROUND_PREFER_FLOOR:
+        return [] (float x) {
+          if (x == static_cast<int64_t>(x) + 0.5f) {
+            return static_cast<int64_t>(floorf(x));
+          }
+          return static_cast<int64_t>(roundf(x));
+        };
+      default:
+        LOG(FATAL) << "Unsupported mode: " << nearest_mode;
+    }
+    return [] (float x) {
+      return static_cast<index_t>(floor(x));
+    };
+  }
+
+}  // namespace
+
 template <typename T>
 inline void ResizeImageNCHW(
     const OpContext *context,
@@ -41,6 +73,7 @@ inline void ResizeImageNCHW(
     const float width_scale,
     const bool align_corners,
     const CoordinateTransformationMode coordinate_transformation_mode,
+    const NearestFunc nearest_func,
     T *output) {
   utils::ThreadPool &thread_pool = context->runtime()->thread_pool();
 
@@ -59,7 +92,7 @@ inline void ResizeImageNCHW(
                                y * height_scale;
           const index_t in_y = std::min(
               (align_corners) ? static_cast<index_t>(roundf(in_f_y))
-                              : static_cast<index_t>(floorf(in_f_y)),
+                              : static_cast<index_t>(nearest_func(in_f_y)),
               in_height - 1);
           for (int x = 0; x < out_width; ++x) {
             const float in_f_x = coordinate_transformation_mode == HALF_PIXEL ?
@@ -67,7 +100,7 @@ inline void ResizeImageNCHW(
                                  x * width_scale;
             const index_t in_x = std::min(
                 (align_corners) ? static_cast<index_t>(roundf(in_f_x))
-                                : static_cast<index_t>(floorf(in_f_x)),
+                                : static_cast<index_t>(nearest_func(in_f_x)),
                 in_width - 1);
             channel_output_ptr[y * out_width + x] =
                 channel_input_ptr[in_y * in_width + in_x];
@@ -93,7 +126,14 @@ class ResizeNearestNeighborOp<RuntimeType::RT_CPU, T> : public Operation {
                                                0))),
         size_(Operation::GetRepeatedArgs<index_t>("size")),
         height_scale_(Operation::GetOptionalArg<float>("height_scale", 0)),
-        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {}
+        width_scale_(Operation::GetOptionalArg<float>("width_scale", 0)) {
+          std::string nearest_mode_str =
+            Operation::GetOptionalArg<std::string>("nearest_mode", "floor");
+          MACE_CHECK(nearest_mode_map.find(nearest_mode_str) != nearest_mode_map.end(),
+                     "Unsupported nearest mode:", nearest_mode_str);
+          nearest_mode_ = nearest_mode_map.at(nearest_mode_str);
+          nearest_func_ =  GetNearestFunc(nearest_mode_);
+        }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -158,6 +198,7 @@ class ResizeNearestNeighborOp<RuntimeType::RT_CPU, T> : public Operation {
                     width_scale,
                     align_corners_,
                     coordinate_transformation_mode_,
+                    nearest_func_,
                     output_data);
     return MaceStatus::MACE_SUCCESS;
   }
@@ -165,9 +206,11 @@ class ResizeNearestNeighborOp<RuntimeType::RT_CPU, T> : public Operation {
  private:
   const bool align_corners_;
   const CoordinateTransformationMode coordinate_transformation_mode_;
+  NearestMode nearest_mode_;
   std::vector<index_t> size_;
   float height_scale_;
   float width_scale_;
+  NearestFunc nearest_func_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -185,9 +228,14 @@ class ResizeNearestNeighborOp<RuntimeType::RT_OPENCL, float>
         static_cast<CoordinateTransformationMode>(
             Operation::GetOptionalArg<int>("coordinate_transformation_mode",
                                            0));
+    std::string nearest_mode_str =
+        Operation::GetOptionalArg<std::string>("nearest_mode", "floor");
+    MACE_CHECK(nearest_mode_map.find(nearest_mode_str) != nearest_mode_map.end(),
+               "Unsupported nearest mode:", nearest_mode_str);
+    NearestMode nearest_mode = nearest_mode_map.at(nearest_mode_str);
     if (context->GetOpMemoryType() == MemoryType::GPU_IMAGE) {
       kernel_ = make_unique<opencl::image::ResizeNearestNeighborKernel>(
-          align_corners, coordinate_transformation_mode);
+          align_corners, coordinate_transformation_mode, nearest_mode);
     } else {
       MACE_NOT_IMPLEMENTED;
     }

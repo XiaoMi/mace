@@ -32,6 +32,8 @@ extern template void Activation<uint8_t>::ActivateTanh(
     utils::ThreadPool *, const Tensor *, Tensor *);
 extern template void Activation<uint8_t>::ActivateSigmoid(
     utils::ThreadPool *, const Tensor *, Tensor *);
+extern template void Activation<uint8_t>::ActivateHardSigmoid(
+    utils::ThreadPool *, const Tensor *, Tensor *);
 
 template<typename T>
 MaceStatus Activation<T>::Compute(const OpContext *context,
@@ -83,6 +85,11 @@ void Activation<T>::DoActivation(const OpContext *context,
     }
 
     case NOOP: {
+      break;
+    }
+
+    case HARDSIGMOID: {
+      ActivateHardSigmoid(&thread_pool, input, output);
       break;
     }
 
@@ -227,6 +234,42 @@ void Activation<T>::ActivateSigmoid(utils::ThreadPool *thread_pool,
       0, input_size, 1);
 }
 
+template<typename T>
+void Activation<T>::ActivateHardSigmoid(utils::ThreadPool *thread_pool,
+                                    const Tensor *input,
+                                    Tensor *output) {
+  const auto input_data = input->data<T>();
+  auto output_data = output->mutable_data<T>();
+  const index_t input_size = input->size();
+  const float32x4_t vzero = vdupq_n_f32(0.f);
+  const float32x4_t valpha = vdupq_n_f32(hardsigmoid_alpha_);
+  const float32x4_t vbeta = vdupq_n_f32(hardsigmoid_beta_);
+  const float32x4_t vone = vdupq_n_f32(1.f);
+  const index_t block_count = input_size / 4;
+
+  thread_pool->Compute1D(
+      [=](index_t start, index_t end, index_t step) {
+        const T *input_ptr = input_data + start * 4;
+        T *output_ptr = output_data + start * 4;
+
+        for (index_t i = start; i < end; i += step) {
+          float32x4_t v = vld1q(input_ptr);
+          v = vmlaq_f32(vbeta, valpha, v);
+          v = vminq_f32(vone, v);
+          v = vmaxq_f32(v, vzero);
+          vst1q(output_ptr, v);
+
+          input_ptr += 4;
+          output_ptr += 4;
+        }
+      },
+      0, block_count, 1);
+  // remain
+  for (index_t i = block_count * 4; i < input_size; ++i) {
+    output_data[i] = std::max(0.0f, std::min(1.0f,
+          hardsigmoid_alpha_ * input_data[i] + hardsigmoid_beta_));
+  }
+}
 template<typename T>
 void Activation<T>::ActivateElu(utils::ThreadPool *thread_pool,
                                 const Tensor *input,

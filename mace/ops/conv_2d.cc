@@ -71,7 +71,9 @@ class Conv2dOp<RuntimeType::RT_CPU, T> : public ConvPool2dOpBase {
                                                                "NOOP")),
                     Operation::GetOptionalArg<float>("max_limit", 0.0f),
                     Operation::GetOptionalArg<float>("activation_coefficient",
-                                                     0.0f)))),
+                                                     0.0f),
+                    Operation::GetOptionalArg<float>("hardsigmoid_alpha", 0.f),
+                    Operation::GetOptionalArg<float>("hardsigmoid_beta", 0.f)))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),

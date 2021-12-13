@@ -58,7 +58,11 @@ class Deconv2dOp<RuntimeType::RT_CPU, T> : public Deconv2dOpBase {
                 MACE_DELEGATOR_KEY(Activation, RuntimeType::RT_CPU,
                                    T, kCpuImplType),
                 delegator::ActivationParam(
-                    activation_, relux_max_limit_, activation_coefficient_))),
+                    activation_, relux_max_limit_, activation_coefficient_,
+                    Operation::GetOptionalArg<float>(
+                        "hardsigmoid_alpha", 0.f),
+                    Operation::GetOptionalArg<float>(
+                        "hardsigmoid_beta", 0.f)))),
         bias_add_delegator_(delegator::BiasAdd::Create(
             context->workspace(),
             MACE_DELEGATOR_KEY(BiasAdd, RuntimeType::RT_CPU, T, kCpuImplType),

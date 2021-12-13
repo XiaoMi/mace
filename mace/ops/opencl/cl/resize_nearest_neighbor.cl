@@ -1,5 +1,12 @@
 #include <common.h>
 
+int round_prefer_floor(float x) {
+  if ((int)x + 0.5f == x) {
+    return (int) floor(x);
+  }
+  return (int) round(x);
+}
+
 __kernel void resize_nearest_neighbor_nocache(
     OUT_OF_RANGE_PARAMS
     GLOBAL_WORK_GROUP_SIZE_DIM3
@@ -35,11 +42,17 @@ __kernel void resize_nearest_neighbor_nocache(
   const float w_in_f = ((float)w + 0.5f) * width_scale;
 #endif
 
+#if NEAREST_MODE == 0
   const int h_in = min((align_corner) ? (int) round(h_in_f) :
       (int) floor(h_in_f), in_height - 1);
   const int w_in = min((align_corner) ? (int) round(w_in_f) :
       (int) floor(w_in_f), in_width - 1);
-
+#elif NEAREST_MODE == 1
+  const int h_in = min((align_corner) ? (int) round(h_in_f) :
+      (int) round_prefer_floor(h_in_f), in_height - 1);
+  const int w_in = min((align_corner) ? (int) round(w_in_f) :
+      (int) round_prefer_floor(w_in_f), in_width - 1);
+#endif
   const int in_w_offset = mul24(ch_blk, in_width);
   const int in_h_offset = mul24(b, in_height);
 

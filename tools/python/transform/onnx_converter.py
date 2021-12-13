@@ -107,7 +107,7 @@ OnnxSupportedOps = [
     # 'GlobalLpPool',
     'GlobalMaxPool',
     # 'Greater',
-    # 'HardSigmoid',
+    'HardSigmoid',
     # 'Hardmax',
     'Identity',
     # 'If',
@@ -337,6 +337,7 @@ class OnnxConverter(base_converter.ConverterInterface):
         OnnxOpType.Elu.name: ActivationType.ELU,
         OnnxOpType.Tanh.name: ActivationType.TANH,
         OnnxOpType.Sigmoid.name: ActivationType.SIGMOID,
+        OnnxOpType.HardSigmoid.name: ActivationType.HARDSIGMOID,
     }
 
     def __init__(self, option, src_model_file):
@@ -369,6 +370,7 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Gemm.name: self.convert_gemm,
             OnnxOpType.GlobalAveragePool.name: self.convert_reduce,
             OnnxOpType.GlobalMaxPool.name: self.convert_reduce,
+            OnnxOpType.HardSigmoid.name: self.convert_activation,
             OnnxOpType.Identity.name: self.convert_identity,
             OnnxOpType.IfDefined.name: self.convert_ifdefined,
             OnnxOpType.ImageScaler.name: self.convert_imagescaler,
@@ -730,11 +732,25 @@ class OnnxConverter(base_converter.ConverterInterface):
                 alpha_value = 0.01
             elif node.op_type == OnnxOpType.Elu.name:
                 alpha_value = 1.0
+            elif node.op_type == OnnxOpType.HardSigmoid.name:
+                alpha_value = 0.2
             else:
                 alpha_value = 0
         alpha_arg = op.arg.add()
-        alpha_arg.name = MaceKeyword.mace_activation_coefficient_str
+        if node.op_type == OnnxOpType.HardSigmoid.name:
+            alpha_arg.name = MaceKeyword.mace_hardsigmoid_alpha_str
+        else:
+            alpha_arg.name = MaceKeyword.mace_activation_coefficient_str
         alpha_arg.f = alpha_value
+
+        if node.op_type == OnnxOpType.HardSigmoid.name:
+            if "beta" in node.attrs:
+                beta_value = node.attrs["beta"]
+            else:
+                beta_value = 0.5
+            beta_arg = op.arg.add()
+            beta_arg.name = MaceKeyword.mace_hardsigmoid_beta_str
+            beta_arg.f = beta_value
 
     def convert_quantize_linear(self, node):
         mace_check(self._source_framework ==
@@ -1091,7 +1107,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             for input_name in op.input[1:]:
                 if input_name in self._consts:
                     const_tensor = self._consts[input_name]
-                    self._mace_net_def.tensors.remove(const_tensor)
+                    if const_tensor in self._mace_net_def.tensors:
+                        self._mace_net_def.tensors.remove(const_tensor)
             if inputs_num > 1:
                 del op.input[1:]
         else:
@@ -1792,7 +1809,8 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         if len(op.input) >= 3:
             roi_tensor = self._consts[op.input[1]]
-            mace_check(len(roi_tensor.dims) == 0 or roi_tensor.dims[0] == 0,
+            mace_check(len(roi_tensor.dims) == 0 or roi_tensor.dims[0] == 0 or
+                       (len(roi_tensor.dims) > 0 and node.attrs['mode'] != "tf_crop_and_resize"),
                        "Unsupport resize roi")
 
         del op.input[1:]
@@ -1834,6 +1852,17 @@ class OnnxConverter(base_converter.ConverterInterface):
             # Only support pytorch resize, i.e. 'asymmetric' for 'nearest' and
             # ['align_corners', 'pytorch_half_pixel'] for ['linear', 'cubic']
             if op.type == MaceOp.ResizeNearestNeighbor.name:
+                nearest_mode_arg = op.arg.add()
+                nearest_mode_arg.name = MaceKeyword.mace_nearest_mode_str
+                if 'nearest_mode' in node.attrs:
+                    nearest_mode_arg.s = six.b(node.attrs['nearest_mode'])
+                else:
+                    # ONNX model exported by paddle has no nearest_mode, ONNX's default is round_prefer_floor
+                    nearest_mode_arg.s = six.b('round_prefer_floor')
+                mace_check(nearest_mode_arg.s == six.b("round_prefer_floor") or
+                           nearest_mode_arg.s == six.b("floor"),
+                           "Only support round_prefer_floor or floor, but "
+                           "{} is got".format(nearest_mode_arg.s))
                 mace_check(ct_mode == 'asymmetric',
                            "Resize nearest doesn't support: %s" % ct_mode)
             elif op.type in [MaceOp.ResizeBilinear.name,

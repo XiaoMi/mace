@@ -51,6 +51,7 @@ class ActivationType(Enum):
     SIGMOID = 5
     LEAKYRELU = 6
     ELU = 7
+    HARDSIGMOID = 8
 
 
 class EltwiseType(Enum):
@@ -243,10 +244,13 @@ class MaceKeyword(object):
     mace_activation_type_str = 'activation'
     mace_activation_max_limit_str = 'max_limit'
     mace_activation_coefficient_str = 'activation_coefficient'
+    mace_hardsigmoid_alpha_str = 'hardsigmoid_alpha'
+    mace_hardsigmoid_beta_str = 'hardsigmoid_beta'
     mace_resize_size_str = 'size'
     mace_batch_to_space_crops_str = 'crops'
     mace_paddings_str = 'paddings'
     mace_align_corners_str = 'align_corners'
+    mace_nearest_mode_str = 'nearest_mode'
     mace_height_scale_str = 'height_scale'
     mace_width_scale_str = 'width_scale'
     mace_half_pixel_centers_str = 'half_pixel_centers'

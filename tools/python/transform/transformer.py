@@ -1101,9 +1101,10 @@ class Transformer(base_converter.ConverterInterface):
                     op.output[0] = consumer_op.output[0]
                     for arg in consumer_op.arg:
                         if arg.name == MaceKeyword.mace_activation_type_str \
-                                or arg.name == \
-                                    MaceKeyword.mace_activation_max_limit_str \
-                                or arg.name == MaceKeyword.mace_activation_coefficient_str:  # noqa
+                                or arg.name == MaceKeyword.mace_activation_max_limit_str \
+                                or arg.name == MaceKeyword.mace_activation_coefficient_str \
+                                or arg.name == MaceKeyword.mace_hardsigmoid_alpha_str \
+                                or arg.name == MaceKeyword.mace_hardsigmoid_beta_str:
                             op.arg.extend([arg])
 
                     self.replace_quantize_info(op, consumer_op)

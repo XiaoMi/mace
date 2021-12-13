@@ -52,6 +52,8 @@ MaceStatus ResizeNearestNeighborKernel::Compute(
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DT_FLOAT));
     built_options.emplace(
         MakeString("-DCT_MODE=", coordinate_transformation_mode_));
+    built_options.emplace(
+        MakeString("-DNEAREST_MODE=", nearest_mode_));
     MACE_RETURN_IF_ERROR(
         executor->BuildKernel("resize_nearest_neighbor",
                               kernel_name,
