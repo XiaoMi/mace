@@ -14,11 +14,9 @@
 
 import argparse
 import sys
-import onnx
 import os
 import os.path
 import numpy as np
-import re
 import six
 
 import common

@@ -151,7 +151,7 @@ With these steps, we can find necessary libraries and headers in the "build/micr
 .. code-block:: sh
 
     # Builds example
-    g++ micro/examples/classifier/main.cc -DMICRO_MODEL_NAME=mnist -DMICRO_DATA_NAME=mnist  -I build/micro/host/install/include/ -L build/micro/host/install/lib/ -lmicro  -lmodels -lmicro -o mnist
+    g++ micro/examples/classifier/main.cc -DMICRO_MODEL_NAME=mnist -DMICRO_DATA_NAME=mnist  -I build/micro/host/install/include/ -I micro/examples -L build/micro/host/install/lib/ -lmodel_mnist -lmicro -o mnist
     # Runs the mnist example
     ./mnist
 
