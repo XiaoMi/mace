@@ -83,6 +83,8 @@ IDataType ParseDataType(const std::string &data_type_str) {
     return IDataType::IDT_INT16;
   } else if (data_type_str == "uint8") {
     return IDataType::IDT_UINT8;
+  } else if (data_type_str == "int32") {
+    return IDataType::IDT_INT32;
   } else {
     return IDataType::IDT_FLOAT;
   }
@@ -210,7 +212,7 @@ std::shared_ptr<char> ReadInputDataFromFile(
   // CopyDataBetweenSameType and CopyDataBetweenDiffType are not an exported
   // functions, app should not use it, the follow line is only used to
   // transform data from file during testing.
-  if (input_data_type == IDT_FLOAT) {
+  if (input_data_type == IDT_FLOAT || input_data_type == IDT_INT32) {
     mace::ops::CopyDataBetweenSameType(
         nullptr, buffer_in.get(), input_data.get(), input_size);
 #ifdef MACE_ENABLE_FP16
