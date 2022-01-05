@@ -709,6 +709,15 @@ class OnnxConverter(base_converter.ConverterInterface):
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
         data_type_arg.i = self._option.data_type
+        if op.input[0] in self._option.input_nodes:
+            data_type_arg.i = self._option.input_nodes[op.input[0]].data_type
+        elif op.input[0] in self._producer:
+            for producer_op in self._mace_net_def.op:
+                if self._producer[node.inputs[0]].name == producer_op.name:
+                    producer_data_type = ConverterUtil.get_arg(
+                        producer_op, MaceKeyword.mace_op_data_type_str)
+                    if producer_data_type:
+                        data_type_arg.i = producer_data_type.i
 
         framework_type_arg = op.arg.add()
         framework_type_arg.name = MaceKeyword.mace_framework_type_str
