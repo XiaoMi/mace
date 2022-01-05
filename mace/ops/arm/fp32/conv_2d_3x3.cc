@@ -539,7 +539,7 @@ MaceStatus Conv2dK3x3S2<float>::DoCompute(
 
               vi0n = vld1q_f32(in_base + in_offset + 8);  // [8.9.10.11]
               vi1n = vld1q_f32(in_base + in_offset + p.in_width + 8);
-              vi2n = vld1q_f32(in_base + in_offset + 2 * p.in_width + 8);
+              vi2n = (float32x4_t){(in_base + in_offset + 2 * p.in_width + 8)[0], 0.0, 0.0, 0.0};
 
               // load ouptut
               index_t out_offset = h * p.out_width + w;
