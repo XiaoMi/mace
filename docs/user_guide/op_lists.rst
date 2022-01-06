@@ -62,3 +62,4 @@ Operator lists
     "TANH","Y",""
     "TRANSPOSE","Y","Only CPU and TensorFlow is supported."
     "UNSTACK","Y","Only CPU and TensorFlow is supported."
+    "WHERE","Y","Only CPU and ONNX is supported."

@@ -64,6 +64,11 @@ TEST_F(CastOpTest, TestCastFromInt32ToFloat) {
   TestCast<int32_t, float>({}, {3});
 }
 
+TEST_F(CastOpTest, TestCastFromInt32ToBool) {
+  TestCast<int32_t, bool>({1, 2, 3}, {1, 0, 1, 0, 1, 0});
+  TestCast<int32_t, bool>({}, {1});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

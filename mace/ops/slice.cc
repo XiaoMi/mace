@@ -44,6 +44,7 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
     index_t start = 0;
     index_t end = 0;
     index_t axis = 0;
+    int step = 1;
     if (this->InputSize() > 1) {
       MACE_CHECK(this->InputSize() >= 4, "The starts/ends/axes are required.");
       const Tensor *starts = this->Input(1);
@@ -59,10 +60,10 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
       axis = axes_data[0];
       if (this->InputSize() == 5) {
         const Tensor *steps = this->Input(4);
-        MACE_CHECK(steps->size() == 1 && steps->data<int32_t>()[0] == 1,
-                   "Only support slicing with steps 1. op is: ",
-                   operator_def_->name(), ", ", steps->size(), ", ",
-                   steps->data<int32_t>()[0]);
+        step = steps->data<int32_t>()[0];
+        MACE_CHECK(steps->size() == 1 && step > 0,
+                   "Only support slicing with positive steps. op is: ",
+                   operator_def_->name(), ", ", steps->size(), ", ", step);
       }
     } else {
       MACE_CHECK(starts_.size() == 1 && ends_.size() == 1 && axes_.size() == 1,
@@ -80,7 +81,7 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
     MACE_CHECK(
         start < input_dim && start >= 0 && end > start && end <= input_dim,
         "The starts and ends are out of bounds: ", operator_def_->name());
-    index_t output_dim = end - start;
+    index_t output_dim = (end - start + (step - 1)) / step;
     MACE_CHECK(output_dim > 0, "output_dim should > 0");
     std::vector<index_t> output_shape = input->shape();
     output_shape[axis] = output_dim;
@@ -99,10 +100,22 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
     for (index_t i = 0; i < axis; ++i) {
       outer_size *= input->dim(i);
     }
-    for (index_t i = 0; i < outer_size; ++i) {
-      const T *input_base = input_data + i * input_stride + offset;
-      T *output_base = output_data + i * output_stride;
-      memcpy(output_base, input_base, output_stride * sizeof(T));
+    if (step == 1) {
+      for (index_t i = 0; i < outer_size; ++i) {
+        const T *input_base = input_data + i * input_stride + offset;
+        T *output_base = output_data + i * output_stride;
+        memcpy(output_base, input_base, output_stride * sizeof(T));
+      }
+    } else {
+      for (index_t i = 0; i < outer_size; ++i) {
+        const T *input_base = input_data + i * input_stride + offset;
+        T *output_base = output_data + i * output_stride;
+        for (index_t j = 0; j < output_dim; ++j) {
+          const T *src = input_base + j * step * inner_size;
+          T *dst = output_base + j * inner_size;
+          memcpy(dst, src, inner_size * sizeof(T));
+        }
+      }
     }
 
     return MaceStatus::MACE_SUCCESS;
@@ -116,6 +129,7 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
 
 void RegisterSlice(OpRegistry *op_registry) {
   MACE_REGISTER_OP(op_registry, "Slice", SliceOp, RuntimeType::RT_CPU, float);
+  MACE_REGISTER_OP(op_registry, "Slice", SliceOp, RuntimeType::RT_CPU, int32_t);
   MACE_REGISTER_BF16_OP(op_registry, "Slice", SliceOp, RuntimeType::RT_CPU);
 }
 

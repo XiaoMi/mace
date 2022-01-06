@@ -195,6 +195,7 @@ OnnxSupportedOps = [
     # 'Tile',
     # 'TopK',
     'Transpose',
+    'Where',
     'Unsqueeze',
     'Upsample',
     # 'Xor',
@@ -425,7 +426,8 @@ class OnnxConverter(base_converter.ConverterInterface):
             OnnxOpType.Transpose.name: self.convert_transpose,
             OnnxOpType.Unsqueeze.name: self.convert_unsqueeze,
             OnnxOpType.Upsample.name: self.convert_upsample,
-            OnnxOpType.Resize.name: self.convert_resize
+            OnnxOpType.Resize.name: self.convert_resize,
+            OnnxOpType.Where.name: self.convert_where
         }
         self._option = option
         self._converter_info = dict()
@@ -853,6 +855,8 @@ class OnnxConverter(base_converter.ConverterInterface):
                 op.output_type.extend([self._option.data_type])
             elif dtype == np.int64 or dtype == np.int32:
                 op.output_type.extend([mace_pb2.DT_INT32])
+            elif dtype == np.bool_:
+                op.output_type.extend([mace_pb2.DT_BOOL])
             else:
                 mace_check(False, "data type %s not supported" % dtype)
         else:
@@ -1622,6 +1626,12 @@ class OnnxConverter(base_converter.ConverterInterface):
                 axes_arg.name = 'axes'
                 axes_arg.ints.extend(axes)
 
+        if not op.output_shape[0].dims:
+            if node.inputs[0] in self._consts:
+                tensor = self._consts[node.inputs[0]]
+                if tensor.dims:
+                    op.output_shape[0].dims.extend(tensor.dims)
+
     def convert_softmax(self, node):
         op = self.convert_general_op(node)
         op.type = MaceOp.Softmax.name
@@ -1890,3 +1900,12 @@ class OnnxConverter(base_converter.ConverterInterface):
                 coordinate_transformation_mode_arg.i = \
                     CoordinateTransformationMode.PYTORCH_HALF_PIXEL.value
         del op.input[1:]
+
+    def convert_where(self, node):
+        op = self.convert_general_op(node)
+        op.type = MaceOp.Where.name
+        data_type = ConverterUtil.get_arg(op, MaceKeyword.mace_op_data_type_str)
+        if node.inputs[1] in self._consts:
+            data_type.i = self._consts[node.inputs[1]].data_type
+        elif node.inputs[2] in self._consts:
+            data_type.i = self._consts[node.inputs[2]].data_type

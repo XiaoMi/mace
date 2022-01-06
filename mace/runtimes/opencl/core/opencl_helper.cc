@@ -99,6 +99,7 @@ std::string DtToCLDt(const DataType dt) {
     case DT_HALF:return "half";
     case DT_UINT8:return "uchar";
     case DT_UINT16:return "ushort";
+    case DT_BOOL:return "bool";
     default:LOG(FATAL) << "Unsupported data type: " << dt;
       return "";
   }

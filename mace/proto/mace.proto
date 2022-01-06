@@ -19,6 +19,7 @@ enum DataType {
   DT_INT8 = 8;
   DT_UINT16 = 9;
   DT_UINT32 = 10;
+  DT_BOOL = 11;
 }
 
 message ConstTensor {

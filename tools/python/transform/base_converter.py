@@ -178,6 +178,7 @@ MaceSupportedOps = [
     'Tile',
     'Transpose',
     'DetectionOutput',
+    'Where',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
