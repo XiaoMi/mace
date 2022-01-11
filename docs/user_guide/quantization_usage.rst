@@ -40,11 +40,11 @@ MACE provides tools to do statistics with following steps (using `inception-v3` 
   .. code-block:: sh
 
     # For CMake users:
-    python tools/python/convert.py --config ../mace-models/inception-v3/inception-v3.yml
+    python tools/python/convert.py --config ../mace-models/inception-v3/inception-v3.yml \
       --quantize_stat
 
     # For Bazel users:
-    python tools/converter.py convert --config ../mace-models/inception-v3/inception-v3.yml
+    python tools/converter.py convert --config ../mace-models/inception-v3/inception-v3.yml \
       --quantize_stat
 
   2. Log tensor range of each activation layer by inferring several samples on CPU host. Sample inputs should be
@@ -53,7 +53,7 @@ MACE provides tools to do statistics with following steps (using `inception-v3` 
   .. code-block:: sh
 
     # Convert images to input tensors for MACE, see image_to_tensor.py for more arguments.
-    python tools/image/image_to_tensor.py --input /path/to/directory/of/input/images
+    python tools/image/image_to_tensor.py --input /path/to/directory/of/input/images \
       --output_dir /path/to/directory/of/input/tensors --image_shape=299,299,3
 
     # Rename input tensors to start with input tensor name(to differentiate multiple
@@ -63,11 +63,12 @@ MACE provides tools to do statistics with following steps (using `inception-v3` 
 
     # Run with input tensors
     # For CMake users:
-    python tools/python/run_model.py --config ../mace-models/inception-v3/inception-v3.yml
-      --quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
+    python tools/python/run_model.py --config ../mace-models/inception-v3/inception-v3.yml \
+      --quantize_stat --input_dir /path/to/directory/of/input/tensors --output_dir='' \
+      --target_abi=host --build > range_log
 
     # For Bazel users:
-    python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml
+    python tools/converter.py run --config ../mace-models/inception-v3/inception-v3.yml \
       --quantize_stat --input_dir /path/to/directory/of/input/tensors > range_log
 
 

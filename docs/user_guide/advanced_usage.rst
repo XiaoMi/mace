@@ -214,27 +214,29 @@ Convert model(s) to C++ code
              # model_graph_format: code
              # model_data_format: file
 
-             build
+             build/mobilenet-v1
                ├── include
                │   └── mace
                │       └── public
                │           ├── mace_engine_factory.h
                │           └── mobilenet_v1.h
                └── model
-                   ├── mobilenet-v1.a
+                   ├── arm64-v8a/mobilenet-v1.a
+                   ├── armeabi-v7a/mobilenet-v1.a
                    └── mobilenet_v1.data
 
              # model_graph_format: code
              # model_data_format: code
 
-             build
+             build/mobilenet-v1
                ├── include
                │   └── mace
                │       └── public
                │           ├── mace_engine_factory.h
                │           └── mobilenet_v1.h
                └── model
-                   └── mobilenet-v1.a
+                   ├── arm64-v8a/mobilenet-v1.a
+                   └── armeabi-v7a/mobilenet-v1.a
 
     * **3. Deployment**
         * Link `libmace.a` and `${library_name}.a` to your target.

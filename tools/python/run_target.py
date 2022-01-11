@@ -145,7 +145,7 @@ if __name__ == "__main__":
             os.path.dirname(
                 __file__)) + "/../cmake/cmake-build-%s.sh" % target_abi
         os.environ["BUILD_DIR"] = build_dir
-        device.execute("bash " + cmake_shell)
+        device.execute("RUNTIME=GPU QUANTIZE=ON bash " + cmake_shell)
 
     # run
     target = target.Target(build_dir + "/install/bin/" + target_name,
