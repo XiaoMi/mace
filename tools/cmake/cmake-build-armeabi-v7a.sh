@@ -17,6 +17,8 @@ if [[ "$RUNTIME" == "CPU" ]]; then
     MACE_ENABLE_CPU=ON
     MACE_ENABLE_NEON=ON
 elif [[ "$RUNTIME" == "GPU" ]]; then
+    MACE_ENABLE_NEON=ON
+    MACE_ENABLE_CPU=ON
     MACE_ENABLE_OPENCL=ON
 elif [[ "$RUNTIME" == "HEXAGON" ]]; then
     MACE_ENABLE_HEXAGON_DSP=ON

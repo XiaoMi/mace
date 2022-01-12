@@ -157,7 +157,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
 
     opts = ["--%s='%s'" % (arg_key, arg_val) for arg_key, arg_val in
             model_args.items()] + args
-    should_generate_data = (flags.validate
+    should_generate_data = (flags.validate or flags.quantize_stat
                             or flags.tune or "--benchmark" in opts)
 
     if should_generate_data:
@@ -202,6 +202,8 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     mace_check(flags.vlog_level >= 0,
                "vlog_level should be greater than zeror")
     envs += ["MACE_CPP_MIN_VLOG_LEVEL=%s" % flags.vlog_level]
+    if flags.quantize_stat:
+        envs += ["MACE_LOG_TENSOR_RANGE=1"]
 
     build_dir = flags.build_dir + "/" + target_abi
     libs = []
@@ -401,6 +403,10 @@ def parse_args():
         "--gencode_param",
         action="store_true",
         help="use compiled param")
+    parser.add_argument(
+        "--quantize_stat",
+        action="store_true",
+        help="whether to stat quantization range.")
 
     return parser.parse_known_args()
 
