@@ -218,6 +218,8 @@ def convert(model_file, output_dir, layers):
 
         output_tensors = []
         output_shapes = []
+        output_data_types = []
+        output_data_formats = []
         op_name = op.name
         if str(op.name).startswith(MaceKeyword.mace_output_node_name):
             continue
@@ -232,13 +234,25 @@ def convert(model_file, output_dir, layers):
             output_tensors.append(str(op.output[i]))
             output_shapes.append(
                 ",".join([str(dim) for dim in op.output_shape[i].dims]))
+            if data_format == DataFormat.NONE.value:
+                output_data_formats.append(DataFormat.NONE.name)
+            elif data_format == DataFormat.NCHW.value:
+                output_data_formats.append(DataFormat.NCHW.name)
+            else:
+                output_data_formats.append(DataFormat.NHWC.name)
             # modify output info
             multi_net.output_tensor.append(op.output[i])
             output_info = net.output_info.add()
             output_info.name = op.output[i]
             output_info.data_format = data_format
             output_info.dims.extend(op.output_shape[i].dims)
-            output_info.data_type = mace_pb2.DT_FLOAT
+            data_type = ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_op_data_type_str)
+            output_info.data_type = data_type.i
+            if mace_pb2.DT_INT32 == data_type.i:
+                output_data_types.append('int32')
+            else:
+                output_data_types.append('float32')
             if is_quantize:
                 output_info.scale = op.quantize_info[0].scale
                 output_info.zero_point = op.quantize_info[0].zero_point
@@ -283,8 +297,8 @@ def convert(model_file, output_dir, layers):
         output_config = {ModelKeys.model_file_path: str(model_path),
                          ModelKeys.output_tensors: output_tensors,
                          ModelKeys.output_shapes: output_shapes,
-                         "output_data_formats":
-                             [DataFormat.NHWC.name] * len(output_shapes)}
+                         "output_data_formats": output_data_formats,
+                         ModelKeys.output_data_types: output_data_types}
         output_configs[ModelKeys.subgraphs].append(output_config)
 
     output_configs_path = output_dir + "outputs.yml"
