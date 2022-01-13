@@ -200,7 +200,8 @@ def validate_tf_model(platform, device_type, model_file,
                       input_file, mace_out_file,
                       input_names, input_shapes, input_data_formats,
                       output_names, output_shapes, output_data_formats,
-                      validation_threshold, input_data_types, log_file):
+                      validation_threshold, input_data_types,
+                      output_data_types, log_file):
     import tensorflow as tf
     if not os.path.isfile(model_file):
         common.MaceLogger.error(
@@ -249,7 +250,8 @@ def validate_tf_model(platform, device_type, model_file,
                 for i in range(len(output_names)):
                     output_file_name = common.formatted_file_name(
                         mace_out_file, output_names[i])
-                    mace_out_value = load_data(output_file_name)
+                    mace_out_value = load_data(output_file_name,
+                                               output_data_types[i])
                     mace_out_value, real_out_shape, real_out_data_format = \
                         get_real_out_value_shape_df(platform,
                                                     mace_out_value,
@@ -265,7 +267,8 @@ def validate_pytorch_model(platform, device_type, model_file,
                            input_file, mace_out_file,
                            input_names, input_shapes, input_data_formats,
                            output_names, output_shapes, output_data_formats,
-                           validation_threshold, input_data_types, log_file):
+                           validation_threshold, input_data_types,
+                           output_data_types, log_file):
     import torch
     loaded_model = torch.jit.load(model_file)
     pytorch_inputs = []
@@ -293,7 +296,7 @@ def validate_pytorch_model(platform, device_type, model_file,
         value = pytorch_outputs[i].numpy()
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
-        mace_out_value = load_data(output_file_name)
+        mace_out_value = load_data(output_file_name, output_data_types[i])
         mace_out_value, real_output_shape, real_output_data_format = \
             get_real_out_value_shape_df(platform,
                                         mace_out_value,
@@ -381,7 +384,7 @@ def validate_onnx_model(platform, device_type, model_file,
                         input_names, input_shapes, input_data_formats,
                         output_names, output_shapes, output_data_formats,
                         validation_threshold, input_data_types,
-                        backend, log_file):
+                        output_data_types, backend, log_file):
     print("validate on onnxruntime.")
     import onnx
     import onnxruntime as onnxrt
@@ -420,7 +423,7 @@ def validate_onnx_model(platform, device_type, model_file,
         value = output_values[i].flatten()
         output_file_name = common.formatted_file_name(mace_out_file,
                                                       output_names[i])
-        mace_out_value = load_data(output_file_name)
+        mace_out_value = load_data(output_file_name, output_data_types[i])
         mace_out_value, real_output_shape, real_output_data_format = \
             get_real_out_value_shape_df(platform,
                                         mace_out_value,
@@ -436,7 +439,7 @@ def validate_megengine_model(platform, device_type, model_file, input_file,
                              mace_out_file, input_names, input_shapes,
                              input_data_formats, output_names, output_shapes,
                              output_data_formats, validation_threshold,
-                             input_data_types, log_file):
+                             input_data_types, output_data_types, log_file):
     import megengine._internal as mgb
 
     if not os.path.isfile(model_file):
@@ -469,7 +472,7 @@ def validate_megengine_model(platform, device_type, model_file, input_file,
     for i in range(len(output_names)):
         output_file_name = \
             common.formatted_file_name(mace_out_file, output_names[i])
-        mace_out_value = load_data(output_file_name)
+        mace_out_value = load_data(output_file_name, output_data_types[i])
         mace_out_value, real_output_shape, real_output_data_format = \
             get_real_out_value_shape_df(platform,
                                         mace_out_value,
@@ -484,7 +487,8 @@ def validate_keras_model(platform, device_type, model_file,
                          input_file, mace_out_file,
                          input_names, input_shapes, input_data_formats,
                          output_names, output_shapes, output_data_formats,
-                         validation_threshold, input_data_types, log_file):
+                         validation_threshold, input_data_types,
+                         output_data_types, log_file):
     from tensorflow import keras
     import tensorflow_model_optimization as tfmot
 
@@ -516,7 +520,7 @@ def validate_keras_model(platform, device_type, model_file,
         for i in range(len(output_names)):
             output_file_name = common.formatted_file_name(
                 mace_out_file, output_names[i])
-            mace_out_value = load_data(output_file_name)
+            mace_out_value = load_data(output_file_name, output_data_types[i])
             mace_out_value, real_output_shape, real_output_data_format = \
                 get_real_out_value_shape_df(platform,
                                             mace_out_value,
@@ -531,7 +535,7 @@ def validate_keras_model(platform, device_type, model_file,
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
              device_type, input_shape, output_shape, input_data_format_str,
              output_data_format_str, input_node, output_node,
-             validation_threshold, input_data_type, backend,
+             validation_threshold, input_data_type, output_data_type, backend,
              validation_outputs_data, log_file):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
@@ -547,6 +551,11 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                             for data_type in input_data_type.split(',')]
     else:
         input_data_types = ['float32'] * len(input_names)
+    if output_data_type:
+        output_data_types = [data_type
+                             for data_type in output_data_type.split(',')]
+    else:
+        output_data_types = ['float32'] * len(output_shapes)
     output_names = [name for name in output_node.split(',')]
     assert len(input_names) == len(input_shapes)
     if not isinstance(validation_outputs_data, list):
@@ -569,14 +578,14 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                           input_names, input_shapes, input_data_formats,
                           output_names, output_shapes, output_data_formats,
                           validation_threshold, input_data_types,
-                          log_file)
+                          output_data_types, log_file)
     elif platform == 'pytorch':
         validate_pytorch_model(platform, device_type,
                                model_file, input_file, mace_out_file,
                                input_names, input_shapes, input_data_formats,
                                output_names, output_shapes,
                                output_data_formats, validation_threshold,
-                               input_data_types, log_file)
+                               input_data_types, output_data_types, log_file)
     elif platform == 'caffe':
         validate_caffe_model(platform, device_type, model_file,
                              input_file, mace_out_file, weight_file,
@@ -588,8 +597,8 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                             input_file, mace_out_file,
                             input_names, input_shapes, input_data_formats,
                             output_names, output_shapes, output_data_formats,
-                            validation_threshold,
-                            input_data_types, backend, log_file)
+                            validation_threshold, input_data_types,
+                            output_data_types, backend, log_file)
     elif platform == 'megengine':
         validate_megengine_model(platform, device_type, model_file,
                                  input_file, mace_out_file,
@@ -598,7 +607,8 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                                  output_names, output_shapes,
                                  output_data_formats,
                                  validation_threshold,
-                                 input_data_types, log_file)
+                                 input_data_types,
+                                 output_data_types, log_file)
     elif platform == 'keras':
         validate_keras_model(platform, device_type, model_file,
                              input_file, mace_out_file,
@@ -607,7 +617,8 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                              output_names, output_shapes,
                              output_data_formats,
                              validation_threshold,
-                             input_data_types, log_file)
+                             input_data_types,
+                             output_data_types, log_file)
 
 
 def parse_args():

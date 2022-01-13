@@ -899,6 +899,12 @@ class DeviceWrapper:
                                    output_config, runtime, tuning)
                     if flags.validate:
                         log_file = ""
+                        if YAMLKeyword.output_data_types in output_config:
+                            output_data_types = output_config[
+                                YAMLKeyword.output_data_types]
+                        else:
+                            output_data_types = output_infos[
+                                YAMLKeyword.output_data_types]
                         if flags.layers != "-1":
                             log_file = log_dir + "/log.csv"
                         model_file_path, weight_file_path = \
@@ -954,6 +960,7 @@ class DeviceWrapper:
                             model_output_dir=model_output_dir,
                             input_data_types=input_infos[
                                 YAMLKeyword.input_data_types],
+                            output_data_types=output_data_types,
                             caffe_env=flags.caffe_env,
                             validation_threshold=model_config[
                                 YAMLKeyword.validation_threshold][
