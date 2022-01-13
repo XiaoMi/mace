@@ -157,6 +157,7 @@ class Transformer(base_converter.ConverterInterface):
 
         self.input_name_map = {}
         self.output_name_map = {}
+        self._has_none_df = False
         self.initialize_name_map()
         self._converter_info = converter_info
 
@@ -186,6 +187,8 @@ class Transformer(base_converter.ConverterInterface):
             new_input_name = (MaceKeyword.mace_input_node_name
                               + '_' + input_node.name)
             self.input_name_map[input_node.name] = new_input_name
+            if input_node.data_format == DataFormat.NONE:
+                self._has_none_df = True
 
         output_nodes = self._option.check_nodes.values()
         for output_node in output_nodes:
@@ -466,10 +469,11 @@ class Transformer(base_converter.ConverterInterface):
     def fold_batchnorm(self):
         net = self._model
         for op in net.op:
-            if (op.type == MaceOp.Eltwise.name
-                    and ConverterUtil.get_arg(
+            if not self._has_none_df and \
+                    (op.type == MaceOp.Eltwise.name
+                     and ConverterUtil.get_arg(
                         op, MaceKeyword.mace_element_type_str).i
-                    == EltwiseType.PROD.value) \
+                        == EltwiseType.PROD.value) \
                     and len(op.input) == 2 \
                     and op.input[1] in self._consts \
                     and op.output_shape[0].dims[-1:] == \
@@ -960,7 +964,7 @@ class Transformer(base_converter.ConverterInterface):
     def transform_add_to_biasadd(self):
         net = self._model
         for op in net.op:
-            if (op.type == 'Eltwise'
+            if (not self._has_none_df and op.type == 'Eltwise'
                     and ConverterUtil.get_arg(op, MaceKeyword.mace_element_type_str).i == EltwiseType.SUM.value  # noqa
                     and len(op.input) == 2
                     and op.input[1] in self._consts
