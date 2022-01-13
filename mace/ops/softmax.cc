@@ -45,7 +45,8 @@ class SoftmaxOp<RuntimeType::RT_CPU, T> : public Operation {
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context),
         use_log_(Operation::GetOptionalArg<bool>("use_log", false)),
-        has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)) {}
+        has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)),
+        axis_(Operation::GetOptionalArg<int>("axis", 1)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -53,7 +54,7 @@ class SoftmaxOp<RuntimeType::RT_CPU, T> : public Operation {
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
-    if (isNCHW(input)) {  // NCHW
+    if (isNCHW(input) && axis_ == 1) {  // NCHW
       return RunForNCHW(context);
     } else {
       return RunForNHWC(context);
@@ -63,6 +64,7 @@ class SoftmaxOp<RuntimeType::RT_CPU, T> : public Operation {
  protected:
   bool use_log_;
   bool has_df_;
+  int32_t axis_;
   MACE_OP_INPUT_TAGS(INPUT);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 
@@ -246,7 +248,8 @@ class SoftmaxOp<RuntimeType::RT_CPU, float> : public Operation {
   explicit SoftmaxOp(OpConstructContext *context)
       : Operation(context),
         use_log_(Operation::GetOptionalArg<bool>("use_log", false)),
-        has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)) {}
+        has_df_(Operation::GetOptionalArg<int>("has_data_format", 0)),
+        axis_(Operation::GetOptionalArg<int>("axis", 1)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -254,7 +257,7 @@ class SoftmaxOp<RuntimeType::RT_CPU, float> : public Operation {
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
-    if (isNCHW(input)) {  // NCHW
+    if (isNCHW(input) && axis_ == 1) {  // NCHW
       return RunForNCHW(context);
     } else {
       return RunForNHWC(context);
@@ -264,6 +267,7 @@ class SoftmaxOp<RuntimeType::RT_CPU, float> : public Operation {
  protected:
   bool use_log_;
   bool has_df_;
+  int32_t axis_;
   MACE_OP_INPUT_TAGS(INPUT);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 

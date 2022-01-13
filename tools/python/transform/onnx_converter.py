@@ -1629,6 +1629,9 @@ class OnnxConverter(base_converter.ConverterInterface):
             use_log_arg = op.arg.add()
             use_log_arg.name = 'use_log'
             use_log_arg.i = 1
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = node.attrs.get('axis', -1)
 
     def convert_lpnormalization(self, node):
         op = self.convert_general_op(node)
