@@ -54,6 +54,7 @@ void TestSliceWithInputs(const std::vector<index_t> &input_shape,
                          const int offset,
                          const int output_dim,
                          const int axis,
+                         const int step,
                          const std::vector<index_t> &output_shape,
                          const std::vector<T> &output) {
   OpsTestNet net;
@@ -65,13 +66,17 @@ void TestSliceWithInputs(const std::vector<index_t> &input_shape,
                                                       {offset + output_dim});
   net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(MakeString("axes"),
                                                       {1}, {axis});
+  net.AddInputFromArray<RuntimeType::RT_CPU, int32_t>(MakeString("step"),
+                                                      {1}, {step});
 
   OpDefBuilder("Slice", "SliceTest")
       .Input("Input")
       .Input("starts")
       .Input("ends")
       .Input("axes")
+      .Input("step")
       .Output("Output")
+      .AddIntArg("T", DataTypeToEnum<T>::v())
       .Finalize(net.NewOperatorDef());
 
   net.RunOp();
@@ -104,14 +109,26 @@ TEST_F(SliceOpTest, Simple) {
   TestSliceWithInputs<RuntimeType::RT_CPU, float>(
     {3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-    1, 2, 0, {2, 5},
+    1, 2, 0, 1, {2, 5},
     {6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
   TestSliceWithInputs<RuntimeType::RT_CPU, float>(
     {2, 3, 5},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-    1, 2, 1, {2, 2, 5},
+    1, 2, 1, 1, {2, 2, 5},
     {6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+  TestSliceWithInputs<RuntimeType::RT_CPU, int32_t>(
+    {2, 15},
+    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+    0, 15, 1, 2, {2, 8},
+    {1, 3, 5, 7, 9, 11, 13, 15, 1, 3, 5, 7, 9, 11, 13, 15});
+  TestSliceWithInputs<RuntimeType::RT_CPU, int32_t>(
+    {2, 15},
+    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+    0, 15, 1, 3, {2, 5},
+    {1, 4, 7, 10, 13, 1, 4, 7, 10, 13});
 }
 
 }  // namespace test
