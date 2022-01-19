@@ -28,7 +28,7 @@ class IdentityOp : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
-    output->ReuseTensorBuffer(*input);
+    output->Copy(*input);
     output->Reshape(input->shape());
     return MaceStatus::MACE_SUCCESS;
   }

@@ -407,6 +407,9 @@ class Transformer(base_converter.ConverterInterface):
     def remove_useless_op(self):
         net = self._model
         for op in net.op:
+            if self.is_op_output_node(op) and \
+                    self._option.device == DeviceType.CPU.value:
+                continue
             if op.type == 'Identity':
                 print("Remove useless op: %s(%s)" % (op.name, op.type))
                 self.safe_remove_node(op,
