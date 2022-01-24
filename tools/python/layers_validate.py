@@ -248,10 +248,11 @@ def convert(model_file, output_dir, layers):
             output_info.dims.extend(op.output_shape[i].dims)
             data_type = ConverterUtil.get_arg(
                             op, MaceKeyword.mace_op_data_type_str)
-            output_info.data_type = data_type.i
             if mace_pb2.DT_INT32 == data_type.i:
+                output_info.data_type = mace_pb2.DT_INT32
                 output_data_types.append('int32')
             else:
+                output_info.data_type = mace_pb2.DT_FLOAT
                 output_data_types.append('float32')
             if is_quantize:
                 output_info.scale = op.quantize_info[0].scale
