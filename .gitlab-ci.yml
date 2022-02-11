@@ -48,7 +48,7 @@ cmake_build_android-armeabi-v7a:
     - set +x
     - RUNTIME=GPU QUANTIZE=OFF bash tools/cmake/cmake-build-armeabi-v7a.sh
     - LIBMACE32_FULL_SIZE=`stat -c%s build/cmake-build/armeabi-v7a/install/lib/libmace.so`
-    - if (( LIBMACE32_FULL_SIZE > 1500000 )) ; then echo "The libmace.so size too large($LIBMACE32_FULL_SIZE)"; exit 1; fi
+    - if (( LIBMACE32_FULL_SIZE > 1600000 )) ; then echo "The libmace.so size too large($LIBMACE32_FULL_SIZE)"; exit 1; fi
 
 cmake_build_android-arm64-v8:
   stage: build
