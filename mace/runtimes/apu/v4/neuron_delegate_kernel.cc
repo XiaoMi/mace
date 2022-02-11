@@ -89,6 +89,7 @@ bool NeuronDelegateKernel::Init(const NetDef *net_def,
         &restoredModel, &restoredCompilation, buffer.data(), buffer.size());
     if (err == NEURON_NO_ERROR) {
         LOG(INFO) << "Load pre-compiled model successfully.";
+        nn_model_.reset(restoredModel);
         nn_compilation_.reset(restoredCompilation);
         return true;
     }
