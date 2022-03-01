@@ -21,6 +21,10 @@
 #include "mace/core/ops/operator.h"
 #include "mace/core/registry/ops_registry.h"
 
+#if defined(MACE_ENABLE_NEON)
+#include <arm_neon.h>
+#endif  // MACE_ENABLE_NEON
+
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/fixpoint.h"
 #include "mace/ops/common/gemmlowp_util.h"

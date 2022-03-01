@@ -118,11 +118,11 @@ void QuantizeUtil<float, uint16_t>::Dequantize(const uint16_t *input,
       uint16x8_t vi = vld1q_u16(input + i * 8);
       float32x4x2_t vo = {{
         vmulq_f32(vscale,
-                  vcvtq_f32_s32(vsubq_s32(vmovl_u16(vget_low_u16(vi)),
-                                                    vzero))),
+                  vcvtq_f32_s32(vsubq_s32(vreinterpretq_s32_u32(vmovl_u16(
+                      vget_low_u16(vi))), vzero))),
         vmulq_f32(vscale,
-                  vcvtq_f32_s32(vsubq_s32(vmovl_u16(vget_high_u16(vi)),
-                                                    vzero))),
+                  vcvtq_f32_s32(vsubq_s32(vreinterpretq_s32_u32(vmovl_u16(
+                      vget_high_u16(vi))), vzero))),
       }};
       vst1q_f32(output + i * 8, vo.val[0]);
       vst1q_f32(output + i * 8 + 4, vo.val[1]);
