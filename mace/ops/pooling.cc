@@ -404,7 +404,7 @@ class PoolingOp<RuntimeType::RT_CPU, float> : public PoolingOpBase {
   })
 #endif
             if (i + 3 < in_image_size) {
-              float32x4_t maxx4 = vld1q_f32(input);
+              float32x4_t maxx4 = vld1q_f32(input + in_base);
               i += 4;
               for (; i + 3 < in_image_size; i += 4) {
                   maxx4 = vmaxq_f32(maxx4, vld1q_f32(input + in_base + i));
