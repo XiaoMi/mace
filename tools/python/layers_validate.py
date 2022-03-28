@@ -202,7 +202,6 @@ def convert(model_file, output_dir, layers):
             elif net_def.infer_order > cur_net_idx:
                 net_defs.remove(net_def)
         del multi_net.output_tensor[:]
-        data_format = net.output_info[0].data_format
 
         # remove unsued op
         cur_op_idx = multi_net_info.get_current_op_idx()
@@ -230,13 +229,15 @@ def convert(model_file, output_dir, layers):
             if len(op.output) != 1:
                 print("Skip %s(%s)" % (op.name, op.type))
                 continue
+        data_format = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_data_format_str)
         for i in range(len(op.output)):
             output_tensors.append(str(op.output[i]))
             output_shapes.append(
                 ",".join([str(dim) for dim in op.output_shape[i].dims]))
-            if data_format == DataFormat.NONE.value:
+            if data_format.i == DataFormat.NONE.value:
                 output_data_formats.append(DataFormat.NONE.name)
-            elif data_format == DataFormat.NCHW.value:
+            elif data_format.i == DataFormat.NCHW.value:
                 output_data_formats.append(DataFormat.NCHW.name)
             else:
                 output_data_formats.append(DataFormat.NHWC.name)
@@ -244,7 +245,7 @@ def convert(model_file, output_dir, layers):
             multi_net.output_tensor.append(op.output[i])
             output_info = net.output_info.add()
             output_info.name = op.output[i]
-            output_info.data_format = data_format
+            output_info.data_format = data_format.i
             output_info.dims.extend(op.output_shape[i].dims)
             data_type = ConverterUtil.get_arg(
                             op, MaceKeyword.mace_op_data_type_str)

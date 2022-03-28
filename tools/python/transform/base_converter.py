@@ -220,6 +220,7 @@ MaceTransposableDataFormatOps = [MaceOp.Activation,
                                  MaceOp.Split,
                                  MaceOp.Squeeze,
                                  MaceOp.SqrDiffMean,
+                                 MaceOp.Transpose,
                                  MaceOp.Tile]
 
 
@@ -395,6 +396,9 @@ class TransformerRule(Enum):
     FOLD_INSTANCE_NORM = 54
     FOLD_MOMENTS = 55
     UPDATE_FC_OUTPUT_SHAPE = 56
+    TRANSFORM_BIASADD_TO_ADD = 57
+    TRANSFORM_SLICE_TO_STRIDED_SLICE = 58
+    ADD_TRANSPOSE_FOR_HTP = 59
 
 
 class ConverterInterface(object):
@@ -686,6 +690,8 @@ class ConverterOption(object):
                 TransformerRule.FOLD_DECONV_AND_BN,
                 TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
                 TransformerRule.TRANSFORM_ADD_TO_BIASADD,
+                TransformerRule.TRANSFORM_BIASADD_TO_ADD,
+                TransformerRule.TRANSFORM_SLICE_TO_STRIDED_SLICE,
                 TransformerRule.REARRANGE_BATCH_TO_SPACE,
                 TransformerRule.FOLD_BIASADD,
                 TransformerRule.FLATTEN_ATROUS_CONV,
@@ -698,8 +704,6 @@ class ConverterOption(object):
                 TransformerRule.RESHAPE_FC_WEIGHT,
                 TransformerRule.FOLD_FC_RESHAPE,
                 TransformerRule.TRANSFORM_CHANNEL_SHUFFLE,
-                # Model data format related transformation
-                TransformerRule.TRANSPOSE_FILTERS,
                 # Mace model structure related transformation
                 TransformerRule.ADD_IN_OUT_TENSOR_INFO,
                 TransformerRule.TRANSPOSE_MATMUL_WEIGHT,
@@ -710,10 +714,13 @@ class ConverterOption(object):
                 # Transform finalization
                 TransformerRule.ADD_OPENCL_INFORMATIONS,
                 # for quantization entropy calibration use
-                TransformerRule.SORT_BY_EXECUTION,
                 # update the data format of ops
                 TransformerRule.UPDATE_DATA_FORMAT,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
+                # Model data format related transformation
+                TransformerRule.TRANSPOSE_FILTERS,
+                TransformerRule.ADD_TRANSPOSE_FOR_HTP,
+                TransformerRule.SORT_BY_EXECUTION,
                 # Need to be put after SORT_BY_EXECUTION
                 TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                 TransformerRule.ADD_GENERRAL_INFO,

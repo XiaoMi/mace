@@ -283,8 +283,7 @@ def apu_enabled(configs):
 def opencl_enabled(configs):
     runtime_list = get_runtimes(configs)
     if RuntimeType.gpu in runtime_list or RuntimeType.cpu_gpu in runtime_list \
-            or RuntimeType.hta in runtime_list \
-            or RuntimeType.htp in runtime_list:
+            or RuntimeType.hta in runtime_list:
         return True
     return False
 

@@ -197,8 +197,21 @@ bool QnnWrapper::InitOnline(const NetDef &net_def,
   MACE_CHECK(ret == QNN_SUCCESS, "QnnContext_create failed with error: ", ret);
 
   MACE_CHECK(!net_def.name().empty());
-  ret = QnnGraph_create(ctx_, net_def.name().c_str(), nullptr, &graph_);
-  MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_create failed with error: ", ret);
+  if (quantized_type_ == DT_INT32 || quantized_type_ == DT_UINT32 ||
+      quantized_type_ == DT_FLOAT) {
+    QnnDspGraph_CustomConfig_t customConfig;
+    customConfig.option = QNN_DSP_GRAPH_CONFIG_OPTION_PRECISION;
+    customConfig.precision = QNN_PRECISION_FLOAT16;
+    QnnGraph_Config_t graphConfig;
+    graphConfig.option       = QNN_GRAPH_CONFIG_OPTION_CUSTOM;
+    graphConfig.customConfig = &customConfig;
+    const QnnGraph_Config_t* pGraphConfig[] = {&graphConfig, NULL};
+    ret = QnnGraph_create(ctx_, net_def.name().c_str(), pGraphConfig, &graph_);
+    MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_create failed with error: ", ret);
+  } else {
+    ret = QnnGraph_create(ctx_, net_def.name().c_str(), nullptr, &graph_);
+    MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_create failed with error: ", ret);
+  }
 
   int64_t t0 = NowMicros();
 
@@ -482,28 +495,58 @@ bool QnnWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
         input_tensor, quantized_tensor));
     Tensor::MappingGuard input_guard(quantized_tensor);
 
-    if (quantized_type_ == DT_UINT16) {
+    if (input_tensor->dtype() == DT_FLOAT) {
+      input_tensors_[i].clientBuf.data =
+        const_cast<float_t *>(input_tensor->data<float_t>());
+      input_tensors_[i].clientBuf.dataSize = input_tensor->raw_size();
+    } else if (input_tensor->dtype() == DT_INT32) {
+      input_tensors_[i].clientBuf.data =
+        const_cast<int32_t *>(input_tensor->data<int32_t>());
+      input_tensors_[i].clientBuf.dataSize = input_tensor->raw_size();
+    } else if (input_tensor->dtype() == DT_UINT32) {
+      input_tensors_[i].clientBuf.data =
+        const_cast<uint32_t *>(input_tensor->data<uint32_t>());
+      input_tensors_[i].clientBuf.dataSize = input_tensor->raw_size();
+    } else if (input_tensor->dtype() == DT_UINT16) {
       input_tensors_[i].clientBuf.data =
         const_cast<uint16_t *>(quantized_tensor->data<uint16_t>());
+      input_tensors_[i].clientBuf.dataSize = quantized_tensor->raw_size();
     } else {
       input_tensors_[i].clientBuf.data =
         const_cast<uint8_t *>(quantized_tensor->data<uint8_t>());
+      input_tensors_[i].clientBuf.dataSize = quantized_tensor->raw_size();
     }
-    input_tensors_[i].clientBuf.dataSize = quantized_tensor->raw_size();
   }
 
   for (int i = 0; i < num_outputs_; ++i) {
     auto quantized_tensor = output_info_[i].quantized_tensor.get();
+    auto output_tensor = output_tensors->at(output_info_[i].name);
     Tensor::MappingGuard output_guard(quantized_tensor);
 
-    if (quantized_type_ == DT_UINT16) {
+    if (output_tensor->dtype() == DT_FLOAT) {
+      output_tensor->ResizeLike(quantized_tensor);
+      output_tensors_[i].clientBuf.data =
+        output_tensor->mutable_data<float_t>();
+      output_tensors_[i].clientBuf.dataSize = output_tensor->raw_size();
+    } else if (output_tensor->dtype() == DT_INT32) {
+      output_tensor->ResizeLike(quantized_tensor);
+      output_tensors_[i].clientBuf.data =
+        output_tensor->mutable_data<int32_t>();
+      output_tensors_[i].clientBuf.dataSize = output_tensor->raw_size();
+    } else if (output_tensor->dtype() == DT_UINT32) {
+      output_tensor->ResizeLike(quantized_tensor);
+      output_tensors_[i].clientBuf.data =
+        output_tensor->mutable_data<uint32_t>();
+      output_tensors_[i].clientBuf.dataSize = output_tensor->raw_size();
+    } else if (output_tensor->dtype() == DT_UINT16) {
       output_tensors_[i].clientBuf.data =
         quantized_tensor->mutable_data<uint16_t>();
+      output_tensors_[i].clientBuf.dataSize = quantized_tensor->raw_size();
     } else {
       output_tensors_[i].clientBuf.data =
         quantized_tensor->mutable_data<uint8_t>();
+      output_tensors_[i].clientBuf.dataSize = quantized_tensor->raw_size();
     }
-    output_tensors_[i].clientBuf.dataSize = quantized_tensor->raw_size();
   }
 
   perf_->SetPerformance(QNN_INFERENCE_START, perf_type_);
@@ -515,8 +558,11 @@ bool QnnWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
 
   for (int i = 0; i < num_outputs_; ++i) {
     auto output_tensor = output_tensors->at(output_info_[i].name);
-    MaceStatus st = transformer_->Dequantize(
-        output_info_[i].quantized_tensor.get(), output_tensor);
+    auto dt = output_tensor->dtype();
+    if (dt != DT_FLOAT && dt != DT_INT32 && dt != DT_UINT32) {
+      MaceStatus st = transformer_->Dequantize(
+          output_info_[i].quantized_tensor.get(), output_tensor);
+    }
   }
   if (profile_ != nullptr && !profile_info_.is_warmup) {
     CollectPerfInfo();

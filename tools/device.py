@@ -955,7 +955,7 @@ class DeviceWrapper:
                                 YAMLKeyword.output_shapes],
                             input_data_formats=input_infos[
                                 YAMLKeyword.input_data_formats],
-                            output_data_formats=output_infos[
+                            output_data_formats=output_config[
                                 YAMLKeyword.output_data_formats],
                             model_output_dir=model_output_dir,
                             input_data_types=input_infos[

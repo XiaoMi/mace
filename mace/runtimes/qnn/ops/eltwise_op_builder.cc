@@ -93,19 +93,26 @@ class EltwiseOpBuilder : public OpBuilder {
             scalar_input_name, 0, QNN_TENSOR_TYPE_STATIC,
             QNN_DATATYPE_UFIXED_POINT_8, scale, zero, scalar_dims,
             &quantized_scalar, 1);
-      } else {
+      } else if (quantized_type == DT_UINT16) {
         uint16_t quantized_scalar = Quantize<uint16_t>(scalar_input, &scale, &zero);
         graph_builder_->CreateGraphTensor(
             scalar_input_name, 0, QNN_TENSOR_TYPE_STATIC,
             QNN_DATATYPE_UFIXED_POINT_16, scale, zero, scalar_dims,
             &quantized_scalar, 1);
+      } else {
+        graph_builder_->CreateGraphTensor(
+            scalar_input_name, 0, QNN_TENSOR_TYPE_STATIC,
+            QNN_DATATYPE_FLOAT_32, scale, zero, scalar_dims,
+            &scalar_input, 1);
       }
       if (scalar_input_index == 0) {
         AddInput(scalar_input_name);
         AddInput(op.input(0));
       } else {
         AddInput(op.input(0));
-        AddInput(scalar_input_name);
+        if (std::string(op_type) != QNN_OP_ELEMENT_WISE_NEG) {
+          AddInput(scalar_input_name);
+        }
       }
     } else {
       AddInput(op.input(0));

@@ -900,7 +900,10 @@ class OnnxConverter(base_converter.ConverterInterface):
             return
         tensor = self._mace_net_def.tensors.add()
         tensor.name = output_name
-        tensor.dims.extend(list(onnx_tensor.dims))
+        if onnx_tensor.dims:
+            tensor.dims.extend(list(onnx_tensor.dims))
+        else:
+            tensor.dims.extend([1])
 
         if data_type == np.float32 or data_type == np.float64:
             tensor.data_type = mace_pb2.DT_FLOAT
@@ -928,7 +931,10 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         is_depthwise = False
         if group_val > 1:
-            filter_shape = self._graph_shapes_dict[node.inputs[1]]
+            if node.inputs[1] in self._graph_shapes_dict:
+                filter_shape = self._graph_shapes_dict[node.inputs[1]]
+            else:
+                filter_shape = self._consts[node.inputs[1]].dims
             mace_check(group_val == filter_shape[0] and
                        filter_shape[1] == 1,
                        "Mace does not support group convolution yet")
@@ -961,7 +967,10 @@ class OnnxConverter(base_converter.ConverterInterface):
         else:
             group_val = 1
         if group_val > 1:
-            filter_shape = self._graph_shapes_dict[node.inputs[1]]
+            if node.inputs[1] in self._graph_shapes_dict:
+                filter_shape = self._graph_shapes_dict[node.inputs[1]]
+            else:
+                filter_shape = self._consts[node.inputs[1]].dims
             mace_check(group_val == filter_shape[0] and filter_shape[1] == 1,
                        'MACE does not support group deconv yet')
             op.type = MaceOp.DepthwiseDeconv2d.name
@@ -1363,6 +1372,11 @@ class OnnxConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = value
+        if op.input[1] in self._consts:
+            indices = self._consts[op.input[1]]
+            dims = indices.dims
+            if len(dims) == 0 or (len(dims) == 1 and dims[0] == 1):
+                op.output_shape[0].dims.insert(value, 1)
 
     def convert_gemm(self, node):
         if self._isKaldi:
@@ -1828,7 +1842,6 @@ class OnnxConverter(base_converter.ConverterInterface):
 
     def convert_resize(self, node):
         op = self.convert_general_op(node)
-
         if len(op.input) >= 3:
             roi_tensor = self._consts[op.input[1]]
             mace_check(len(roi_tensor.dims) == 0 or roi_tensor.dims[0] == 0 or

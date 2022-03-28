@@ -24,6 +24,7 @@
 #include "mace/core/tensor.h"
 #include "mace/runtimes/qnn/common.h"
 
+#include "third_party/qnn/include/HTP/QnnDspGraph.h"
 #include "third_party/qnn/include/QnnGraph.h"
 #include "third_party/qnn/include/QnnOpDef.h"
 #include "third_party/qnn/include/QnnTensor.h"
@@ -65,6 +66,8 @@ class OpBuilder {
                       const std::vector<uint32_t> &dims,
                       const void *data,
                       const Qnn_DataType_t data_type = QNN_DATATYPE_UINT_32);
+  void AddTensorParamNotCreat(const char *name,
+                      const std::string &tensor_name);
   void AddScalarParam(const char* name, const Qnn_Scalar_t scalar);
   void AddInput(const Qnn_Tensor_t &tensor) { inputs_.push_back(tensor); }
   void AddInput(const std::string &name);

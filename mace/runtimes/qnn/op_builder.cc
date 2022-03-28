@@ -61,6 +61,7 @@ Qnn_DataType_t MapToQnnDataType(DataType type, bool params = false) {
     if (type == DT_UINT8) return QNN_DATATYPE_UINT_8;
     if (type == DT_UINT16) return QNN_DATATYPE_UINT_16;
     if (type == DT_INT32) return QNN_DATATYPE_INT_32;
+    if (type == DT_UINT32) return QNN_DATATYPE_UINT_32;
   } else {
     if (type == DT_UINT8) return QNN_DATATYPE_UFIXED_POINT_8;
     if (type == DT_UINT16) return QNN_DATATYPE_UFIXED_POINT_16;
@@ -209,14 +210,21 @@ void PrintOpConfig(const Qnn_OpConfig_t &op_config) {
 
 namespace qnn {
 extern void RegisterActivation(OpRegistry *);
+extern void RegisterArgMax(OpRegistry *);
 extern void RegisterBatchNorm(OpRegistry *);
+extern void RegisterCast(OpRegistry *);
 extern void RegisterConcat(OpRegistry *);
 extern void RegisterConv2D(OpRegistry *);
 extern void RegisterDeconv2D(OpRegistry *);
 extern void RegisterDepthToSpace(OpRegistry *);
 extern void RegisterEltwise(OpRegistry *);
+extern void RegisterExpandDims(OpRegistry *);
+extern void RegisterFullyConnected(OpRegistry *);
+extern void RegisterGather(OpRegistry *);
 extern void RegisterInstanceNorm(OpRegistry *);
+extern void RegisterMatMul(OpRegistry *);
 extern void RegisterMoments(OpRegistry *);
+extern void RegisterPack(OpRegistry *);
 extern void RegisterPad(OpRegistry *);
 extern void RegisterPooling(OpRegistry *);
 extern void RegisterQuantize(OpRegistry *);
@@ -227,16 +235,26 @@ extern void RegisterSoftmax(OpRegistry *);
 extern void RegisterSpaceToDepth(OpRegistry *);
 extern void RegisterSplit(OpRegistry *);
 extern void RegisterSqueeze(OpRegistry *);
+extern void RegisterStridedSlice(OpRegistry *);
+extern void RegisterTile(OpRegistry *);
+extern void RegisterTranspose(OpRegistry *);
 void RegisterAllOps(OpRegistry *registry) {
   RegisterActivation(registry);
+  RegisterArgMax(registry);
   RegisterBatchNorm(registry);
+  RegisterCast(registry);
   RegisterConcat(registry);
   RegisterConv2D(registry);
   RegisterDeconv2D(registry);
   RegisterDepthToSpace(registry);
   RegisterEltwise(registry);
+  RegisterExpandDims(registry);
+  RegisterFullyConnected(registry);
+  RegisterGather(registry);
   RegisterInstanceNorm(registry);
+  RegisterMatMul(registry);
   RegisterMoments(registry);
+  RegisterPack(registry);
   RegisterPad(registry);
   RegisterPooling(registry);
   RegisterQuantize(registry);
@@ -247,6 +265,9 @@ void RegisterAllOps(OpRegistry *registry) {
   RegisterSpaceToDepth(registry);
   RegisterSplit(registry);
   RegisterSqueeze(registry);
+  RegisterStridedSlice(registry);
+  RegisterTile(registry);
+  RegisterTranspose(registry);
 }
 }  // namespace qnn
 
@@ -256,6 +277,15 @@ void OpBuilder::AddInput(const std::string &name) {
 
 void OpBuilder::AddOutput(const std::string &name) {
   AddOutput(graph_builder_->GetTensor(name));
+}
+
+void OpBuilder::AddTensorParamNotCreat(const char *name,
+                               const std::string &tensor_name) {
+  Qnn_Param_t param = {
+      .paramType = QNN_PARAMTYPE_TENSOR,
+      .name = name,
+      .tensorParam = graph_builder_->GetTensor(tensor_name)};
+  params_.push_back(param);
 }
 
 void OpBuilder::AddTensorParam(const char *name,
@@ -316,16 +346,22 @@ void GraphBuilder::CreateGraphTensor(const std::string &tensor_name,
                                      const std::vector<uint32_t> &tensor_dims,
                                      const void *tensor_data,
                                      const uint32_t tensor_data_size) {
+  if (tensor_map_.count(tensor_name)) {
+    return;
+  }
   tensor_map_[tensor_name] = TensorInfo(tensor_dims);
   TensorInfo &tensor_info = tensor_map_[tensor_name];
+  bool fp32 = (data_type == QNN_DATATYPE_FLOAT_32 ? 1 : 0);
   tensor_info.tensor = {
       .id = (id == 0 ? GetQnnId() : id),
       .type = tensor_type,
       .dataFormat = QNN_TENSOR_DATA_FORMAT_FLAT_BUFFER,
       .dataType = data_type,
-      .quantizeParams = {.encodingDefinition = QNN_DEFINITION_DEFINED,
+      .quantizeParams = {.encodingDefinition =
+                             (fp32 ? QNN_DEFINITION_UNDEFINED : QNN_DEFINITION_DEFINED),
                          .quantizationEncoding =
-                             QNN_QUANTIZATION_ENCODING_SCALE_OFFSET,
+                             (fp32 ? QNN_QUANTIZATION_ENCODING_UNDEFINED :
+                              QNN_QUANTIZATION_ENCODING_SCALE_OFFSET),
                          {.scaleOffsetEncoding = {.scale = scale,
                                                   .offset = -zero_point}}},
       .rank = static_cast<uint32_t>(tensor_info.shape.size()),
@@ -385,9 +421,19 @@ void GraphBuilder::AddModelInputs(std::vector<QnnInOutInfo> *infos,
     Qnn_DataType_t qnn_quantized_type = quantized_type_ == DT_UINT16 ?
                                         QNN_DATATYPE_UFIXED_POINT_16 :
                                         QNN_DATATYPE_UFIXED_POINT_8;
-    CreateGraphTensor(input_info.name(), 0, QNN_TENSOR_TYPE_APP_WRITE,
-                      qnn_quantized_type, input_info.scale(),
-                      input_info.zero_point(), infos->back().shape);
+    if (input_info.data_type() == DT_FLOAT) {
+      CreateGraphTensor(input_info.name(), 0, QNN_TENSOR_TYPE_APP_WRITE,
+                        QNN_DATATYPE_FLOAT_32, 0.0f,
+                        0, infos->back().shape);
+    } else if (input_info.data_type() == DT_INT32) {
+      CreateGraphTensor(input_info.name(), 0, QNN_TENSOR_TYPE_APP_WRITE,
+                        QNN_DATATYPE_INT_32, 0.0f,
+                        0, infos->back().shape);
+    } else {
+      CreateGraphTensor(input_info.name(), 0, QNN_TENSOR_TYPE_APP_WRITE,
+                        qnn_quantized_type, input_info.scale(),
+                        input_info.zero_point(), infos->back().shape);
+    }
 
     (*tensors)[i] = tensor_map_[input_info.name()].tensor;
   }
@@ -417,9 +463,20 @@ void GraphBuilder::AddModelOutputs(std::vector<QnnInOutInfo> *infos,
     Qnn_DataType_t qnn_quantized_type = quantized_type_ == DT_UINT16 ?
                                         QNN_DATATYPE_UFIXED_POINT_16 :
                                         QNN_DATATYPE_UFIXED_POINT_8;
-    CreateGraphTensor(output_info.name(), 0, QNN_TENSOR_TYPE_APP_READ,
-                      qnn_quantized_type, output_info.scale(),
-                      output_info.zero_point(), infos->back().shape);
+
+    if (quantized_type_ == DT_UINT16 || quantized_type_ == DT_UINT8) {
+      CreateGraphTensor(output_info.name(), 0, QNN_TENSOR_TYPE_APP_READ,
+                        qnn_quantized_type, output_info.scale(),
+                        output_info.zero_point(), infos->back().shape);
+    } else if (output_info.data_type() == DT_FLOAT) {
+      CreateGraphTensor(output_info.name(), 0, QNN_TENSOR_TYPE_APP_READ,
+                        QNN_DATATYPE_FLOAT_32, 0.0f,
+                        0, infos->back().shape);
+    } else if (output_info.data_type() == DT_INT32) {
+      CreateGraphTensor(output_info.name(), 0, QNN_TENSOR_TYPE_APP_READ,
+                        QNN_DATATYPE_INT_32, 0.0f,
+                        0, infos->back().shape);
+    }
 
     (*tensors)[i] = tensor_map_[output_info.name()].tensor;
   }
@@ -529,10 +586,17 @@ void GraphBuilder::AddConstTensors(unsigned const char *model_data,
 
     std::vector<uint32_t> tensor_dims(const_tensor.dims().begin(),
                                       const_tensor.dims().end());
-    CreateGraphTensor(const_tensor.name(), 0, QNN_TENSOR_TYPE_STATIC,
-                      MapToQnnDataType(const_tensor.data_type()),
-                      const_tensor.scale(), const_tensor.zero_point(),
-                      tensor_dims, tensor_data, tensor_data_len);
+    if (quantized_type_ != DT_UINT16 && quantized_type_ != DT_UINT8) {
+        CreateGraphTensor(const_tensor.name(), 0, QNN_TENSOR_TYPE_STATIC,
+                          MapToQnnDataType(const_tensor.data_type(), true),
+                          const_tensor.scale(), const_tensor.zero_point(),
+                          tensor_dims, tensor_data, tensor_data_len);
+    } else {
+        CreateGraphTensor(const_tensor.name(), 0, QNN_TENSOR_TYPE_STATIC,
+                          MapToQnnDataType(const_tensor.data_type()),
+                          const_tensor.scale(), const_tensor.zero_point(),
+                          tensor_dims, tensor_data, tensor_data_len);
+    }
   }
 }
 
@@ -553,15 +617,23 @@ void GraphBuilder::AddOpsOutputs() {
       continue;
     }
     for (int i = 0; i < op.output_size(); ++i) {
-      const auto quantize_info = op.quantize_info(i);
       auto dt = static_cast<DataType>(
           ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
               op, "T", static_cast<int>(DT_UINT8)));
+      if (op.output_type_size() > i) {
+        dt = op.output_type(i);
+      }
       std::vector<uint32_t> tensor_dims(op.output_shape(i).dims().begin(),
                                         op.output_shape(i).dims().end());
-      CreateGraphTensor(op.output(i), 0, QNN_TENSOR_TYPE_NATIVE,
-                        MapToQnnDataType(dt), quantize_info.scale(),
-                        quantize_info.zero_point(), tensor_dims);
+      if (dt == DT_FLOAT || dt == DT_UINT32 || dt == DT_INT32) {
+        CreateGraphTensor(op.output(i), 0, QNN_TENSOR_TYPE_NATIVE,
+                          MapToQnnDataType(dt, true), 0.0f, 0, tensor_dims);
+      } else {
+        const auto quantize_info = op.quantize_info(i);
+        CreateGraphTensor(op.output(i), 0, QNN_TENSOR_TYPE_NATIVE,
+                          MapToQnnDataType(dt), quantize_info.scale(),
+                          quantize_info.zero_point(), tensor_dims);
+      }
     }
   }
 }
