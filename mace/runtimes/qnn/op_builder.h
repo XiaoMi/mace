@@ -93,11 +93,13 @@ class GraphBuilder {
   void Init(const NetDef *net_def,
             Qnn_GraphHandle_t graph,
             Runtime *runtime,
-            DataType quantized_type) {
+            DataType quantized_type,
+            QnnFunctionPointers* qnn_function_pointers) {
     net_def_ = net_def;
     graph_ = graph;
     runtime_ = runtime;
     quantized_type_ = quantized_type;
+    qnn_function_pointers_ = qnn_function_pointers;
   }
   Qnn_Tensor_t CreateParamTensor(
       const std::vector<uint32_t> &tensor_dims,
@@ -153,6 +155,7 @@ class GraphBuilder {
   TensorInfoMap tensor_map_;
   Runtime* runtime_;
   DataType quantized_type_;
+  QnnFunctionPointers* qnn_function_pointers_;
 };
 
 namespace qnn {

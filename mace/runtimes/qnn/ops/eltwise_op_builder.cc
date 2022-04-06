@@ -110,7 +110,8 @@ class EltwiseOpBuilder : public OpBuilder {
         AddInput(op.input(0));
       } else {
         AddInput(op.input(0));
-        if (std::string(op_type) != QNN_OP_ELEMENT_WISE_NEG) {
+        if (std::string(op_type) != QNN_OP_ELEMENT_WISE_NEG &&
+            std::string(op_type) != QNN_OP_ELEMENT_WISE_ABS) {
           AddInput(scalar_input_name);
         }
       }

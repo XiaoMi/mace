@@ -33,6 +33,7 @@ import sh_commands
 sys.path.insert(0, "tools/python")  # noqa
 import apu_utils
 from hexagon_soc_defines import get_soc_skel_info
+from hexagon_soc_defines import DspType
 
 
 class DeviceWrapper:
@@ -355,10 +356,8 @@ class DeviceWrapper:
                     self.push(so_path, self.data_dir)
                 if debug_mode:
                     cmd.append("MTKNN_ENABLE_PROFILER=1")
-
-            if (device_type == common.DeviceType.HEXAGON and
-                    not use_system_libhexagon_nn):
-                cmd.append("ADSP_LIBRARY_PATH=%s" % self.data_dir)
+            soc_id = 0
+            if device_type in [common.DeviceType.HEXAGON, common.DeviceType.HTP]:
                 ret = sh.adb(
                     "-s", self.address, "shell",
                     "if [ -f '/sys/devices/soc0/soc_id' ];"
@@ -373,6 +372,9 @@ class DeviceWrapper:
                     mace_check(
                         False, ModuleName.RUN,
                         "The device do not have a valid hexagon dsp")
+            if (device_type == common.DeviceType.HEXAGON and
+                    not use_system_libhexagon_nn):
+                cmd.append("ADSP_LIBRARY_PATH=%s" % self.data_dir)
                 skel_info = get_soc_skel_info(soc_id)
                 hexagon_skel = skel_info.skel.value
                 print("The hexagon dsp skel : " + str(hexagon_skel))
@@ -385,13 +387,31 @@ class DeviceWrapper:
                     libhexgon_nn_skel_shared_lib)
                 self.push(libhexgon_nn_skel_shared_lib, self.data_dir)
                 sh.rm(libhexgon_nn_skel_shared_lib)
-
-            qnn_path = \
-                "third_party/qnn/target/%s/libQnnHtpAltPrepStub.so" % abi
-            if os.path.exists(qnn_path):
-                self.push(qnn_path, self.data_dir)
-                self.push("third_party/qnn/target/%s/libQnnHtpAltPrepV69Stub.so" % abi,
-                          self.data_dir)
+            if device_type == common.DeviceType.HTP:
+                cmd.append("ADSP_LIBRARY_PATH=%s" % self.data_dir)
+                skel_info = get_soc_skel_info(soc_id, DspType.HTP)
+                qnn_skel = skel_info.skel.value
+                qnn_abi = ""
+                if "arm64-v8a" == abi:
+                    qnn_abi = "aarch64-android"
+                elif "armeabi-v7a" == abi:
+                    qnn_abi = "arm-android"
+                self.push(
+                    "third_party/qnn/target/%s/lib/libQnnHtp%sStub.so" % (qnn_abi, qnn_skel),
+                    self.data_dir)
+                self.push(
+                    "third_party/qnn/target/%s/lib/libQnnHtp.so" % qnn_abi,
+                    self.data_dir)
+                self.push(
+                    "third_party/qnn/target/hexagon-%s/lib/unsigned/libQnnHtp%sSkel.so" %
+                    (qnn_skel.lower(), qnn_skel),
+                    self.data_dir)
+                self.push(
+                    "third_party/qnn/target/%s/lib/libQnnHtpPrepare.so" % qnn_abi,
+                    self.data_dir)
+                self.push(
+                    "third_party/qnn/target/%s/lib/libQnnHtpNetRunExtensions.so" % qnn_abi,
+                    self.data_dir)
             mace_model_phone_path = ""
             if model_graph_format == ModelFormat.file:
                 mace_model_phone_path = "%s/%s.pb" % (self.data_dir,

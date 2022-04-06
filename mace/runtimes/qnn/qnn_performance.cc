@@ -27,10 +27,11 @@ constexpr int kMediumLatency = 1000;
 constexpr int kHighLatency = 2000;
 }  // namespace
 
-QnnPerformance::QnnPerformance() {
+QnnPerformance::QnnPerformance(QnnFunctionPointers* qnn_function_pointers) {
   Qnn_ErrorHandle_t ret = QNN_SUCCESS;
   QnnBackend_PerfInfrastructure_t infra = nullptr;
-  ret = QnnBackend_getPerfInfrastructure(&infra);
+  qnn_function_pointers_ = qnn_function_pointers;
+  ret = qnn_function_pointers_->qnnInterface.backendGetPerfInfrastructure(&infra);
   MACE_CHECK(ret == QNN_SUCCESS,
              "QnnBackend_getPerfInfrastructure failed with error: ", ret);
   infra_ = reinterpret_cast<QnnDspBackend_PerfInfrastructure_t *>(infra);

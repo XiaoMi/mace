@@ -15,6 +15,8 @@
 #ifndef MACE_CORE_RUNTIME_QNN_QNN_WRAPPER_H_
 #define MACE_CORE_RUNTIME_QNN_QNN_WRAPPER_H_
 
+#include <dlfcn.h>
+
 #include <map>
 #include <memory>
 #include <set>
@@ -261,6 +263,14 @@ class QnnWrapper {
            std::map<std::string, Tensor*> *output_tensors);
   bool Destroy();
 
+  void PrepareBackend();
+  StatusCode getQnnFunctionPointers(std::string backendPath);
+  ~QnnWrapper() {
+    if (backend_handle_) {
+      dlclose(backend_handle_);
+      backend_handle_ = nullptr;
+    }
+  }
  private:
   void GetPerfInfo();
   void CollectPerfInfo();
@@ -295,6 +305,8 @@ class QnnWrapper {
   QuantizeTransformer *transformer_;
   Runtime *runtime_;
   DataType quantized_type_;
+  QnnFunctionPointers qnn_function_pointers_;
+  void* backend_handle_ = nullptr;
   MACE_DISABLE_COPY_AND_ASSIGN(QnnWrapper);
 };
 }  // namespace mace

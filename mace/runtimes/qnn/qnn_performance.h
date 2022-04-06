@@ -22,7 +22,7 @@
 namespace mace {
 class QnnPerformance {
  public:
-  QnnPerformance();
+  QnnPerformance(QnnFunctionPointers* qnn_function_pointers);
   void SetPerformance(QnnGraphState state, HexagonPerformanceType type);
 
  private:
@@ -37,6 +37,7 @@ class QnnPerformance {
   QnnDspBackend_PerfInfrastructure_t *infra_;
   uint32_t power_config_id_;
   MACE_DISABLE_COPY_AND_ASSIGN(QnnPerformance);
+  QnnFunctionPointers* qnn_function_pointers_;
 };
 }  // namespace mace
 
