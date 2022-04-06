@@ -279,8 +279,8 @@ void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
         std::unique_ptr<Tensor> tensor(
             new Tensor(runtime, const_tensor.data_type(), GPU_BUFFER, dims,
                        true, const_tensor.name()));
-        MACE_CHECK(tensor->size() == const_tensor.data_size(),
-                   "Tensor's data_size not equal with the shape");
+        MACE_CHECK(tensor->size() == const_tensor.data_size(), tensor->name(),
+                   " tensor's data_size not equal with the shape");
         MACE_CHECK_SUCCESS(runtime->AllocateBufferForTensor(
             tensor.get(), BufRentType::RENT_PRIVATE));
         tensor->CopyBytes(model_data + const_tensor.offset(),

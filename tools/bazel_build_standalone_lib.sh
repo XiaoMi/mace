@@ -97,7 +97,6 @@ for opt in "${@}";do
             ;;
           htp|HTP)
             enable_htp=true
-            enable_gpu=true
             enable_qnn=true
             runtime_label=""${runtime_label}" htp"
             ;;

@@ -18,6 +18,8 @@
 #include <dlfcn.h>
 #include <unistd.h>
 
+#include "mace/utils/logging.h"
+
 namespace mace {
 
 #define MACE_LD_ION_SYMBOL(handle, T, ptr, symbol)     \
@@ -38,6 +40,7 @@ DmaBufWrapper::DmaBufWrapper() : valid_(false),
                                  CheckIonSupport_(nullptr) {
   dma_buf_ = dlopen("libdmabufheap.so", RTLD_LAZY | RTLD_LOCAL);
   if (!dma_buf_) {
+    LOG(WARNING) << "Load libdmabufheap.so failed";
     return;
   }
   MACE_LD_ION_SYMBOL(dma_buf_, FuncCreateDmabufHeapBufferAllocator,

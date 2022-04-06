@@ -22,6 +22,7 @@ from enum import Enum
 from py_proto import mace_pb2
 from transform import base_converter
 from transform.base_converter import CoordinateTransformationMode
+from transform.base_converter import DeviceType
 from transform.base_converter import PoolingType
 from transform.base_converter import PaddingMode
 from transform.base_converter import ActivationType
@@ -578,6 +579,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         type_arg.i = self.eltwise_type[tf_op.type].value
 
         def check_is_scalar(tf_op):
+            if self._option.device == DeviceType.HTP.value:
+                return False
             if len(tf_op.inputs) == 1:
                 return len(self.infer_tensor_shape(tf_op.inputs[0])) == 0
             elif len(tf_op.inputs) == 2:
@@ -1114,7 +1117,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_argmax(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.ArgMax.name
-        op.output_type.extend([mace_pb2.DT_INT32])
+        if self._option.device == DeviceType.HTP.value:
+            op.output_type.extend([mace_pb2.DT_UINT32])
+        else:
+            op.output_type.extend([mace_pb2.DT_INT32])
 
         keep_dims_arg = op.arg.add()
         keep_dims_arg.name = MaceKeyword.mace_keepdims_str

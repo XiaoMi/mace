@@ -79,6 +79,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.fold_depthwise_conv_and_bn,  # data_format related
             TransformerRule.TRANSFORM_ADD_TO_BIASADD:
                 self.transform_add_to_biasadd,
+            TransformerRule.TRANSFORM_BIASADD_TO_ADD:
+                self.transform_biasadd_to_add,
             TransformerRule.REARRANGE_BATCH_TO_SPACE:
                 self.rearrange_batch_to_space,
             TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
@@ -141,7 +143,11 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.ADD_GENERRAL_INFO:
                 self.add_general_info,
             TransformerRule.REMOVE_UNUSED_TENSOR:
-                self.remove_unused_tensor
+                self.remove_unused_tensor,
+            TransformerRule.TRANSFORM_SLICE_TO_STRIDED_SLICE:
+                self.transform_slice_to_strided_slice,
+            TransformerRule.ADD_TRANSPOSE_FOR_HTP:
+                self.add_transpose_for_htp
         }
 
         self._option = option
@@ -965,6 +971,8 @@ class Transformer(base_converter.ConverterInterface):
         return filter_height, filter_width, in_channels, out_channels
 
     def transform_add_to_biasadd(self):
+        if self._option.device == DeviceType.HTP.value:
+            return False
         net = self._model
         for op in net.op:
             if (not self._has_none_df and op.type == 'Eltwise'
@@ -1001,7 +1009,13 @@ class Transformer(base_converter.ConverterInterface):
                              and len(op.input) == 3)))) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
-                if consumer_op.type == MaceOp.BiasAdd.name:
+                is_add = False
+                if consumer_op.type == MaceOp.Eltwise.name and \
+                        self._option.device == DeviceType.HTP.value:
+                    is_add = (ConverterUtil.get_arg(consumer_op,
+                                                    MaceKeyword.mace_element_type_str).i ==
+                              EltwiseType.SUM.value)
+                if consumer_op.type == MaceOp.BiasAdd.name or is_add:
                     print("Fold biasadd: %s(%s)" % (op.name, op.type))
                     op.name = consumer_op.name
                     op.output[0] = consumer_op.output[0]
@@ -1076,6 +1090,8 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def fold_activation(self):
+        if self._option.device == DeviceType.HTP.value:
+            return
         net = self._model
         for op in net.op:
             if (op.type == MaceOp.Conv2D.name
@@ -1161,7 +1177,7 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def reshape_fc_weight(self):
-        if self._option.device == DeviceType.APU.value:
+        if self._option.device in [DeviceType.APU.value, DeviceType.HTP.value]:
             return
         net = self._model
         filter_format = self.filter_format()
@@ -1283,20 +1299,25 @@ class Transformer(base_converter.ConverterInterface):
                     transposed_deconv_filter.add(op.input[1])
 
             self.set_filter_format(DataFormat.OHWI)
-        elif self._option.quantize and \
-                (self._option.device == DeviceType.HEXAGON.value or
-                 self._option.device == DeviceType.HTA.value or
-                 self._option.device == DeviceType.HTP.value):
+        elif (self._option.device == DeviceType.HEXAGON.value or
+              self._option.device == DeviceType.HTA.value or
+              self._option.device == DeviceType.HTP.value):
             print("Transpose filters to HWIO/HWIM")
             for op in net.op:
-                if op.type == MaceOp.Eltwise.name or \
-                        op.type == MaceOp.Concat.name:
+                has_data_format = ConverterUtil.data_format(op) == \
+                                DataFormat.AUTO
+                if has_data_format and (op.type == MaceOp.Eltwise.name or
+                                        op.type == MaceOp.Concat.name):
                     for i in range(len(op.input)):
                         if op.input[i] in self._consts and \
                                 op.input[i] not in transposed_filter:
                             filter = self._consts[op.input[i]]
                             filter_data = np.array(filter.float_data).reshape(
                                 filter.dims)
+                            if len(filter_data.shape) == 1 and \
+                                    len(op.output_shape[0].dims) == 4:
+                                filter_data = np.array(filter.float_data).reshape(
+                                    [1, 1, 1, filter.dims[0]])
                             if filter_format == DataFormat.OIHW:
                                 filter_data = filter_data.transpose(0, 2, 3, 1)
                             else:
@@ -1484,8 +1505,9 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         filter_format = self.filter_format()
         for op in net.op:
-            # transform `matmul` to `fc(2D)` for APU
-            if self._option.device == DeviceType.APU.value:
+            # transform `matmul` to `fc(2D)` for APU and HTP
+            is_htp = self._option.device == DeviceType.HTP.value
+            if self._option.device == DeviceType.APU.value or is_htp:
                 if op.type == MaceOp.MatMul.name:
                     transpose_a_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_a_str)  # noqa
                     transpose_b_arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
@@ -1495,6 +1517,25 @@ class Transformer(base_converter.ConverterInterface):
                             op.input[1] in self._consts and \
                             len(self.get_tensor_shape(op.input[0])) == 2 and \
                             len(self.get_tensor_shape(op.input[1])) == 2:
+                        # transform `reshape(2D) -> matmul` to `fc(2D)` for HTP
+                        if op.input[0] in self._producer:
+                            product_op = self._producer[op.input[0]]
+                            if is_htp and product_op.type == MaceOp.Reshape.name:
+                                consumers = self._consumers[product_op.output[0]]
+                                print('convert reshape and matmul to fc')
+                                self.safe_remove_node(product_op, None,
+                                                      remove_input_tensor=True)
+                                for matmul_op in consumers:
+                                    matmul_op.type = MaceOp.FullyConnected.name
+                                    filter = self._consts[matmul_op.input[1]]
+                                    filter_data = \
+                                        np.array(filter.float_data).reshape(filter.dims)
+                                    filter_data = filter_data.transpose(1, 0)
+                                    filter.float_data[:] = filter_data.flat
+                                    filter.dims[:] = filter_data.shape
+                                    six.print_('Transpose matmul weight to shape:',
+                                               filter.dims)
+                                return True
                         op.type = MaceOp.FullyConnected.name
                         filter = self._consts[op.input[1]]
                         filter_data = \
@@ -1514,7 +1555,7 @@ class Transformer(base_converter.ConverterInterface):
             is_tf = framework == FrameworkType.TENSORFLOW.value
             is_onnx = framework == FrameworkType.ONNX.value
 
-            if op.type == MaceOp.Reshape.name and \
+            if is_htp and op.type == MaceOp.Reshape.name and \
                     len(op.input) == 2 and \
                     op.input[1] in self._consts and \
                     len(op.output_shape[0].dims) == 2 and \
@@ -1730,6 +1771,14 @@ class Transformer(base_converter.ConverterInterface):
                     transposable = True
                 else:
                     transposable = False
+        elif op.type == MaceOp.Transpose:
+            if op.output[0] in self._consumers:
+                consumer = self._consumers[op.output[0]][0]
+                if consumer.type == MaceOp.Reshape:
+                    transposable = False
+        elif op.type == MaceOp.FullyConnected and \
+                self._option.device == DeviceType.HTP.value:
+            transposable = False
 
         if op.type in MaceTransposableDataFormatOps and not transposable:
             print("%s(%s) is not a transposable op in this model."
@@ -1842,6 +1891,8 @@ class Transformer(base_converter.ConverterInterface):
                                     new_axises.append(idx - 1)
                                 elif idx == 1:
                                     new_axises.append(3)
+                                elif idx == -1:
+                                    new_axises.append(2)
                                 else:
                                     new_axises.append(idx)
                             new_axises.sort()
@@ -1865,6 +1916,16 @@ class Transformer(base_converter.ConverterInterface):
                             src_data_format == DataFormat.NCHW and \
                             has_data_format:
                         self.transpose_shape(arg.ints, [0, 2, 3, 1])
+            elif op.type == MaceOp.Transpose.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_dims_str and \
+                            len(arg.ints) == 4 and \
+                            src_data_format == DataFormat.NCHW and \
+                            has_data_format:
+                        dst_shape = [0, 3, 1, 2]
+                        self.transpose_shape(dst_shape, arg.ints)
+                        self.transpose_shape(dst_shape, [0, 2, 3, 1])
+                        arg.ints[:] = dst_shape
 
             # transpose op output shape
             if src_data_format == DataFormat.NCHW and \
@@ -1885,6 +1946,10 @@ class Transformer(base_converter.ConverterInterface):
 
         for op in self._model.op:
             for i in range(len(op.input)):
+                if op.input[i] in self._option.input_nodes:
+                    input_node = self._option.input_nodes[op.input[i]]
+                    if input_node.data_type == mace_pb2.DT_INT32:
+                        continue
                 if op.input[i] in self.input_name_map:
                     op.input[i] = self.input_name_map[op.input[i]]
             for i in range(len(op.output)):
@@ -1950,6 +2015,8 @@ class Transformer(base_converter.ConverterInterface):
                               mace_pb2.DataType.Name(data_type_arg.i)))
 
         for i, input_node in enumerate(self._option.input_nodes.values()):
+            if input_node.data_type == mace_pb2.DT_INT32:
+                continue
             new_input_name = self.input_name_map[input_node.name]
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(new_input_name)
@@ -2668,7 +2735,7 @@ class Transformer(base_converter.ConverterInterface):
                 dim_arg.ints.extend(shape_tensor.int32_data)
 
     def fold_fc_reshape(self):
-        if self._option.device == DeviceType.APU.value:
+        if self._option.device in [DeviceType.APU.value, DeviceType.HTP.value]:
             return False
         net = self._model
         for op in net.op:
@@ -3452,4 +3519,167 @@ class Transformer(base_converter.ConverterInterface):
                             (input_name not in self._option.input_nodes) and \
                             (input_name not in already_dealt):
                         self.do_single_transpose(input_name, already_dealt)
+        return False
+
+    def transform_biasadd_to_add(self):
+        if self._option.device != DeviceType.HTP.value:
+            return False
+        net = self._model
+        for op in net.op:
+            if (op.type == MaceOp.BiasAdd.name
+                    and len(op.input) == 2
+                    and op.input[1] in self._consts
+                    and len(self._consts[op.input[1]].dims) == 1):
+                print("Transform biasadd to add: %s(%s)" % (op.name, op.type))
+                op.type = MaceOp.Eltwise.name
+                type_arg = op.arg.add()
+                type_arg.name = MaceKeyword.mace_element_type_str
+                type_arg.i = EltwiseType.SUM.value
+                return True
+
+        return False
+
+    def transform_slice_to_strided_slice(self):
+        if self._option.device != DeviceType.HTP.value:
+            return False
+        net = self._model
+        framework = ConverterUtil.framework_type(net)
+        for op in net.op:
+            if (op.type == MaceOp.Slice.name
+                    and framework == FrameworkType.ONNX.value
+                    and len(op.input) == 5):
+                op.type = MaceOp.StridedSlice.name
+                tensor_shape = self.get_tensor_shape(op.input[0])
+                input3 = self._consts[op.input[3]]
+                axes_data = input3.int32_data
+                for tensor in self._model.tensors:
+                    if tensor.name in [op.input[1], op.input[2], op.input[4]]:
+                        tensor.dims[:] = [len(tensor_shape)]
+                for tensor in self._model.tensors:
+                    if tensor.name == op.input[1]:
+                        for i in range(len(tensor_shape)):
+                            if i not in axes_data:
+                                tensor.int32_data.insert(i, 0)
+                    if tensor.name == op.input[2]:
+                        for i in range(len(tensor_shape)):
+                            if i in axes_data:
+                                if tensor.int32_data[i] < 0:
+                                    tensor.int32_data[i] += tensor_shape[i] + 1
+                            else:
+                                tensor.int32_data.insert(i, tensor_shape[i])
+                    if tensor.name == op.input[4]:
+                        for i in range(len(tensor_shape)):
+                            if i not in axes_data:
+                                tensor.int32_data.insert(i, 1)
+                del input3.int32_data[0]
+                for tensor in self._model.tensors:
+                    if tensor.name == op.input[1]:
+                        for i in range(len(tensor_shape)):
+                            input3.int32_data.insert(i, tensor.int32_data[i])
+                    if tensor.name == op.input[2]:
+                        for i in range(len(tensor_shape)):
+                            input3.int32_data.insert(2*i+1, tensor.int32_data[i])
+                    if tensor.name == op.input[4]:
+                        for i in range(len(tensor_shape)):
+                            input3.int32_data.insert(3*i+2, tensor.int32_data[i])
+                np.array(input3.int32_data).reshape([len(tensor_shape), 3])
+                input3.dims[:] = [len(tensor_shape), 3]
+                return True
+
+        return False
+
+    def add_transpose_op(self, node, transpose_dims):
+        producer_op = self._producer[node]
+        op = self._model.op.add()
+        op.name = node + "_transpose"
+        op.type = MaceOp.Transpose.name
+        op.input.append(node)
+        tensor_name = op.input[0] + "_transpose"
+        op.output.append(tensor_name)
+
+        output_shape = op.output_shape.add()
+        shape_info = producer_op.output_shape[0].dims
+        transposed_shape = []
+        for i in transpose_dims:
+            transposed_shape.append(shape_info[i])
+        output_shape.dims.extend(transposed_shape)
+        data_type_arg = op.arg.add()
+        data_type_arg.name = 'T'
+        data_type_arg.i = self._option.data_type
+        framework_type_arg = op.arg.add()
+        framework_type_arg.name = MaceKeyword.mace_framework_type_str
+        framework_type_arg.i = FrameworkType.ONNX.value
+        ConverterUtil.add_data_format_arg(op, DataFormat.NONE)
+        dims_arg = op.arg.add()
+        dims_arg.name = MaceKeyword.mace_dims_str
+        dims_arg.ints.extend(transpose_dims)
+
+    def add_transpose_for_htp(self):
+        if self._option.device != DeviceType.HTP.value:
+            return False
+        net = self._model
+        framework = ConverterUtil.framework_type(net)
+        for op in net.op:
+            data_format = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_data_format_str)
+            if op.input[0] in self._producer:
+                producer_op = self._producer[op.input[0]]
+                producer_data_format = ConverterUtil.get_arg(
+                    producer_op, MaceKeyword.mace_data_format_str)
+                if (op.type == MaceOp.Conv2D.name
+                        and framework == FrameworkType.ONNX.value
+                        and data_format.i == DataFormat.AUTO.value
+                        and producer_data_format.i == DataFormat.NCHW.value):
+                    self.add_transpose_op(op.input[0], [0, 2, 3, 1])
+                    op.input[0] = op.input[0] + "_transpose"
+                    data_format = ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_data_format_str)
+                    data_format.i = DataFormat.NHWC.value
+                    return True
+                elif (op.type == MaceOp.MatMul.name
+                        and framework == FrameworkType.ONNX.value
+                        and data_format.i == DataFormat.NCHW.value
+                        and producer_data_format.i == DataFormat.AUTO.value):
+                    self.add_transpose_op(op.input[0], [0, 3, 1, 2])
+                    op.input[0] = op.input[0] + "_transpose"
+                    data_format = ConverterUtil.get_arg(
+                        op, MaceKeyword.mace_data_format_str)
+                    data_format.i = DataFormat.NONE.value
+                    return True
+                elif (op.type == MaceOp.Transpose.name
+                        and framework == FrameworkType.ONNX.value
+                        and data_format.i == DataFormat.NCHW.value
+                        and producer_data_format.i == DataFormat.AUTO.value):
+                    if op.output[0] in self._consumers:
+                        consumer = self._consumers[op.output[0]][0]
+                        if consumer.type == MaceOp.Reshape:
+                            self.add_transpose_op(op.input[0], [0, 3, 1, 2])
+                            op.input[0] = op.input[0] + "_transpose"
+                            data_format = ConverterUtil.get_arg(
+                                op, MaceKeyword.mace_data_format_str)
+                            data_format.i = DataFormat.NONE.value
+                            return True
+                elif (op.type in [MaceOp.Eltwise.name, MaceOp.Concat.name]
+                        and framework == FrameworkType.ONNX.value
+                        and data_format.i == DataFormat.NCHW.value
+                        and len(op.input) == 2
+                        and op.input[1] in self._producer):
+                    input_1 = self._producer[op.input[1]]
+                    input_1_data_format = ConverterUtil.get_arg(
+                        input_1, MaceKeyword.mace_data_format_str)
+                    if producer_data_format.i == DataFormat.AUTO.value:
+                        self.add_transpose_op(op.input[0], [0, 3, 1, 2])
+                        op.input[0] = op.input[0] + "_transpose"
+                        data_format = ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_data_format_str)
+                        data_format.i = DataFormat.NONE.value
+                        return True
+                    elif input_1_data_format.i == DataFormat.AUTO.value:
+                        print(op.input[1])
+                        self.add_transpose_op(op.input[1], [0, 3, 1, 2])
+                        op.input[1] = op.input[1] + "_transpose"
+                        data_format = ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_data_format_str)
+                        data_format.i = DataFormat.NONE.value
+                        return True
         return False
