@@ -216,7 +216,12 @@ case "${abi}" in
       cp third_party/hta/"${abi}"/*so "${LIB_DIR}"/"${abi}"/
     fi
     if [[ "${enable_qnn}" == true ]];then
-      cp third_party/qnn/target/"${abi}"/*so "${LIB_DIR}"/"${abi}"/
+      if [[ "${abi}" == "arm64-v8a" ]];then
+        cp third_party/qnn/target/aarch64-android/lib/*so "${LIB_DIR}"/"${abi}"/
+      fi
+      if [[ "${abi}" == "armeabi-v7a" ]];then
+        cp third_party/qnn/target/arm-android/lib/*so "${LIB_DIR}"/"${abi}"/
+      fi
     fi
     ;;
 esac

@@ -13,11 +13,14 @@ class Skel(Enum):
     V60 = 'V60'
     V65 = 'V65'
     V66 = 'V66'
+    V68 = 'V68'
+    V69 = 'V69'
 
 
 class DspType(Enum):
     ADSP = 'ADSP'
     CDSP = 'CDSP'
+    HTP = 'HTP'
 
 
 class SocSkelTable:
@@ -68,13 +71,15 @@ SocSkelInfo = [
     SocSkelTable(415, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
     SocSkelTable(450, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
     SocSkelTable(457, SkelMode.DOMAINS, Skel.V66, DspType.CDSP),  # Custom
+    SocSkelTable(415, SkelMode.DOMAINS, Skel.V68, DspType.HTP),  # Custom
+    SocSkelTable(457, SkelMode.DOMAINS, Skel.V69, DspType.HTP),  # Custom
     SocSkelTable(0, None, None, None)
 ]
 
 
-def get_soc_skel_info(soc_id):
+def get_soc_skel_info(soc_id, dsp_type=''):
     for info in SocSkelInfo:
-        if info.soc_id == soc_id:
+        if dsp_type in ['', info.dsp_type] and info.soc_id == soc_id:
             return info
 
     mace_check(False, ModuleName.RUN, "Unsupported dsp soc %d" % soc_id)

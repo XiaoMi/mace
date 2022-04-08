@@ -24,11 +24,23 @@
 #include "mace/proto/qnn_cache.pb.h"
 #include "mace/runtimes/qnn/qnn_runtime.h"
 #include "mace/utils/conf_util.h"
-#include "third_party/qnn/include/QnnError.h"
 #include "third_party/qnn/include/QnnLog.h"
 
 namespace mace {
 namespace {
+
+typedef Qnn_ErrorHandle_t (*QnnInterfaceGetProvidersFn_t)(const QnnInterface_t** providerList,
+                                                          uint32_t* numProviders);
+
+template <class T>
+static inline T resolveSymbol(void* libHandle, const char* sym) {
+  T ptr = (T)dlsym(libHandle, sym);
+  if (ptr == nullptr) {
+    LOG(ERROR) << "Unable to access symbol [" << sym << "]. dlerror(): " << dlerror();
+  }
+  return ptr;
+}
+
 std::mutex log_mutex;
 void QnnLogCallback(const char *fmt,
                     QnnLog_Level_t level,
@@ -80,30 +92,90 @@ std::string FloatToString(const FloatType v, const int32_t precision) {
   return stream.str();
 }
 
-void PrepareBackend() {
+}  // namespace
+
+StatusCode QnnWrapper::getQnnFunctionPointers(std::string backendPath) {
+  void* libBackendHandle = dlopen(backendPath.c_str(), RTLD_NOW | RTLD_LOCAL);
+  if (nullptr == libBackendHandle) {
+    LOG(ERROR) << "Unable to load backend. dlerror(): " << dlerror();
+    return StatusCode::FAIL_LOAD_BACKEND;
+  }
+  if (nullptr != backend_handle_) {
+    backend_handle_ = libBackendHandle;
+  }
+  // Get QNN Interface
+  QnnInterfaceGetProvidersFn_t getInterfaceProviders{nullptr};
+  getInterfaceProviders =
+      resolveSymbol<QnnInterfaceGetProvidersFn_t>(libBackendHandle,
+                                                  "QnnInterface_getProviders");
+  if (nullptr == getInterfaceProviders) {
+    LOG(ERROR) << "Load function getInterfaceProviders failed";
+    return StatusCode::FAIL_SYM_FUNCTION;
+  }
+  QnnInterface_t* interfaceProviders{nullptr};
+  uint32_t numProviders = 0;
+  if (QNN_SUCCESS !=
+      getInterfaceProviders(const_cast<const QnnInterface_t**>(&interfaceProviders),
+                            &numProviders)) {
+    LOG(ERROR) << "Failed to get interface providers.";
+    return StatusCode::FAIL_GET_INTERFACE_PROVIDERS;
+  }
+  if (nullptr == interfaceProviders) {
+    LOG(ERROR) << "Failed to get interface providers: null interface providers received.";
+    return StatusCode::FAIL_GET_INTERFACE_PROVIDERS;
+  }
+  if (0 == numProviders) {
+    LOG(ERROR) << "Failed to get interface providers: 0 interface providers.";
+    return StatusCode::FAIL_GET_INTERFACE_PROVIDERS;
+  }
+  bool foundValidInterface = false;
+  for (size_t pIdx = 0; pIdx < numProviders; pIdx++) {
+    if (QNN_API_VERSION_MAJOR == interfaceProviders[pIdx].apiVersion.coreApiVersion.major &&
+        QNN_API_VERSION_MINOR <= interfaceProviders[pIdx].apiVersion.coreApiVersion.minor) {
+      foundValidInterface = true;
+      qnn_function_pointers_.qnnInterface = interfaceProviders[pIdx].QNN_INTERFACE_VER_NAME;
+      break;
+    }
+  }
+  if (!foundValidInterface) {
+    LOG(ERROR) << "Unable to find a valid interface.";
+    libBackendHandle = nullptr;
+    return StatusCode::FAIL_GET_INTERFACE_PROVIDERS;
+  }
+
+  return StatusCode::SUCCESS;
+}
+
+void QnnWrapper::PrepareBackend() {
   LOG(INFO) << "Prepare QNN backend.";
   auto log_level = static_cast<QnnLog_Level_t>(
       GetIntEnv("MACE_QNN_LOG_LEVEL", QNN_LOG_LEVEL_WARN));
-  Qnn_ErrorHandle_t ret = QnnLog_initialize(QnnLogCallback, log_level);
+  Qnn_ErrorHandle_t ret =  qnn_function_pointers_.qnnInterface.logInitialize(QnnLogCallback,
+                                                                             log_level);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnLog_initialize failed with error: ", ret);
 
-  ret = QnnBackend_initialize(nullptr);
+  ret = qnn_function_pointers_.qnnInterface.backendInitialize(nullptr);
   MACE_CHECK(ret == QNN_SUCCESS || ret == QNN_BACKEND_ERROR_ALREADY_INITIALIZED,
              "QnnBackend_initialize failed with error: ", ret);
 }
-}  // namespace
 
 QnnWrapper::QnnWrapper(Runtime *runtime)
     : runtime_(runtime) {
+  // Load backend .so and validate all the required function symbols are resolved
+  auto statusCode = getQnnFunctionPointers("libQnnHtp.so");
+  if (StatusCode::SUCCESS != statusCode) {
+    LOG(ERROR) << "Error initializing QNN Function Pointers : "
+               << static_cast<int>(statusCode);
+  }
   PrepareBackend();
   graph_state_ = QNN_INIT_START;
-  perf_ = make_unique<QnnPerformance>();
+  perf_ = make_unique<QnnPerformance>(&qnn_function_pointers_);
   LOG(INFO) << "QNN version: " << GetVersion();
 }
 
 std::string QnnWrapper::GetVersion() {
   Qnn_ApiVersion_t version;
-  MACE_CHECK(QnnBackend_getApiVersion(&version) == QNN_SUCCESS,
+  MACE_CHECK(qnn_function_pointers_.qnnInterface.backendGetApiVersion(&version) == QNN_SUCCESS,
              "get version error");
   std::stringstream ss;
   ss << "Core: " << version.coreApiVersion.major << "."
@@ -146,7 +218,7 @@ bool QnnWrapper::Init(const NetDef &net_def,
       static_cast<QnnProfile_Level_t>(GetIntEnv("MACE_QNN_PROFILE_LEVEL", 0));
   if (profile_level_ == QNN_PROFILE_LEVEL_BASIC ||
       profile_level_ == QNN_PROFILE_LEVEL_DETAILED) {
-    ret = QnnProfile_create(profile_level_, &profile_);
+    ret = qnn_function_pointers_.qnnInterface.profileCreate(profile_level_, &profile_);
     MACE_CHECK(ret == QNN_SUCCESS,
                "QnnProfile_create failed with error: ", ret);
     CollectOpInfo(net_def);
@@ -193,7 +265,7 @@ bool QnnWrapper::InitOnline(const NetDef &net_def,
   //            "QnnBackend_registerOpPackage CPU failed with error: ", ret);
   // MACE_CHECK(model_data != nullptr && model_data_size > 0);
 
-  ret = QnnContext_create(nullptr, &ctx_);
+  ret = qnn_function_pointers_.qnnInterface.contextCreate(nullptr, &ctx_);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnContext_create failed with error: ", ret);
 
   MACE_CHECK(!net_def.name().empty());
@@ -206,16 +278,18 @@ bool QnnWrapper::InitOnline(const NetDef &net_def,
     graphConfig.option       = QNN_GRAPH_CONFIG_OPTION_CUSTOM;
     graphConfig.customConfig = &customConfig;
     const QnnGraph_Config_t* pGraphConfig[] = {&graphConfig, NULL};
-    ret = QnnGraph_create(ctx_, net_def.name().c_str(), pGraphConfig, &graph_);
+    ret = qnn_function_pointers_.qnnInterface.graphCreate(ctx_, net_def.name().c_str(),
+                                                          pGraphConfig, &graph_);
     MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_create failed with error: ", ret);
   } else {
-    ret = QnnGraph_create(ctx_, net_def.name().c_str(), nullptr, &graph_);
+    ret = qnn_function_pointers_.qnnInterface.graphCreate(ctx_, net_def.name().c_str(),
+                                                          nullptr, &graph_);
     MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_create failed with error: ", ret);
   }
 
   int64_t t0 = NowMicros();
 
-  graph_builder_.Init(&net_def, graph_, runtime_, quantized_type_);
+  graph_builder_.Init(&net_def, graph_, runtime_, quantized_type_, &qnn_function_pointers_);
   graph_builder_.AddConstTensors(model_data, model_data_size);
   graph_builder_.AddModelInputs(&input_info_, &input_tensors_);
   graph_builder_.AddModelOutputs(&output_info_, &output_tensors_);
@@ -223,15 +297,9 @@ bool QnnWrapper::InitOnline(const NetDef &net_def,
   graph_builder_.AddOps();
   int64_t t1 = NowMicros();
   LOG(INFO) << "Calling QnnGraph_finalize";
-  ret = QnnGraph_finalize(graph_, nullptr, nullptr);
+  ret = qnn_function_pointers_.qnnInterface.graphFinalize(graph_, nullptr, nullptr);
   if (ret != QNN_SUCCESS) {
-    std::cout << std::endl;
-    QnnError_Info_t err_info;
-    ret = QnnError_getErrorInfo(ret, &err_info);
-    MACE_CHECK(ret == QNN_SUCCESS,
-               "QnnError_getErrorInfo failed with error: ", ret);
-    LOG(FATAL) << "QnnGraph_finalize failed with error code: "
-               << err_info.staticInfo.errorCode;
+    LOG(FATAL) << "QnnGraph_finalize failed:" << ret;
   }
 
   int64_t t2 = NowMicros();
@@ -247,14 +315,16 @@ bool QnnWrapper::CacheStore(const NetDef &net_def,
                             const std::string &cache_storage_file) {
   LOG(INFO) << "Storing qnn cache...";
   uint32_t binary_size = 0;
-  Qnn_ErrorHandle_t ret = QnnContext_getBinarySize(ctx_, &binary_size);
+  Qnn_ErrorHandle_t ret = qnn_function_pointers_.qnnInterface.contextGetBinarySize(ctx_,
+                                                                                   &binary_size);
   MACE_CHECK(ret == QNN_SUCCESS && binary_size != 0,
              "QnnContext_getBinarySize failed with error: ", ret);
 
   std::vector<uint8_t> binary_buffer(binary_size);
   uint32_t written_binary_size = 0;
-  ret = QnnContext_getBinary(ctx_, binary_buffer.data(), binary_size,
-                             &written_binary_size);
+  ret = qnn_function_pointers_.qnnInterface.contextGetBinary(ctx_, binary_buffer.data(),
+                                                             binary_size,
+                                                             &written_binary_size);
   MACE_CHECK(ret == QNN_SUCCESS && written_binary_size <= binary_size,
              "QnnContext_getBinary failed with error: ", ret);
 
@@ -301,16 +371,18 @@ bool QnnWrapper::InitWithOfflineCache(const NetDef &net_def,
   qnn_cache::CacheContext cache_ctx;
   cache_ctx.ParseFromArray(buffer->data(), buffer->length());
 
-  Qnn_ErrorHandle_t ret = QnnContext_createFromBinary(
+  Qnn_ErrorHandle_t ret = qnn_function_pointers_.qnnInterface.contextCreateFromBinary(
       cache_ctx.graph_cache().data(), cache_ctx.graph_cache().length(), &ctx_,
       nullptr);
   MACE_CHECK(ret == QNN_SUCCESS,
              "QnnContext_createFromBinary failed with error: ", ret);
 
-  ret = QnnGraph_retrieve(ctx_, cache_ctx.graph_name().c_str(), &graph_);
+  ret = qnn_function_pointers_.qnnInterface.graphRetrieve(ctx_,
+                                                          cache_ctx.graph_name().c_str(),
+                                                          &graph_);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_retrieve failed with error: ", ret);
 
-  graph_builder_.Init(&net_def, graph_, runtime_, quantized_type_);
+  graph_builder_.Init(&net_def, graph_, runtime_, quantized_type_, &qnn_function_pointers_);
   graph_builder_.AddModelInputsFromOfflineCache(&input_info_, &input_tensors_,
                                                 cache_ctx.input_ids().data());
   graph_builder_.AddModelOutputsFromOfflineCache(
@@ -324,16 +396,16 @@ bool QnnWrapper::Destroy() {
   LOG(INFO) << "Qnn teardown graph";
   Qnn_ErrorHandle_t ret;
   if (profile_ != nullptr) {
-    ret = QnnProfile_free(profile_);
+    ret = qnn_function_pointers_.qnnInterface.profileFree(profile_);
     MACE_CHECK(ret == QNN_SUCCESS, "QnnProfile_free failed with error: ", ret);
   }
-  ret = QnnContext_free(ctx_, nullptr);
+  ret = qnn_function_pointers_.qnnInterface.contextFree(ctx_, nullptr);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnContext_free failed with error: ", ret);
 
-  ret = QnnBackend_terminate();
+  ret = qnn_function_pointers_.qnnInterface.backendTerminate();
   MACE_CHECK(ret == QNN_SUCCESS,
              "QnnBackend_terminate failed with error: ", ret);
-  ret = QnnLog_terminate();
+  ret = qnn_function_pointers_.qnnInterface.logTerminate();
   MACE_CHECK(ret == QNN_SUCCESS, "QnnLog_terminate failed with error: ", ret);
 
   if (profile_ != nullptr && profile_level_ == QNN_PROFILE_LEVEL_DETAILED) {
@@ -344,7 +416,7 @@ bool QnnWrapper::Destroy() {
 
 void QnnWrapper::GetEvent(QnnProfile_EventId_t event, bool collect_op_infos) {
   QnnProfile_EventData_t event_data;
-  QnnProfile_getEventData(event, &event_data);
+  qnn_function_pointers_.qnnInterface.profileGetEventData(event, &event_data);
   LOG(INFO) << "Event id: " << event << ", event type: " << event_data.type
             << ", event value: " << event_data.value
             << ", event identifier: " << event_data.identifier
@@ -367,7 +439,8 @@ void QnnWrapper::GetSubEvents(QnnProfile_EventId_t event) {
   const QnnProfile_EventId_t *sub_events = nullptr;
   uint32_t num_sub_events = 0;
   Qnn_ErrorHandle_t ret =
-      QnnProfile_getSubEvents(event, &sub_events, &num_sub_events);
+      qnn_function_pointers_.qnnInterface.profileGetSubEvents(event, &sub_events,
+                                                              &num_sub_events);
   MACE_CHECK(ret == QNN_SUCCESS,
              "QnnProfile_getSubEvents failed with error: ", ret);
   // LOG(INFO) << "Got " << num_sub_events
@@ -399,7 +472,7 @@ void QnnWrapper::CollectPerfInfo() {
   profile_info_.op_cycles.push_back({});
   const QnnProfile_EventId_t *events = nullptr;
   uint32_t num_events = 0;
-  QnnProfile_getEvents(profile_, &events, &num_events);
+  qnn_function_pointers_.qnnInterface.profileGetEvents(profile_, &events, &num_events);
   // LOG(INFO) << "Got " << num_events << " profile events";
   for (uint32_t i = 0; i < num_events; ++i) {
     GetEvent(events[i], false);
@@ -550,7 +623,7 @@ bool QnnWrapper::Run(const std::map<std::string, Tensor *> &input_tensors,
   }
 
   perf_->SetPerformance(QNN_INFERENCE_START, perf_type_);
-  Qnn_ErrorHandle_t ret = QnnGraph_execute(
+  Qnn_ErrorHandle_t ret = qnn_function_pointers_.qnnInterface.graphExecute(
       graph_, input_tensors_.data(), input_tensors_.size(),
       output_tensors_.data(), output_tensors_.size(), profile_, nullptr);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_execute failed with error: ", ret);

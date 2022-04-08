@@ -43,9 +43,10 @@ MaceStatus CpuRefFlow::Init(const NetDef *net_def,
   NetDefAdapter net_def_adapter(op_registry_, ws_.get());
   net_def_adapter.AdaptNetDef(net_def, main_runtime_,
                               cpu_runtime_, &adapted_net_def);
-
-  TransposeConstForCPU(&cpu_runtime_->thread_pool(), ws_.get(), cpu_runtime_,
-                       &adapted_net_def);
+  if (!is_quantized_model_) {
+    TransposeConstForCPU(&cpu_runtime_->thread_pool(), ws_.get(), cpu_runtime_,
+                         &adapted_net_def);
+  }
   // Init model
   net_ = std::unique_ptr<BaseNet>(new SerialNet(op_registry_,
                                                 &adapted_net_def,

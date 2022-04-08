@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "mace/core/tensor.h"
+#include "QnnInterface.h"
 
 namespace mace {
 enum QnnGraphState {
@@ -51,6 +52,21 @@ struct QnnInOutInfo {
   int32_t zero_point;
   std::unique_ptr<Tensor> quantized_tensor;
 };
+
+enum class StatusCode {
+  SUCCESS,
+  FAILURE,
+  FAIL_LOAD_BACKEND,
+  FAIL_LOAD_MODEL,
+  FAIL_SYM_FUNCTION,
+  FAIL_GET_INTERFACE_PROVIDERS,
+  FAIL_LOAD_SYSTEM_LIB,
+};
+
+struct QnnFunctionPointers {
+  QNN_INTERFACE_VER_TYPE qnnInterface;
+};
+
 }  // namespace mace
 
 #endif  // MACE_RUNTIMES_QNN_COMMON_H_

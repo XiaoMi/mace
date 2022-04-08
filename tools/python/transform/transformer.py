@@ -189,10 +189,11 @@ class Transformer(base_converter.ConverterInterface):
                         for i, name in enumerate(op.input):
                             if name == input_name_without_postfix:
                                 op.input[i] = input_node.name
-
             new_input_name = (MaceKeyword.mace_input_node_name
                               + '_' + input_node.name)
             self.input_name_map[input_node.name] = new_input_name
+            if input_node.data_type == mace_pb2.DT_INT32:
+                self.input_name_map[input_node.name] = input_node.name
             if input_node.data_format == DataFormat.NONE:
                 self._has_none_df = True
 
@@ -2386,6 +2387,8 @@ class Transformer(base_converter.ConverterInterface):
 
         print("Add default quantize info for input")
         for i, input_node in enumerate(self._option.input_nodes.values()):
+            if input_node.data_type == mace_pb2.DT_INT32:
+                continue
             new_input_name = self.input_name_map[input_node.name]
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,

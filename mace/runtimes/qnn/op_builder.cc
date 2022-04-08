@@ -331,7 +331,8 @@ Qnn_Tensor_t GraphBuilder::CreateParamTensor(
                                        std::multiplies<uint32_t>())}}};
   PrintTensor(tensor);
 
-  Qnn_ErrorHandle_t ret = QnnTensor_createGraphTensor(graph_, tensor);
+  Qnn_ErrorHandle_t ret = qnn_function_pointers_->qnnInterface.tensorCreateGraphTensor(graph_,
+                                                                                       tensor);
   MACE_CHECK(ret == QNN_SUCCESS,
              "QnnTensor_createGraphTensor failed with error: ", ret);
   return tensor;
@@ -374,7 +375,7 @@ void GraphBuilder::CreateGraphTensor(const std::string &tensor_name,
   PrintTensor(tensor_info.tensor);
 
   Qnn_ErrorHandle_t ret =
-      QnnTensor_createGraphTensor(graph_, tensor_info.tensor);
+      qnn_function_pointers_->qnnInterface.tensorCreateGraphTensor(graph_, tensor_info.tensor);
   MACE_CHECK(ret == QNN_SUCCESS,
              "QnnTensor_createGraphTensor failed with error: ", ret);
 }
@@ -393,7 +394,10 @@ void GraphBuilder::AddGraphNode(const OpBuilder &op_builder) {
           const_cast<Qnn_Tensor_t *>(op_builder.GetOutputs().data())};
   PrintOpConfig(op_config);
 
-  Qnn_ErrorHandle_t ret = QnnGraph_addNode(graph_, op_config);
+  auto validationStatus = qnn_function_pointers_->qnnInterface.backendValidateOpConfig(op_config);
+  MACE_CHECK(validationStatus == QNN_SUCCESS,
+             "QnnModel::addNode() validating node failed.");
+  Qnn_ErrorHandle_t ret = qnn_function_pointers_->qnnInterface.graphAddNode(graph_, op_config);
   MACE_CHECK(ret == QNN_SUCCESS, "QnnGraph_addNode failed with error: ", ret);
 }
 
