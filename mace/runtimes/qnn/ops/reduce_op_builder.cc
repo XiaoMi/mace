@@ -44,7 +44,7 @@ class ReduceOpBuilder : public OpBuilder {
   MaceStatus BuildOp(const OperatorDef &op, DataType quantized_type) {
     MACE_UNUSED(quantized_type);
     auto type = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-        op, "type", static_cast<int>(ReduceType::MEAN));
+        op, "reduce_type", static_cast<int>(ReduceType::MEAN));
     MACE_CHECK(names_.count(type) > 0, "QNN does not support reduce: ", type);
     auto names = names_.at(type);
     SetOpType(names.op_type);
