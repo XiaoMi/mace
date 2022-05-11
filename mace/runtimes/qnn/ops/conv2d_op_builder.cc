@@ -80,10 +80,19 @@ class Conv2dOpBuilder : public OpBuilder {
       const float bias_scale = graph_builder_->GetTensorScale(op.input(0)) *
                                graph_builder_->GetTensorScale(op.input(1));
       const std::string bias_name = op.name() + "_bias";
-      graph_builder_->CreateGraphTensor(
-          bias_name, 0, QNN_TENSOR_TYPE_STATIC, QNN_DATATYPE_SFIXED_POINT_32,
-          bias_scale, 0, bias_dims, bias_data.data(),
-          static_cast<uint32_t>(bias_data.size() * sizeof(bias_data[0])));
+      auto data_type = static_cast<DataType>(ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+              op, "T", static_cast<int>(DT_UINT8)));
+      if (data_type == DT_FLOAT) {
+        graph_builder_->CreateGraphTensor(
+            bias_name, 0, QNN_TENSOR_TYPE_STATIC, QNN_DATATYPE_FLOAT_32,
+            bias_scale, 0, bias_dims, bias_data.data(),
+            static_cast<uint32_t>(bias_data.size() * sizeof(bias_data[0])));
+      } else {
+        graph_builder_->CreateGraphTensor(
+            bias_name, 0, QNN_TENSOR_TYPE_STATIC, QNN_DATATYPE_SFIXED_POINT_32,
+            bias_scale, 0, bias_dims, bias_data.data(),
+            static_cast<uint32_t>(bias_data.size() * sizeof(bias_data[0])));
+      }
       AddInput(bias_name);
     }
     AddOutput(op.output(0));
