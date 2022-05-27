@@ -72,9 +72,13 @@ void QnnLogCallback(const char *fmt,
   // To avoid interleaved messages
   {
     std::lock_guard<std::mutex> lock(log_mutex);
-    fprintf(stdout, "%8.1lfms [%-7s] ", ms, level_str);
-    vfprintf(stdout, fmt, args);
-    fprintf(stdout, "\n");
+    std::string str_qnn_head(128, '\0');
+    snprintf(const_cast<char*>(str_qnn_head.c_str()), str_qnn_head.size(), "%8.1lfms [%-7s] ", ms, level_str);
+    std::string str_qnn_log(512, '\0');
+    vsnprintf(const_cast<char*>(str_qnn_log.c_str()), str_qnn_log.size(), fmt, args);
+    std::stringstream qnn_log;
+    qnn_log << str_qnn_head.c_str() << str_qnn_log.c_str() << std::endl;
+    VLOG(3) << qnn_log.str().c_str();
   }
 }
 
