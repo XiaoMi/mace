@@ -1142,12 +1142,12 @@ def parse_args():
         "--target_abis",
         type=str,
         default="",
-        help="Target ABIs, comma seperated list.")
+        help="Target ABIs, comma separated list.")
     all_type_parent_parser.add_argument(
         "--target_socs",
         type=str,
         default="",
-        help="Target SOCs, comma seperated list.")
+        help="Target SOCs, comma separated list.")
     all_type_parent_parser.add_argument(
         "--debug_mode",
         action="store_true",

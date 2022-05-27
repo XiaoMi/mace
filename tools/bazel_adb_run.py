@@ -65,13 +65,13 @@ def parse_args():
         "--target_abis",
         type=str,
         default="armeabi-v7a",
-        help="Target ABIs, comma seperated list")
+        help="Target ABIs, comma separated list")
     parser.add_argument(
         "--target_socs",
         type=str,
         default="all",
         help="SoCs (ro.board.platform from getprop) to build, "
-             "comma seperated list or all/random")
+             "comma separated list or all/random")
     parser.add_argument(
         "--target", type=str, default="//...", help="Bazel target to build")
     parser.add_argument(

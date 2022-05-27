@@ -391,7 +391,7 @@ MaceStatus Conv2dK7x7S2<float>::DoCompute(
                   index_t in_offset = in_h * p.in_width + in_w;
                   // output (1 outch x 1 height x 4 width): vo_outch_height
                   float32x4_t vo0;
-                  // load ouput
+                  // load output
                   index_t out_offset = h * p.out_width + w;
                   vo0 = vld1q_f32(out_ptr0_base + out_offset);
                   for (index_t r = 0; r < 7; ++r) {
