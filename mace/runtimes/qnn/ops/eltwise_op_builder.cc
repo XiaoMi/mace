@@ -38,6 +38,8 @@ const char *MapEltwiseTypeToQnnOp(ops::EltwiseType type) {
       return QNN_OP_ELEMENT_WISE_NEG;
     case ops::EltwiseType::ABS:
       return QNN_OP_ELEMENT_WISE_ABS;
+    case ops::EltwiseType::SQR_DIFF:
+      return QNN_OP_ELEMENT_WISE_SQUARED_DIFFERENCE;
     case ops::EltwiseType::POW:
       return QNN_OP_ELEMENT_WISE_POWER;
     case ops::EltwiseType::EQUAL:
@@ -59,6 +61,7 @@ class EltwiseOpBuilder : public OpBuilder {
     auto type = static_cast<ops::EltwiseType>(
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "type", static_cast<int>(ops::EltwiseType::NONE)));
+    VLOG(3) << "EltwiseType: " << static_cast<int>(type);
     const char *op_type = MapEltwiseTypeToQnnOp(type);
     MACE_CHECK_NOTNULL(op_type);
     SetOpType(op_type);
