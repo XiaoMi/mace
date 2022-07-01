@@ -283,7 +283,7 @@ class MaceKeyword(object):
     mace_op_data_type_str = 'T'
     mace_offset_str = 'offset'
     mace_opencl_max_image_size = "opencl_max_image_size"
-    mace_seperate_buffer_str = 'seperate_buffer'
+    mace_separate_buffer_str = 'separate_buffer'
     mace_scalar_input_index_str = 'scalar_input_index'
     mace_opencl_mem_type = "opencl_mem_type"
     mace_framework_type_str = "framework_type"

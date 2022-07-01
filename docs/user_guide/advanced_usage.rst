@@ -527,7 +527,7 @@ Reduce Library Size
         - If the models don't need to run on device ``dsp``, change the build option ``--define hexagon=true``
           to ``false``. And the library will be decreased about ``100KB``.
 
-        - Futher more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
+        - Further more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
           will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
 
         - About ``300KB`` can be reduced when add ``--config symbol_hidden`` building option. It will change
