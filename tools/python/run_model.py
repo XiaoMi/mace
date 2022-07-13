@@ -183,8 +183,11 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                                 input_tensors_info[ModelKeys.input_data_types])
 
         dev.install(Target(tmpdirname), install_dir + "/validate_in")
-        target_input_file = "%s/validate_in/%s" % (
-            install_dir, model_name)
+        target_input_file = "%s/validate_in/" % install_dir
+        if flags.device_conf:
+            target_input_file += tmpdirname.split("/")[-1]
+            target_input_file += "/"
+        target_input_file += model_name
         target_output_dir = "%s/validate_out" % install_dir
         dev.mkdir(target_output_dir)
         target_output_file = target_output_dir + "/" + model_name
