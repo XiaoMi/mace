@@ -91,6 +91,3 @@ the following projects during the development:
 
 Finally, we also thank the Qualcomm, Pinecone and MediaTek engineering teams for
 their help.
-
-## Join Us
-[We are hiring](JOBS.md).
