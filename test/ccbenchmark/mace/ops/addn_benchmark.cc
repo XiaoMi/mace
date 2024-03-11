@@ -44,11 +44,13 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
+    net.Run();
     net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
+    net.Run();
     net.Sync();
   }
 }
