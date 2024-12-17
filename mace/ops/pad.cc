@@ -79,6 +79,8 @@ class PadOp<RuntimeType::RT_CPU, T> : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
+    const std::vector<mace::index_t> ori_shape = input->shape();
+    const_cast<Tensor*> (input)->to4dim();
     MACE_CHECK(
         this->paddings_.size() == static_cast<size_t>(input->dim_size()) * 2);
     auto input_shape = input->shape();
@@ -162,7 +164,12 @@ class PadOp<RuntimeType::RT_CPU, T> : public Operation {
     } else {
       LOG(FATAL) << "Pad op doesn't support type " << type_;
     }
-
+    MACE_RETURN_IF_ERROR(const_cast<Tensor*>(input)->Resize(ori_shape));
+    if(ori_shape.size() == 3){
+        MACE_RETURN_IF_ERROR(const_cast<Tensor*>(output)->Resize({output->shape()[1], output->shape()[2], output->shape()[3]}));
+    }else if(ori_shape.size() == 2){
+        MACE_RETURN_IF_ERROR(const_cast<Tensor*>(output)->Resize({output->shape()[2], output->shape()[3]}));
+    }
     return MaceStatus::MACE_SUCCESS;
   }
 

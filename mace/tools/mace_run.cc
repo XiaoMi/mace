@@ -42,6 +42,7 @@
 #include "mace/utils/string_util.h"
 #include "mace/utils/statistics.h"
 #include "mace/utils/transpose.h"
+#include "mace/utils/dbg.h"
 
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -73,17 +74,17 @@ std::string FormatName(const std::string input) {
 }
 
 IDataType ParseDataType(const std::string &data_type_str) {
-  if (data_type_str == "float32") {
+  if (data_type_str == "float32" || data_type_str == "1") {
     return IDataType::IDT_FLOAT;
-  } else if (data_type_str == "float16") {
+  } else if (data_type_str == "float16" || data_type_str == "5") {
     return IDataType::IDT_FLOAT16;
-  } else if (data_type_str == "bfloat16") {
+  } else if (data_type_str == "bfloat16" || data_type_str == "6") {
     return IDataType::IDT_BFLOAT16;
-  } else if (data_type_str == "int16") {
+  } else if (data_type_str == "int16" || data_type_str == "7") {
     return IDataType::IDT_INT16;
-  } else if (data_type_str == "uint8") {
+  } else if (data_type_str == "uint8" || data_type_str == "2") {
     return IDataType::IDT_UINT8;
-  } else if (data_type_str == "int32") {
+  } else if (data_type_str == "int32" || data_type_str == "4") {
     return IDataType::IDT_INT32;
   } else {
     return IDataType::IDT_FLOAT;
@@ -199,7 +200,7 @@ std::shared_ptr<char> ReadInputDataFromFile(
     in_file.read(buffer_in.get(), file_data_size);
     in_file.close();
   } else {
-    LOG(FATAL) << "Open input file failed";
+    LOG(FATAL) << "Open input file(" << file_path << ") failed";
     return nullptr;
   }
 
@@ -326,7 +327,7 @@ bool RunModel(const std::string &model_name,
               const std::vector<std::vector<int64_t>> &output_shapes,
               const std::vector<IDataType> &output_data_types,
               const std::vector<DataFormat> &output_data_formats,
-              float cpu_capability) {
+              float cpu_capability) { 
   int64_t t0 = NowMicros();
   bool *model_data_unused = nullptr;
   MaceEngine *tutor = nullptr;
@@ -366,7 +367,9 @@ bool RunModel(const std::string &model_name,
 #ifdef MACE_ENABLE_HEXAGON
   // SetHexagonToUnsignedPD() can be called for 8150 family(with new cDSP
   // firmware) or 8250 family above to run hexagon nn on unsigned PD.
-  // config.SetHexagonToUnsignedPD();
+#ifdef __ANDROID__
+  config.SetHexagonToUnsignedPD();
+#endif
   config.SetHexagonPower(HEXAGON_NN_CORNER_TURBO, true, 100);
 #endif
 #ifdef MACE_ENABLE_MTK_APU
@@ -449,6 +452,7 @@ bool RunModel(const std::string &model_name,
                                   tutor,
                                   FLAGS_fake_warmup);
 #endif
+    //std::this_thread::sleep_for(std::chrono::seconds(20));
     int64_t t1 = NowMicros();
 
     if (create_engine_status != MaceStatus::MACE_SUCCESS) {
@@ -480,6 +484,7 @@ bool RunModel(const std::string &model_name,
         input_shapes[i].begin(), input_shapes[i].end(), 1,
         std::multiplies<int64_t>());
     auto file_path = FLAGS_input_file + "_" + FormatName(input_names[i]);
+    LOG(INFO) << "intput_file: " << file_path;
     auto input_data = ReadInputDataFromFile(
         file_path, input_tensor_size, input_data_types[i]);
 
@@ -697,12 +702,13 @@ bool RunModel(const std::string &model_name,
 }
 
 int Main(int argc, char **argv) {
+  LOG(INFO) << "hello";
   std::string usage = "MACE run model tool, please specify proper arguments.\n"
                       "usage: " + std::string(argv[0])
       + " --help";
   gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
+  
   std::vector<std::string> input_names = Split(FLAGS_input_node, ',');
   std::vector<std::string> output_names = Split(FLAGS_output_node, ',');
   if (input_names.empty() || output_names.empty()) {
@@ -722,8 +728,9 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
   LOG(INFO) << "input data_type: " << FLAGS_input_data_type;
   LOG(INFO) << "input data_format: " << FLAGS_input_data_format;
-  LOG(INFO) << "output node: " << FLAGS_output_node;
-  LOG(INFO) << "output shape: " << FLAGS_output_shape;
+  //LOG(INFO) << "output node: " << FLAGS_output_node;
+  //LOG(INFO) << "output shape: " << FLAGS_output_shape;
+  LOG(INFO) << "input data_type: " << FLAGS_output_data_type;
   LOG(INFO) << "output data_format: " << FLAGS_output_data_format;
   LOG(INFO) << "input_file: " << FLAGS_input_file;
   LOG(INFO) << "output_file: " << FLAGS_output_file;
@@ -742,6 +749,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
   LOG(INFO) << "num_threads: " << FLAGS_num_threads;
   LOG(INFO) << "cpu_affinity_policy: " << FLAGS_cpu_affinity_policy;
+  
   auto limit_opencl_kernel_time = getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
   if (limit_opencl_kernel_time) {
     LOG(INFO) << "limit_opencl_kernel_time: "
@@ -783,8 +791,8 @@ int Main(int argc, char **argv) {
   std::vector<IDataType> output_data_types(output_count);
   for (size_t i = 0; i < output_count; ++i) {
     output_data_types[i] = ParseDataType(raw_output_data_types[i]);
-    LOG(INFO) << "raw_output_data_types[" << i << "] is "
-              << raw_output_data_types[i];
+    //LOG(INFO) << "raw_output_data_types[" << i << "] is "
+    //          << raw_output_data_types[i];
   }
 
   std::vector<std::string> raw_input_data_formats =
@@ -807,6 +815,7 @@ int Main(int argc, char **argv) {
     cpu_float32_performance = cpu_capability.float32_performance.exec_time;
   }
   bool ret = false;
+  
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
     ret = RunModel(FLAGS_model_name, input_names, input_shape_vec,

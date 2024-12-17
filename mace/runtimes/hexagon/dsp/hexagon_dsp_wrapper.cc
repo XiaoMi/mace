@@ -26,6 +26,7 @@
 
 #include "mace/runtimes/hexagon/dsp/hexagon_dsp_ops.h"
 #include "mace/core/types.h"
+#include "mace/utils/dbg.h"
 #include "mace/port/env.h"
 #include "mace/utils/memory.h"
 #include "third_party/nnlib/hexagon_nn.h"
@@ -34,6 +35,13 @@
 namespace mace {
 
 #define MACE_MAX_NODE 2048
+
+#define MACE_DSP_CHECK(condition, ...) \
+  if (!(condition)) { \
+    PrintLog(); \
+    PrintGraph(); \
+    LOG(FATAL) << "Check failed: " #condition " " << mace::MakeString(__VA_ARGS__); \
+  }
 
 enum {
   NN_GRAPH_PERFEVENT_CYCLES = 0,
@@ -124,7 +132,7 @@ HexagonDSPWrapper::~HexagonDSPWrapper() {}
 
 int HexagonDSPWrapper::GetVersion() {
   int version;
-  MACE_CHECK(hexagon_nn_version(&version) == 0, "get version error");
+  MACE_DSP_CHECK(hexagon_nn_version(&version) == 0, "get version error");
   return version;
 }
 
@@ -151,13 +159,13 @@ bool HexagonDSPWrapper::SetPower(HexagonNNCornerType corner,
 
 bool HexagonDSPWrapper::Config() {
   LOG(INFO) << "Hexagon config";
-  MACE_CHECK(hexagon_nn_config() == 0, "hexagon config error");
+  MACE_DSP_CHECK(hexagon_nn_config() == 0, "hexagon config error");
   return true;
 }
 
 bool HexagonDSPWrapper::Init() {
   LOG(INFO) << "Hexagon init";
-  MACE_CHECK(hexagon_nn_init(&nn_id_) == 0, "hexagon_nn_init failed");
+  MACE_DSP_CHECK(hexagon_nn_init(&nn_id_) == 0, "hexagon_nn_init failed");
   ResetPerfInfo();
   return true;
 }
@@ -203,14 +211,14 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
       if (model_data_size >= 0) {
         const index_t tensor_end =
             const_tensor.offset() + const_node.tensor.dataLen;
-        MACE_CHECK(tensor_end <= model_data_size, "tensor end (", tensor_end,
+        MACE_DSP_CHECK(tensor_end <= model_data_size, "tensor end (", tensor_end,
                    ") should <= ", model_data_size);
       }
     }
     const_node_list.push_back(const_node);
     // 250 is magic number: why fastrpc limits sequence length to that?
     if (const_node_list.size() >= 250) {
-      MACE_CHECK(
+      MACE_DSP_CHECK(
           hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
                                             const_node_list.size()) == 0,
           "append const node error");
@@ -218,7 +226,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     }
   }
   if (!const_node_list.empty()) {
-    MACE_CHECK(
+    MACE_DSP_CHECK(
         hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
                                           const_node_list.size()) == 0,
         "append const node error");
@@ -260,6 +268,9 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     cached_inputs.push_back(inputs);
     cached_outputs.push_back(outputs);
 
+    // dbg(outputs[0].max_sizes);
+    // printf("%s(%d)\n\n", op.type().c_str(), op_id);
+
     hexagon_nn_padding_type padding_type =
         static_cast<hexagon_nn_padding_type>(op.padding());
 
@@ -275,7 +286,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
     op_node_list.push_back(op_node);
     // 125 is also magic number
     if (op_node_list.size() >= 125) {
-      MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
+      MACE_DSP_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
                                              op_node_list.size()) == 0,
                  "append node error");
       op_node_list.clear();
@@ -285,7 +296,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
   }
 
   if (!op_node_list.empty()) {
-    MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
+    MACE_DSP_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
                                            op_node_list.size()) == 0,
                "append node error");
   }
@@ -327,7 +338,7 @@ bool HexagonDSPWrapper::SetupGraph(const NetDef &net_def,
 
   int64_t t1 = NowMicros();
 
-  MACE_CHECK(hexagon_nn_prepare(nn_id_) == 0, "hexagon_nn_prepare failed");
+  MACE_DSP_CHECK(hexagon_nn_prepare(nn_id_) == 0, "hexagon_nn_prepare failed");
 
   int64_t t2 = NowMicros();
 
@@ -352,31 +363,30 @@ void HexagonDSPWrapper::PrintLog() {
   MACE_CHECK(hexagon_nn_getlog(nn_id_, reinterpret_cast<unsigned char *>(buf),
                                MACE_PRINT_BUFSIZE) == 0,
              "print log error");
-  LOG(INFO) << std::string(buf);
+  LOG(INFO) << "\n============= DSP log =============\n" + std::string(buf);
   delete[] buf;
 }
 
 void HexagonDSPWrapper::PrintGraph() {
-  LOG(INFO) << "Print Graph";
   char *buf;
   if ((buf = new char[MACE_PRINT_BUFSIZE]) == NULL) return;
   MACE_CHECK(hexagon_nn_snpprint(nn_id_, reinterpret_cast<unsigned char *>(buf),
                                  MACE_PRINT_BUFSIZE) == 0,
              "print graph error");
-  LOG(INFO) << std::string(buf);
+  LOG(INFO) << "\n============= Graph dump =============\n" << std::string(buf);
   delete[] buf;
 }
 
 void HexagonDSPWrapper::PrintMemStats() {
-  HAP_mem_stats mem_stats;
-  MACE_CHECK(hexagon_nn_get_mem_stats(&mem_stats) == 0);
-  LOG(INFO) << "Hexagon memory: " << mem_stats.bytes_free << " bytes free, "
-            << mem_stats.bytes_used << " bytes used.";
+  // HAP_mem_stats mem_stats;
+  // MACE_DSP_CHECK(hexagon_nn_get_mem_stats(&mem_stats) == 0);
+  // LOG(INFO) << "Hexagon memory: " << mem_stats.bytes_free << " bytes free, "
+  //           << mem_stats.bytes_used << " bytes used.";
 }
 
 void HexagonDSPWrapper::SetDebugLevel(int level) {
   LOG(INFO) << "Set debug level: " << level;
-  MACE_CHECK(hexagon_nn_set_debug_level(nn_id_, level) == 0,
+  MACE_DSP_CHECK(hexagon_nn_set_debug_level(nn_id_, level) == 0,
              "set debug level error");
 }
 
@@ -384,7 +394,7 @@ void HexagonDSPWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
   std::vector<hexagon_nn_perfinfo> perf_info(MACE_MAX_NODE);
   unsigned int n_items = 0;
-  MACE_CHECK(hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MACE_MAX_NODE,
+  MACE_DSP_CHECK(hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MACE_MAX_NODE,
                                      &n_items) == 0,
              "get perf info error");
 
@@ -396,7 +406,7 @@ void HexagonDSPWrapper::GetPerfInfo() {
   VLOG(1) << "items: " << n_items;
   std::string run_order_title = "Sort by Run Order";
   const std::vector<std::string> run_order_header = {
-      "Node Id", "Node Type", "Node Type Id", "Executions", "Duration(ms)"
+      "Node Id", "Node Type", "Node Type Id", "Executions", "Duration(us)"
   };
   std::vector<std::vector<std::string>> run_order_data;
   for (unsigned int i = 0; i < n_items; ++i) {
@@ -417,7 +427,7 @@ void HexagonDSPWrapper::GetPerfInfo() {
     tuple.push_back(node_type);
     tuple.push_back(IntToString(node_type_id));
     tuple.push_back(IntToString(perf_info[i].executions));
-    tuple.push_back(FloatToString(node_id_counters[node_id] / 1000.0f, 3));
+    tuple.push_back(FloatToString(node_id_counters[node_id] / 1000.0f * 1000.0f, 1));
     run_order_data.emplace_back(tuple);
 
     if (node_type_counters.find(node_type) == node_type_counters.end()) {
@@ -445,7 +455,7 @@ void HexagonDSPWrapper::GetPerfInfo() {
     std::vector<std::string> tuple;
     tuple.push_back(node_type);
     tuple.push_back(IntToString(node_type_counter.first));
-    tuple.push_back(FloatToString(node_type_counter.second / 1000.0f, 3));
+    tuple.push_back(FloatToString(node_type_counter.second / 1000.0f, 5));
     duration_data.emplace_back(tuple);
   }
 
@@ -458,7 +468,7 @@ void HexagonDSPWrapper::GetPerfInfo() {
 
 void HexagonDSPWrapper::ResetPerfInfo() {
   LOG(INFO) << "Reset perf info";
-  MACE_CHECK(hexagon_nn_reset_perfinfo(nn_id_, NN_GRAPH_PERFEVENT_UTIME) == 0,
+  MACE_DSP_CHECK(hexagon_nn_reset_perfinfo(nn_id_, NN_GRAPH_PERFEVENT_UTIME) == 0,
              "reset perf error");
 }
 
@@ -466,8 +476,8 @@ bool HexagonDSPWrapper::ExecuteGraph(const Tensor &input_tensor,
                                      Tensor *output_tensor) {
   VLOG(2) << "Execute graph: " << nn_id_;
   // single input and single output
-  MACE_CHECK(num_inputs_ == 1, "Wrong inputs num");
-  MACE_CHECK(num_outputs_ == 1, "Wrong outputs num");
+  MACE_DSP_CHECK(num_inputs_ == 1, "Wrong inputs num");
+  MACE_DSP_CHECK(num_outputs_ == 1, "Wrong outputs num");
   output_tensor->SetDtype(output_info_[0].data_type);
   output_tensor->Resize(output_info_[0].shape);
   std::vector<uint32_t> output_shape(4);
@@ -487,16 +497,16 @@ bool HexagonDSPWrapper::ExecuteGraph(const Tensor &input_tensor,
       reinterpret_cast<unsigned char *>(output_tensor->raw_mutable_data()),
       static_cast<int>(output_tensor->raw_size()),
       &output_bytes);
-  MACE_CHECK(res == 0, "execute error");
+  MACE_DSP_CHECK(res == 0, "execute error");
 
-  MACE_CHECK(output_shape.size() == output_info_[0].shape.size(),
+  MACE_DSP_CHECK(output_shape.size() == output_info_[0].shape.size(),
              "wrong output shape inferred");
   for (size_t i = 0; i < output_shape.size(); ++i) {
-    MACE_CHECK(static_cast<index_t>(output_shape[i])
+    MACE_DSP_CHECK(static_cast<index_t>(output_shape[i])
                    == output_info_[0].shape[i],
                "wrong output shape inferred");
   }
-  MACE_CHECK(output_bytes == output_tensor->raw_size(),
+  MACE_DSP_CHECK(output_bytes == output_tensor->raw_size(),
              "wrong output bytes inferred.");
 
   if (log_execute_time_) {
@@ -512,8 +522,8 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
   VLOG(2) << "Execute graph new: " << nn_id_;
   auto num_inputs = static_cast<uint32_t>(input_tensors.size());
   auto num_outputs = static_cast<uint32_t>(output_tensors->size());
-  MACE_CHECK(num_inputs_ == static_cast<int>(num_inputs), "Wrong inputs num");
-  MACE_CHECK(num_outputs_ == static_cast<int>(num_outputs),
+  MACE_DSP_CHECK(num_inputs_ == static_cast<int>(num_inputs), "Wrong inputs num");
+  MACE_DSP_CHECK(num_outputs_ == static_cast<int>(num_outputs),
              "Wrong outputs num");
 
   std::vector<hexagon_nn_tensordef> inputs(num_inputs * kNumMetaData);
@@ -525,14 +535,19 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
   for (size_t i = 0; i < num_inputs; ++i) {
     const auto input_tensor = input_tensors.at(input_info_[i].name);
     const auto &input_shape = input_tensor->shape();
+
+    auto tmp(input_shape);
+    while (tmp.size() < 4) {
+      tmp.insert(tmp.begin(), 1);
+    }
     size_t index = i * kNumMetaData;
-    inputs[index].batches = static_cast<uint32_t>(input_shape[0]);
-    inputs[index].height = static_cast<uint32_t>(input_shape[1]);
-    inputs[index].width = static_cast<uint32_t>(input_shape[2]);
-    inputs[index].depth = static_cast<uint32_t>(input_shape[3]);
+    inputs[index].batches = static_cast<uint32_t>(tmp[0]);
+    inputs[index].height = static_cast<uint32_t>(tmp[1]);
+    inputs[index].width = static_cast<uint32_t>(tmp[2]);
+    inputs[index].depth = static_cast<uint32_t>(tmp[3]);
     inputs[index].data = const_cast<unsigned char *>(
         reinterpret_cast<const unsigned char *>(input_tensor->raw_data()));
-    MACE_CHECK(inputs[index].data != nullptr);
+    MACE_DSP_CHECK(inputs[index].data != nullptr);
     inputs[index].dataLen = static_cast<int>(input_tensor->raw_size());
     inputs[index].data_valid_len =
         static_cast<uint32_t>(input_tensor->raw_size());
@@ -552,7 +567,7 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
 
     outputs[index].data = reinterpret_cast<unsigned char *>(
         output_tensor->raw_mutable_data());
-    MACE_CHECK(outputs[index].data != nullptr);
+    MACE_DSP_CHECK(outputs[index].data != nullptr);
     outputs[index].dataLen = static_cast<int>(output_tensor->raw_size());
     output_metadata[i].Init(.0f, .0f, 1);
 
@@ -568,7 +583,7 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
                                    num_inputs * kNumMetaData,
                                    outputs.data(),
                                    num_outputs * kNumMetaData);
-  MACE_CHECK(res == 0, "execute error, res = ", res);
+  MACE_DSP_CHECK(res == 0, "execute error, res = ", res);
 
   // handle hexagon output
   for (size_t i = 0; i < num_outputs; ++i) {
@@ -576,7 +591,7 @@ bool HexagonDSPWrapper::ExecuteGraphNew(
     std::vector<index_t> output_shape{
         outputs[index].batches, outputs[index].height, outputs[index].width,
         outputs[index].depth};
-    MACE_CHECK(output_shape.size() == output_info_[i].shape.size(),
+    MACE_DSP_CHECK(output_shape.size() == output_info_[i].shape.size(),
                output_shape.size(), " vs ", output_info_[i].shape.size(),
                 " wrong output shape inferred");
     auto output_tensor = output_tensors->at(output_info_[i].name);

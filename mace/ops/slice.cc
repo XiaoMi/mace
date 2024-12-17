@@ -37,7 +37,8 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
-
+    const std::vector<mace::index_t> ori_shape = input->shape();
+    const_cast<Tensor*> (input)->to4dim();
     const index_t rank = input->dim_size();
     MACE_CHECK(rank >= 1, "The input dim size should >= 1.");
 
@@ -58,6 +59,8 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
       start = starts_data[0];
       end = ends_data[0];
       axis = axes_data[0];
+      if(ori_shape.size() == 3) axis += 1;
+      else if(ori_shape.size() == 2) axis += 2;
       if (this->InputSize() == 5) {
         const Tensor *steps = this->Input(4);
         step = steps->data<int32_t>()[0];
@@ -81,12 +84,17 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
     MACE_CHECK(
         start < input_dim && start >= 0 && end > start && end <= input_dim,
         "The starts and ends are out of bounds: ", operator_def_->name());
-    index_t output_dim = (end - start + (step - 1)) / step;
+    index_t output_dim = (end - start + step) / step;
     MACE_CHECK(output_dim > 0, "output_dim should > 0");
-    std::vector<index_t> output_shape = input->shape();
-    output_shape[axis] = output_dim;
+    std::vector<index_t> output_shape = ori_shape;
+    if(ori_shape.size() == 3){
+      output_shape[axis-1] = output_dim;
+    }else if(ori_shape.size() == 2){
+      output_shape[axis-2] = output_dim;
+    }else{
+      output_shape[axis] = output_dim;
+    }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
     index_t inner_size = 1;
@@ -117,7 +125,7 @@ class SliceOp<RuntimeType::RT_CPU, T> : public Operation {
         }
       }
     }
-
+    MACE_RETURN_IF_ERROR(const_cast<Tensor*>(input)->Resize(ori_shape));
     return MaceStatus::MACE_SUCCESS;
   }
 

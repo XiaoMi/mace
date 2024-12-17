@@ -179,6 +179,7 @@ MaceSupportedOps = [
     'Transpose',
     'DetectionOutput',
     'Where',
+    'LayerNorm',
 ]
 
 MaceOp = Enum('MaceOp', [(op, op) for op in MaceSupportedOps], type=str)
@@ -399,6 +400,8 @@ class TransformerRule(Enum):
     TRANSFORM_BIASADD_TO_ADD = 57
     TRANSFORM_SLICE_TO_STRIDED_SLICE = 58
     ADD_TRANSPOSE_FOR_HTP = 59
+    FOLD_LAYERNORM = 60
+    FOLD_MATMUL_ADD = 61
 
 
 class ConverterInterface(object):
@@ -735,6 +738,12 @@ class ConverterOption(object):
                     TransformerRule.TRANSFORM_EXPAND_DIMS_TO_RESHAPE,
                 ]
 
+            if self._device == DeviceType.HEXAGON.value:
+                self._transformer_option = self._transformer_option + [
+                    TransformerRule.FOLD_LAYERNORM,
+                    TransformerRule.FOLD_MATMUL_ADD,
+                ]
+                
             if self.quantize_large_weights:
                 self._transformer_option = self._transformer_option + [
                     TransformerRule.QUANTIZE_LARGE_WEIGHTS

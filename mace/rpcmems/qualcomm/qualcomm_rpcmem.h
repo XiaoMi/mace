@@ -16,7 +16,9 @@
 #define MACE_RPCMEMS_QUALCOMM_QUALCOMM_RPCMEM_H_
 
 #include "mace/core/memory/rpcmem/rpcmem.h"
+#ifndef __QNX__
 #include "third_party/rpcmem/rpcmem.h"
+#endif
 
 namespace mace {
 class QualcommRpcmem : public Rpcmem {
@@ -32,8 +34,10 @@ class QualcommRpcmem : public Rpcmem {
 
   RpcmemType GetRpcmemType() override;
 
+#ifndef __QNX__
  private:
   rpcmem rm;
+#endif
 };
 
 }  // namespace mace

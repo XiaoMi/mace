@@ -1,0 +1,42 @@
+      
+models:
+  yolo:
+    platform: onnx
+    model_file_path: xxx/mace/workspace/onnx_model/yolov8n.onnx #替换为你的onnx模型的路径
+    model_sha256_checksum: f82de27deb5789bf6a79cdf54844ad11fbfe293df9f86f1bdf94580f5a254f18
+    subgraphs:
+      - input_tensors: 
+          - images   
+        input_shapes: 
+          - 1,3,640,640
+        output_tensors: 
+          - output0
+        check_tensors:
+          - output0
+        output_shapes: 
+          - 1,84,8400
+        check_shapes:
+          - 1,84,8400
+        output_data_formats:
+          - NONE
+        output_data_types:
+          - float32
+        backend: 
+          - pytorch
+        input_ranges:
+          - 5.510036e-08,0.9999999
+        validation_inputs_data:
+          - xxx/mace/workspace/inputs/yolo/inputs.raw #替换为你的输入文件的路径
+        input_data_formats: 
+          - NONE
+        input_data_types:  
+          - float32
+    runtime: dsp  
+    quantize_range_file: xxx/mace/workspace/minmax_rangelog/yolo_range_log #替换为你的rangelog的路径
+    quantize: 1
+    limit_opencl_kernel_time: 0
+    nnlib_graph_mode: 0
+    obfuscate: 0
+  
+
+    

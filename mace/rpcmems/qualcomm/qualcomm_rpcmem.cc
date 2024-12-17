@@ -13,18 +13,29 @@
 // limitations under the License.
 
 #include "mace/rpcmems/qualcomm/qualcomm_rpcmem.h"
-
+#include "third_party/rpcmem/qnx/rpcmem_qnx.h"
 #include "mace/utils/logging.h"
+
+#ifdef __QNX__
+#define mace_rpcmem_init(...) rpcmem_init()
+#define mace_rpcmem_deinit(...) rpcmem_deinit()
+#define mace_rpcmem_alloc(a,b,c,d) rpcmem_alloc(b,c,d)
+#define mace_rpcmem_free(a,b) rpcmem_free(b)
+#define mace_rpcmem_to_fd(a,b) rpcmem_to_fd(b)
+#define mace_rpcmem_sync_cache(...) 0
+#endif
 
 namespace mace {
 
 QualcommRpcmem::QualcommRpcmem() {
   mace_rpcmem_init(&rm);
+#ifndef __QNX__
   if (rm.flag != 0) {
     LOG(WARNING) << "QualcommRpcmem, rpcmem_init failed!";
     valid_detected_ = true;
     valid_ = false;
   }
+#endif
 }
 
 QualcommRpcmem::~QualcommRpcmem() {

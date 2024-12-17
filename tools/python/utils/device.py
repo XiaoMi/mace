@@ -25,10 +25,13 @@ import tempfile
 
 from utils import util
 
+justprint = False
+norun = False
 
 def execute(cmd, verbose=True):
-    if verbose:
-        print("CMD> %s" % cmd)
+    print("\033[0;32mCMD> \033[0m%s" % cmd)
+    if justprint: 
+        return
     p = subprocess.Popen([cmd],
                          shell=True,
                          stdout=subprocess.PIPE,
@@ -99,13 +102,14 @@ class HostDevice(Device):
         install_dir = os.path.abspath(install_dir)
 
         if install_dir.strip() and install_dir != os.path.dirname(target.path):
-            execute("mkdir -p %s" % install_dir)
+            execute("sudo mkdir -p %s" % install_dir)
+            execute("sudo chmod 777 %s" % install_dir)
             if os.path.isdir(target.path):
-                execute("cp -f %s/* %s" % (target.path, install_dir))
+                execute("sudo cp -f %s/* %s" % (target.path, install_dir))
             else:
-                execute("cp -f %s %s" % (target.path, install_dir))
+                execute("sudo cp -f %s %s" % (target.path, install_dir))
             for lib in target.libs:
-                execute("cp -f %s %s" % (lib, install_dir))
+                execute("sudo cp -f %s %s" % (lib, install_dir))
 
             target.path = "%s/%s" % (install_dir,
                                      os.path.basename(target.path))
@@ -123,11 +127,47 @@ class HostDevice(Device):
         out_dir = os.path.abspath(out_dir)
 
         if out_dir.strip() and out_dir != os.path.dirname(target.path):
-            execute("cp -rp %s %s" % (target.path, out_dir))
+            execute("sudo cp -rp %s %s" % (target.path, out_dir))
 
     def mkdir(self, dirname):
-        execute("mkdir -p %s" % dirname)
+        execute("sudo mkdir -p %s" % dirname)
+        execute("sudo chmod 777 %s" % dirname)
 
+class QnxDevice(Device):
+    def __init__(self, device_id, target_abi):
+        super(QnxDevice, self).__init__(device_id, target_abi)
+
+    @staticmethod
+    def list_devices():
+        return ["qnx"]
+
+    def install(self, target, install_dir, install_deps=False):
+        install_dir = os.path.abspath(install_dir)
+
+        execute("qdb run mkdir -p %s" % (install_dir))
+        if os.path.isdir(target.path):
+            for file in os.listdir(target.path):
+                execute("qdb send %s %s" % (os.path.join(target.path, file), install_dir), False)
+        else:
+            execute("qdb send %s %s" % (target.path, install_dir), False)
+
+        for lib in target.libs:
+            execute("qdb send %s %s" % (lib, install_dir), False)
+
+        target.path = "%s/%s" % (install_dir, os.path.basename(target.path))
+        target.libs = ["%s/%s" % (install_dir, os.path.basename(lib))
+                              for lib in target.libs]
+        target.envs.append("LD_LIBRARY_PATH=%s" % install_dir)
+        return target
+
+    def run(self, target):
+        execute("qdb run %s" % target)
+
+    def pull(self, target, out_dir):
+        execute("qdb fetch %s %s" % (target, out_dir))
+
+    def mkdir(self, dirname):
+        execute("qdb run mkdir -p %s" % dirname)
 
 class AndroidDevice(Device):
     def __init__(self, device_id, target_abi):
@@ -135,6 +175,9 @@ class AndroidDevice(Device):
 
     @staticmethod
     def list_devices():
+        if justprint:
+            return [""]
+
         out = execute("adb devices", False)
         serialno_list = out.strip().split('\n')[1:]
         serialno_list = [tuple(pair.split('\t')) for pair in serialno_list]
@@ -169,6 +212,7 @@ class AndroidDevice(Device):
         device_target.libs = ["%s/%s" % (install_dir, os.path.basename(lib))
                               for lib in target.libs]
         device_target.envs.append("LD_LIBRARY_PATH=%s" % install_dir)
+        device_target.envs.append("ADSP_LIBRARY_PATH=%s" % install_dir)
 
         if install_deps:
             self.install_common_libs_for_target(target, install_dir)
@@ -195,22 +239,18 @@ class AndroidDevice(Device):
         execute("adb -s %s push %s %s" % (sn, lib_file, install_dir), False)
 
     def run(self, target):
+        execute("adb -s %s shell chmod 0777 %s" % (self._device_id, target.path))
+        execute("adb -s %s shell \"%s\"" % (self._device_id, str(target)))
+
         tmpdirname = tempfile.mkdtemp()
         cmd_file_path = tmpdirname + "/cmd.sh"
         with open(cmd_file_path, "w") as cmd_file:
             cmd_file.write(str(target))
+
         target_dir = os.path.dirname(target.path)
         execute("adb -s %s push %s %s" % (self._device_id,
                                           cmd_file_path,
                                           target_dir))
-
-        out = execute("adb -s %s shell sh %s" % (self._device_id,
-                                                 target_dir + "/cmd.sh"))
-        # May have false positive using the following error word
-        for line in out.split("\n")[:-10]:
-            if ("Aborted" in line
-                    or "FAILED" in line or "Segmentation fault" in line):
-                raise Exception(line)
 
     def pull(self, target, out_dir):
         sn = self._device_id
@@ -284,6 +324,7 @@ class ArmLinuxDevice(Device):
 def device_class(target_abi):
     device_dispatch = {
         "host": "HostDevice",
+        "qnx": "QnxDevice",
         "armeabi-v7a": "AndroidDevice",
         "arm64-v8a": "AndroidDevice",
         "arm-linux-gnueabihf": "ArmLinuxDevice",

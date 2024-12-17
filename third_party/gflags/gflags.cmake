@@ -28,7 +28,7 @@ ExternalProject_Add(
                    -DCMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER}
                    -DBUILD_STATIC_LIBS=ON
                    -DBUILD_TESTING=OFF
-		   -DCMAKE_BUILD_TYPE=Release
+                   -DCMAKE_BUILD_TYPE=Release
                    -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
                    ${THIRD_PARTY_EXTRA_CMAKE_ARGS}
 )

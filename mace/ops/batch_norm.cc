@@ -62,6 +62,7 @@ class BatchNormOp<RuntimeType::RT_CPU, T> : public Operation {
     const Tensor *scale = this->Input(SCALE);
     const Tensor *offset = this->Input(OFFSET);
 
+    const_cast<Tensor*> (input)->to4dim();
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ",
                input->dim_size());
     MACE_CHECK(scale->dim_size() == 1, "scale must be 1-dimensional. ",

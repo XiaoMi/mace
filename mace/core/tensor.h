@@ -198,7 +198,7 @@ class Tensor {
   void Clear();
   void Reshape(const std::vector<index_t> &shape);
   MaceStatus Resize(const std::vector<index_t> &shape);
-
+  void to4dim();
   // Make this tensor reuse other tensor's buffer.
   // This tensor has the same dtype, shape and buffer shape.
   // It could be reshaped later (with buffer shape unchanged).

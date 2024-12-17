@@ -449,7 +449,7 @@ class OnnxConverter(base_converter.ConverterInterface):
 
         self._isKaldi = False
 
-        polish_available = True
+        polish_available = False
         print("onnx model IR version: ", ir_version)
         for imp in opset_imp:
             domain = imp.domain
@@ -684,6 +684,10 @@ class OnnxConverter(base_converter.ConverterInterface):
                     tensor.data_type = mace_pb2.DT_INT32
                     tensor.int32_data.extend(
                         onnx_tensor.astype(np.int32).flat)
+                elif data_type == np.bool:
+                    tensor.data_type = mace_pb2.DT_FLOAT
+                    tensor.float_data.extend(
+                        onnx_tensor.astype(np.float32).flat)
                 else:
                     mace_check(False,
                                "Not supported tensor type: %s" % data_type)

@@ -27,19 +27,35 @@ from __future__ import print_function
 
 import argparse
 import os
+import json
 
 from utils import device
 from utils import target
 from utils import config_parser
 from utils import util
 
-
 def run_target(target_abi, install_dir, target_obj, dev):
     # reinstall target
     print("Install target from %s to %s" % (target_obj.path, install_dir))
     device_target = dev.install(target_obj, install_dir)
-    print(device_target)
 
+    # print("\n\n\033[0;34mDebug launch.json parameter:\033[0m")
+    # launch_json = dict()
+    # launch_json["args"] = device_target.opts
+    # launch_json["environment"] = []
+    # for env in device_target.envs:
+    #     env = str(env)
+    #     if len(env) == 0:
+    #         continue
+    #     split_site = env.find("=")
+    #     envname = env[0:split_site]
+    #     envval = env[split_site+1:]
+    #     launch_json["environment"].append({"name": envname, "value": envval})
+    # print(json.dumps(launch_json, indent=4))
+    # print("\n\n")
+
+    if device.norun:
+        return
     dev.run(device_target)
 
 
@@ -69,7 +85,9 @@ def run_target_origin(target_abi, install_dir, target_obj, device_ids="all"):
 def default_install_dir(target_abi):
     install_dir = "/tmp/mace_run"
     if target_abi == "armeabi-v7a" or target_abi == "arm64-v8a":
-        install_dir = "/data/local/tmp/mace_run"
+        install_dir = "/data/local/tmp/mace_tmp"
+    if target_abi == "qnx":
+        install_dir = "/fota/huaijie.h/mace_tmp"
 
     return install_dir
 

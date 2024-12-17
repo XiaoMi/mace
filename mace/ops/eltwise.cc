@@ -1016,13 +1016,12 @@ class EltwiseOp : public Operation {
     if (!has_data_format_ && input0->dim_size() == 4) {
       if (input1->dim_size() == 2) {
         const_cast<Tensor *>(input1)->Reshape(
-            {input1->dim(0), input1->dim(1), 1, 1});
+            {1, 1, input1->dim(0), input1->dim(1)});
       } else if (input1->dim_size() == 3) {
         const_cast<Tensor *>(input1)->Reshape(
-            {input1->dim(0), input1->dim(1), input1->dim(2), 1});
+            {1, input1->dim(0), input1->dim(1), input1->dim(2)});
       }
     }
-
     // check if we can broadcast tensor
     uint32_t rank_diff =
         static_cast<uint32_t>(input0->dim_size() - input1->dim_size());

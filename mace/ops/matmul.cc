@@ -58,6 +58,8 @@ class MatMulOpBase : public Operation {
     const index_t lhs_rank = A->dim_size();
     const index_t rhs_rank = B->dim_size();
 
+    //for(int i = 0; i < A->dim_size(); i++) LOG(INFO) << "matrix A dims: " << A->dim(i);
+    //for(int i = 0; i < B->dim_size(); i++) LOG(INFO) << "matrix B dims: " << B->dim(i);
     MACE_CHECK(lhs_rank >= 2 && rhs_rank >= 2,
                "rank should be greater than or equal to 2");
     if (lhs_rank == rhs_rank) {
@@ -134,6 +136,9 @@ class MatMulOp<RT_CPU, T> : public MatMulOpBase {
                         std::multiplies<index_t>());
     index_t batch = 1;
     std::vector<index_t> output_shape;
+
+    //for(int i = 0; i < lhs->dim_size(); i++) LOG(INFO) << "matrix A dims: " << lhs->dim(i);
+    //for(int i = 0; i < rhs->dim_size(); i++) LOG(INFO) << "matrix B dims: " << rhs->dim(i);
     if (lhs_rank >= rhs_rank) {
       output_shape = lhs->shape();
       output_shape[lhs_rank - 2] = rows;

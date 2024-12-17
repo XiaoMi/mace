@@ -158,6 +158,16 @@ void Tensor::Reshape(const std::vector<index_t> &shape) {
   shape_ = shape;
 }
 
+void Tensor::to4dim() {
+  if (shape_.size() == 1) {
+    shape_ = {1, 1, 1, shape_[0]};
+  } else if (shape_.size() == 2) {
+    shape_ = {1, 1, shape_[0], shape_[1]};
+  } else if (shape_.size() == 3) {
+    shape_ = {1, shape_[0], shape_[1], shape_[2]};
+  } 
+}
+
 MaceStatus Tensor::Resize(const std::vector<index_t> &shape) {
   MaceStatus ret = MaceStatus::MACE_SUCCESS;
   bool need_new =

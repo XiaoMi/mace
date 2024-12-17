@@ -55,6 +55,7 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DANDROID_STL=c++_shared                               \
       -DMACE_ENABLE_NEON=${MACE_ENABLE_NEON}                 \
       -DMACE_ENABLE_QUANTIZE=${MACE_ENABLE_QUANTIZE}         \
+      -DMACE_ENABLE_CPU=${MACE_ENABLE_CPU}                   \
       -DMACE_ENABLE_OPENCL=${MACE_ENABLE_OPENCL}             \
       -DMACE_ENABLE_HEXAGON_DSP=${MACE_ENABLE_HEXAGON_DSP}   \
       -DMACE_ENABLE_HEXAGON_HTA=${MACE_ENABLE_HEXAGON_HTA}   \
@@ -69,5 +70,5 @@ cmake -DANDROID_ABI="armeabi-v7a" \
       -DMACE_ENABLE_RPCMEM=ON                                \
       -DCMAKE_INSTALL_PREFIX=install                         \
       ../../..
-make -j$(nproc)1 && make install
+make -j$(nproc) && make install
 cd ../../..

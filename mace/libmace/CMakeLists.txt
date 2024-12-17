@@ -28,38 +28,44 @@ target_link_libraries(mace_API ops flows runtimes)
 set(STATIC_LIB ${CMAKE_BINARY_DIR}/mace/libmace/libmace_static.a)
 set(BASE_PATH ${CMAKE_BINARY_DIR})
 
-set(PORT_LIBS "addlib ${CMAKE_BINARY_DIR}/mace/port/posix/libport_posix.a\n"
-              "addlib ${CMAKE_BINARY_DIR}/mace/port/linux_base/libport_linux_base.a\n")
+set(PORT_LIBS "addlib ${CMAKE_BINARY_DIR}/mace/port/posix/libport_posix.a\n")
 if(ANDROID)
   set(PORT_LIBS ${PORT_LIBS}
-                "addlib ${CMAKE_BINARY_DIR}/mace/port/android/libport_android.a")
+                "addlib ${CMAKE_BINARY_DIR}/mace/port/android/libport_android.a\n"
+                "addlib ${CMAKE_BINARY_DIR}/mace/port/linux_base/libport_linux_base.a\n")
   if(MACE_ENABLE_RPCMEM)
     set(PORT_LIBS ${PORT_LIBS}
                   "\naddlib ${PROJECT_SOURCE_DIR}/third_party/rpcmem/${ANDROID_ABI}/rpcmem.a")
   endif()
+elseif(QNX)
+  set(PORT_LIBS ${PORT_LIBS} "addlib ${CMAKE_BINARY_DIR}/mace/port/qnx/libport_qnx.a")
 elseif(WIN32)
   set(STATIC_LIB ${CMAKE_BINARY_DIR}/mace/libmace/libmace_static.lib)
 else(WIN32)
   set(PORT_LIBS ${PORT_LIBS}
-                "addlib ${CMAKE_BINARY_DIR}/mace/port/linux/libport_linux.a")
+                "addlib ${CMAKE_BINARY_DIR}/mace/port/linux/libport_linux.a\n"
+                "addlib ${CMAKE_BINARY_DIR}/mace/port/linux_base/libport_linux_base.a\n")
 endif(ANDROID)
 
 set(FLOW_LIBS "addlib ${CMAKE_BINARY_DIR}/mace/flows/libflows.a\n"
               "addlib ${CMAKE_BINARY_DIR}/mace/flows/cpu/libcpu_flow.a\n")
 set(RUNTIME_LIBS "addlib ${CMAKE_BINARY_DIR}/mace/runtimes/libruntimes.a\n"
                  "addlib ${CMAKE_BINARY_DIR}/mace/runtimes/cpu/libcpu_runtime.a\n")
+
 if(MACE_ENABLE_OPENCL)
   set(FLOW_LIBS ${FLOW_LIBS}
                 "addlib ${CMAKE_BINARY_DIR}/mace/flows/opencl/libopencl_flow.a\n")
   set(RUNTIME_LIBS ${RUNTIME_LIBS}
                 "addlib ${CMAKE_BINARY_DIR}/mace/runtimes/opencl/libopencl_runtime.a\n")
 endif(MACE_ENABLE_OPENCL)
+
 if(MACE_ENABLE_HEXAGON)
   set(FLOW_LIBS ${FLOW_LIBS}
           "addlib ${CMAKE_BINARY_DIR}/mace/flows/hexagon/libhexagon_flow.a\n")
   set(RUNTIME_LIBS ${RUNTIME_LIBS}
           "addlib ${CMAKE_BINARY_DIR}/mace/runtimes/hexagon/libhexagon_runtime.a\n")
 endif(MACE_ENABLE_HEXAGON)
+
 if(MACE_ENABLE_MTK_APU)
   set(FLOW_LIBS ${FLOW_LIBS}
           "addlib ${CMAKE_BINARY_DIR}/mace/flows/apu/libapu_flow.a\n")
@@ -109,6 +115,11 @@ elseif(ANDROID)
     COMMAND ${_CMAKE_TOOLCHAIN_PREFIX}ar -M < ${CMAKE_BINARY_DIR}/mace/libmace/mace.mri
     DEPENDS mace_API ops flows runtimes core utils proto generated_version generated_opencl_kernel libprotobuf_lite port_base port_posix port_linux_base port_android
     )
+elseif(QNX)
+  add_custom_target(combined ALL
+    COMMAND ${CROSSTOOL_ROOT}/qnx700/host/linux/x86_64/usr/bin/ntoaarch64-ar -M < ${CMAKE_BINARY_DIR}/mace/libmace/mace.mri
+    DEPENDS mace_API ops flows runtimes core utils proto generated_version generated_opencl_kernel libprotobuf_lite port_base port_posix port_qnx
+    )
 else() #linux
   add_custom_target(combined ALL
     COMMAND ar -M < ${CMAKE_BINARY_DIR}/mace/libmace/mace.mri
@@ -125,6 +136,7 @@ add_dependencies(mace_static combined)
 set_target_properties(mace_static PROPERTIES
   IMPORTED_LOCATION ${STATIC_LIB}
 )
+
 if(ANDROID)
   set_target_properties(mace_static PROPERTIES
     INTERFACE_LINK_LIBRARIES log

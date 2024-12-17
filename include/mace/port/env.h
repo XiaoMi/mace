@@ -22,8 +22,12 @@
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #include <malloc.h>
+#endif
+
+#if defined(__QNX__)
+void *memalign(size_t __alignment, size_t __size);
 #endif
 
 #include <sys/stat.h>
@@ -101,7 +105,7 @@ inline MaceStatus Memalign(void **memptr, size_t alignment, size_t size) {
     return MaceStatus::MACE_SUCCESS;
   }
 #else
-#if defined(__ANDROID__) || defined(__hexagon__)
+#if defined(__ANDROID__) || defined(__hexagon__) || defined(__QNX__)
   *memptr = memalign(alignment, size);
   if (*memptr == nullptr) {
     return MaceStatus::MACE_OUT_OF_RESOURCES;

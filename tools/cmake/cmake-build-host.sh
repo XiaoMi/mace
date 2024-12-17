@@ -22,12 +22,14 @@ fi
 mkdir -p ${BUILD_DIR} && cd ${BUILD_DIR}
 cmake -DMACE_ENABLE_NEON=OFF         \
       -DMACE_ENABLE_QUANTIZE=OFF     \
+      -DMACE_ENABLE_CPU=${MACE_ENABLE_CPU}                \
       -DMACE_ENABLE_OPENCL=OFF       \
       -DMACE_ENABLE_BFLOAT16=${DMACE_ENABLE_BFLOAT16}     \
       -DMACE_ENABLE_TESTS=ON         \
       -DMACE_ENABLE_BENCHMARKS=ON    \
       -DMACE_ENABLE_CODE_MODE=${MACE_ENABLE_CODE_MODE}    \
+      -DCMAKE_BUILD_TYPE=Debug    \
       -DCMAKE_INSTALL_PREFIX=install \
       ../../..
-make -j$(nproc) && make install
+make $@ && make install
 cd ../../..

@@ -43,6 +43,7 @@ ExternalProject_Add(
                     -Dprotobuf_BUILD_PROTOC_BINARIES=OFF
                     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF
                     -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
+                    -DCMAKE_INSTALL_LIBDIR=lib
                     ${THIRD_PARTY_EXTRA_CMAKE_ARGS}
 )
 

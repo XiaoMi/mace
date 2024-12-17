@@ -43,7 +43,7 @@ class DeviceWrapper:
         """
         init device with device dict info
         :type device_dict: Device
-        :param device_dict: a key-value dict that holds the device information,
+        :param device_dict安卓跑通mace实例: a key-value dict that holds the device information,
                        which attribute has:
                        device_name, target_abis, target_socs, system,
                         address, username

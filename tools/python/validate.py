@@ -89,27 +89,24 @@ def compare_output(output_name, mace_out_value,
         assert len(out_value) == len(mace_out_value)
         sqnr = calculate_sqnr(out_value, mace_out_value)
         similarity = calculate_similarity(out_value, mace_out_value)
-        util.MaceLogger.summary(
+        '''util.MaceLogger.summary(
             output_name + ' MACE VS training platform'
             + ' similarity: ' + str(similarity) + ' , sqnr: ' + str(sqnr)
-            + ' , pixel_accuracy: ' + str(pixel_accuracy))
+            + ' , pixel_accuracy: ' + str(pixel_accuracy))'''
         if log_file:
-            if not os.path.exists(log_file):
-                with open(log_file, 'w') as f:
-                    f.write('output_name,similarity,sqnr,pixel_accuracy\n')
-            summary = '{output_name},{similarity},{sqnr},{pixel_accuracy}\n' \
-                .format(output_name=output_name,
-                        similarity=similarity,
-                        sqnr=sqnr,
-                        pixel_accuracy=pixel_accuracy)
-            with open(log_file, "a") as f:
-                f.write(summary)
-        elif similarity > validation_threshold:
-            util.MaceLogger.summary(
-                util.StringFormatter.block("Similarity Test Passed"))
+            with open(log_file, 'a') as f:
+                f.write('%-20s%-30s%-30s%-20s' %(output_name,similarity,sqnr,pixel_accuracy))
+                if similarity > validation_threshold:
+                    f.write('%-20s'%'PASS'+'\n')
+                else:
+                    f.write('%-20s'%'NOPASS'+'\n')
         else:
-            util.MaceLogger.error(
-                util.StringFormatter.block("Similarity Test Failed"))
+            if similarity > validation_threshold:
+                util.MaceLogger.summary(
+                    util.StringFormatter.block("Similarity Test Passed"))
+            else:
+                util.MaceLogger.summary(
+                    util.StringFormatter.block("Similarity Test Failed"))
     else:
         util.MaceLogger.error(
             "", util.StringFormatter.block(
@@ -401,17 +398,29 @@ def validate_onnx_model(platform, model_file,
 
     sess = onnxrt.InferenceSession(model.SerializeToString())
     output_values = sess.run(output_names, input_dict)
-
+    if log_file:
+        with open(log_file, 'w') as f:
+            f.write('%-20s%-30s%-30s%-20s' %('output_name','similarity','sqnr','pixel_accuracy') + '\n')
     for i in range(len(output_names)):
         value = output_values[i].flatten()
         output_file_name = util.formatted_file_name(mace_out_file,
                                                     output_names[i])
         mace_out_value = load_data(output_file_name)
+        real_output_shape = output_shapes[i]
+        real_output_data_format = DataFormat.NONE
         mace_out_value, real_output_shape, real_output_data_format = \
             get_real_out_value_shape_df(platform,
                                         mace_out_value,
                                         output_shapes[i],
                                         output_data_formats[i])
+        print(f'tensor name: {output_names[i]}, shapes: {output_shapes[i]}, data_formats: {output_data_formats[i]}')
+        ##下面是用来生成一个tensor分别在mace和nn库上跑完的具体数值文件
+        tensor_names = ['1669','1670','1671','1674','1689','3689','3690','3691']
+        if output_names[i] in tensor_names:
+            mace_output_file = "/root/workspace/tensors/mace_" + output_names[i]
+            onnx_output_file = "/root/workspace/tensors/onnxruntime_" + output_names[i]
+            np.savetxt(mace_output_file, mace_out_value, '%.6f')
+            np.savetxt(onnx_output_file, value, '%.6f')
         compare_output(output_names[i],
                        mace_out_value, value,
                        validation_threshold, log_file,

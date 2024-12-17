@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "mace/utils/dbg.h"
 #include "mace/core/runtime/runtime.h"
 #include "mace/core/runtime/runtime_registry.h"
 

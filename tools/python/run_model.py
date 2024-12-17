@@ -136,6 +136,11 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     output_tensors_info = config_parser.find_output_tensors_info(
         model_conf[ModelKeys.subgraphs], model_conf[ModelKeys.output_tensors])
 
+    if ModelKeys.check_tensors in model_conf[ModelKeys.subgraphs][ModelKeys.default_graph].keys():  
+        output_tensors_info[ModelKeys.output_shapes] = model_conf[ModelKeys.subgraphs][ModelKeys.default_graph][ModelKeys.check_shapes]
+        output_tensors_info[ModelKeys.output_tensors] = model_conf[ModelKeys.subgraphs][ModelKeys.default_graph][ModelKeys.check_tensors]
+        model_conf[ModelKeys.output_tensors] = output_tensors_info[ModelKeys.output_tensors]
+
     model_args = {"model_name": model_name,
                   "model_file": model_file_path,
                   "model_data_file": model_data_file_path,
@@ -152,8 +157,15 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                        input_tensors_info[ModelKeys.input_data_formats]]),
                   "output_data_format": ",".join(
                       [df.name for df in
-                       output_tensors_info[ModelKeys.output_data_formats]])
-                  }
+                       output_tensors_info[ModelKeys.output_data_formats]]),
+                  "input_data_type": ",".join(
+                      [str(i) for i in
+                       input_tensors_info[ModelKeys.input_data_types]]),
+                  "output_data_type": ",".join(
+                      [str(i) for i in
+                       output_tensors_info[ModelKeys.output_data_types]]
+                  ) 
+                }
 
     opts = ["--%s='%s'" % (arg_key, arg_val) for arg_key, arg_val in
             model_args.items()] + args
@@ -209,6 +221,8 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
     libs = []
     if DeviceType.HEXAGON in runtime_list:
         libs += ["third_party/nnlib/%s/libhexagon_controller.so" % target_abi]
+        if target_abi == "arm64-v8a":
+            libs += ["third_party/nnlib/v66/libhexagon_nn_skel.so"]
     elif runtime == DeviceType.HTA:
         libs += ["third_party/hta/%s/libhta_hexagon_runtime.so" % target_abi]
     elif DeviceType.APU in runtime_list:
@@ -245,20 +259,18 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                          opencl_dir, model_name,
                          dev.info()["ro.product.model"].replace(' ', ''),
                          dev.info()["ro.board.platform"]))
-
+    
     if flags.validate:
         validate_model_file = util.download_or_get_model(
             model_conf[ModelKeys.model_file_path],
             model_conf[ModelKeys.model_sha256_checksum],
             tmpdirname)
-
         validate_weight_file = ""
         if ModelKeys.weight_file_path in model_conf:
             validate_weight_file = util.download_or_get_model(
                 model_conf[ModelKeys.weight_file_path],
                 model_conf[ModelKeys.weight_sha256_checksum],
                 tmpdirname)
-
         dev.pull(Target(target_output_dir), tmpdirname + "/validate_out")
         output_file_prefix = tmpdirname + "/validate_out/" + model_name
         validation_outputs_data = \
@@ -278,7 +290,7 @@ def run_model_for_device(flags, args, dev, model_name, model_conf):
                           input_tensors_info[ModelKeys.input_data_types],
                           flags.backend,
                           validation_outputs_data,
-                          "")
+                          flags.accuracy_log)
     if should_generate_data:
         shutil.rmtree(tmpdirname)
 
@@ -309,6 +321,14 @@ def parse_args():
         help="yaml conf path"
     )
     parser.add_argument(
+        '--justprint',
+        action="store_true",
+        help="just print the commands but do nothing(for debug)")
+    parser.add_argument(
+        '--norun',
+        action="store_true",
+        help="do all the thing except running the model")
+    parser.add_argument(
         '--devices_to_run',
         type=str,
         default="",
@@ -323,7 +343,7 @@ def parse_args():
         "--target_abi",
         type=str,
         default="arm64-v8a",
-        help="Target ABI: host, armeabi-v7a, arm64-v8a,"
+        help="Target ABI: host, qnx, armeabi-v7a, arm64-v8a,"
              " arm-linux-gnueabihf, aarch64-linux-gnu"
     )
     parser.add_argument(
@@ -367,7 +387,7 @@ def parse_args():
     parser.add_argument(
         "--backend",
         type=str,
-        default="tensorflow",
+        default="pytorch",
         help="onnx backend framework")
     parser.add_argument(
         "--tune",
@@ -407,6 +427,11 @@ def parse_args():
         "--quantize_stat",
         action="store_true",
         help="whether to stat quantization range.")
+    parser.add_argument(
+        "--accuracy_log",
+        type=str,
+        default="",
+        help="the file of result of validate accuracy")
 
     return parser.parse_known_args()
 
@@ -415,4 +440,6 @@ if __name__ == "__main__":
     flags, args = parse_args()
     if flags.build:
         build_engine(flags)
+    device.justprint = flags.justprint
+    device.norun = flags.norun
     run_models(flags, args)

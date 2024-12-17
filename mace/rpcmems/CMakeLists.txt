@@ -6,7 +6,7 @@ set(RPCMEMS_SRCS
 
 if(ANDROID_ABI STREQUAL "arm64-v8a")
   set(RPCMEMS_SRCS ${RPCMEMS_SRCS} mtk/mtk_rpcmem.cc mtk/mtk_ion_wrapper.cc)
-endif(ANDROID_ABI STREQUAL "arm64-v8a")
+endif()
 
 add_library(rpcmems STATIC ${RPCMEMS_SRCS})
 target_link_libraries(rpcmems PRIVATE rpcmem)

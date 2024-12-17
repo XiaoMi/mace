@@ -8,8 +8,8 @@ target_link_libraries(mace_run
   extra_link_libs_target
   gflags
 )
-if(NOT ANDROID)
-  target_link_libraries(mace_run pthread)
+if(NOT ANDROID AND NOT QNX)
+  target_link_libraries(mace_run)
 endif()
 
 if(MACE_ENABLE_HEXAGON_DSP)

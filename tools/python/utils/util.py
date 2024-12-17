@@ -168,6 +168,7 @@ def download_or_get_file(file,
         shutil.copyfile(file, output_file)
 
     if sha256_checksum:
+        print(file_checksum(output_file))
         mace_check(file_checksum(output_file) == sha256_checksum,
                    "checksum validate failed")
 

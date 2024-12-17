@@ -23,6 +23,9 @@ from utils.util import MaceLogger
 cwd = os.path.dirname(__file__)
 
 try:
+    device.execute("bash tools/cmake/cmake-generate-proto-py-host.sh")
+except:  # noqa
+    MaceLogger.warning("Cmake error, use bazel.")
     device.execute("bazel build //mace/proto:mace_py")
     device.execute("cp -f bazel-genfiles/mace/proto/mace_pb2.py %s" % cwd)
 
@@ -33,6 +36,3 @@ try:
     device.execute("bazel build //third_party/caffe:caffe_py")
     device.execute(
         "cp -f bazel-genfiles/third_party/caffe/caffe_pb2.py %s" % cwd)
-except:  # noqa
-    MaceLogger.warning("No bazel, use cmake.")
-    device.execute("bash tools/cmake/cmake-generate-proto-py-host.sh")

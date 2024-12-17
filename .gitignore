@@ -1,3 +1,4 @@
+.gitignore
 bazel-*
 build/*
 cmake-build/
@@ -39,3 +40,17 @@ __pycache__
 *.egg-info
 .mace_run
 .model
+_fa_out
+BuildProducts.txt
+compileInfo.txt
+opt_conformer.txt
+opt_transformer.txt
+opt_hifigan.txt
+output.txt
+outputs_fa_out
+._qxx
+log
+log
+
+acc_conformer.txt
+conformer_vaild.txt
